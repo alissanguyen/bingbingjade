@@ -1,0 +1,24 @@
+export type ProductCategory = "bracelet" | "bangle" | "ring" | "other";
+
+export interface Product {
+  id: string;
+  name: string;
+  category: ProductCategory;
+
+  images: string[];
+  videos: string[];
+
+  color: string;
+  tier: string;
+  size: number;
+
+  description: string | null;
+  blemishes: string | null;
+
+  price_display_usd: number | null;
+  imported_price_vnd: number;
+
+  vendor_id: string;
+  created_at: string;
+  is_featured: boolean;
+}
