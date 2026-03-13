@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { createProduct } from "./actions";
 import type { Vendor } from "@/types/vendor";
@@ -37,6 +37,106 @@ function UploadIcon() {
   );
 }
 
+const PLATFORM_COLORS: Record<string, string> = {
+  zalo: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400",
+  facebook: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400",
+  wechat: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400",
+  tiktok: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
+  other: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
+};
+
+function VendorSearch({ vendors, value, onChange }: { vendors: Vendor[]; value: string; onChange: (id: string) => void }) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<Vendor | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const filtered = vendors.filter((v) => {
+    const q = query.toLowerCase();
+    return v.name.toLowerCase().includes(q) || v.id.toLowerCase().includes(q);
+  });
+
+  const select = (v: Vendor) => {
+    setSelected(v);
+    onChange(v.id);
+    setQuery("");
+    setOpen(false);
+  };
+
+  const clear = () => {
+    setSelected(null);
+    onChange("");
+    setQuery("");
+  };
+
+  const inputClass = "w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors";
+
+  return (
+    <div ref={ref} className="relative">
+      {selected ? (
+        <div className="flex items-center justify-between rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 px-3.5 py-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${PLATFORM_COLORS[selected.platform]}`}>
+              {selected.platform}
+            </span>
+            <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{selected.name}</span>
+            <span className="text-xs text-gray-400 font-mono truncate hidden sm:block">{selected.id.slice(0, 8)}…</span>
+          </div>
+          <button type="button" onClick={clear} className="ml-2 shrink-0 text-gray-400 hover:text-red-500 transition-colors">
+            <XIcon />
+          </button>
+        </div>
+      ) : (
+        <input
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder="Search by name or ID…"
+          className={inputClass}
+        />
+      )}
+
+      {open && !selected && (
+        <div className="absolute z-10 mt-1.5 w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg overflow-hidden">
+          {filtered.length === 0 ? (
+            <p className="px-4 py-3 text-sm text-gray-400">No vendors found.</p>
+          ) : (
+            <ul className="max-h-52 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+              {filtered.map((v) => (
+                <li key={v.id}>
+                  <button
+                    type="button"
+                    onClick={() => select(v)}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${PLATFORM_COLORS[v.platform]}`}>
+                      {v.platform}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{v.name}</p>
+                      <p className="text-xs text-gray-400 font-mono">{v.id}</p>
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      {/* Hidden input to carry value for form validation */}
+      <input type="hidden" name="vendor_id" value={value} required />
+    </div>
+  );
+}
+
 export function ProductForm({ vendors }: Props) {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -49,6 +149,7 @@ export function ProductForm({ vendors }: Props) {
   const [result, setResult] = useState<{ success?: boolean; error?: string } | null>(null);
   const [isFeatured, setIsFeatured] = useState(false);
 
+  const [vendorId, setVendorId] = useState("");
   const [form, setForm] = useState({
     name: "",
     category: "other" as ProductCategory,
@@ -59,7 +160,6 @@ export function ProductForm({ vendors }: Props) {
     blemishes: "",
     price_display_usd: "",
     imported_price_vnd: "",
-    vendor_id: vendors[0]?.id ?? "",
   });
 
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -116,6 +216,7 @@ export function ProductForm({ vendors }: Props) {
 
       const fd = new FormData();
       Object.entries(form).forEach(([k, v]) => fd.append(k, v));
+      fd.append("vendor_id", vendorId);
       fd.append("is_featured", String(isFeatured));
       imageUrls.forEach((url) => fd.append("imageUrls", url));
       videoUrls.forEach((url) => fd.append("videoUrls", url));
@@ -125,7 +226,8 @@ export function ProductForm({ vendors }: Props) {
         setResult({ error: res.error });
       } else {
         setResult({ success: true });
-        setForm({ name: "", category: "other", color: "", tier: "", size: "", description: "", blemishes: "", price_display_usd: "", imported_price_vnd: "", vendor_id: vendors[0]?.id ?? "" });
+        setForm({ name: "", category: "other", color: "", tier: "", size: "", description: "", blemishes: "", price_display_usd: "", imported_price_vnd: "" });
+        setVendorId("");
         setImages([]);
         setVideos([]);
         setIsFeatured(false);
@@ -162,12 +264,11 @@ export function ProductForm({ vendors }: Props) {
             </div>
             <div>
               <label className={labelClass}>Vendor <span className="text-red-400">*</span></label>
-              <select required value={form.vendor_id} onChange={set("vendor_id")} className={inputClass}>
-                {vendors.length === 0 && <option value="">No vendors yet</option>}
-                {vendors.map((v) => (
-                  <option key={v.id} value={v.id}>{v.name} ({v.platform})</option>
-                ))}
-              </select>
+              {vendors.length === 0 ? (
+                <p className="text-sm text-gray-400 dark:text-gray-500 py-2">No vendors yet — <a href="/addvendor" className="text-emerald-600 dark:text-emerald-400 underline">add one first</a>.</p>
+              ) : (
+                <VendorSearch vendors={vendors} value={vendorId} onChange={setVendorId} />
+              )}
             </div>
           </div>
           <div className="grid grid-cols-3 gap-4">

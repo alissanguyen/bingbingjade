@@ -1,8 +1,8 @@
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { ProductForm } from "./ProductForm";
 
 export default async function AddProductPage() {
-  const { data: vendors } = await supabase.from("vendors").select("*").order("name");
+  const { data: vendors } = await supabaseAdmin.from("vendors").select("*").order("name");
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-16">
