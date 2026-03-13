@@ -1,27 +1,62 @@
 const faqs = [
   {
-    question: "What types of jade do you sell?",
-    answer: "We sell both nephrite and jadeite jade. Each product listing specifies the type, origin, and quality grade so you can make an informed purchase.",
+    question: "What type of jade do you sell?",
+    answer: "All products listed on this website are natural Jadeite. We specialize in Type A Jadeite from Myanmar (Burmese) and Guatemala. If a product name does not specifically say Guatemala, it is automatically Myanmar jadeite.",
   },
   {
-    question: "How do I know the jade is authentic?",
-    answer: "Every piece comes with a certificate of authenticity. We source directly from trusted suppliers and conduct quality checks before listing any item.",
+    question: "Do you sell nephrite or other stones?",
+    answer: "All items currently listed on this website are Jadeite only. However, we do accept special sourcing requests for other materials such as nephrite, agate, and other stones upon request.",
+  },
+  {
+    question: "Is your jade authentic and untreated?",
+    answer: "Yes. All jade sold on this website is natural, untreated Type A Jadeite. No dye, bleaching, polymer infusion, or chemical treatment is used in the production process.",
+  },
+  {
+    question: "Does the jade come with certification?",
+    answer: "Yes. All jade comes with certification confirming it is Type A Jadeite. Certificates may be issued by Vietnamese or Chinese gemological centers, and the certification will clearly state the jade is Type A.",
+  },
+  {
+    question: "Do you guarantee your jade is Type A?",
+    answer: "Yes. All products are backed by a lifetime Type A Jadeite guarantee. If a client has a purchased item professionally tested and it is proven to be Type B, we will issue a full refund including shipping. This is the only case in which shipping is refundable.",
   },
   {
     question: "What payment methods do you accept?",
-    answer: "We accept all major credit cards, PayPal, and Apple Pay. All transactions are secured with SSL encryption.",
+    answer:
+      "We accept PayPal Goods & Services (subject to a 3% fee), PayPal Friends & Family, Zelle, and wire transfer.",
   },
   {
-    question: "How long does shipping take?",
-    answer: "Standard shipping takes 5–7 business days. Expedited shipping (2–3 business days) is available at checkout for an additional fee.",
+    question: "Why doesn’t my jade look exactly the same in person?",
+    answer: "Jade can appear different depending on lighting, camera settings, environment, and skin tone. We do our best to show each piece accurately through multiple photos, videos, and lighting conditions, but some variation in appearance is normal with natural jade.",
   },
   {
-    question: "Can I return a product?",
-    answer: "Yes. We offer a 30-day return window on most items. Please visit our Returns & Refunds page for full details.",
+    question: "How does standard shipping work?",
+    answer: "Standard overseas shipping follows a monthly schedule. Orders paid on or before the 15th of the month are shipped in the overseas batch on the 20th, arrive in the U.S. around the 22nd, and typically take an additional 2–4 days for final delivery. Orders paid after the 15th will be included in the next month’s shipment and arrive in the U.S. on or around the 20th of the following month. This process helps keep shipping costs lower while allowing time for customs clearance and jade certification.",
   },
   {
-    question: "Do you ship internationally?",
-    answer: "Yes, we ship worldwide. International orders typically arrive within 10–14 business days, depending on customs and local delivery.",
+    question: "Do you offer expedited shipping?",
+    answer: "Yes. Expedited shipping is available for an additional $100. With expedited shipping, your jade is sent to the U.S. immediately instead of waiting for the monthly overseas shipment schedule. This option is recommended for high-value pieces or time-sensitive purchases such as gifts and special events.",
+  },
+  {
+    question: "Do you offer shipping insurance?",
+    answer: "Yes. Optional shipping insurance is available for an additional 5% of the item price and must be requested by the buyer before shipment. Shipping loss or transit damage is very rare, but if insurance is declined, the buyer accepts that shipping-related risk according to store policy.",
+  },
+  {
+    question: "Is shipping refundable?",
+    answer: "Shipping is non-refundable in all cases except one: if the jade is professionally tested by the client and confirmed to be Type B instead of Type A. In that case, we will refund both the product price and the shipping cost in full. For all other situations, please refer to the Store Policy.",
+  },
+  {
+    question: "How do I buy a piece?",
+    answer: (
+      <>
+        To purchase, please visit the Contact page and reach out through one of
+        the available methods: <strong className="text-cyan-600">WhatsApp</strong>, <strong className="text-cyan-600">Instagram</strong>,
+        {" "}or email at <strong className="text-cyan-600 italic">bingbing.jade2@gmail.com</strong>.
+      </>
+    ),
+  },
+  {
+    question: "Can I ask you to source a specific piece for me?",
+    answer: "Yes. We do accept sourcing requests for specific pieces and may also help source other types of jade or stones by request. Please contact us with details about what you are looking for.",
   },
 ];
 
