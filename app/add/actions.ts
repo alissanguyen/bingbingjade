@@ -1,0 +1,28 @@
+"use server";
+
+import { supabaseAdmin } from "@/lib/supabase-admin";
+import type { ProductCategory } from "@/types/product";
+
+export async function createProduct(formData: FormData): Promise<{ error?: string; success?: boolean }> {
+  const imageUrls = formData.getAll("imageUrls") as string[];
+  const videoUrls = formData.getAll("videoUrls") as string[];
+
+  const { error } = await supabaseAdmin.from("products").insert({
+    name: formData.get("name") as string,
+    category: formData.get("category") as ProductCategory,
+    color: formData.get("color") as string,
+    tier: formData.get("tier") as string,
+    size: Number(formData.get("size")),
+    description: (formData.get("description") as string) || null,
+    blemishes: (formData.get("blemishes") as string) || null,
+    price_display_usd: formData.get("price_display_usd") ? Number(formData.get("price_display_usd")) : null,
+    imported_price_vnd: Number(formData.get("imported_price_vnd")),
+    vendor_id: formData.get("vendor_id") as string,
+    is_featured: formData.get("is_featured") === "true",
+    images: imageUrls,
+    videos: videoUrls,
+  });
+
+  if (error) return { error: error.message };
+  return { success: true };
+}
