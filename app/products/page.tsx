@@ -1,6 +1,18 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import type { Product } from "@/types/product";
+
+interface ProductCard {
+  id: string;
+  name: string;
+  category: string;
+  images: string[];
+  color: string[] | null;
+  tier: string;
+  size: number;
+  price_display_usd: number | null;
+  description: string | null;
+  is_featured: boolean;
+}
 
 const COLOR_SWATCHES: Record<string, string> = {
   white:    "bg-white border border-gray-300",
@@ -38,7 +50,7 @@ export default async function Products() {
         </p>
       ) : (
         <div className="mt-10 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {products.map((product: Product) => (
+          {(products as ProductCard[]).map((product) => (
             <Link
               key={product.id}
               href={`/products/${product.id}`}
