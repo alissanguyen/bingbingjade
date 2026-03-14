@@ -8,7 +8,7 @@ export interface Product {
   images: string[];
   videos: string[];
 
-  color: string;
+  color: string[];
   tier: string;
   size: number;
 

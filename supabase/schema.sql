@@ -21,7 +21,7 @@ create table public.products (
   images              text[] not null default '{}',
   videos              text[] not null default '{}',
 
-  color               text not null,
+  color               text[] not null default '{}',
   tier                text not null,
   size                numeric not null,
 

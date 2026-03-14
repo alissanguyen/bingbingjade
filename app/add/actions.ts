@@ -10,7 +10,7 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
   const { error } = await supabaseAdmin.from("products").insert({
     name: formData.get("name") as string,
     category: formData.get("category") as ProductCategory,
-    color: formData.get("color") as string,
+    color: formData.getAll("color") as string[],
     tier: formData.get("tier") as string,
     size: Number(formData.get("size")),
     description: (formData.get("description") as string) || null,

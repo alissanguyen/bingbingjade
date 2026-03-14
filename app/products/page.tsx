@@ -1,6 +1,19 @@
 import { supabase } from "@/lib/supabase";
 import type { Product } from "@/types/product";
 
+const COLOR_SWATCHES: Record<string, string> = {
+  white:    "bg-white border border-gray-300",
+  green:    "bg-green-500",
+  blue:     "bg-blue-500",
+  red:      "bg-red-500",
+  pink:     "bg-pink-400",
+  purple:   "bg-purple-500",
+  orange:   "bg-orange-500",
+  yellow:   "bg-yellow-400",
+  black:    "bg-gray-900",
+  marbling: "bg-gradient-to-br from-gray-200 via-white to-gray-400 border border-gray-300",
+};
+
 export const revalidate = 21600; // revalidate every 6 hours as fallback
 
 export default async function Products() {
@@ -41,12 +54,21 @@ export default async function Products() {
                 )}
               </div>
 
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
-                  {product.category}
-                </span>
-                {product.tier && (
-                  <span className="text-xs text-gray-400 dark:text-gray-500">· {product.tier}</span>
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+                    {product.category}
+                  </span>
+                  {product.tier && (
+                    <span className="text-xs text-gray-400 dark:text-gray-500">· {product.tier}</span>
+                  )}
+                </div>
+                {product.color?.length > 0 && (
+                  <div className="flex items-center gap-1">
+                    {product.color.map((c) => (
+                      <span key={c} title={c} className={`w-3.5 h-3.5 rounded-full ${COLOR_SWATCHES[c] ?? "bg-gray-300"}`} />
+                    ))}
+                  </div>
                 )}
               </div>
 
