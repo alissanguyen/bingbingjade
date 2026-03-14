@@ -3,6 +3,21 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { ProductGallery } from "./ProductGallery";
 
+interface Product {
+  id: string;
+  name: string;
+  category: string;
+  images: string[];
+  videos: string[] | null;
+  color: string[] | null;
+  tier: string;
+  size: number;
+  price_display_usd: number | null;
+  description: string | null;
+  blemishes: string | null;
+  is_featured: boolean | null;
+}
+
 const COLOR_SWATCHES: Record<string, string> = {
   white:    "bg-white border border-gray-300",
   green:    "bg-green-500",
@@ -25,7 +40,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     .from("products")
     .select("id, name, category, images, videos, color, tier, size, price_display_usd, description, blemishes, is_featured")
     .eq("id", id)
-    .single();
+    .single<Product>();
 
   if (!product) notFound();
 
@@ -76,11 +91,11 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
           <div className="mt-6 space-y-5">
             {/* Color tags */}
-            {product.color?.length > 0 && (
+            {(product.color?.length ?? 0) > 0 && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">Color</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {product.color.map((c: string) => (
+                  {product.color!.map((c: string) => (
                     <span
                       key={c}
                       className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-1 text-xs text-gray-700 dark:text-gray-300"

@@ -64,7 +64,7 @@ export default function FAQ() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Frequently Asked Questions</h1>
-      <p className="mt-2 text-gray-500 dark:text-gray-400">Everything you need to know about Jade Shop.</p>
+      <p className="mt-2 text-gray-500 dark:text-gray-400">Everything you need to know about BingBing Jadeite.</p>
       <div className="mt-10 divide-y divide-gray-200 dark:divide-gray-800">
         {faqs.map((faq, i) => (
           <div key={i} className="py-6">

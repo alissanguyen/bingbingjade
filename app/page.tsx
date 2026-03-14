@@ -4,7 +4,7 @@ export default function Home() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-24 text-center bg-white dark:bg-gray-950">
       <h1 className="text-5xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-        Welcome to <span className="text-emerald-700">Jade Shop</span>
+        Welcome to <span className="text-emerald-700">BingBing Jade</span>
       </h1>
       <p className="mt-6 text-lg text-gray-500 dark:text-gray-400 max-w-xl mx-auto">
         Discover our curated collection of authentic jade jewelry and ornaments, handcrafted for beauty and meaning.
