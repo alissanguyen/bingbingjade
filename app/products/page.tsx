@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import type { Product } from "@/types/product";
 
@@ -38,9 +39,10 @@ export default async function Products() {
       ) : (
         <div className="mt-10 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((product: Product) => (
-            <div
+            <Link
               key={product.id}
-              className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden hover:shadow-lg transition-shadow"
+              href={`/products/${product.id}`}
+              className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden hover:shadow-lg hover:border-emerald-300 dark:hover:border-emerald-700 transition-all block"
             >
               {/* Image — flush to card edges, no padding */}
               <div className="w-full aspect-square bg-emerald-50 dark:bg-emerald-950 overflow-hidden">
@@ -95,7 +97,7 @@ export default async function Products() {
                   )}
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
