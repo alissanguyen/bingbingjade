@@ -23,7 +23,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
   const { data: product } = await supabase
     .from("products")
-    .select("*")
+    .select("id, name, category, images, videos, color, tier, size, price_display_usd, description, blemishes, is_featured")
     .eq("id", id)
     .single();
 

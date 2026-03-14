@@ -20,7 +20,7 @@ export const revalidate = 21600; // revalidate every 6 hours as fallback
 export default async function Products() {
   const { data: products, error } = await supabase
     .from("products")
-    .select("*")
+    .select("id, name, category, images, color, tier, size, price_display_usd, description, is_featured")
     .order("created_at", { ascending: false });
 
   if (error) {
