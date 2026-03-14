@@ -73,9 +73,11 @@ export default async function Products() {
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{product.description}</p>
 
                 {/* Color tags */}
-                {product.color?.length > 0 && (
+                {(() => {
+                  const colors = (product.color ?? []).filter((c) => c && c.trim());
+                  return colors.length > 0 ? (
                   <div className="mt-3 flex flex-wrap gap-1.5">
-                    {product.color.map((c) => (
+                    {colors.map((c) => (
                       <span
                         key={c}
                         className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-2.5 py-0.5 text-xs text-gray-600 dark:text-gray-400"
@@ -85,6 +87,8 @@ export default async function Products() {
                       </span>
                     ))}
                   </div>
+                  ) : null;
+                })()}
                 )}
 
                 {/* Price + size */}
