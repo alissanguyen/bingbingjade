@@ -20,12 +20,25 @@ export function ContactForm() {
 
     setStatus("sending");
     try {
-      await emailjs.send(
-        process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!,
-        process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!,
-        { from_name, from_email, message },
-        { publicKey: process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY! }
-      );
+      const opts = { publicKey: process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY! };
+      const params = { from_name, from_email, message };
+
+      await Promise.all([
+        // Auto-reply to the customer
+        emailjs.send(
+          process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!,
+          process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!,
+          params,
+          opts
+        ),
+        // Internal notification to bingbing.jade2@gmail.com
+        emailjs.send(
+          process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!,
+          process.env.NEXT_PUBLIC_EMAILJS_NOTIFICATION_TEMPLATE_ID!,
+          params,
+          opts
+        ),
+      ]);
       setStatus("success");
       formRef.current.reset();
     } catch (err) {
