@@ -54,7 +54,7 @@ export default async function Products() {
             <Link
               key={product.id}
               href={`/products/${product.id}`}
-              className="peek-card rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden hover:shadow-lg hover:border-emerald-300 dark:hover:border-emerald-700 transition-all block"
+              className="group rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden hover:shadow-lg hover:border-emerald-300 dark:hover:border-emerald-700 transition-all block"
             >
               {/* Image — flush to card edges, no padding */}
               <div className="w-full aspect-square bg-emerald-50 dark:bg-emerald-950 overflow-hidden">
@@ -62,7 +62,7 @@ export default async function Products() {
                   <img
                     src={product.images[0]}
                     alt={product.name}
-                    className="peek-image w-full h-full object-cover"
+                    className="w-full h-full object-cover group-hover:animate-peek"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-5xl">🪨</div>

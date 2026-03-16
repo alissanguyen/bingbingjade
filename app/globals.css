@@ -27,16 +27,16 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Product card peek animation — hints at more images on hover */
+/* Product card peek animation */
 @keyframes card-peek {
-  0%   { transform: translateX(0)    scale(1);    }
-  20%  { transform: translateX(-8%)  scale(1.12); }
-  55%  { transform: translateX(-8%)  scale(1.12); }
-  100% { transform: translateX(0)    scale(1);    }
+  0%   { transform: translateX(0)     scale(1);    }
+  20%  { transform: translateX(-10%)  scale(1.15); }
+  55%  { transform: translateX(-10%)  scale(1.15); }
+  100% { transform: translateX(0)     scale(1);    }
 }
 
-.peek-card:hover .peek-image {
-  animation: card-peek 0.75s ease-in-out;
+@theme inline {
+  --animate-peek: card-peek 0.8s ease-in-out;
 }
 
 *, *::before, *::after {
