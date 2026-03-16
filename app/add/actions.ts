@@ -7,6 +7,9 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
   const imageUrls = formData.getAll("imageUrls") as string[];
   const videoUrls = formData.getAll("videoUrls") as string[];
 
+  const vendor_id = formData.get("vendor_id") as string;
+  if (!vendor_id) return { error: "Please select a vendor before saving." };
+
   const { error } = await supabaseAdmin.from("products").insert({
     name: formData.get("name") as string,
     category: formData.get("category") as ProductCategory,
@@ -24,7 +27,7 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
     price_display_usd: formData.get("price_display_usd") ? Number(formData.get("price_display_usd")) : null,
     sale_price_usd: formData.get("sale_price_usd") ? Number(formData.get("sale_price_usd")) : null,
     imported_price_vnd: Number(formData.get("imported_price_vnd")),
-    vendor_id: formData.get("vendor_id") as string,
+    vendor_id,
     is_featured: formData.get("is_featured") === "true",
     status: (formData.get("status") as string) || "available",
     images: imageUrls,
