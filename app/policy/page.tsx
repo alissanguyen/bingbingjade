@@ -13,7 +13,7 @@ const sections = [
   },
   {
     title: "Non-Returnable Items",
-    body: "Customized or altered items are non-refundable. This includes bangles widened to your requested fit, products made from raw materials, custom orders, and any item marked as final sale or non-returnable.",
+    body: "Customized, altered, or made-to-order items are non-refundable. This includes bangles widened or resized to your requested fit, changes in shape or cut, products made from raw materials, custom orders, and any item marked as final sale or non-returnable. Examples include resizing a size 52 bangle into a size 53, or reshaping a D-type bangle into a round bangle and vice versa. Any item modified from its original form is considered final sale.",
   },
   {
     title: "Claims & Return Window",

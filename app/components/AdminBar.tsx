@@ -11,6 +11,7 @@ export function AdminBar() {
           <a href="/add" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Add Product</a>
           <a href="/addvendor" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Add Vendor</a>
           <a href="/edit" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Edit Product</a>
+          <a href="/editvendor" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Edit Vendor</a>
         </div>
         <form action={adminLogout}>
           <button type="submit" className="text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors">

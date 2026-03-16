@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { createProduct } from "./actions";
-import type { Vendor } from "@/types/vendor";
+import { createVendor } from "@/app/addvendor/actions";
+import { ImageCropModal, VideoTrimModal } from "./MediaCroppers";
+import type { Vendor, VendorPlatform } from "@/types/vendor";
 import type { ProductCategory } from "@/types/product";
 
 interface Props {
@@ -33,6 +35,23 @@ function XIcon() {
   );
 }
 
+function CropIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 3 6 18 21 18" /><polyline points="3 6 18 6 18 21" />
+    </svg>
+  );
+}
+
+function ScissorsIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" />
+      <line x1="20" y1="4" x2="8.12" y2="15.88" /><line x1="14.47" y1="14.48" x2="20" y2="20" /><line x1="8.12" y1="8.12" x2="12" y2="12" />
+    </svg>
+  );
+}
+
 function VideoIcon() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -58,10 +77,23 @@ const PLATFORM_COLORS: Record<string, string> = {
   other: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
 };
 
-function VendorSearch({ vendors, value, onChange }: { vendors: Vendor[]; value: string; onChange: (id: string) => void }) {
+const ADD_PLATFORMS: { value: VendorPlatform; label: string }[] = [
+  { value: "zalo",     label: "Zalo" },
+  { value: "facebook", label: "Facebook" },
+  { value: "wechat",   label: "WeChat" },
+  { value: "tiktok",   label: "TikTok" },
+  { value: "other",    label: "Other" },
+];
+
+function VendorSearch({ vendors: initialVendors, value, onChange }: { vendors: Vendor[]; value: string; onChange: (id: string) => void }) {
+  const [vendors, setVendors] = useState<Vendor[]>(initialVendors);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Vendor | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState({ name: "", platform: "zalo" as VendorPlatform, contact: "" });
+  const [addLoading, setAddLoading] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -90,63 +122,178 @@ function VendorSearch({ vendors, value, onChange }: { vendors: Vendor[]; value: 
     setQuery("");
   };
 
+  const handleAddVendor = async () => {
+    if (!addForm.name.trim()) return;
+    setAddLoading(true);
+    setAddError(null);
+    const fd = new FormData();
+    fd.append("name", addForm.name.trim());
+    fd.append("platform", addForm.platform);
+    fd.append("contact", addForm.contact);
+    const res = await createVendor(fd);
+    setAddLoading(false);
+    if (res.error) { setAddError(res.error); return; }
+    const newVendor: Vendor = {
+      id: res.id!,
+      name: addForm.name.trim(),
+      platform: addForm.platform,
+      contact: addForm.contact || null,
+      notes: null,
+    };
+    setVendors((prev) => [...prev, newVendor]);
+    select(newVendor);
+    setShowAddModal(false);
+    setAddForm({ name: "", platform: "zalo", contact: "" });
+  };
+
   const inputClass = "w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors";
 
   return (
-    <div ref={ref} className="relative">
-      {selected ? (
-        <div className="flex items-center justify-between rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 px-3.5 py-2.5">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${PLATFORM_COLORS[selected.platform]}`}>
-              {selected.platform}
-            </span>
-            <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{selected.name}</span>
-            <span className="text-xs text-gray-400 font-mono truncate hidden sm:block">{selected.id.slice(0, 8)}…</span>
+    <>
+      <div ref={ref} className="relative">
+        {selected ? (
+          <div className="flex items-center justify-between rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 px-3.5 py-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${PLATFORM_COLORS[selected.platform]}`}>
+                {selected.platform}
+              </span>
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{selected.name}</span>
+              <span className="text-xs text-gray-400 font-mono truncate hidden sm:block">{selected.id.slice(0, 8)}…</span>
+            </div>
+            <button type="button" onClick={clear} className="ml-2 shrink-0 text-gray-400 hover:text-red-500 transition-colors">
+              <XIcon />
+            </button>
           </div>
-          <button type="button" onClick={clear} className="ml-2 shrink-0 text-gray-400 hover:text-red-500 transition-colors">
-            <XIcon />
-          </button>
-        </div>
-      ) : (
-        <input
-          value={query}
-          onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
-          onFocus={() => setOpen(true)}
-          placeholder="Search by name or ID…"
-          className={inputClass}
-        />
-      )}
+        ) : (
+          <input
+            value={query}
+            onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+            onFocus={() => setOpen(true)}
+            placeholder="Search by name or ID…"
+            className={inputClass}
+          />
+        )}
 
-      {open && !selected && (
-        <div className="absolute z-10 mt-1.5 w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg overflow-hidden">
-          {filtered.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-gray-400">No vendors found.</p>
-          ) : (
-            <ul className="max-h-52 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
-              {filtered.map((v) => (
-                <li key={v.id}>
-                  <button
-                    type="button"
-                    onClick={() => select(v)}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                  >
-                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${PLATFORM_COLORS[v.platform]}`}>
-                      {v.platform}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{v.name}</p>
-                      <p className="text-xs text-gray-400 font-mono">{v.id}</p>
-                    </div>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+        {open && !selected && (
+          <div className="absolute z-10 mt-1.5 w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg overflow-hidden">
+            {filtered.length > 0 && (
+              <ul className="max-h-48 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+                {filtered.map((v) => (
+                  <li key={v.id}>
+                    <button
+                      type="button"
+                      onClick={() => select(v)}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${PLATFORM_COLORS[v.platform]}`}>
+                        {v.platform}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{v.name}</p>
+                        <p className="text-xs text-gray-400 font-mono">{v.id}</p>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {filtered.length === 0 && (
+              <p className="px-4 py-3 text-sm text-gray-400">No vendors found.</p>
+            )}
+            <div className="border-t border-gray-100 dark:border-gray-800">
+              <button
+                type="button"
+                onClick={() => { setOpen(false); setShowAddModal(true); }}
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors font-medium"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                Add new vendor
+              </button>
+            </div>
+          </div>
+        )}
+        <input type="hidden" name="vendor_id" value={value} required />
+      </div>
+
+      {/* Add Vendor Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-sm bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Add Vendor</h3>
+              <button
+                type="button"
+                onClick={() => { setShowAddModal(false); setAddError(null); }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                <XIcon />
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Name <span className="text-red-400">*</span>
+                </label>
+                <input
+                  value={addForm.name}
+                  onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="e.g. Minh Jade Supplier"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Platform</label>
+                <div className="flex flex-wrap gap-2">
+                  {ADD_PLATFORMS.map((p) => (
+                    <button
+                      key={p.value}
+                      type="button"
+                      onClick={() => setAddForm((f) => ({ ...f, platform: p.value }))}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                        addForm.platform === p.value
+                          ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+                          : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Contact</label>
+                <input
+                  value={addForm.contact}
+                  onChange={(e) => setAddForm((f) => ({ ...f, contact: e.target.value }))}
+                  placeholder="Phone, username, or link"
+                  className={inputClass}
+                />
+              </div>
+              {addError && (
+                <p className="text-xs text-red-500">{addError}</p>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => { setShowAddModal(false); setAddError(null); }}
+                className="px-4 py-2 rounded-full text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleAddVendor}
+                disabled={addLoading || !addForm.name.trim()}
+                className="px-5 py-2 rounded-full bg-emerald-700 hover:bg-emerald-800 text-sm font-medium text-white disabled:opacity-50 transition-colors"
+              >
+                {addLoading ? "Saving…" : "Add Vendor"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
-      {/* Hidden input to carry value for form validation */}
-      <input type="hidden" name="vendor_id" value={value} required />
-    </div>
+    </>
   );
 }
 
@@ -161,6 +308,32 @@ export function ProductForm({ vendors }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ success?: boolean; error?: string } | null>(null);
   const [isFeatured, setIsFeatured] = useState(false);
+
+  const [cropTarget, setCropTarget] = useState<{ index: number; src: string; fileName: string } | null>(null);
+  const [trimTarget, setTrimTarget] = useState<{ index: number; file: File } | null>(null);
+
+  const handleCropConfirm = (croppedFile: File) => {
+    if (!cropTarget) return;
+    const preview = URL.createObjectURL(croppedFile);
+    setImages((prev) => {
+      const updated = [...prev];
+      const old = updated[cropTarget.index];
+      if (old.preview) URL.revokeObjectURL(old.preview);
+      updated[cropTarget.index] = { file: croppedFile, preview };
+      return updated;
+    });
+    setCropTarget(null);
+  };
+
+  const handleTrimConfirm = (trimmedFile: File) => {
+    if (!trimTarget) return;
+    setVideos((prev) => {
+      const updated = [...prev];
+      updated[trimTarget.index] = trimmedFile;
+      return updated;
+    });
+    setTrimTarget(null);
+  };
 
   const [vendorId, setVendorId] = useState("");
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
@@ -380,6 +553,16 @@ export function ProductForm({ vendors }: Props) {
                   >
                     <XIcon />
                   </button>
+                  {preview && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setCropTarget({ index: i, src: preview, fileName: file.name }); }}
+                      className="absolute bottom-1 right-1 w-6 h-6 rounded-md bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-emerald-600"
+                      title="Crop image"
+                    >
+                      <CropIcon />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -419,9 +602,19 @@ export function ProductForm({ vendors }: Props) {
                     <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{file.name}</span>
                     <span className="text-xs text-gray-400 shrink-0">{(file.size / 1024 / 1024).toFixed(1)} MB</span>
                   </div>
-                  <button type="button" onClick={() => removeVideo(i)} className="ml-3 text-gray-400 hover:text-red-500 transition-colors shrink-0">
-                    <XIcon />
-                  </button>
+                  <div className="flex items-center gap-2 ml-3 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setTrimTarget({ index: i, file })}
+                      className="text-gray-400 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors"
+                      title="Trim video"
+                    >
+                      <ScissorsIcon />
+                    </button>
+                    <button type="button" onClick={() => removeVideo(i)} className="text-gray-400 hover:text-red-500 transition-colors">
+                      <XIcon />
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -503,6 +696,23 @@ export function ProductForm({ vendors }: Props) {
       >
         {isSubmitting ? "Uploading & saving…" : "Add Product"}
       </button>
+
+      {cropTarget && (
+        <ImageCropModal
+          src={cropTarget.src}
+          fileName={cropTarget.fileName}
+          onConfirm={handleCropConfirm}
+          onClose={() => setCropTarget(null)}
+        />
+      )}
+
+      {trimTarget && (
+        <VideoTrimModal
+          file={trimTarget.file}
+          onConfirm={handleTrimConfirm}
+          onClose={() => setTrimTarget(null)}
+        />
+      )}
     </form>
   );
 }

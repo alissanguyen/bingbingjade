@@ -19,15 +19,15 @@ interface Product {
 }
 
 const COLOR_SWATCHES: Record<string, string> = {
-  white:    "bg-white border border-gray-300",
-  green:    "bg-green-500",
-  blue:     "bg-blue-500",
-  red:      "bg-red-500",
-  pink:     "bg-pink-400",
-  purple:   "bg-purple-500",
-  orange:   "bg-orange-500",
-  yellow:   "bg-yellow-400",
-  black:    "bg-gray-900",
+  white: "bg-white border border-gray-300",
+  green: "bg-green-500",
+  blue: "bg-blue-500",
+  red: "bg-red-500",
+  pink: "bg-pink-400",
+  purple: "bg-purple-500",
+  orange: "bg-orange-500",
+  yellow: "bg-yellow-400",
+  black: "bg-gray-900",
   marbling: "bg-gradient-to-br from-gray-200 via-white to-gray-400 border border-gray-300",
 };
 
@@ -144,6 +144,12 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             >
               Contact to Purchase
             </Link>
+            <div className="text-sm">
+              <p className="italic text-cyan-600 font-semibold  mt-4">** We provide more pictures and videos of different lighting upon request.</p>
+              <p className="text-gray-400 dark:text-gray-500 mt-2"><span className="mr-2 text-cyan-600">Not your styles?</span>Some pieces can be <span className="font-semibold text-gray-500">reshaped</span> or <span className="font-semibold text-gray-500">widened</span>, contact us for more details. <p></p></p>
+            </div>
+
+
           </div>
         </div>
       </div>

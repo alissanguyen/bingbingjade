@@ -41,6 +41,11 @@ const faqs = [
     answer: "Yes. Optional shipping insurance is available for an additional 5% of the item price and must be requested by the buyer before shipment. Shipping loss or transit damage is very rare, but if insurance is declined, the buyer accepts that shipping-related risk according to store policy.",
   },
   {
+    question: "Can customized or resized items be returned?",
+    answer:
+      "No. Customized, resized, reshaped, or made-to-order items are non-refundable. This includes products made from raw materials and items altered from their original form, such as increasing a bangle size when possible or changing a D-type bangle to a round style and vice versa. Any custom modification requested by the buyer makes the item final sale.",
+  },
+  {
     question: "Is shipping refundable?",
     answer: "Shipping is non-refundable in all cases except one: if the jade is professionally tested by the client and confirmed to be Type B instead of Type A. In that case, we will refund both the product price and the shipping cost in full. For all other situations, please refer to the Store Policy.",
   },
