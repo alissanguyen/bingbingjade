@@ -13,17 +13,23 @@ export function ContactForm() {
     e.preventDefault();
     if (!formRef.current) return;
 
+    const data = new FormData(formRef.current);
+    const from_name  = data.get("from_name")  as string;
+    const from_email = data.get("from_email") as string;
+    const message    = data.get("message")    as string;
+
     setStatus("sending");
     try {
-      await emailjs.sendForm(
+      await emailjs.send(
         process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!,
         process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!,
-        formRef.current,
+        { from_name, from_email, message },
         { publicKey: process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY! }
       );
       setStatus("success");
       formRef.current.reset();
-    } catch {
+    } catch (err) {
+      console.error("EmailJS error:", err);
       setStatus("error");
     }
   }
