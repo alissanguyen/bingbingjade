@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 interface ProductStub {
   id: string;
@@ -36,9 +37,9 @@ export function ProductSearch({ products }: { products: ProductStub[] }) {
               href={`/edit/${product.id}`}
               className="group rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden hover:border-emerald-400 dark:hover:border-emerald-600 hover:shadow-md transition-all"
             >
-              <div className="aspect-square w-full bg-emerald-50 dark:bg-emerald-950 overflow-hidden">
+              <div className="aspect-square w-full bg-emerald-50 dark:bg-emerald-950 overflow-hidden relative">
                 {product.images?.[0] ? (
-                  <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  <Image src={product.images[0]} alt={product.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="200px" loading="lazy" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-3xl">🪨</div>
                 )}

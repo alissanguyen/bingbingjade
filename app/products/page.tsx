@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Suspense } from "react";
 import { supabase } from "@/lib/supabase";
 import { FilterSidebar } from "./FilterSidebar";
@@ -157,9 +158,13 @@ export default async function Products({
 
                     {product.images?.[0] ? (
                       <div className={`grid h-full ${product.images.length >= 2 ? "w-[200%] grid-cols-2 group-hover:animate-peek" : "w-full grid-cols-1"}`}>
-                        <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
+                        <div className="relative h-full">
+                          <Image src={product.images[0]} alt={product.name} fill className="object-cover" sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw" loading="lazy" />
+                        </div>
                         {product.images[1] && (
-                          <img src={product.images[1]} alt="" className="w-full h-full object-cover" aria-hidden="true" />
+                          <div className="relative h-full">
+                            <Image src={product.images[1]} alt="" fill className="object-cover" sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw" loading="lazy" aria-hidden="true" />
+                          </div>
                         )}
                       </div>
                     ) : (

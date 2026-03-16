@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 interface FeaturedProduct {
   id: string;
@@ -82,7 +83,7 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
                 key={product.id}
                 href={`/products/${product.id}`}
                 style={{ scrollSnapAlign: "start" }}
-                className={`group rounded-2xl border overflow-hidden transition-all hover:shadow-lg block shrink-0 w-[80vw] sm:w-[calc(50%-10px)] lg:w-[calc(25%-15px)] min-w-[220px] max-w-xs ${
+                className={`group rounded-2xl border overflow-hidden transition-all hover:shadow-lg block shrink-0 w-[80vw] sm:w-[calc(50%-10px)] lg:w-[calc(25%-15px)] min-w-55 max-w-xs ${
                   isSold
                     ? "border-gray-300 dark:border-gray-700 bg-gray-900/20 dark:bg-gray-700"
                     : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-emerald-300 dark:hover:border-emerald-700"
@@ -109,9 +110,13 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
                   )}
                   {product.images?.[0] ? (
                     <div className={`grid h-full ${product.images.length >= 2 ? "w-[200%] grid-cols-2 group-hover:animate-peek" : "w-full grid-cols-1"}`}>
-                      <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
+                      <div className="relative h-full">
+                        <Image src={product.images[0]} alt={product.name} fill className="object-cover" sizes="320px" loading="lazy" />
+                      </div>
                       {product.images[1] && (
-                        <img src={product.images[1]} alt="" className="w-full h-full object-cover" aria-hidden="true" />
+                        <div className="relative h-full">
+                          <Image src={product.images[1]} alt="" fill className="object-cover" sizes="320px" loading="lazy" aria-hidden="true" />
+                        </div>
                       )}
                     </div>
                   ) : (

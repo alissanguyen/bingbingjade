@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { updateProduct } from "./actions";
 import type { Vendor } from "@/types/vendor";
@@ -375,7 +376,7 @@ export function EditForm({ product, vendors }: Props) {
             <div className="grid grid-cols-4 gap-3 sm:grid-cols-6">
               {existingImages.map((url, i) => (
                 <div key={url} className="relative group aspect-square">
-                  <img src={url} alt="" className="w-full h-full rounded-lg object-cover" />
+                  <Image src={url} alt="" fill className="rounded-lg object-cover" sizes="120px" loading="lazy" />
                   <button type="button" onClick={() => removeExistingImage(i)}
                     className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow">
                     <XIcon />

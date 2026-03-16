@@ -18,7 +18,7 @@ export default async function Home() {
     <div className="bg-white dark:bg-gray-950">
 
       {/* ── Hero Banner ── */}
-      <div className="relative w-full h-[72vh] min-h-[480px] overflow-hidden">
+      <div className="relative w-full h-[72vh] min-h-120 overflow-hidden">
         <Image
           src={HERO_IMG}
           alt="Natural jadeite collection"
@@ -27,7 +27,7 @@ export default async function Home() {
           priority
         />
         {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/60" />
+        <div className="absolute inset-0 bg-linear-to-b from-black/30 via-black/20 to-black/60" />
 
         {/* Hero text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
@@ -101,14 +101,14 @@ export default async function Home() {
           </div>
 
           {/* Image */}
-          <div className="relative rounded-2xl overflow-hidden aspect-[4/5] shadow-2xl">
+          <div className="relative rounded-2xl overflow-hidden aspect-4/5 shadow-2xl">
             <Image
               src={JADE_IMG}
               alt="Jade pieces up close"
               fill
               className="object-cover object-center"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+            <div className="absolute inset-0 bg-linear-to-t from-black/30 to-transparent" />
           </div>
         </div>
       </div>
@@ -117,10 +117,10 @@ export default async function Home() {
       <div className="border-t border-gray-100 dark:border-gray-800">
         <div className="mx-auto max-w-3xl px-6 py-20 text-center">
           <p className="text-2xl sm:text-3xl font-light text-gray-700 dark:text-gray-300 leading-relaxed italic">
-            "Each piece tells its own story.
+            &quot;Each piece tells its own story.
           </p>
           <p className="text-2xl sm:text-3xl font-light text-emerald-700 dark:text-emerald-400 leading-relaxed italic mt-1">
-            Some will speak to you immediately."
+            Some will speak to you immediately.&quot;
           </p>
           <Link
             href="/products"

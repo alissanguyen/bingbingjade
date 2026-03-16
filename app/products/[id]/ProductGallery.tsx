@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 
 function PlayIcon() {
   return (
@@ -105,7 +106,7 @@ export function ProductGallery({ images, videos }: { images: string[]; videos: s
           onClick={() => setLightboxOpen(true)}
         >
           {active.type === "image" ? (
-            <img src={active.src} alt="Product" className="w-full h-full object-cover" />
+            <Image src={active.src} alt="Product" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" priority />
           ) : (
             <video src={active.src} className="w-full h-full object-cover" />
           )}
@@ -158,7 +159,7 @@ export function ProductGallery({ images, videos }: { images: string[]; videos: s
                 }`}
               >
                 {item.type === "image" ? (
-                  <img src={item.src} alt="" className="w-full h-full object-cover" />
+                  <Image src={item.src} alt="" fill className="object-cover" sizes="64px" loading="lazy" />
                 ) : (
                   <div className="w-full h-full bg-gray-800 flex items-center justify-center text-white">
                     <PlayIcon />
@@ -197,10 +198,13 @@ export function ProductGallery({ images, videos }: { images: string[]; videos: s
             onClick={(e) => e.stopPropagation()}
           >
             {active.type === "image" ? (
-              <img
+              <Image
                 src={active.src}
                 alt="Product"
-                className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
+                width={0}
+                height={0}
+                sizes="90vw"
+                className="w-auto h-auto max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
               />
             ) : (
               <video
