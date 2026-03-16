@@ -56,7 +56,11 @@ export default async function Products() {
             <Link
               key={product.id}
               href={`/products/${product.id}`}
-              className="group rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden hover:shadow-lg hover:border-emerald-300 dark:hover:border-emerald-700 transition-all block"
+              className={`group rounded-2xl border overflow-hidden hover:shadow-lg transition-all block ${
+                product.status === "sold"
+                  ? "border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800"
+                  : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-emerald-300 dark:hover:border-emerald-700"
+              }`}
             >
               {/* Image strip — slides to peek at second image on hover */}
               <div className="relative w-full aspect-square bg-emerald-50 dark:bg-emerald-950 overflow-hidden">
@@ -70,9 +74,7 @@ export default async function Products() {
                     On Sale
                   </div>
                 )}
-                {product.status === "sold" && (
-                  <div className="absolute inset-0 z-10 bg-black/45 pointer-events-none" />
-                )}
+
                 {product.images?.[0] ? (
                   <div className={`grid h-full ${product.images.length >= 2 ? "w-[200%] grid-cols-2 group-hover:animate-peek" : "w-full grid-cols-1"}`}>
                     <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
@@ -86,7 +88,7 @@ export default async function Products() {
               </div>
 
               {/* Info */}
-              <div className="p-4">
+              <div className={`p-4 ${product.status === "sold" ? "opacity-60" : ""}`}>
                 {/* Category + tier row */}
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
