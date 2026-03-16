@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { supabase } from "@/lib/supabase";
 import { FilterSidebar } from "./FilterSidebar";
+import { SortSelect } from "./SortSelect";
 
 interface ProductCard {
   id: string;
@@ -36,7 +37,7 @@ export const revalidate = 21600;
 export default async function Products({
   searchParams,
 }: {
-  searchParams: Promise<{ colors?: string; status?: string; category?: string; minSize?: string; maxSize?: string; minPrice?: string; maxPrice?: string }>;
+  searchParams: Promise<{ colors?: string; status?: string; category?: string; minSize?: string; maxSize?: string; minPrice?: string; maxPrice?: string; sort?: string }>;
 }) {
   const params = await searchParams;
   const selectedColors   = params.colors?.split(",").filter(Boolean) ?? [];
@@ -46,6 +47,7 @@ export default async function Products({
   const maxSize = params.maxSize ? Number(params.maxSize) : null;
   const minPrice = params.minPrice ? Number(params.minPrice) : null;
   const maxPrice = params.maxPrice ? Number(params.maxPrice) : null;
+  const sort = params.sort ?? "";
 
   const { data: allProducts, error } = await supabase
     .from("products")
@@ -79,6 +81,23 @@ export default async function Products({
     return true;
   }) ?? [];
 
+  // Sort
+  if (sort) {
+    products.sort((a, b) => {
+      if (sort === "price_asc" || sort === "price_desc") {
+        const pa = (a.status === "on_sale" && a.sale_price_usd != null ? a.sale_price_usd : a.price_display_usd) ?? Infinity;
+        const pb = (b.status === "on_sale" && b.sale_price_usd != null ? b.sale_price_usd : b.price_display_usd) ?? Infinity;
+        return sort === "price_asc" ? pa - pb : pb - pa;
+      }
+      if (sort === "size_asc" || sort === "size_desc") {
+        const sa = a.size ?? Infinity;
+        const sb = b.size ?? Infinity;
+        return sort === "size_asc" ? sa - sb : sb - sa;
+      }
+      return 0;
+    });
+  }
+
   return (
     <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 py-16">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Products</h1>
@@ -92,6 +111,14 @@ export default async function Products({
 
         {/* Product grid */}
         <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm text-gray-400 dark:text-gray-500">
+              {products.length} {products.length === 1 ? "item" : "items"}
+            </p>
+            <Suspense>
+              <SortSelect />
+            </Suspense>
+          </div>
           {products.length === 0 ? (
             <p className="text-gray-400 dark:text-gray-600">
               No products match your filters.
