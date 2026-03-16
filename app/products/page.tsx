@@ -58,7 +58,7 @@ export default async function Products() {
               href={`/products/${product.id}`}
               className={`group rounded-2xl border overflow-hidden hover:shadow-lg transition-all block ${
                 product.status === "sold"
-                  ? "border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800"
+                  ? "border-gray-300 dark:border-gray-700 bg-gray-900/20 dark:bg-gray-700"
                   : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-emerald-300 dark:hover:border-emerald-700"
               }`}
             >
@@ -88,7 +88,7 @@ export default async function Products() {
               </div>
 
               {/* Info */}
-              <div className={`p-4 ${product.status === "sold" ? "opacity-60" : ""}`}>
+              <div className={`p-4 ${product.status === "sold" ? "opacity-80" : ""}`}>
                 {/* Category + tier row */}
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
@@ -120,7 +120,7 @@ export default async function Products() {
                 {/* Price + size */}
                 <div className="mt-3 flex items-center justify-between">
                   {product.status === "sold" ? (
-                    <span className="font-medium text-gray-300 dark:text-gray-600 line-through">
+                    <span className="font-medium text-gray-500 dark:text-gray-400">
                       {product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : "Contact for price"}
                     </span>
                   ) : product.status === "on_sale" && product.sale_price_usd != null ? (
