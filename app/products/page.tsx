@@ -87,7 +87,7 @@ export default async function Products({
         {/* Product grid */}
         <div className="flex-1 min-w-0">
           {products.length === 0 ? (
-            <p className="mt-16 text-center text-gray-400 dark:text-gray-600">
+            <p className="text-gray-400 dark:text-gray-600">
               No products match your filters.
             </p>
           ) : (
