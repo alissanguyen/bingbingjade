@@ -54,11 +54,11 @@ export function FilterSidebar() {
   }
 
   return (
-    <aside className="hidden lg:block w-56 shrink-0">
-      <div className="sticky top-8 space-y-6">
+    <aside className="hidden lg:block w-40 shrink-0">
+      <div className="sticky top-8 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+          <h2 className="text-xs font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider">
             Filters
           </h2>
           {hasFilters && (
@@ -66,19 +66,19 @@ export function FilterSidebar() {
               onClick={clearAll}
               className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline"
             >
-              Clear all
+              Clear
             </button>
           )}
         </div>
 
         {/* Color */}
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">
             Color
           </p>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {ALL_COLORS.map(({ value, label, swatch }) => (
-              <label key={value} className="flex items-center gap-2.5 cursor-pointer group">
+              <label key={value} className="flex items-center gap-2 cursor-pointer group">
                 <input
                   type="checkbox"
                   checked={selectedColors.includes(value)}
@@ -86,20 +86,20 @@ export function FilterSidebar() {
                   className="sr-only"
                 />
                 <span
-                  className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                  className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
                     selectedColors.includes(value)
                       ? "border-emerald-600 bg-emerald-600"
                       : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900"
                   }`}
                 >
                   {selectedColors.includes(value) && (
-                    <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 10 10" fill="none">
+                    <svg className="w-2 h-2 text-white" viewBox="0 0 10 10" fill="none">
                       <path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   )}
                 </span>
-                <span className={`w-3 h-3 rounded-full shrink-0 ${swatch}`} />
-                <span className="text-sm text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${swatch}`} />
+                <span className="text-xs text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
                   {label}
                 </span>
               </label>
@@ -109,17 +109,17 @@ export function FilterSidebar() {
 
         {/* Size */}
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">
             Size (mm)
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <input
               type="number"
               min={0}
               placeholder="Min"
               value={minSize}
               onChange={(e) => push({ minSize: e.target.value })}
-              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2.5 py-1.5 text-sm text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
             <span className="text-gray-400 text-xs shrink-0">–</span>
             <input
@@ -128,24 +128,24 @@ export function FilterSidebar() {
               placeholder="Max"
               value={maxSize}
               onChange={(e) => push({ maxSize: e.target.value })}
-              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2.5 py-1.5 text-sm text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
           </div>
         </div>
 
         {/* Price */}
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">
             Price (USD)
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <input
               type="number"
               min={0}
               placeholder="Min"
               value={minPrice}
               onChange={(e) => push({ minPrice: e.target.value })}
-              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2.5 py-1.5 text-sm text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
             <span className="text-gray-400 text-xs shrink-0">–</span>
             <input
@@ -154,7 +154,7 @@ export function FilterSidebar() {
               placeholder="Max"
               value={maxPrice}
               onChange={(e) => push({ maxPrice: e.target.value })}
-              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2.5 py-1.5 text-sm text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
           </div>
         </div>

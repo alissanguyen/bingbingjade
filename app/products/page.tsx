@@ -74,11 +74,11 @@ export default async function Products({
   }) ?? [];
 
   return (
-    <div className="mx-auto max-w-5xl w-full px-4 sm:px-6 py-16">
+    <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 py-16">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Products</h1>
       <p className="mt-2 text-gray-500 dark:text-gray-400">Browse our collection of authentic jade pieces.</p>
 
-      <div className="mt-10 flex gap-10">
+      <div className="mt-10 flex gap-6">
         {/* Filter sidebar — desktop only */}
         <Suspense>
           <FilterSidebar />
