@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Link from "next/link";
 import { ThemeProvider } from "./components/ThemeProvider";
-import { ThemeToggle } from "./components/ThemeToggle";
+import { Navbar } from "./components/Navbar";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -29,26 +28,8 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100`}>
         <ThemeProvider>
-          <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
-            <nav className="mx-auto max-w-5xl flex items-center justify-between px-6 py-4 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
-              <Link href="/" className="text-md sm:text-xl font-semibold tracking-tight text-emerald-700 dark:text-emerald-400">
-                BingBing Jade
-              </Link>
-              <ul className="flex items-center gap-8 text-sm font-medium text-gray-600 dark:text-gray-300">
-                <li>
-                  <Link href="/" className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">Home</Link>
-                </li>
-                <li>
-                  <Link href="/products" className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">Products</Link>
-                </li>
-                <li>
-                  <Link href="/contact" className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">Contact</Link>
-                </li>
-                <li>
-                  <ThemeToggle />
-                </li>
-              </ul>
-            </nav>
+          <header className="relative border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
+            <Navbar />
           </header>
 
           <main className="flex-1">{children}</main>
