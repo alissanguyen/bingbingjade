@@ -12,7 +12,7 @@ interface Props {
   vendors: Vendor[];
 }
 
-const CATEGORIES: ProductCategory[] = ["bracelet", "bangle", "ring", "other"];
+const CATEGORIES: ProductCategory[] = ["bracelet", "bangle", "ring", "pendant", "necklace", "other"];
 
 const COLORS: { value: string; label: string; swatch: string; border?: string }[] = [
   { value: "white",    label: "White",    swatch: "bg-white",       border: "border-gray-300" },
@@ -362,7 +362,8 @@ export function ProductForm({ vendors }: Props) {
     if (!files) return;
     Array.from(files).forEach((file) => {
       const isHeic = file.name.toLowerCase().endsWith(".heic");
-      const preview = isHeic ? null : URL.createObjectURL(file);
+      const isPdf = file.name.toLowerCase().endsWith(".pdf");
+      const preview = (isHeic || isPdf) ? null : URL.createObjectURL(file);
       setImages((prev) => [...prev, { file, preview }]);
     });
   };
@@ -519,7 +520,7 @@ export function ProductForm({ vendors }: Props) {
 
         {/* Image Upload */}
         <div className="mb-6">
-          <label className={labelClass}>Images (.heic, .jpg, .jpeg)</label>
+          <label className={labelClass}>Images (.heic, .jpg, .jpeg, .png, .pdf)</label>
           <div
             onDragOver={(e) => { e.preventDefault(); setImageDragging(true); }}
             onDragLeave={() => setImageDragging(false)}
@@ -533,8 +534,8 @@ export function ProductForm({ vendors }: Props) {
           >
             <UploadIcon />
             <p className="text-sm text-gray-500 dark:text-gray-400">Drop images here or <span className="text-emerald-600 dark:text-emerald-400 font-medium">browse</span></p>
-            <p className="text-xs text-gray-400 dark:text-gray-600">.heic · .jpg · .jpeg</p>
-            <input ref={imageInputRef} type="file" multiple accept=".heic,.jpg,.jpeg,image/jpeg" className="hidden" onChange={(e) => addImages(e.target.files)} />
+            <p className="text-xs text-gray-400 dark:text-gray-600">.heic · .jpg · .jpeg · .png · .pdf</p>
+            <input ref={imageInputRef} type="file" multiple accept=".heic,.jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf" className="hidden" onChange={(e) => addImages(e.target.files)} />
           </div>
 
           {images.length > 0 && (
@@ -545,8 +546,10 @@ export function ProductForm({ vendors }: Props) {
                     <img src={preview} alt={file.name} className="w-full h-full rounded-lg object-cover" />
                   ) : (
                     <div className="w-full h-full rounded-lg bg-gray-100 dark:bg-gray-800 flex flex-col items-center justify-center gap-1 p-1">
-                      <span className="text-lg">🪨</span>
-                      <span className="text-[10px] text-gray-400 truncate w-full text-center">HEIC</span>
+                      <span className="text-lg">{file.name.toLowerCase().endsWith(".pdf") ? "📄" : "🪨"}</span>
+                      <span className="text-[10px] text-gray-400 truncate w-full text-center">
+                        {file.name.toLowerCase().endsWith(".pdf") ? "PDF" : "HEIC"}
+                      </span>
                     </div>
                   )}
                   <button

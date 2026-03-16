@@ -1,4 +1,4 @@
-export type ProductCategory = "bracelet" | "bangle" | "ring" | "other";
+export type ProductCategory = "bracelet" | "bangle" | "ring" | "pendant" | "necklace" | "other";
 
 export interface Product {
   id: string;

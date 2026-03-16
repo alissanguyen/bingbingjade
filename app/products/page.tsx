@@ -36,11 +36,12 @@ export const revalidate = 21600;
 export default async function Products({
   searchParams,
 }: {
-  searchParams: Promise<{ colors?: string; status?: string; minSize?: string; maxSize?: string; minPrice?: string; maxPrice?: string }>;
+  searchParams: Promise<{ colors?: string; status?: string; category?: string; minSize?: string; maxSize?: string; minPrice?: string; maxPrice?: string }>;
 }) {
   const params = await searchParams;
   const selectedColors   = params.colors?.split(",").filter(Boolean) ?? [];
   const selectedStatuses = params.status?.split(",").filter(Boolean) ?? [];
+  const selectedCategory = params.category ?? "";
   const minSize = params.minSize ? Number(params.minSize) : null;
   const maxSize = params.maxSize ? Number(params.maxSize) : null;
   const minPrice = params.minPrice ? Number(params.minPrice) : null;
@@ -56,6 +57,8 @@ export default async function Products({
   }
 
   const products = (allProducts as ProductCard[] | null)?.filter((p) => {
+    // Category filter
+    if (selectedCategory && p.category !== selectedCategory) return false;
     // Status filter
     if (selectedStatuses.length > 0 && !selectedStatuses.includes(p.status)) return false;
     // Color filter — product must have at least one of the selected colors

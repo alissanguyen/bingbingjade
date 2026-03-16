@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { Navbar } from "./components/Navbar";
+import { CategoryBar } from "./components/CategoryBar";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -29,8 +30,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning style={{ scrollbarGutter: "stable" }}>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100`}>
         <ThemeProvider>
-          <header className="relative border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
-            <Navbar />
+          <header className="relative bg-white dark:bg-gray-950">
+            <div className="border-b border-gray-200 dark:border-gray-800">
+              <Navbar />
+            </div>
+            <CategoryBar />
           </header>
 
           <main className="flex-1">{children}</main>

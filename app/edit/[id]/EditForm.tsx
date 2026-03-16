@@ -7,7 +7,7 @@ import { updateProduct } from "./actions";
 import type { Vendor } from "@/types/vendor";
 import type { ProductCategory } from "@/types/product";
 
-const CATEGORIES: ProductCategory[] = ["bracelet", "bangle", "ring", "other"];
+const CATEGORIES: ProductCategory[] = ["bracelet", "bangle", "ring", "pendant", "necklace", "other"];
 
 const COLORS: { value: string; label: string; swatch: string; border?: string }[] = [
   { value: "white",    label: "White",    swatch: "bg-white",       border: "border-gray-300" },
