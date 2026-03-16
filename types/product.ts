@@ -16,6 +16,7 @@ export interface Product {
   blemishes: string | null;
 
   price_display_usd: number | null;
+  sale_price_usd: number | null;
   imported_price_vnd: number;
 
   vendor_id: string;

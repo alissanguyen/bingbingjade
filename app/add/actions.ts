@@ -16,6 +16,7 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
     description: (formData.get("description") as string) || null,
     blemishes: (formData.get("blemishes") as string) || null,
     price_display_usd: formData.get("price_display_usd") ? Number(formData.get("price_display_usd")) : null,
+    sale_price_usd: formData.get("sale_price_usd") ? Number(formData.get("sale_price_usd")) : null,
     imported_price_vnd: Number(formData.get("imported_price_vnd")),
     vendor_id: formData.get("vendor_id") as string,
     is_featured: formData.get("is_featured") === "true",

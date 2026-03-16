@@ -131,6 +131,7 @@ interface ProductData {
   description: string | null;
   blemishes: string | null;
   price_display_usd: number | null;
+  sale_price_usd: number | null;
   imported_price_vnd: number;
   vendor_id: string;
   is_featured: boolean;
@@ -173,6 +174,7 @@ export function EditForm({ product, vendors }: Props) {
     description: product.description ?? "",
     blemishes: product.blemishes ?? "",
     price_display_usd: product.price_display_usd != null ? String(product.price_display_usd) : "",
+    sale_price_usd: product.sale_price_usd != null ? String(product.sale_price_usd) : "",
     imported_price_vnd: String(product.imported_price_vnd),
   });
 
@@ -432,6 +434,16 @@ export function EditForm({ product, vendors }: Props) {
             </div>
             <p className="mt-1 text-xs text-gray-400">Leave blank to show &quot;Contact for price&quot;</p>
           </div>
+          {status === "on_sale" && (
+          <div>
+            <label className={labelClass}>Sale Price (USD)</label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-amber-400">$</span>
+              <input type="number" step="0.01" min="0" value={form.sale_price_usd} onChange={set("sale_price_usd")} placeholder="0.00" className={`${inputClass} pl-7 border-amber-300 dark:border-amber-700 focus:border-amber-500 focus:ring-amber-500`} />
+            </div>
+            <p className="mt-1 text-xs text-gray-400">Shown as the discounted price</p>
+          </div>
+          )}
           <div>
             <label className={labelClass}>Imported Price (VND) <span className="text-red-400">*</span></label>
             <div className="relative">

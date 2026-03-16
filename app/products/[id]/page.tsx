@@ -13,6 +13,7 @@ interface Product {
   tier: string;
   size: number;
   price_display_usd: number | null;
+  sale_price_usd: number | null;
   description: string | null;
   blemishes: string | null;
   is_featured: boolean | null;
@@ -39,7 +40,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
   const { data: product } = await supabase
     .from("products")
-    .select("id, name, category, images, videos, color, tier, size, price_display_usd, description, blemishes, is_featured, status")
+    .select("id, name, category, images, videos, color, tier, size, price_display_usd, sale_price_usd, description, blemishes, is_featured, status")
     .eq("id", id)
     .single<Product>();
 
@@ -84,11 +85,26 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           </h1>
 
           {/* Price */}
-          <p className="mt-3 text-2xl font-semibold text-emerald-700 dark:text-emerald-400">
-            {product.price_display_usd != null
-              ? `$${Number(product.price_display_usd).toFixed(2)}`
-              : "Contact for price"}
-          </p>
+          <div className="mt-3 flex items-baseline gap-3">
+            {product.status === "on_sale" && product.sale_price_usd != null ? (
+              <>
+                <span className="text-2xl font-semibold text-amber-600 dark:text-amber-400">
+                  ${Number(product.sale_price_usd).toFixed(2)}
+                </span>
+                {product.price_display_usd != null && (
+                  <span className="text-lg text-gray-400 line-through">
+                    ${Number(product.price_display_usd).toFixed(2)}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className={`text-2xl font-semibold ${product.status === "sold" ? "text-gray-400 dark:text-gray-600 line-through" : "text-emerald-700 dark:text-emerald-400"}`}>
+                {product.price_display_usd != null
+                  ? `$${Number(product.price_display_usd).toFixed(2)}`
+                  : "Contact for price"}
+              </span>
+            )}
+          </div>
 
           <div className="mt-6 space-y-5">
             {/* Color tags */}

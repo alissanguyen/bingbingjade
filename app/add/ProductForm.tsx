@@ -346,6 +346,7 @@ export function ProductForm({ vendors }: Props) {
     description: "",
     blemishes: "",
     price_display_usd: "",
+    sale_price_usd: "",
     imported_price_vnd: "",
   });
 
@@ -420,7 +421,7 @@ export function ProductForm({ vendors }: Props) {
         setResult({ error: res.error });
       } else {
         setResult({ success: true });
-        setForm({ name: "", category: "other", tier: "", size: "", description: "", blemishes: "", price_display_usd: "", imported_price_vnd: "" });
+        setForm({ name: "", category: "other", tier: "", size: "", description: "", blemishes: "", price_display_usd: "", sale_price_usd: "", imported_price_vnd: "" });
         setVendorId("");
         setSelectedColors([]);
         setImages([]);
@@ -651,6 +652,16 @@ export function ProductForm({ vendors }: Props) {
             </div>
             <p className="mt-1 text-xs text-gray-400">Leave blank to show "Contact for price"</p>
           </div>
+          {status === "on_sale" && (
+          <div>
+            <label className={labelClass}>Sale Price (USD)</label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-amber-400">$</span>
+              <input type="number" step="0.01" min="0" value={form.sale_price_usd} onChange={set("sale_price_usd")} placeholder="0.00" className={`${inputClass} pl-7 border-amber-300 dark:border-amber-700 focus:border-amber-500 focus:ring-amber-500`} />
+            </div>
+            <p className="mt-1 text-xs text-gray-400">Shown as the discounted price</p>
+          </div>
+          )}
           <div>
             <label className={labelClass}>Imported Price (VND) <span className="text-red-400">*</span></label>
             <div className="relative">
