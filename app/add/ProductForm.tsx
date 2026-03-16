@@ -388,13 +388,13 @@ export function ProductForm({ vendors }: Props) {
 
         {/* Video Upload */}
         <div>
-          <label className={labelClass}>Videos (.mov)</label>
+          <label className={labelClass}>Videos (.mov, .mp4)</label>
           <div
             onDragOver={(e) => { e.preventDefault(); setVideoDragging(true); }}
             onDragLeave={() => setVideoDragging(false)}
             onDrop={(e) => {
               e.preventDefault(); setVideoDragging(false);
-              const files = Array.from(e.dataTransfer.files).filter(f => f.name.toLowerCase().endsWith(".mov"));
+              const files = Array.from(e.dataTransfer.files).filter(f => /\.(mov|mp4)$/i.test(f.name));
               setVideos(prev => [...prev, ...files]);
             }}
             onClick={() => videoInputRef.current?.click()}
@@ -406,8 +406,8 @@ export function ProductForm({ vendors }: Props) {
           >
             <VideoIcon />
             <p className="text-sm text-gray-500 dark:text-gray-400">Drop videos here or <span className="text-emerald-600 dark:text-emerald-400 font-medium">browse</span></p>
-            <p className="text-xs text-gray-400 dark:text-gray-600">.mov</p>
-            <input ref={videoInputRef} type="file" multiple accept=".mov,video/quicktime" className="hidden" onChange={(e) => setVideos(prev => [...prev, ...Array.from(e.target.files ?? [])])} />
+            <p className="text-xs text-gray-400 dark:text-gray-600">.mov · .mp4</p>
+            <input ref={videoInputRef} type="file" multiple accept=".mov,.mp4,video/quicktime,video/mp4" className="hidden" onChange={(e) => setVideos(prev => [...prev, ...Array.from(e.target.files ?? [])])} />
           </div>
 
           {videos.length > 0 && (
