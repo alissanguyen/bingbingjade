@@ -1,10 +1,19 @@
 import Link from "next/link";
 import Image from "next/image";
+import { supabase } from "@/lib/supabase";
+import { FeaturedCarousel } from "@/app/components/FeaturedCarousel";
+import { ReviewsCarousel } from "@/app/components/ReviewsCarousel";
 
 const HERO_IMG = "https://images.unsplash.com/photo-1705931396849-93822983c1dc?q=80&w=1624&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
 const JADE_IMG  = "https://images.unsplash.com/photo-1767040276964-d2a39a86b1d4?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
 
-export default function Home() {
+export default async function Home() {
+  const { data: featuredProducts } = await supabase
+    .from("products")
+    .select("id, name, category, images, tier, price_display_usd, sale_price_usd, status")
+    .eq("is_featured", true)
+    .order("created_at", { ascending: false });
+
   return (
     <div className="bg-white dark:bg-gray-950">
 
@@ -48,6 +57,12 @@ export default function Home() {
         </div>
       </div>
 
+      {/* ── Featured Carousel ── */}
+      <FeaturedCarousel products={featuredProducts ?? []} />
+
+      {/* ── Reviews Carousel ── */}
+      <ReviewsCarousel />
+
       {/* ── About section ── */}
       <div className="mx-auto max-w-7xl px-6 py-20 lg:py-28">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
@@ -60,7 +75,7 @@ export default function Home() {
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 leading-snug mb-6">
               Natural Jadeite,<br />Carefully Selected
             </h2>
-            <div className="space-y-4 text-gray-600 dark:text-gray-400 leading-relaxed text-[15px]">
+            <div className="space-y-4 text-gray-600 dark:text-gray-400 leading-relaxed text-[17px]">
               <p>
                 Each piece in our collection is individually sourced and selected for its color, texture, and character. We specialize in natural Type A jadeite, focusing primarily on jade from Myanmar (Burmese) and select pieces from Guatemala.
               </p>

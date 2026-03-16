@@ -39,6 +39,16 @@ body {
   --animate-peek: card-peek 0.9s ease-in-out;
 }
 
+/* Reviews marquee */
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@theme inline {
+  --animate-marquee: marquee 40s linear infinite;
+}
+
 *, *::before, *::after {
   transition-property: background-color, border-color, color;
   transition-duration: 0.3s;
