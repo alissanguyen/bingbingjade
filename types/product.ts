@@ -11,6 +11,7 @@ export interface Product {
   color: string[];
   tier: string;
   size: number;
+  size_detailed: (number | null)[] | null;
 
   description: string | null;
   blemishes: string | null;

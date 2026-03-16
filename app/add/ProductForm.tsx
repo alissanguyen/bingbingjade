@@ -349,6 +349,7 @@ export function ProductForm({ vendors }: Props) {
     sale_price_usd: "",
     imported_price_vnd: "",
   });
+  const [sizeDetailed, setSizeDetailed] = useState<[string, string, string]>(["", "", ""]);
 
   const toggleColor = (color: string) =>
     setSelectedColors((prev) =>
@@ -414,6 +415,7 @@ export function ProductForm({ vendors }: Props) {
       selectedColors.forEach((c) => fd.append("color", c));
       fd.append("is_featured", String(isFeatured));
       fd.append("status", status);
+      sizeDetailed.forEach((v, i) => fd.append(`size_detailed_${i}`, v));
       imageUrls.forEach((url) => fd.append("imageUrls", url));
       videoUrls.forEach((url) => fd.append("videoUrls", url));
 
@@ -428,6 +430,7 @@ export function ProductForm({ vendors }: Props) {
         setImages([]);
         setVideos([]);
         setIsFeatured(false);
+        setSizeDetailed(["", "", ""]);
       }
     } catch (err) {
       setResult({ error: err instanceof Error ? err.message : "Something went wrong" });
@@ -509,6 +512,27 @@ export function ProductForm({ vendors }: Props) {
             <div>
               <label className={labelClass}>Size <span className="text-red-400">*</span></label>
               <input required type="number" step="0.1" value={form.size} onChange={set("size")} placeholder="e.g. 54" className={inputClass} />
+            </div>
+          </div>
+          <div>
+            <label className={labelClass}>
+              Detailed Dimensions
+              <span className="ml-2 font-normal text-gray-400 dark:text-gray-500">size × width × thickness (mm)</span>
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              {(["Size", "Width", "Thickness"] as const).map((label, i) => (
+                <div key={i} className="relative">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder={label}
+                    value={sizeDetailed[i]}
+                    onChange={(e) => setSizeDetailed((prev) => { const next = [...prev] as [string,string,string]; next[i] = e.target.value; return next; })}
+                    className={inputClass}
+                  />
+                </div>
+              ))}
             </div>
           </div>
         </div>

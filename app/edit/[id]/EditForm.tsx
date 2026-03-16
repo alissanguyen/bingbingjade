@@ -128,6 +128,7 @@ interface ProductData {
   color: string[];
   tier: string;
   size: number;
+  size_detailed: (number | null)[] | null;
   description: string | null;
   blemishes: string | null;
   price_display_usd: number | null;
@@ -177,6 +178,11 @@ export function EditForm({ product, vendors }: Props) {
     sale_price_usd: product.sale_price_usd != null ? String(product.sale_price_usd) : "",
     imported_price_vnd: String(product.imported_price_vnd),
   });
+  const [sizeDetailed, setSizeDetailed] = useState<[string, string, string]>([
+    product.size_detailed?.[0] != null ? String(product.size_detailed[0]) : "",
+    product.size_detailed?.[1] != null ? String(product.size_detailed[1]) : "",
+    product.size_detailed?.[2] != null ? String(product.size_detailed[2]) : "",
+  ]);
 
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -235,6 +241,7 @@ export function EditForm({ product, vendors }: Props) {
       fd.append("vendor_id", vendorId);
       fd.append("is_featured", String(isFeatured));
       fd.append("status", status);
+      sizeDetailed.forEach((v, i) => fd.append(`size_detailed_${i}`, v));
       selectedColors.forEach((c) => fd.append("color", c));
       [...existingImages, ...imageUrls].forEach((url) => fd.append("imageUrls", url));
       [...existingVideos, ...videoUrls].forEach((url) => fd.append("videoUrls", url));
@@ -306,6 +313,26 @@ export function EditForm({ product, vendors }: Props) {
             <div>
               <label className={labelClass}>Size <span className="text-red-400">*</span></label>
               <input required type="number" step="0.1" value={form.size} onChange={set("size")} className={inputClass} />
+            </div>
+          </div>
+          <div>
+            <label className={labelClass}>
+              Detailed Dimensions
+              <span className="ml-2 font-normal text-gray-400 dark:text-gray-500">size × width × thickness (mm)</span>
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              {(["Size", "Width", "Thickness"] as const).map((label, i) => (
+                <input
+                  key={i}
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder={label}
+                  value={sizeDetailed[i]}
+                  onChange={(e) => setSizeDetailed((prev) => { const next = [...prev] as [string,string,string]; next[i] = e.target.value; return next; })}
+                  className={inputClass}
+                />
+              ))}
             </div>
           </div>
         </div>

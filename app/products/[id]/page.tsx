@@ -12,6 +12,7 @@ interface Product {
   color: string[] | null;
   tier: string;
   size: number;
+  size_detailed: (number | null)[] | null;
   price_display_usd: number | null;
   sale_price_usd: number | null;
   description: string | null;
@@ -40,7 +41,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
   const { data: product } = await supabase
     .from("products")
-    .select("id, name, category, images, videos, color, tier, size, price_display_usd, sale_price_usd, description, blemishes, is_featured, status")
+    .select("id, name, category, images, videos, color, tier, size, size_detailed, price_display_usd, sale_price_usd, description, blemishes, is_featured, status")
     .eq("id", id)
     .single<Product>();
 
@@ -130,6 +131,22 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">Size</p>
                 <p className="text-sm text-gray-700 dark:text-gray-300">{product.size} mm</p>
+              </div>
+            )}
+
+            {/* Detailed dimensions */}
+            {product.size_detailed?.some((v) => v != null) && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">Dimensions</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  {product.size_detailed.map((v, i) => (
+                    <span key={i}>
+                      {i > 0 && <span className="mx-1.5 text-gray-300 dark:text-gray-600">×</span>}
+                      {v != null ? `${v}` : "—"}
+                    </span>
+                  ))} mm
+                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">size × width × thickness</p>
               </div>
             )}
 

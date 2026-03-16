@@ -13,6 +13,12 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
     color: formData.getAll("color") as string[],
     tier: formData.get("tier") as string,
     size: Number(formData.get("size")),
+    size_detailed: (() => {
+      const vals = ["size_detailed_0", "size_detailed_1", "size_detailed_2"].map(k => {
+        const v = formData.get(k); return v !== "" && v !== null ? Number(v) : null;
+      });
+      return vals.some(v => v !== null) ? vals : null;
+    })(),
     description: (formData.get("description") as string) || null,
     blemishes: (formData.get("blemishes") as string) || null,
     price_display_usd: formData.get("price_display_usd") ? Number(formData.get("price_display_usd")) : null,
