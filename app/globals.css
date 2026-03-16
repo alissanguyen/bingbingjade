@@ -3,6 +3,7 @@
 @variant dark (&:where(.dark, .dark *));
 
 :root {
+  font-size: 125% !important;
   --background: #ffffff;
   --foreground: #171717;
 }
