@@ -17,7 +17,7 @@ export function Navbar() {
   const pathname = usePathname();
 
   return (
-    <nav className="mx-auto max-w-5xl flex items-center justify-between px-6 py-4">
+    <nav className="mx-auto max-w-7xl flex items-center justify-between px-6 py-4">
       <Link href="/" onClick={() => setOpen(false)}>
         <Image src="/logo.svg" alt="BingBing Jade" width={400} height={100} priority />
       </Link>
