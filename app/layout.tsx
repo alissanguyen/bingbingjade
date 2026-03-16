@@ -31,7 +31,7 @@ export default function RootLayout({
         <ThemeProvider>
           <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
             <nav className="mx-auto max-w-5xl flex items-center justify-between px-6 py-4 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
-              <Link href="/" className="text-xl font-semibold tracking-tight text-emerald-700 dark:text-emerald-400">
+              <Link href="/" className="text-md sm:text-xl font-semibold tracking-tight text-emerald-700 dark:text-emerald-400">
                 BingBing Jade
               </Link>
               <ul className="flex items-center gap-8 text-sm font-medium text-gray-600 dark:text-gray-300">
@@ -55,7 +55,7 @@ export default function RootLayout({
 
           <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 py-8">
             <div className="mx-auto max-w-5xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-400 dark:text-gray-500">
-              <span>© {new Date().getFullYear()} BingBing Jade. All rights reserved. Based in Seattle.</span>
+              <span>© {new Date().getFullYear()} BingBing Jade. All rights reserved.</span>
               <div className="flex gap-6">
                 <Link href="/faq" className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
                   FAQ
