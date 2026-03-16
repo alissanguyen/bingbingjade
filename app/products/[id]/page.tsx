@@ -72,7 +72,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               {product.category}
             </span>
             {product.tier?.length > 0 && (
-              <span className="text-sm font-bold text-gray-400 dark:text-gray-500">· {product.tier.join(", ")}</span>
+              <span className="text-sm font-bold text-gray-400 dark:text-gray-500">· {product.tier.join(" · ")}</span>
             )}
             {product.is_featured && (
               <span className="ml-auto rounded-full bg-amber-100 dark:bg-amber-900/40 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">

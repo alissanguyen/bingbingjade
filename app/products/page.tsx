@@ -141,7 +141,7 @@ export default async function Products({
                         {product.category}
                       </span>
                       {product.tier?.length > 0 && (
-                        <span className="text-xs text-gray-400 dark:text-gray-500">· {product.tier.join(", ")}</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">· {product.tier.join(" · ")}</span>
                       )}
                     </div>
 
