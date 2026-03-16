@@ -93,9 +93,14 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                   ${Number(product.sale_price_usd).toFixed(2)}
                 </span>
                 {product.price_display_usd != null && (
-                  <span className="text-lg text-gray-400 line-through">
-                    ${Number(product.price_display_usd).toFixed(2)}
-                  </span>
+                  <>
+                    <span className="text-lg text-gray-400 line-through">
+                      ${Number(product.price_display_usd).toFixed(2)}
+                    </span>
+                    <span className="rounded-full bg-red-500/80 px-2.5 py-0.5 text-sm font-semibold text-white shadow-sm">
+                      −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
+                    </span>
+                  </>
                 )}
               </>
             ) : (
@@ -203,7 +208,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             </Link>
             <div className="text-sm">
               <p className="italic text-cyan-600 font-semibold  mt-4">** We provide more pictures and videos of different lighting upon request.</p>
-              <p className="text-gray-400 dark:text-gray-500 mt-2"><span className="mr-2 text-cyan-600">Not your styles?</span>Some pieces can be <span className="font-semibold text-gray-500">reshaped</span> or <span className="font-semibold text-gray-500">widened</span>, contact us for more details. <p></p></p>
+              <p className="text-gray-400 dark:text-gray-500 mt-2"><span className="mr-2 text-cyan-600">Not your styles?</span>Some pieces can be <span className="font-semibold text-gray-500">reshaped</span> or <span className="font-semibold text-gray-500">widened</span>, contact us for more details. </p>
             </div>
 
 

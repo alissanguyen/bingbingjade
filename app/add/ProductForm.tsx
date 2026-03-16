@@ -706,7 +706,7 @@ export function ProductForm({ vendors }: Props) {
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
               <input type="number" step="0.01" min="0" value={form.price_display_usd} onChange={set("price_display_usd")} placeholder="0.00" className={`${inputClass} pl-7`} />
             </div>
-            <p className="mt-1 text-xs text-gray-400">Leave blank to show "Contact for price"</p>
+            <p className="mt-1 text-xs text-gray-400">Leave blank to show &quot;Contact for price&quot;</p>
           </div>
           {status === "on_sale" && (
           <div>

@@ -91,13 +91,20 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
                 {/* Image */}
                 <div className="relative w-full aspect-square bg-emerald-50 dark:bg-emerald-950 overflow-hidden">
                   {isSold && (
-                    <div className="absolute top-2.5 left-2.5 z-10 bg-red-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">
+                    <div className="absolute top-2.5 left-2.5 z-10 bg-black text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">
                       Sold
                     </div>
                   )}
                   {isOnSale && (
-                    <div className="absolute top-2.5 left-2.5 z-10 bg-amber-400 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">
-                      On Sale
+                    <div className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1.5">
+                      <div className="bg-amber-400 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">
+                        On Sale
+                      </div>
+                      {product.price_display_usd != null && product.sale_price_usd != null && (
+                        <div className="bg-red-500/80 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">
+                          −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
+                        </div>
+                      )}
                     </div>
                   )}
                   {product.images?.[0] ? (
