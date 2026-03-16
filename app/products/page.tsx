@@ -56,14 +56,15 @@ export default async function Products() {
               href={`/products/${product.id}`}
               className="group rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden hover:shadow-lg hover:border-emerald-300 dark:hover:border-emerald-700 transition-all block"
             >
-              {/* Image — flush to card edges, no padding */}
+              {/* Image strip — slides to peek at second image on hover */}
               <div className="w-full aspect-square bg-emerald-50 dark:bg-emerald-950 overflow-hidden">
                 {product.images?.[0] ? (
-                  <img
-                    src={product.images[0]}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:animate-peek"
-                  />
+                  <div className={`grid h-full ${product.images.length >= 2 ? "w-[200%] grid-cols-2 group-hover:animate-peek" : "w-full grid-cols-1"}`}>
+                    <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
+                    {product.images[1] && (
+                      <img src={product.images[1]} alt="" className="w-full h-full object-cover" aria-hidden="true" />
+                    )}
+                  </div>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-5xl">🪨</div>
                 )}
