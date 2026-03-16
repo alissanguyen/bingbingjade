@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -17,12 +18,8 @@ export function Navbar() {
 
   return (
     <nav className="mx-auto max-w-5xl flex items-center justify-between px-6 py-4">
-      <Link
-        href="/"
-        className="text-md sm:text-xl font-semibold tracking-tight text-emerald-700 dark:text-emerald-400"
-        onClick={() => setOpen(false)}
-      >
-        BingBing Jade
+      <Link href="/" onClick={() => setOpen(false)}>
+        <Image src="/logo.svg" alt="BingBing Jade" width={124} height={44} priority />
       </Link>
 
       {/* Desktop links */}
