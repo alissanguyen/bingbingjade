@@ -30,7 +30,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning style={{ scrollbarGutter: "stable" }}>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100`}>
         <ThemeProvider>
-          <header className="relative bg-white dark:bg-gray-950">
+          <header className="sticky top-0 z-40 bg-white dark:bg-gray-950">
             <div className="border-b border-gray-200 dark:border-gray-800">
               <Navbar />
             </div>

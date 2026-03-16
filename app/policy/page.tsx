@@ -1,57 +1,69 @@
 const sections = [
   {
     title: "Purchasing",
-    body: "All sales are final unless otherwise stated. By purchasing, you confirm that you have read, understood, and agreed to our shop terms before payment.",
+    body: "All sales are final unless otherwise stated. By completing a purchase, you confirm that you have read, understood, and agreed to our shop terms prior to payment.",
+  },
+  {
+    title: "Authenticity Guarantee",
+    body: "All jade offered on this website is natural, untreated Jadeite (Type A) and guaranteed authentic. No dye, bleaching, polymer infusion, or chemical treatment is used in the production process.",
+  },
+  {
+    title: "Certification",
+    body: "Items priced above $200 include certification. For items priced under $200, certification is available upon request for an additional $20. Certificates may be issued by Vietnamese or Chinese gemological centers and will clearly state that the jade is Type A.",
   },
   {
     title: "Sizing Responsibility",
-    body: "We may offer guidance on sizing, but the final sizing decision is the buyer’s responsibility. Please confirm your size carefully before purchasing, as incorrect sizing choices are not eligible for refund.",
+    body: "We are happy to offer sizing guidance whenever possible, but the final sizing decision remains the buyer’s responsibility. Please confirm your size carefully before purchasing, as items ordered in the wrong size are not eligible for refund.",
   },
   {
     title: "Natural Jade Variation",
-    body: "Jade may appear different under different lighting, cameras, environments, and skin tones. We do our best to show each piece as accurately as possible through multiple photos, videos, and lighting conditions. Slight differences in color, tone, glow, or texture are normal and do not count as misrepresentation.",
+    body: "Natural jade may appear different under varying lighting, camera settings, environments, and skin tones. We make every effort to present each piece as accurately as possible through multiple photos, videos, and lighting conditions. Slight differences in color, tone, glow, translucency, or texture are a natural characteristic of jade and do not constitute misrepresentation.",
   },
   {
-    title: "Non-Returnable Items",
-    body: "Customized, altered, or made-to-order items are non-refundable. This includes bangles widened or resized to your requested fit, changes in shape or cut, products made from raw materials, custom orders, and any item marked as final sale or non-returnable. Examples include resizing a size 52 bangle into a size 53, or reshaping a D-type bangle into a round bangle and vice versa. Any item modified from its original form is considered final sale.",
+    title: "Custom & Non-Refundable Items",
+    body: "Customized, altered, resized, reshaped, or made-to-order items are final sale and non-refundable. This includes products made from raw materials, bangles adjusted to a requested size when possible, changes in shape or cut, custom orders, and any item marked as final sale or non-returnable. Examples include increasing a size 52 bangle to a size 53, or changing a D-type bangle to a round style and vice versa. Any item modified from its original form is considered final sale.",
   },
   {
     title: "Claims & Return Window",
-    body: "Any issue, damage claim, or item-not-as-expected claim must be reported within 24 hours of confirmed delivery. No claims, returns, or refunds will be accepted after 24 hours.",
+    body: "Any issue, damage claim, or item-not-as-expected claim must be reported within 24 hours of confirmed delivery. Claims submitted after this 24-hour window will not be accepted.",
   },
   {
-    title: "Unboxing Video Required",
-    body: "A full, clear, uncut unboxing video is required for any claim. The video must show the unopened package, shipping label, and full unboxing in one continuous recording. Without this video, no claim, refund, or return will be accepted.",
+    title: "Unboxing Video Requirement",
+    body: "A full, clear, and uncut unboxing video is required for any claim. The video must show the unopened package, shipping label, and complete unboxing in one continuous recording. Without this documentation, no claim, refund, or return request will be accepted.",
   },
   {
     title: "Item Not as Expected",
-    body: "If you believe your item is materially different from what was shown, you must notify us within 24 hours of delivery. Refunds will only be considered if the item is determined to be significantly different, at approximately 20% or more, from the listing, photos, or videos. Differences below that threshold do not qualify for refund.",
+    body: "If you believe an item is materially different from what was represented, you must notify us within 24 hours of delivery. A refund will only be considered if the item is determined to be significantly different, at approximately 20% or more, from the listing, photos, or videos provided. Minor differences or natural variation do not qualify for refund.",
   },
   {
     title: "Refund Processing",
-    body: "Any approved refund is subject to a $40 shipping/handling deduction plus a 5% restocking fee based on the item price. Refunds are only issued after the item is returned and inspected.",
+    body: "Any approved refund is subject to a $40 shipping and handling deduction, along with a 5% restocking fee based on the item price. Refunds are issued only after the returned item has been received and inspected.",
   },
   {
     title: "Shipping & Delivery",
-    body: "Shipping time is estimated at 10–14 business days after payment is received, excluding weekends, holidays, customs delays, weather delays, carrier delays, or other circumstances outside our control.",
+    body: "Standard shipping is available for a flat rate of $20. Standard overseas shipping follows a monthly schedule. Orders paid on or before the 15th of the month are included in the overseas shipment on the 20th, arrive in the U.S. around the 22nd, and typically require an additional 2–4 days for final delivery. Orders paid after the 15th will be included in the following month’s shipment and are expected to arrive in the U.S. on or around the 20th of the next month. This process helps maintain a lower shipping cost while allowing time for customs clearance and jade certification.",
+  },
+  {
+    title: "Expedited Shipping",
+    body: "Expedited shipping is available for an additional $100. With expedited shipping, your jade is sent to the U.S. immediately rather than waiting for the monthly overseas shipment schedule. This option is recommended for high-value pieces, urgent orders, or special occasions.",
   },
   {
     title: "Shipping Insurance",
-    body: "Optional shipping insurance is available for an additional 5% of the item price. If insurance is declined, the buyer accepts full responsibility for any loss, theft, or damage in transit once the package has been shipped.",
+    body: "Optional shipping insurance is available for an additional 5% of the item price and must be requested before shipment. While shipping issues are rare, buyers who decline insurance accept responsibility for any loss, theft, or damage that may occur in transit once the package has been shipped.",
   },
   {
     title: "Sales Tax",
-    body: "Sales tax, if applicable, will be charged based on the delivery destination and according to applicable law.",
+    body: "Sales tax, if applicable, will be charged based on the delivery destination and in accordance with applicable law.",
   },
   {
     title: "Buyer Acknowledgment",
-    body: "By completing payment, you acknowledge that you have reviewed the photos and videos provided, understand that natural jade may vary in appearance, and agree to all shop terms and conditions.",
+    body: "By completing payment, you acknowledge that you have reviewed the photos and videos provided, understand the natural characteristics and variation of jade, and agree to all shop terms and conditions.",
   },
 ];
 
 export default function Returns() {
   return (
-    <div className="mx-auto max-w-3xl px-6 py-16">
+    <div className="mx-auto max-w-4xl px-6 py-16">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Store Policy</h1>
       <p className="mt-2 text-gray-500 dark:text-gray-400">
         Your satisfaction is our priority. Here&apos;s everything you need to know about our store policy.

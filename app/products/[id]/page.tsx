@@ -103,8 +103,28 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                   </>
                 )}
               </>
+            ) : product.status === "sold" ? (
+              <>
+                <span className="text-2xl font-semibold text-gray-400 dark:text-gray-600">
+                  {product.sale_price_usd != null
+                    ? `$${Number(product.sale_price_usd).toFixed(2)}`
+                    : product.price_display_usd != null
+                    ? `$${Number(product.price_display_usd).toFixed(2)}`
+                    : "—"}
+                </span>
+                {product.sale_price_usd != null && product.price_display_usd != null && (
+                  <>
+                    <span className="text-lg text-gray-400 line-through">
+                      ${Number(product.price_display_usd).toFixed(2)}
+                    </span>
+                    <span className="rounded-full bg-gray-400 dark:bg-gray-600 px-2.5 py-0.5 text-sm font-semibold text-white shadow-sm">
+                      −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
+                    </span>
+                  </>
+                )}
+              </>
             ) : (
-              <span className={`text-2xl font-semibold ${product.status === "sold" ? "text-gray-400 dark:text-gray-600 line-through" : "text-emerald-700 dark:text-emerald-400"}`}>
+              <span className="text-2xl font-semibold text-emerald-700 dark:text-emerald-400">
                 {product.price_display_usd != null
                   ? `$${Number(product.price_display_usd).toFixed(2)}`
                   : "Contact for price"}
@@ -211,6 +231,21 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               <p className="text-gray-400 dark:text-gray-500 mt-2"><span className="mr-2 text-cyan-600">Not your styles?</span>Some pieces can be <span className="font-semibold text-gray-500">reshaped</span> or <span className="font-semibold text-gray-500">widened</span>, contact us for more details. </p>
             </div>
 
+            {/* Authenticity Guarantee */}
+            <div className="mt-6 rounded-xl border border-emerald-100 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 dark:text-emerald-400 shrink-0">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+                <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Authenticity Guarantee</p>
+              </div>
+              <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                All jade offered is natural Jadeite (Type A), untreated and unenhanced, and we stand behind the authenticity of our jade for life.
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-500 leading-relaxed mt-2">
+                Pieces priced above $200 include certification. For items under $200, certification is available upon request for $20.
+              </p>
+            </div>
 
           </div>
         </div>

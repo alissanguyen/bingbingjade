@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { supabase } from "@/lib/supabase";
 import { FilterSidebar } from "./FilterSidebar";
 import { SortSelect } from "./SortSelect";
+import { Pagination } from "./Pagination";
 
 interface ProductCard {
   id: string;
@@ -38,7 +39,7 @@ export const revalidate = 21600;
 export default async function Products({
   searchParams,
 }: {
-  searchParams: Promise<{ colors?: string; status?: string; category?: string; minSize?: string; maxSize?: string; minPrice?: string; maxPrice?: string; sort?: string }>;
+  searchParams: Promise<{ colors?: string; status?: string; category?: string; minSize?: string; maxSize?: string; minPrice?: string; maxPrice?: string; sort?: string; page?: string }>;
 }) {
   const params = await searchParams;
   const selectedColors   = params.colors?.split(",").filter(Boolean) ?? [];
@@ -49,6 +50,8 @@ export default async function Products({
   const minPrice = params.minPrice ? Number(params.minPrice) : null;
   const maxPrice = params.maxPrice ? Number(params.maxPrice) : null;
   const sort = params.sort ?? "";
+  const PAGE_SIZE = 18;
+  const currentPage = Math.max(1, Number(params.page ?? "1"));
 
   const { data: allProducts, error } = await supabase
     .from("products")
@@ -99,6 +102,11 @@ export default async function Products({
     });
   }
 
+  const totalCount = products.length;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const safePage = Math.min(currentPage, Math.max(1, totalPages));
+  const paginated = products.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
   return (
     <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 py-16">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Products</h1>
@@ -114,7 +122,8 @@ export default async function Products({
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-gray-400 dark:text-gray-500">
-              {products.length} {products.length === 1 ? "item" : "items"}
+              {totalCount} {totalCount === 1 ? "item" : "items"}
+              {totalPages > 1 && <span className="ml-1">· page {safePage} of {totalPages}</span>}
             </p>
             <Suspense>
               <SortSelect />
@@ -126,7 +135,7 @@ export default async function Products({
             </p>
           ) : (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {products.map((product) => (
+              {paginated.map((product) => (
                 <Link
                   key={product.id}
                   href={`/products/${product.id}`}
@@ -205,8 +214,18 @@ export default async function Products({
                     {/* Price + size */}
                     <div className="mt-3 flex items-center justify-between">
                       {product.status === "sold" ? (
-                        <span className="font-medium text-gray-500 dark:text-gray-400">
-                          {product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : "Contact for price"}
+                        <span className="flex items-center gap-2">
+                          <span className="font-medium text-gray-500 dark:text-gray-400">
+                            {product.sale_price_usd != null ? `$${product.sale_price_usd.toFixed(2)}` : product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : "—"}
+                          </span>
+                          {product.sale_price_usd != null && product.price_display_usd != null && (
+                            <>
+                              <span className="text-xs text-gray-400 line-through">${product.price_display_usd.toFixed(2)}</span>
+                              <span className="rounded-full bg-gray-400 dark:bg-gray-600 px-1.5 py-0.5 text-xs font-semibold text-white">
+                                −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
+                              </span>
+                            </>
+                          )}
                         </span>
                       ) : product.status === "on_sale" && product.sale_price_usd != null ? (
                         <span className="flex items-center gap-2">
@@ -229,6 +248,9 @@ export default async function Products({
               ))}
             </div>
           )}
+          <Suspense>
+            <Pagination currentPage={safePage} totalPages={totalPages} />
+          </Suspense>
         </div>
       </div>
     </div>

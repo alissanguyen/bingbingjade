@@ -68,7 +68,7 @@ export function Navbar() {
 
           {/* Dropdown */}
           <div
-            className={`absolute top-full left-1/2 -translate-x-1/2 pt-3 transition-all duration-150 ${
+            className={`absolute top-full left-1/2 -translate-x-1/2 pt-3 z-50 transition-all duration-150 ${
               productsOpen ? "opacity-100 pointer-events-auto translate-y-0" : "opacity-0 pointer-events-none -translate-y-1"
             }`}
           >

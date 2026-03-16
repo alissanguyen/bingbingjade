@@ -137,8 +137,18 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
                   <h3 className="font-semibold text-gray-900 dark:text-gray-100 leading-snug text-sm line-clamp-2">{product.name}</h3>
                   <div className="mt-2">
                     {isSold ? (
-                      <span className="text-sm font-medium text-gray-400 dark:text-gray-500">
-                        {product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : "Sold"}
+                      <span className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-400 dark:text-gray-500">
+                          {product.sale_price_usd != null ? `$${product.sale_price_usd.toFixed(2)}` : product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : "—"}
+                        </span>
+                        {product.sale_price_usd != null && product.price_display_usd != null && (
+                          <>
+                            <span className="text-xs text-gray-400 line-through">${product.price_display_usd.toFixed(2)}</span>
+                            <span className="rounded-full bg-gray-400 dark:bg-gray-600 px-1.5 py-0.5 text-xs font-semibold text-white">
+                              −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
+                            </span>
+                          </>
+                        )}
                       </span>
                     ) : isOnSale && product.sale_price_usd != null ? (
                       <span className="flex items-center gap-2">
