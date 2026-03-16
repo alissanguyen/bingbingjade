@@ -24,6 +24,7 @@ export async function updateProduct(
       imported_price_vnd: Number(formData.get("imported_price_vnd")),
       vendor_id: formData.get("vendor_id") as string,
       is_featured: formData.get("is_featured") === "true",
+      status: (formData.get("status") as string) || "available",
       images: imageUrls,
       videos: videoUrls,
     })

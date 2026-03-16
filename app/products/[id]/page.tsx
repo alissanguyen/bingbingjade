@@ -16,6 +16,7 @@ interface Product {
   description: string | null;
   blemishes: string | null;
   is_featured: boolean | null;
+  status: string;
 }
 
 const COLOR_SWATCHES: Record<string, string> = {
@@ -38,7 +39,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
   const { data: product } = await supabase
     .from("products")
-    .select("id, name, category, images, videos, color, tier, size, price_display_usd, description, blemishes, is_featured")
+    .select("id, name, category, images, videos, color, tier, size, price_display_usd, description, blemishes, is_featured, status")
     .eq("id", id)
     .single<Product>();
 
@@ -135,14 +136,32 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
           {/* CTA */}
           <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-800">
+            {/* Status badge */}
+            <div className="mb-4">
+              {product.status === "sold" ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 dark:bg-red-950/50 border border-red-200 dark:border-red-800 px-3 py-1 text-sm font-semibold text-red-600 dark:text-red-400">
+                  <span className="w-2 h-2 rounded-full bg-red-500" />
+                  Sold
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 px-3 py-1 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  Available
+                </span>
+              )}
+            </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               Interested in this piece? Reach out directly to inquire or purchase.
             </p>
             <Link
               href="/contact"
-              className="block w-full rounded-full bg-emerald-700 py-3 text-center text-sm font-medium text-white hover:bg-emerald-800 transition-colors"
+              className={`block w-full rounded-full py-3 text-center text-sm font-medium text-white transition-colors ${
+                product.status === "sold"
+                  ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed pointer-events-none"
+                  : "bg-emerald-700 hover:bg-emerald-800"
+              }`}
             >
-              Contact to Purchase
+              {product.status === "sold" ? "This item has been sold" : "Contact to Purchase"}
             </Link>
             <div className="text-sm">
               <p className="italic text-cyan-600 font-semibold  mt-4">** We provide more pictures and videos of different lighting upon request.</p>

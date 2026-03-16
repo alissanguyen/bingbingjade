@@ -12,6 +12,7 @@ interface ProductCard {
   price_display_usd: number | null;
   description: string | null;
   is_featured: boolean;
+  status: string;
 }
 
 const COLOR_SWATCHES: Record<string, string> = {
@@ -32,7 +33,7 @@ export const revalidate = 21600; // revalidate every 6 hours as fallback
 export default async function Products() {
   const { data: products, error } = await supabase
     .from("products")
-    .select("id, name, category, images, color, tier, size, price_display_usd, description, is_featured")
+    .select("id, name, category, images, color, tier, size, price_display_usd, description, is_featured, status")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -57,7 +58,12 @@ export default async function Products() {
               className="group rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden hover:shadow-lg hover:border-emerald-300 dark:hover:border-emerald-700 transition-all block"
             >
               {/* Image strip — slides to peek at second image on hover */}
-              <div className="w-full aspect-square bg-emerald-50 dark:bg-emerald-950 overflow-hidden">
+              <div className="relative w-full aspect-square bg-emerald-50 dark:bg-emerald-950 overflow-hidden">
+                {product.status === "sold" && (
+                  <div className="absolute top-2.5 left-2.5 z-10 bg-red-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">
+                    Sold
+                  </div>
+                )}
                 {product.images?.[0] ? (
                   <div className={`grid h-full ${product.images.length >= 2 ? "w-[200%] grid-cols-2 group-hover:animate-peek" : "w-full grid-cols-1"}`}>
                     <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />

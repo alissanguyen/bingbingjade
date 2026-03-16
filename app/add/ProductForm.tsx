@@ -308,6 +308,7 @@ export function ProductForm({ vendors }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ success?: boolean; error?: string } | null>(null);
   const [isFeatured, setIsFeatured] = useState(false);
+  const [status, setStatus] = useState<"available" | "sold">("available");
 
   const [cropTarget, setCropTarget] = useState<{ index: number; src: string; fileName: string } | null>(null);
   const [trimTarget, setTrimTarget] = useState<{ index: number; file: File } | null>(null);
@@ -410,6 +411,7 @@ export function ProductForm({ vendors }: Props) {
       fd.append("vendor_id", vendorId);
       selectedColors.forEach((c) => fd.append("color", c));
       fd.append("is_featured", String(isFeatured));
+      fd.append("status", status);
       imageUrls.forEach((url) => fd.append("imageUrls", url));
       videoUrls.forEach((url) => fd.append("videoUrls", url));
 
@@ -662,18 +664,44 @@ export function ProductForm({ vendors }: Props) {
       {/* Options */}
       <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Options</h2>
-        <button
-          type="button"
-          onClick={() => setIsFeatured((v) => !v)}
-          className="flex items-center gap-3 group"
-        >
-          <div className={`relative w-10 h-6 rounded-full transition-colors ${isFeatured ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"}`}>
-            <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${isFeatured ? "translate-x-4" : ""}`} />
+        <div className="space-y-4">
+          {/* Status */}
+          <div>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</p>
+            <div className="flex gap-2">
+              {(["available", "sold"] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setStatus(s)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                    status === s
+                      ? s === "available"
+                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+                        : "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400"
+                      : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
+                  }`}
+                >
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
-          <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
-            Feature this product on the homepage
-          </span>
-        </button>
+
+          {/* Featured */}
+          <button
+            type="button"
+            onClick={() => setIsFeatured((v) => !v)}
+            className="flex items-center gap-3 group"
+          >
+            <div className={`relative w-10 h-6 rounded-full transition-colors ${isFeatured ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"}`}>
+              <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${isFeatured ? "translate-x-4" : ""}`} />
+            </div>
+            <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+              Feature this product on the homepage
+            </span>
+          </button>
+        </div>
       </section>
 
       {/* Result */}
