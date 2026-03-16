@@ -9,6 +9,8 @@ import type { ProductCategory } from "@/types/product";
 
 const CATEGORIES: ProductCategory[] = ["bracelet", "bangle", "ring", "pendant", "necklace", "other"];
 
+const TIERS = ["Been", "Glutinous", "Fine Glutinous", "Very Fine Glutinous", "Icy Glutinous", "Icy", "High Icy", "Glassy", "Longshi"];
+
 const COLORS: { value: string; label: string; swatch: string; border?: string }[] = [
   { value: "white",    label: "White",    swatch: "bg-white",       border: "border-gray-300" },
   { value: "green",    label: "Green",    swatch: "bg-green-500" },
@@ -126,7 +128,7 @@ interface ProductData {
   images: string[];
   videos: string[];
   color: string[];
-  tier: string;
+  tier: string[];
   size: number;
   size_detailed: (number | null)[] | null;
   description: string | null;
@@ -164,13 +166,13 @@ export function EditForm({ product, vendors }: Props) {
 
   const [vendorId, setVendorId] = useState(product.vendor_id);
   const [selectedColors, setSelectedColors] = useState<string[]>(product.color ?? []);
+  const [selectedTiers, setSelectedTiers] = useState<string[]>(product.tier ?? []);
   const [isFeatured, setIsFeatured] = useState(product.is_featured);
   const [status, setStatus] = useState<"available" | "sold" | "on_sale">(product.status ?? "available");
 
   const [form, setForm] = useState({
     name: product.name,
     category: product.category,
-    tier: product.tier,
     size: String(product.size),
     description: product.description ?? "",
     blemishes: product.blemishes ?? "",
@@ -243,6 +245,7 @@ export function EditForm({ product, vendors }: Props) {
       fd.append("status", status);
       sizeDetailed.forEach((v, i) => fd.append(`size_detailed_${i}`, v));
       selectedColors.forEach((c) => fd.append("color", c));
+      selectedTiers.forEach((t) => fd.append("tier", t));
       [...existingImages, ...imageUrls].forEach((url) => fd.append("imageUrls", url));
       [...existingVideos, ...videoUrls].forEach((url) => fd.append("videoUrls", url));
 
@@ -305,11 +308,34 @@ export function EditForm({ product, vendors }: Props) {
               })}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>Tier <span className="text-red-400">*</span></label>
-              <input required value={form.tier} onChange={set("tier")} className={inputClass} />
+          <div>
+            <label className={labelClass}>
+              Tier
+              {selectedTiers.length > 0 && (
+                <span className="ml-2 font-normal text-gray-400 dark:text-gray-500">{selectedTiers.join(", ")}</span>
+              )}
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {TIERS.map((t) => {
+                const active = selectedTiers.includes(t);
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setSelectedTiers((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t])}
+                    className={`px-3.5 py-1.5 rounded-full text-sm border transition-all ${
+                      active
+                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-medium"
+                        : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                );
+              })}
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Size <span className="text-red-400">*</span></label>
               <input required type="number" step="0.1" value={form.size} onChange={set("size")} className={inputClass} />

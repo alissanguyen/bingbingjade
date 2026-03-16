@@ -14,7 +14,7 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
     name: formData.get("name") as string,
     category: formData.get("category") as ProductCategory,
     color: formData.getAll("color") as string[],
-    tier: formData.get("tier") as string,
+    tier: formData.getAll("tier") as string[],
     size: Number(formData.get("size")),
     size_detailed: (() => {
       const vals = ["size_detailed_0", "size_detailed_1", "size_detailed_2"].map(k => {

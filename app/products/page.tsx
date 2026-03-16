@@ -9,7 +9,7 @@ interface ProductCard {
   category: string;
   images: string[];
   color: string[] | null;
-  tier: string;
+  tier: string[];
   size: number;
   price_display_usd: number | null;
   sale_price_usd: number | null;
@@ -140,8 +140,8 @@ export default async function Products({
                       <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                         {product.category}
                       </span>
-                      {product.tier && (
-                        <span className="text-xs text-gray-400 dark:text-gray-500">· {product.tier}</span>
+                      {product.tier?.length > 0 && (
+                        <span className="text-xs text-gray-400 dark:text-gray-500">· {product.tier.join(", ")}</span>
                       )}
                     </div>
 

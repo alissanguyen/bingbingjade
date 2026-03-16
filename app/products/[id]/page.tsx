@@ -10,7 +10,7 @@ interface Product {
   images: string[];
   videos: string[] | null;
   color: string[] | null;
-  tier: string;
+  tier: string[];
   size: number;
   size_detailed: (number | null)[] | null;
   price_display_usd: number | null;
@@ -71,8 +71,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             <span className="text-md font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
               {product.category}
             </span>
-            {product.tier && (
-              <span className="text-sm font-bold text-gray-400 dark:text-gray-500">· {product.tier}</span>
+            {product.tier?.length > 0 && (
+              <span className="text-sm font-bold text-gray-400 dark:text-gray-500">· {product.tier.join(", ")}</span>
             )}
             {product.is_featured && (
               <span className="ml-auto rounded-full bg-amber-100 dark:bg-amber-900/40 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">

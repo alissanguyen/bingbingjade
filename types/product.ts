@@ -9,7 +9,7 @@ export interface Product {
   videos: string[];
 
   color: string[];
-  tier: string;
+  tier: string[];
   size: number;
   size_detailed: (number | null)[] | null;
 

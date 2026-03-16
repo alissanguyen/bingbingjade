@@ -14,6 +14,8 @@ interface Props {
 
 const CATEGORIES: ProductCategory[] = ["bracelet", "bangle", "ring", "pendant", "necklace", "other"];
 
+const TIERS = ["Been", "Glutinous", "Fine Glutinous", "Very Fine Glutinous", "Icy Glutinous", "Icy", "High Icy", "Glassy", "Longshi"];
+
 const COLORS: { value: string; label: string; swatch: string; border?: string }[] = [
   { value: "white",    label: "White",    swatch: "bg-white",       border: "border-gray-300" },
   { value: "green",    label: "Green",    swatch: "bg-green-500" },
@@ -341,7 +343,6 @@ export function ProductForm({ vendors }: Props) {
   const [form, setForm] = useState({
     name: "",
     category: "other" as ProductCategory,
-    tier: "",
     size: "",
     description: "",
     blemishes: "",
@@ -349,6 +350,7 @@ export function ProductForm({ vendors }: Props) {
     sale_price_usd: "",
     imported_price_vnd: "",
   });
+  const [selectedTiers, setSelectedTiers] = useState<string[]>([]);
   const [sizeDetailed, setSizeDetailed] = useState<[string, string, string]>(["", "", ""]);
 
   const toggleColor = (color: string) =>
@@ -417,6 +419,7 @@ export function ProductForm({ vendors }: Props) {
       Object.entries(form).forEach(([k, v]) => fd.append(k, v));
       fd.append("vendor_id", vendorId);
       selectedColors.forEach((c) => fd.append("color", c));
+      selectedTiers.forEach((t) => fd.append("tier", t));
       fd.append("is_featured", String(isFeatured));
       fd.append("status", status);
       sizeDetailed.forEach((v, i) => fd.append(`size_detailed_${i}`, v));
@@ -428,7 +431,8 @@ export function ProductForm({ vendors }: Props) {
         setResult({ error: res.error });
       } else {
         setResult({ success: true });
-        setForm({ name: "", category: "other", tier: "", size: "", description: "", blemishes: "", price_display_usd: "", sale_price_usd: "", imported_price_vnd: "" });
+        setSelectedTiers([]);
+        setForm({ name: "", category: "other", size: "", description: "", blemishes: "", price_display_usd: "", sale_price_usd: "", imported_price_vnd: "" });
         setVendorId("");
         setSelectedColors([]);
         setImages([]);
@@ -508,15 +512,36 @@ export function ProductForm({ vendors }: Props) {
               <p className="mt-1.5 text-xs text-red-400">Select at least one color.</p>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>Tier <span className="text-red-400">*</span></label>
-              <input required value={form.tier} onChange={set("tier")} placeholder="e.g. AAA" className={inputClass} />
+          <div>
+            <label className={labelClass}>
+              Tier
+              {selectedTiers.length > 0 && (
+                <span className="ml-2 font-normal text-gray-400 dark:text-gray-500">{selectedTiers.join(", ")}</span>
+              )}
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {TIERS.map((t) => {
+                const active = selectedTiers.includes(t);
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setSelectedTiers((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t])}
+                    className={`px-3.5 py-1.5 rounded-full text-sm border transition-all ${
+                      active
+                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-medium"
+                        : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                );
+              })}
             </div>
-            <div>
-              <label className={labelClass}>Size <span className="text-red-400">*</span></label>
-              <input required type="number" step="0.1" value={form.size} onChange={set("size")} placeholder="e.g. 54" className={inputClass} />
-            </div>
+          </div>
+          <div>
+            <label className={labelClass}>Size <span className="text-red-400">*</span></label>
+            <input required type="number" step="0.1" value={form.size} onChange={set("size")} placeholder="e.g. 54" className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>
