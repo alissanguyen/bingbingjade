@@ -143,6 +143,11 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                   <span className="w-2 h-2 rounded-full bg-red-500" />
                   Sold
                 </span>
+              ) : product.status === "on_sale" ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 px-3 py-1 text-sm font-semibold text-amber-700 dark:text-amber-400">
+                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  On Sale
+                </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 px-3 py-1 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
                   <span className="w-2 h-2 rounded-full bg-emerald-500" />

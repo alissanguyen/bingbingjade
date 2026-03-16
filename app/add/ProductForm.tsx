@@ -308,7 +308,7 @@ export function ProductForm({ vendors }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ success?: boolean; error?: string } | null>(null);
   const [isFeatured, setIsFeatured] = useState(false);
-  const [status, setStatus] = useState<"available" | "sold">("available");
+  const [status, setStatus] = useState<"available" | "sold" | "on_sale">("available");
 
   const [cropTarget, setCropTarget] = useState<{ index: number; src: string; fileName: string } | null>(null);
   const [trimTarget, setTrimTarget] = useState<{ index: number; file: File } | null>(null);
@@ -669,7 +669,7 @@ export function ProductForm({ vendors }: Props) {
           <div>
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</p>
             <div className="flex gap-2">
-              {(["available", "sold"] as const).map((s) => (
+              {(["available", "on_sale", "sold"] as const).map((s) => (
                 <button
                   key={s}
                   type="button"
@@ -678,11 +678,13 @@ export function ProductForm({ vendors }: Props) {
                     status === s
                       ? s === "available"
                         ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+                        : s === "on_sale"
+                        ? "border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400"
                         : "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400"
                       : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
                   }`}
                 >
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                  {s === "on_sale" ? "On Sale" : s.charAt(0).toUpperCase() + s.slice(1)}
                 </button>
               ))}
             </div>

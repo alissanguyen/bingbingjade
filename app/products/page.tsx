@@ -64,6 +64,11 @@ export default async function Products() {
                     Sold
                   </div>
                 )}
+                {product.status === "on_sale" && (
+                  <div className="absolute top-2.5 left-2.5 z-10 bg-amber-400 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">
+                    On Sale
+                  </div>
+                )}
                 {product.images?.[0] ? (
                   <div className={`grid h-full ${product.images.length >= 2 ? "w-[200%] grid-cols-2 group-hover:animate-peek" : "w-full grid-cols-1"}`}>
                     <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
@@ -112,7 +117,7 @@ export default async function Products() {
                     {product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : "Contact for price"}
                   </span>
                   {product.size && (
-                    <span className="text-xs text-gray-400 dark:text-gray-500">Size {product.size}</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">Size {product.size}mm</span>
                   )}
                 </div>
               </div>

@@ -21,5 +21,5 @@ export interface Product {
   vendor_id: string;
   created_at: string;
   is_featured: boolean;
-  status: "available" | "sold";
+  status: "available" | "sold" | "on_sale";
 }
