@@ -403,6 +403,10 @@ export function ProductForm({ vendors }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!vendorId) {
+      setResult({ error: "Please select a vendor before saving." });
+      return;
+    }
     setIsSubmitting(true);
     setResult(null);
 
@@ -467,7 +471,7 @@ export function ProductForm({ vendors }: Props) {
               {vendors.length === 0 ? (
                 <p className="text-sm text-gray-400 dark:text-gray-500 py-2">No vendors yet — <a href="/addvendor" className="text-emerald-600 dark:text-emerald-400 underline">add one first</a>.</p>
               ) : (
-                <VendorSearch vendors={vendors} value={vendorId} onChange={setVendorId} />
+                <VendorSearch vendors={vendors} value={vendorId} onChange={(id) => setVendorId(id)} />
               )}
             </div>
           </div>
