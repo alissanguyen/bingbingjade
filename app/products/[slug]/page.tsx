@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { shortIdFromSlug } from "@/lib/slug";
+import { uuidFromSlug } from "@/lib/slug";
 import { ProductGallery } from "./ProductGallery";
 
 interface Product {
@@ -40,14 +40,13 @@ export const revalidate = 21600;
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
-  // Extract first 8 hex chars of UUID from end of slug, then range-query
-  const shortId = shortIdFromSlug(slug);
+  const uuid = uuidFromSlug(slug);
+  if (!uuid) notFound();
+
   const { data: product } = await supabase
     .from("products")
     .select("id, name, category, images, videos, color, tier, size, size_detailed, price_display_usd, sale_price_usd, description, blemishes, is_featured, status")
-    .gte("id", `${shortId}-0000-0000-0000-000000000000`)
-    .lte("id", `${shortId}-ffff-ffff-ffff-ffffffffffff`)
-    .limit(1)
+    .eq("id", uuid)
     .single<Product>();
 
   if (!product) notFound();

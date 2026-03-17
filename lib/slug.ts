@@ -5,13 +5,13 @@ export function slugify(text: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+/** Generates e.g. "icy-green-jade-bangle-56mm-550e8400-e29b-41d4-a716-446655440000" */
 export function productSlug(product: { id: string; name: string }): string {
-  const namePart = slugify(product.name);
-  const shortId = product.id.replace(/-/g, "").slice(0, 8);
-  return `${namePart}-${shortId}`;
+  return `${slugify(product.name)}-${product.id}`;
 }
 
-/** Extract the 8-char hex shortId from the end of a slug */
-export function shortIdFromSlug(slug: string): string {
-  return slug.slice(-8);
+/** Extracts the full UUID from the end of a slug */
+export function uuidFromSlug(slug: string): string | null {
+  const match = slug.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+  return match ? match[0] : null;
 }
