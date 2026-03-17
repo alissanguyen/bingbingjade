@@ -102,17 +102,40 @@ export function ProductGallery({ images, videos }: { images: string[]; videos: s
       <div className="flex flex-col gap-3">
         {/* Main slide */}
         <div
-          className="relative w-full aspect-square rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 cursor-zoom-in group"
-          onClick={() => setLightboxOpen(true)}
+          className={`relative w-full aspect-square rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 group ${active.type === "image" ? "cursor-zoom-in" : ""}`}
+          onClick={() => { if (active.type === "image") setLightboxOpen(true); }}
         >
           {active.type === "image" ? (
             <Image src={active.src} alt="Product" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" priority />
           ) : (
-            <video src={active.src} className="w-full h-full object-cover" />
+            <video
+              key={active.src}
+              src={active.src}
+              controls
+              playsInline
+              className="w-full h-full object-contain bg-black"
+              onClick={(e) => e.stopPropagation()}
+            />
           )}
 
-          {/* Hover overlay */}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors pointer-events-none" />
+          {/* Hover overlay — images only */}
+          {active.type === "image" && (
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors pointer-events-none" />
+          )}
+
+          {/* Expand button for videos */}
+          {active.type === "video" && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setLightboxOpen(true); }}
+              className="absolute top-2.5 right-2.5 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-black/50 hover:bg-black/75 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label="Expand video"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" />
+                <line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
+              </svg>
+            </button>
+          )}
 
           {/* Arrows (only when multiple) */}
           {total > 1 && (
@@ -134,13 +157,6 @@ export function ProductGallery({ images, videos }: { images: string[]; videos: s
                   }`}
                 />
               ))}
-            </div>
-          )}
-
-          {/* Video badge */}
-          {active.type === "video" && (
-            <div className="absolute top-2.5 left-2.5 bg-black/50 text-white rounded-full p-1.5">
-              <PlayIcon />
             </div>
           )}
         </div>
