@@ -121,7 +121,7 @@ export default async function Products({
         {/* Product grid */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-gray-400 dark:text-gray-500">
+            <p className="text-[11px] sm:text-sm text-gray-400 dark:text-gray-500">
               {totalCount} {totalCount === 1 ? "item" : "items"}
               {totalPages > 1 && <span className="ml-1">· page {safePage} of {totalPages}</span>}
             </p>
@@ -134,7 +134,7 @@ export default async function Products({
               No products match your filters.
             </p>
           ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {paginated.map((product) => (
                 <Link
                   key={product.id}
@@ -148,17 +148,17 @@ export default async function Products({
                   {/* Image strip — slides to peek at second image on hover */}
                   <div className="relative w-full aspect-square bg-emerald-50 dark:bg-emerald-950 overflow-hidden">
                     {product.status === "sold" && (
-                      <div className="absolute top-2.5 left-2.5 z-10 bg-black text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">
+                      <div className="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-10 bg-black text-white text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow">
                         Sold
                       </div>
                     )}
                     {product.status === "on_sale" && (
-                      <div className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1.5">
-                        <div className="bg-amber-400 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">
+                      <div className="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-10 flex items-center gap-1 sm:gap-1.5">
+                        <div className="bg-amber-400 text-white text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow">
                           On Sale
                         </div>
                         {product.price_display_usd != null && product.sale_price_usd != null && (
-                          <div className="bg-orange-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">
+                          <div className="bg-orange-500 text-white text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow">
                             −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
                           </div>
                         )}
@@ -181,9 +181,8 @@ export default async function Products({
                     )}
                   </div>
 
-                  {/* Info */}
-                  <div className={`p-4 ${product.status === "sold" ? "opacity-80" : ""}`}>
-                    {/* Category + tier row */}
+                  {/* Info — desktop (unchanged from original) */}
+                  <div className={`hidden sm:block p-4 ${product.status === "sold" ? "opacity-80" : ""}`}>
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                         {product.category}
@@ -192,26 +191,18 @@ export default async function Products({
                         <span className="text-xs text-gray-400 dark:text-gray-500">· {product.tier.join(" · ")}</span>
                       )}
                     </div>
-
                     <h2 className="font-semibold text-gray-900 dark:text-gray-100 leading-snug">{product.name}</h2>
                     <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{product.description}</p>
-
-                    {/* Color tags */}
                     {(product.color ?? []).filter((c) => c && c.trim()).length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-1.5">
                         {(product.color ?? []).filter((c) => c && c.trim()).map((c) => (
-                          <span
-                            key={c}
-                            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-2.5 py-0.5 text-xs text-gray-600 dark:text-gray-400"
-                          >
+                          <span key={c} className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-2.5 py-0.5 text-xs text-gray-600 dark:text-gray-400">
                             <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${COLOR_SWATCHES[c] ?? "bg-gray-300"}`} />
                             {c.charAt(0).toUpperCase() + c.slice(1)}
                           </span>
                         ))}
                       </div>
                     )}
-
-                    {/* Price + size */}
                     <div className="mt-3 flex items-center justify-between">
                       {product.status === "sold" ? (
                         <span className="flex items-center gap-2">
@@ -241,6 +232,56 @@ export default async function Products({
                       )}
                       {product.size && (
                         <span className="text-xs text-gray-400 dark:text-gray-500">Size {product.size}mm</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Info — mobile only */}
+                  <div className={`sm:hidden p-2.5 flex flex-col gap-0.5 ${product.status === "sold" ? "opacity-80" : ""}`}>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">{product.category}</span>
+                    {product.tier?.length > 0 && (
+                      <span className="text-[10px] text-gray-400 dark:text-gray-500">{product.tier.join(" · ")}</span>
+                    )}
+                    <h2 className="text-xs font-semibold text-gray-900 dark:text-gray-100 leading-snug line-clamp-2 mt-0.5">{product.name}</h2>
+                    {(product.color ?? []).filter((c) => c && c.trim()).length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {(product.color ?? []).filter((c) => c && c.trim()).map((c) => (
+                          <span key={c} className="inline-flex items-center gap-1 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-1.5 py-0.5 text-[10px] text-gray-600 dark:text-gray-400">
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${COLOR_SWATCHES[c] ?? "bg-gray-300"}`} />
+                            {c.charAt(0).toUpperCase() + c.slice(1)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex flex-col mt-1">
+                      {product.status === "sold" ? (
+                        <span className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                            {product.sale_price_usd != null ? `$${product.sale_price_usd.toFixed(2)}` : product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : "—"}
+                          </span>
+                          {product.sale_price_usd != null && product.price_display_usd != null && (
+                            <>
+                              <span className="text-[10px] text-gray-400 line-through">${product.price_display_usd.toFixed(2)}</span>
+                              <span className="rounded-full bg-gray-400 dark:bg-gray-600 px-1 py-0.5 text-[10px] font-semibold text-white">
+                                −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
+                              </span>
+                            </>
+                          )}
+                        </span>
+                      ) : product.status === "on_sale" && product.sale_price_usd != null ? (
+                        <span className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-amber-600 dark:text-amber-400">${product.sale_price_usd.toFixed(2)}</span>
+                          {product.price_display_usd != null && (
+                            <span className="text-[10px] text-gray-400 line-through">${product.price_display_usd.toFixed(2)}</span>
+                          )}
+                        </span>
+                      ) : (
+                        <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                          {product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : "Contact for price"}
+                        </span>
+                      )}
+                      {product.size && (
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500">Size {product.size}mm</span>
                       )}
                     </div>
                   </div>
