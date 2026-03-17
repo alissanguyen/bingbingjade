@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { shortIdFromSlug } from "@/lib/slug";
 import { ProductGallery } from "./ProductGallery";
 
 interface Product {
@@ -36,13 +37,17 @@ const COLOR_SWATCHES: Record<string, string> = {
 
 export const revalidate = 21600;
 
-export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
 
+  // Extract first 8 hex chars of UUID from end of slug, then range-query
+  const shortId = shortIdFromSlug(slug);
   const { data: product } = await supabase
     .from("products")
     .select("id, name, category, images, videos, color, tier, size, size_detailed, price_display_usd, sale_price_usd, description, blemishes, is_featured, status")
-    .eq("id", id)
+    .gte("id", `${shortId}-0000-0000-0000-000000000000`)
+    .lte("id", `${shortId}-ffff-ffff-ffff-ffffffffffff`)
+    .limit(1)
     .single<Product>();
 
   if (!product) notFound();
@@ -75,7 +80,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               <span className="IndividualProduct_Tier text-sm font-bold text-gray-400 dark:text-gray-500">· {product.tier.join(" · ")}</span>
             )}
             {product.is_featured && (
-              <span className="ml-auto rounded-full bg-amber-100 dark:bg-amber-900/40 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+              <span className="ml-auto rounded-full bg-amber-100 dark:bg-amber-900/40 px-2.5 py-0.5 text-sm font-medium text-amber-700 dark:text-amber-400">
                 Featured
               </span>
             )}
@@ -217,7 +222,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               Interested in this piece? Reach out directly to inquire or purchase.
             </p>
             <Link
-              href="/contact"
+              href={product.status !== "sold" ? `/contact?product=${product.id}` : "#"}
               className={`block w-full rounded-full py-3 text-center text-sm font-medium text-white transition-colors ${
                 product.status === "sold"
                   ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed pointer-events-none"
@@ -227,8 +232,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               {product.status === "sold" ? "This item has been sold" : "Contact to Purchase"}
             </Link>
             <div className="text-sm">
-              <p className="italic text-cyan-600 font-semibold  mt-4">** We provide more pictures and videos of different lighting upon request.</p>
-              <p className="text-gray-400 dark:text-gray-500 mt-2"><span className="mr-2 text-cyan-600">Not your styles?</span>Some pieces can be <span className="font-semibold text-gray-500">reshaped</span> or <span className="font-semibold text-gray-500">widened</span>, contact us for more details. </p>
+              <p className="italic text-cyan-600 font-semibold mt-4">** We provide more pictures and videos of different lighting upon request.</p>
+              <p className="text-gray-400 dark:text-gray-500 mt-2"><span className="mr-2 text-cyan-600">Not your styles?</span>Some pieces can be <span className="font-semibold text-gray-500">reshaped</span> or <span className="font-semibold text-gray-500">widened</span>, contact us for more details.</p>
             </div>
 
             {/* Authenticity Guarantee */}
@@ -246,7 +251,6 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                 Pieces priced above $200 include certification. For items under $200, certification is available upon request for $20.
               </p>
             </div>
-
           </div>
         </div>
       </div>

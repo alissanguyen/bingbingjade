@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { productSlug } from "@/lib/slug";
 
 interface FeaturedProduct {
   id: string;
@@ -81,7 +82,7 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
             return (
               <Link
                 key={product.id}
-                href={`/products/${product.id}`}
+                href={`/products/${productSlug(product)}`}
                 style={{ scrollSnapAlign: "start" }}
                 className={`group rounded-2xl border overflow-hidden transition-all hover:shadow-lg block shrink-0 w-[80vw] sm:w-[calc(50%-10px)] lg:w-[calc(25%-15px)] min-w-55 max-w-xs ${
                   isSold

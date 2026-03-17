@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { productSlug } from "@/lib/slug";
 import { supabase } from "@/lib/supabase";
 import { FilterSidebar } from "./FilterSidebar";
 import { SortSelect } from "./SortSelect";
@@ -138,7 +139,7 @@ export default async function Products({
               {paginated.map((product) => (
                 <Link
                   key={product.id}
-                  href={`/products/${product.id}`}
+                  href={`/products/${productSlug(product)}`}
                   className={`group rounded-2xl border overflow-hidden hover:shadow-lg transition-all block ${
                     product.status === "sold"
                       ? "border-gray-300 dark:border-gray-700 bg-gray-900/20 dark:bg-gray-700"

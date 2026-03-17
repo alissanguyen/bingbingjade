@@ -1,7 +1,19 @@
 import Image from "next/image";
 import { ContactForm } from "./ContactForm";
+import { supabase } from "@/lib/supabase";
 
-export default function Contact() {
+export default async function Contact({
+  searchParams,
+}: {
+  searchParams: Promise<{ product?: string }>;
+}) {
+  const { product: preselectedProductId } = await searchParams;
+
+  const { data: products } = await supabase
+    .from("products")
+    .select("id, name, category, status, price_display_usd, sale_price_usd")
+    .order("created_at", { ascending: false });
+
   return (
     <div className="mx-auto max-w-2xl px-6 py-16">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Contact Us</h1>
@@ -71,7 +83,7 @@ export default function Contact() {
         <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-6">Or send us a message directly:</p>
       </div>
 
-      <ContactForm />
+      <ContactForm products={products ?? []} preselectedProductId={preselectedProductId} />
     </div>
   );
 }
