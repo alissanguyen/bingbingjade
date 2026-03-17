@@ -17,9 +17,14 @@ import { join } from "path";
 // ── Tweak these to adjust watermark appearance ───────────────────────────────
 export const WATERMARK = {
   /** Watermark width as a fraction of the image width (0–1). */
-  sizePercent: 0.22,
-  /** Pixels from the corner edge. */
-  margin: 20,
+  sizePercent: 0.44,
+  /** Gap between the RIGHT edge of the watermark and the RIGHT border of the image,
+   *  expressed as a fraction of image width. 0.30 = 30% in from the right edge,
+   *  making it hard to crop out with a simple edge crop. */
+  marginRightPercent: 0.30,
+  /** Vertical position as a fraction of image height (0 = top, 1 = bottom).
+   *  0.5 = vertically centered. */
+  verticalPositionPercent: 0.50,
   /** Quality for the output JPEG (0–100). */
   outputQuality: 90,
 };
@@ -54,9 +59,10 @@ export async function applyWatermark(input: Buffer): Promise<Buffer> {
 
   const { height: wmarkH = wmarkW } = await sharp(wmarkPng).metadata();
 
-  // Position: bottom-right with margin
-  const left = Math.max(0, width - wmarkW - WATERMARK.margin);
-  const top = Math.max(0, height - wmarkH - WATERMARK.margin);
+  // Horizontal: right edge of watermark sits marginRightPercent * width from the right border
+  const left = Math.max(0, width - wmarkW - Math.round(width * WATERMARK.marginRightPercent));
+  // Vertical: centered at verticalPositionPercent of image height
+  const top = Math.max(0, Math.round(height * WATERMARK.verticalPositionPercent - wmarkH / 2));
 
   return image
     .rotate() // auto-rotate based on EXIF so the image is correctly oriented first
