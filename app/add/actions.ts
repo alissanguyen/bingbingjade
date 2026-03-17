@@ -1,6 +1,7 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { slugify, generatePublicId } from "@/lib/slug";
 import type { ProductCategory } from "@/types/product";
 
 export async function createProduct(formData: FormData): Promise<{ error?: string; success?: boolean }> {
@@ -10,8 +11,12 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
   const vendor_id = formData.get("vendor_id") as string;
   if (!vendor_id) return { error: "Please select a vendor before saving." };
 
+  const name = formData.get("name") as string;
+
   const { error } = await supabaseAdmin.from("products").insert({
-    name: formData.get("name") as string,
+    name,
+    slug: slugify(name),
+    public_id: generatePublicId(),
     category: formData.get("category") as ProductCategory,
     color: formData.getAll("color") as string[],
     tier: formData.getAll("tier") as string[],

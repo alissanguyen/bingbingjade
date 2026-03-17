@@ -24,4 +24,6 @@ export interface Product {
   created_at: string;
   is_featured: boolean;
   status: "available" | "sold" | "on_sale";
+  slug: string;
+  public_id: string;
 }

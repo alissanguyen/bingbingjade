@@ -20,6 +20,8 @@ interface ProductCard {
   description: string | null;
   is_featured: boolean;
   status: string;
+  slug: string;
+  public_id: string;
 }
 
 const COLOR_SWATCHES: Record<string, string> = {
@@ -56,7 +58,7 @@ export default async function Products({
 
   const { data: allProducts, error } = await supabase
     .from("products")
-    .select("id, name, category, images, color, tier, size, price_display_usd, sale_price_usd, description, is_featured, status")
+    .select("id, name, category, images, color, tier, size, price_display_usd, sale_price_usd, description, is_featured, status, slug, public_id")
     .order("created_at", { ascending: false });
 
   if (error) {

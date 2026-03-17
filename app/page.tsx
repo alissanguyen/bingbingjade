@@ -10,7 +10,7 @@ const JADE_IMG  = "https://images.unsplash.com/photo-1767040276964-d2a39a86b1d4?
 export default async function Home() {
   const { data: featuredProducts } = await supabase
     .from("products")
-    .select("id, name, category, images, tier, price_display_usd, sale_price_usd, status")
+    .select("id, name, category, images, tier, price_display_usd, sale_price_usd, status, slug, public_id")
     .eq("is_featured", true)
     .order("created_at", { ascending: false });
 

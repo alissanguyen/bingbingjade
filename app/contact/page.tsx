@@ -11,7 +11,7 @@ export default async function Contact({
 
   const { data: products } = await supabase
     .from("products")
-    .select("id, name, category, status, price_display_usd, sale_price_usd")
+    .select("id, name, category, status, price_display_usd, sale_price_usd, public_id, images")
     .order("created_at", { ascending: false });
 
   return (

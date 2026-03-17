@@ -14,6 +14,8 @@ interface FeaturedProduct {
   price_display_usd: number | null;
   sale_price_usd: number | null;
   status: string;
+  slug: string;
+  public_id: string;
 }
 
 function ArrowBtn({ dir, onClick }: { dir: "left" | "right"; onClick: () => void }) {

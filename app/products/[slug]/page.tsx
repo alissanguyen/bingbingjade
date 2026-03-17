@@ -1,7 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { uuidFromSlug } from "@/lib/slug";
+import { publicIdFromSlug, productSlug } from "@/lib/slug";
 import { ProductGallery } from "./ProductGallery";
 
 interface Product {
@@ -20,6 +20,8 @@ interface Product {
   blemishes: string | null;
   is_featured: boolean | null;
   status: string;
+  slug: string;
+  public_id: string;
 }
 
 const COLOR_SWATCHES: Record<string, string> = {
@@ -40,16 +42,20 @@ export const revalidate = 21600;
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
-  const uuid = uuidFromSlug(slug);
-  if (!uuid) notFound();
+  const publicId = publicIdFromSlug(slug);
+  if (!publicId) notFound();
 
   const { data: product } = await supabase
     .from("products")
-    .select("id, name, category, images, videos, color, tier, size, size_detailed, price_display_usd, sale_price_usd, description, blemishes, is_featured, status")
-    .eq("id", uuid)
+    .select("id, name, category, images, videos, color, tier, size, size_detailed, price_display_usd, sale_price_usd, description, blemishes, is_featured, status, slug, public_id")
+    .eq("public_id", publicId)
     .single<Product>();
 
   if (!product) notFound();
+
+  // Redirect to canonical URL if slug prefix is wrong
+  const canonical = productSlug(product);
+  if (slug !== canonical) redirect(`/products/${canonical}`);
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
@@ -221,7 +227,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               Interested in this piece? Reach out directly to inquire or purchase.
             </p>
             <Link
-              href={product.status !== "sold" ? `/contact?product=${product.id}` : "#"}
+              href={product.status !== "sold" ? `/contact?product=${product.public_id}` : "#"}
               className={`block w-full rounded-full py-3 text-center text-sm font-medium text-white transition-colors ${
                 product.status === "sold"
                   ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed pointer-events-none"
