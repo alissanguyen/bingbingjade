@@ -1,22 +1,23 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import emailjs from "@emailjs/browser";
 
 type Status = "idle" | "sending" | "success" | "error";
 
 export function ContactForm() {
-  const formRef = useRef<HTMLFormElement>(null);
   const [status, setStatus] = useState<Status>("idle");
+  const [fields, setFields] = useState({ from_name: "", from_email: "", message: "" });
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    setFields((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!formRef.current) return;
 
-    const data = new FormData(formRef.current);
-    const from_name  = data.get("from_name")  as string;
-    const from_email = data.get("from_email") as string;
-    const message    = data.get("message")    as string;
+    const { from_name, from_email, message } = fields;
+    if (!from_name.trim() || !from_email.trim() || !message.trim()) return;
 
     setStatus("sending");
     try {
@@ -40,7 +41,7 @@ export function ContactForm() {
         ),
       ]);
       setStatus("success");
-      formRef.current.reset();
+      setFields({ from_name: "", from_email: "", message: "" });
     } catch (err) {
       console.error("EmailJS error:", err);
       setStatus("error");
@@ -51,7 +52,7 @@ export function ContactForm() {
     "mt-1 block w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500";
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <div>
         <label htmlFor="from_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
         <input
@@ -60,6 +61,8 @@ export function ContactForm() {
           type="text"
           required
           placeholder="Your name"
+          value={fields.from_name}
+          onChange={handleChange}
           className={inputClass}
         />
       </div>
@@ -71,6 +74,8 @@ export function ContactForm() {
           type="email"
           required
           placeholder="you@example.com"
+          value={fields.from_email}
+          onChange={handleChange}
           className={inputClass}
         />
       </div>
@@ -82,6 +87,8 @@ export function ContactForm() {
           rows={5}
           required
           placeholder="How can we help you?"
+          value={fields.message}
+          onChange={handleChange}
           className={inputClass}
         />
       </div>

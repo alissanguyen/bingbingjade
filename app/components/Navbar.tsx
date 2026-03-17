@@ -30,33 +30,33 @@ export function Navbar() {
           <defs>
             <radialGradient id="jadeBase" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"
               gradientTransform="translate(126 118) rotate(35) scale(115 115)">
-              <stop offset="0%" stop-color="#F2FFFB" />
-              <stop offset="18%" stop-color="#DDF7EF" />
-              <stop offset="42%" stop-color="#A7DED0" />
-              <stop offset="68%" stop-color="#6EB9A8" />
-              <stop offset="100%" stop-color="#3F8E7E" />
+              <stop offset="0%" stopColor="#F2FFFB" />
+              <stop offset="18%" stopColor="#DDF7EF" />
+              <stop offset="42%" stopColor="#A7DED0" />
+              <stop offset="68%" stopColor="#6EB9A8" />
+              <stop offset="100%" stopColor="#3F8E7E" />
             </radialGradient>
 
             <radialGradient id="jadeInnerGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"
               gradientTransform="translate(110 90) rotate(25) scale(58 44)">
-              <stop offset="0%" stop-color="white" stop-opacity="0.95" />
-              <stop offset="45%" stop-color="#E7FFF8" stop-opacity="0.45" />
-              <stop offset="100%" stop-color="#E7FFF8" stop-opacity="0" />
+              <stop offset="0%" stopColor="white" stopOpacity="0.95" />
+              <stop offset="45%" stopColor="#E7FFF8" stopOpacity="0.45" />
+              <stop offset="100%" stopColor="#E7FFF8" stopOpacity="0" />
             </radialGradient>
 
             <linearGradient id="jadeDepth" x1="56" y1="52" x2="210" y2="206" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stop-color="#F5FFFC" stop-opacity="0.8" />
-              <stop offset="22%" stop-color="#BDE8DB" stop-opacity="0.45" />
-              <stop offset="55%" stop-color="#6FB8A8" stop-opacity="0.08" />
-              <stop offset="100%" stop-color="#245E53" stop-opacity="0.42" />
+              <stop offset="0%" stopColor="#F5FFFC" stopOpacity="0.8" />
+              <stop offset="22%" stopColor="#BDE8DB" stopOpacity="0.45" />
+              <stop offset="55%" stopColor="#6FB8A8" stopOpacity="0.08" />
+              <stop offset="100%" stopColor="#245E53" stopOpacity="0.42" />
             </linearGradient>
 
             <linearGradient id="jadeRim" x1="68" y1="60" x2="196" y2="196" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.85" />
-              <stop offset="20%" stop-color="#EAFFF8" stop-opacity="0.45" />
-              <stop offset="48%" stop-color="#8ED3C2" stop-opacity="0.15" />
-              <stop offset="75%" stop-color="#2E7A6A" stop-opacity="0.3" />
-              <stop offset="100%" stop-color="#163F37" stop-opacity="0.65" />
+              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.85" />
+              <stop offset="20%" stopColor="#EAFFF8" stopOpacity="0.45" />
+              <stop offset="48%" stopColor="#8ED3C2" stopOpacity="0.15" />
+              <stop offset="75%" stopColor="#2E7A6A" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#163F37" stopOpacity="0.65" />
             </linearGradient>
 
             <mask id="ringMask">
@@ -74,17 +74,17 @@ export function Navbar() {
             </filter>
 
             <filter id="shadowSoft" x="-40%" y="-40%" width="180%" height="180%">
-              <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#224B42" flood-opacity="0.18" />
+              <feDropShadow dx="0" dy="10" stdDeviation="12" floodColor="#224B42" floodOpacity="0.18" />
             </filter>
 
             <linearGradient id="brandGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#264A42" />
-              <stop offset="100%" stop-color="#19332E" />
+              <stop offset="0%" stopColor="#264A42" />
+              <stop offset="100%" stopColor="#19332E" />
             </linearGradient>
 
             <linearGradient id="cnGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#7ACAB8" />
-              <stop offset="100%" stop-color="#3E8F7E" />
+              <stop offset="0%" stopColor="#7ACAB8" />
+              <stop offset="100%" stopColor="#3E8F7E" />
             </linearGradient>
           </defs>
 
@@ -96,63 +96,63 @@ export function Navbar() {
               <ellipse cx="122" cy="101" rx="50" ry="32" transform="rotate(-24 122 101)"
                 fill="url(#jadeInnerGlow)" filter="url(#blur4)" />
               <ellipse cx="195" cy="198" rx="36" ry="18" transform="rotate(-24 195 198)"
-                fill="#D9FFF5" fill-opacity="0.12" filter="url(#blur8)" />
+                fill="#D9FFF5" fillOpacity="0.12" filter="url(#blur8)" />
 
               <ellipse cx="205" cy="96" rx="20" ry="11" transform="rotate(18 205 96)"
-                fill="#F3FFF9" fill-opacity="0.16" filter="url(#blur8)" />
+                fill="#F3FFF9" fillOpacity="0.16" filter="url(#blur8)" />
               <ellipse cx="94" cy="186" rx="23" ry="13" transform="rotate(-12 94 186)"
-                fill="#FFFFFF" fill-opacity="0.09" filter="url(#blur8)" />
+                fill="#FFFFFF" fillOpacity="0.09" filter="url(#blur8)" />
               <path d="M85 144C105 130 125 131 143 143C154 151 164 151 180 143C198 134 220 136 241 152"
-                stroke="#F2FFF9" stroke-opacity="0.12" stroke-width="9" stroke-linecap="round" filter="url(#blur4)" />
+                stroke="#F2FFF9" strokeOpacity="0.12" strokeWidth="9" strokeLinecap="round" filter="url(#blur4)" />
             </g>
 
-            <circle cx="170" cy="160" r="92" stroke="url(#jadeRim)" stroke-width="20" fill="none" />
-            <circle cx="170" cy="160" r="58" stroke="#F6FFFC" stroke-opacity="0.18" stroke-width="2" fill="none" />
+            <circle cx="170" cy="160" r="92" stroke="url(#jadeRim)" strokeWidth="20" fill="none" />
+            <circle cx="170" cy="160" r="58" stroke="#F6FFFC" strokeOpacity="0.18" strokeWidth="2" fill="none" />
 
             <ellipse cx="121" cy="96" rx="28" ry="9" transform="rotate(-24 121 96)"
-              fill="white" fill-opacity="0.68" />
+              fill="white" fillOpacity="0.68" />
             <ellipse cx="147" cy="83" rx="12" ry="4" transform="rotate(-24 147 83)"
-              fill="white" fill-opacity="0.52" />
+              fill="white" fillOpacity="0.52" />
             <ellipse cx="215" cy="208" rx="20" ry="5" transform="rotate(-24 215 208)"
-              fill="white" fill-opacity="0.16" />
+              fill="white" fillOpacity="0.16" />
           </g>
 
           <g transform="translate(118,108)">
             <text x="0" y="42"
-              font-size="46"
-              font-family="Noto Serif SC, Songti SC, STSong, serif"
-              font-weight="600"
+              fontSize="46"
+              fontFamily="Noto Serif SC, Songti SC, STSong, serif"
+              fontWeight="600"
               fill="url(#cnGrad)"
-              fill-opacity="0.95">冰</text>
+              fillOpacity="0.95">冰</text>
             <text x="36" y="80"
-              font-size="46"
-              font-family="Noto Serif SC, Songti SC, STSong, serif"
-              font-weight="600"
+              fontSize="46"
+              fontFamily="Noto Serif SC, Songti SC, STSong, serif"
+              fontWeight="600"
               fill="url(#cnGrad)"
-              fill-opacity="0.72">冰</text>
+              fillOpacity="0.72">冰</text>
           </g>
 
           <g transform="translate(315,92)">
             <text
               x="0"
               y="52"
-              font-size="56"
-              font-family="Cormorant Garamond, Georgia, serif"
-              font-weight="600"
-              letter-spacing="1.2"
+              fontSize="56"
+              fontFamily="Cormorant Garamond, Georgia, serif"
+              fontWeight="600"
+              letterSpacing="1.2"
               fill="currentColor"
             >
               Bing Bing Jade
             </text>
 
-            <line x1="2" y1="76" x2="355" y2="76" stroke="#9ED9CB" stroke-width="1.4" stroke-opacity="0.82" />
+            <line x1="2" y1="76" x2="355" y2="76" stroke="#9ED9CB" strokeWidth="1.4" strokeOpacity="0.82" />
 
             <text
               x="0"
               y="116"
-              font-size="20"
-              font-family="Inter, Helvetica, Arial, sans-serif"
-              letter-spacing="4"
+              fontSize="22"
+              fontFamily="Inter, Helvetica, Arial, sans-serif"
+              letterSpacing="4"
               fill="currentColor"
               opacity="0.7"
             >
@@ -162,9 +162,9 @@ export function Navbar() {
             <text
               x="0"
               y="154"
-              font-size="18"
-              font-family="Noto Serif SC, Songti SC, STSong, serif"
-              letter-spacing="2"
+              fontSize="20"
+              fontFamily="Noto Serif SC, Songti SC, STSong, serif"
+              letterSpacing="2"
               fill="currentColor"
               opacity="0.55"
             >

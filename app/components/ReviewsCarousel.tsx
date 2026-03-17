@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 const reviews = [
   {
     orderNumber: "BBJ-1024",
@@ -77,6 +79,8 @@ const reviews = [
 const doubled = [...reviews, ...reviews];
 
 export function ReviewsCarousel() {
+  const [paused, setPaused] = useState(false);
+
   return (
     <div className="py-16 bg-white dark:bg-gray-950 overflow-hidden">
       {/* Header */}
@@ -89,8 +93,13 @@ export function ReviewsCarousel() {
 
       {/* Marquee track */}
       <div
-        className="flex gap-5 animate-marquee hover:[animation-play-state:paused]"
-        style={{ width: "max-content" }}
+        className="flex gap-5 animate-marquee"
+        style={{ width: "max-content", animationPlayState: paused ? "paused" : "running" }}
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+        onTouchStart={() => setPaused(true)}
+        onTouchEnd={() => setPaused(false)}
+        onTouchCancel={() => setPaused(false)}
       >
         {doubled.map((r, i) => (
           <div

@@ -1,10 +1,10 @@
 import Link from "next/link";
-import Image from "next/image";
 import { Suspense } from "react";
 import { supabase } from "@/lib/supabase";
 import { FilterSidebar } from "./FilterSidebar";
 import { SortSelect } from "./SortSelect";
 import { Pagination } from "./Pagination";
+import { ProductCardImage } from "./ProductCardImage";
 
 interface ProductCard {
   id: string;
@@ -145,8 +145,8 @@ export default async function Products({
                       : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-emerald-300 dark:hover:border-emerald-700"
                   }`}
                 >
-                  {/* Image strip — slides to peek at second image on hover */}
-                  <div className="relative w-full aspect-square bg-emerald-50 dark:bg-emerald-950 overflow-hidden">
+                  {/* Image strip — slides to peek at second image on hover/touch */}
+                  <ProductCardImage images={product.images ?? []} name={product.name}>
                     {product.status === "sold" && (
                       <div className="ProductCard_Badge_Sold absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-10 bg-black text-white text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow">
                         Sold
@@ -164,22 +164,7 @@ export default async function Products({
                         )}
                       </div>
                     )}
-
-                    {product.images?.[0] ? (
-                      <div className={`grid h-full ${product.images.length >= 2 ? "w-[200%] grid-cols-2 group-hover:animate-peek" : "w-full grid-cols-1"}`}>
-                        <div className="relative h-full">
-                          <Image src={product.images[0]} alt={product.name} fill className="object-cover" sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw" loading="lazy" />
-                        </div>
-                        {product.images[1] && (
-                          <div className="relative h-full">
-                            <Image src={product.images[1]} alt="" fill className="object-cover" sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw" loading="lazy" aria-hidden="true" />
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-5xl">🪨</div>
-                    )}
-                  </div>
+                  </ProductCardImage>
 
                   {/* Info — desktop */}
                   <div className={`ProductCard_InfoDesktop hidden sm:block p-4 ${product.status === "sold" ? "opacity-80" : ""}`}>
