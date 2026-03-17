@@ -75,7 +75,7 @@ export default async function Home() {
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 leading-snug mb-6">
               Natural Jadeite,<br />Carefully Selected
             </h2>
-            <div className="space-y-4 text-gray-600 dark:text-gray-400 leading-relaxed text-[17px]">
+            <div className="space-y-4 text-gray-600 dark:text-gray-400 leading-relaxed text-[18px]">
               <p>
                 Each piece in our collection is individually sourced and selected for its color, texture, and character. We specialize in natural Type A jadeite, focusing primarily on jade from Myanmar (Burmese) and select pieces from Guatemala.
               </p>
@@ -93,7 +93,7 @@ export default async function Home() {
               href="/products"
               className="mt-8 inline-flex items-center gap-2 rounded-full bg-emerald-700 hover:bg-emerald-800 px-6 py-3 text-sm font-semibold text-white transition-colors"
             >
-              View Collection
+              View Our Selection
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
               </svg>

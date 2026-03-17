@@ -65,14 +65,14 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
         <ProductGallery images={product.images ?? []} videos={product.videos ?? []} />
 
         {/* Details */}
-        <div className="flex flex-col">
+        <div className="IndividualProduct_Details flex flex-col">
           {/* Category + tier + featured */}
-          <div className="flex items-center gap-2 flex-wrap mb-3">
-            <span className="text-md font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+          <div className="IndividualProduct_CategoryRow flex items-center gap-2 flex-wrap mb-3">
+            <span className="IndividualProduct_Category text-md font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
               {product.category}
             </span>
             {product.tier?.length > 0 && (
-              <span className="text-sm font-bold text-gray-400 dark:text-gray-500">· {product.tier.join(" · ")}</span>
+              <span className="IndividualProduct_Tier text-sm font-bold text-gray-400 dark:text-gray-500">· {product.tier.join(" · ")}</span>
             )}
             {product.is_featured && (
               <span className="ml-auto rounded-full bg-amber-100 dark:bg-amber-900/40 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
@@ -81,12 +81,12 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             )}
           </div>
 
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 leading-snug">
+          <h1 className="IndividualProduct_Title text-2xl font-bold text-gray-900 dark:text-gray-100 leading-snug">
             {product.name}
           </h1>
 
           {/* Price */}
-          <div className="mt-3 flex items-baseline gap-3">
+          <div className="IndividualProduct_PriceRow mt-3 flex items-baseline gap-3">
             {product.status === "on_sale" && product.sale_price_usd != null ? (
               <>
                 <span className="text-2xl font-semibold text-amber-600 dark:text-amber-400">
@@ -153,7 +153,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
             {/* Size */}
             {product.size != null && (
-              <div>
+              <div className="IndividualProduct_Size">
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">Size</p>
                 <p className="text-sm text-gray-700 dark:text-gray-300">{product.size} mm</p>
               </div>
@@ -161,7 +161,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
             {/* Detailed dimensions */}
             {product.size_detailed?.some((v) => v != null) && (
-              <div>
+              <div className="IndividualProduct_Dimensions">
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">Dimensions</p>
                 <p className="text-sm text-gray-700 dark:text-gray-300">
                   {product.size_detailed.map((v, i) => (
@@ -177,7 +177,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
             {/* Description */}
             {product.description && (
-              <div>
+              <div className="IndividualProduct_Description">
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">Description</p>
                 <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">{product.description}</p>
               </div>
@@ -185,7 +185,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
             {/* Blemishes */}
             {product.blemishes && (
-              <div>
+              <div className="IndividualProduct_Blemishes">
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">Blemishes</p>
                 <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">{product.blemishes}</p>
               </div>
@@ -193,7 +193,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           </div>
 
           {/* CTA */}
-          <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-800">
+          <div className="IndividualProduct_CTA mt-8 pt-6 border-t border-gray-100 dark:border-gray-800">
             {/* Status badge */}
             <div className="mb-4">
               {product.status === "sold" ? (
@@ -232,7 +232,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             </div>
 
             {/* Authenticity Guarantee */}
-            <div className="mt-6 rounded-xl border border-emerald-100 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 p-4">
+            <div className="IndividualProduct_AuthenticityGuarantee mt-6 rounded-xl border border-emerald-100 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 p-4">
               <div className="flex items-center gap-2 mb-2">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 dark:text-emerald-400 shrink-0">
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />

@@ -148,12 +148,12 @@ export default async function Products({
                   {/* Image strip — slides to peek at second image on hover */}
                   <div className="relative w-full aspect-square bg-emerald-50 dark:bg-emerald-950 overflow-hidden">
                     {product.status === "sold" && (
-                      <div className="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-10 bg-black text-white text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow">
+                      <div className="ProductCard_Badge_Sold absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-10 bg-black text-white text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow">
                         Sold
                       </div>
                     )}
                     {product.status === "on_sale" && (
-                      <div className="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-10 flex items-center gap-1 sm:gap-1.5">
+                      <div className="ProductCard_Badge_OnSale absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-10 flex items-center gap-1 sm:gap-1.5">
                         <div className="bg-amber-400 text-white text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow">
                           On Sale
                         </div>
@@ -181,20 +181,20 @@ export default async function Products({
                     )}
                   </div>
 
-                  {/* Info — desktop (unchanged from original) */}
-                  <div className={`hidden sm:block p-4 ${product.status === "sold" ? "opacity-80" : ""}`}>
+                  {/* Info — desktop */}
+                  <div className={`ProductCard_InfoDesktop hidden sm:block p-4 ${product.status === "sold" ? "opacity-80" : ""}`}>
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                      <span className="ProductCard_Category text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                         {product.category}
                       </span>
                       {product.tier?.length > 0 && (
-                        <span className="text-xs text-gray-400 dark:text-gray-500">· {product.tier.join(" · ")}</span>
+                        <span className="ProductCard_Tier text-xs text-gray-400 dark:text-gray-500">· {product.tier.join(" · ")}</span>
                       )}
                     </div>
-                    <h2 className="font-semibold text-gray-900 dark:text-gray-100 leading-snug">{product.name}</h2>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{product.description}</p>
+                    <h2 className="ProductCard_Title font-semibold text-gray-900 dark:text-gray-100 leading-snug">{product.name}</h2>
+                    <p className="ProductCard_Description mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{product.description}</p>
                     {(product.color ?? []).filter((c) => c && c.trim()).length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
+                      <div className="ProductCard_ColorTags mt-3 flex flex-wrap gap-1.5">
                         {(product.color ?? []).filter((c) => c && c.trim()).map((c) => (
                           <span key={c} className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-2.5 py-0.5 text-xs text-gray-600 dark:text-gray-400">
                             <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${COLOR_SWATCHES[c] ?? "bg-gray-300"}`} />
@@ -203,7 +203,7 @@ export default async function Products({
                         ))}
                       </div>
                     )}
-                    <div className="mt-3 flex items-center justify-between">
+                    <div className="ProductCard_PriceRow mt-3 flex items-center justify-between">
                       {product.status === "sold" ? (
                         <span className="flex items-center gap-2">
                           <span className="font-medium text-gray-500 dark:text-gray-400">
@@ -231,20 +231,20 @@ export default async function Products({
                         </span>
                       )}
                       {product.size && (
-                        <span className="text-xs text-gray-400 dark:text-gray-500">Size {product.size}mm</span>
+                        <span className="ProductCard_Size text-xs text-gray-400 dark:text-gray-500">Size {product.size}mm</span>
                       )}
                     </div>
                   </div>
 
                   {/* Info — mobile only */}
-                  <div className={`sm:hidden p-2.5 flex flex-col gap-0.5 ${product.status === "sold" ? "opacity-80" : ""}`}>
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">{product.category}</span>
+                  <div className={`ProductCard_InfoMobile sm:hidden p-2.5 flex flex-col gap-0.5 ${product.status === "sold" ? "opacity-80" : ""}`}>
+                    <span className="ProductCard_Category text-[14px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">{product.category}</span>
                     {product.tier?.length > 0 && (
-                      <span className="text-[10px] text-gray-400 dark:text-gray-500">{product.tier.join(" · ")}</span>
+                      <span className="ProductCard_Tier text-[13px] text-gray-400 dark:text-gray-500">{product.tier.join(" · ")}</span>
                     )}
-                    <h2 className="text-xs font-semibold text-gray-900 dark:text-gray-100 leading-snug line-clamp-2 mt-0.5">{product.name}</h2>
+                    <h2 className="ProductCard_Title text-xs font-semibold text-gray-900 dark:text-gray-100 leading-snug mt-0.5">{product.name}</h2>
                     {(product.color ?? []).filter((c) => c && c.trim()).length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
+                      <div className="ProductCard_ColorTags flex flex-wrap gap-1 mt-1">
                         {(product.color ?? []).filter((c) => c && c.trim()).map((c) => (
                           <span key={c} className="inline-flex items-center gap-1 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-1.5 py-0.5 text-[10px] text-gray-600 dark:text-gray-400">
                             <span className={`w-2 h-2 rounded-full shrink-0 ${COLOR_SWATCHES[c] ?? "bg-gray-300"}`} />
@@ -253,7 +253,7 @@ export default async function Products({
                         ))}
                       </div>
                     )}
-                    <div className="flex flex-col mt-1">
+                    <div className="ProductCard_PriceRow flex flex-col mt-1">
                       {product.status === "sold" ? (
                         <span className="flex items-center gap-1.5">
                           <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
@@ -281,7 +281,7 @@ export default async function Products({
                         </span>
                       )}
                       {product.size && (
-                        <span className="text-[10px] text-gray-400 dark:text-gray-500">Size {product.size}mm</span>
+                        <span className="ProductCard_Size text-[11px] mt-2 md:mt-0 text-gray-400 dark:text-gray-500">Size {product.size}mm</span>
                       )}
                     </div>
                   </div>
