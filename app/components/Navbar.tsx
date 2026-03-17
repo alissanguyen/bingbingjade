@@ -142,7 +142,7 @@ export function Navbar() {
               letterSpacing="1.2"
               fill="currentColor"
             >
-              Bing Bing Jade
+              BingBing Jade
             </text>
 
             <line x1="2" y1="76" x2="355" y2="76" stroke="#9ED9CB" strokeWidth="1.4" strokeOpacity="0.82" />

@@ -382,22 +382,40 @@ export function ProductForm({ vendors }: Props) {
   const removeVideo = (i: number) => setVideos((prev) => prev.filter((_, idx) => idx !== i));
 
   const uploadFiles = async () => {
+    // Images — routed through /api/upload-image which applies watermark and
+    // stores in the private jade-images bucket. Returns a storage path.
     const imageUrls: string[] = [];
     for (const { file } of images) {
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name}`;
-      const { data, error } = await supabase.storage.from("product-images").upload(path, file);
-      if (error) throw new Error(`Image upload failed: ${error.message}`);
-      const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(data.path);
-      imageUrls.push(publicUrl);
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload-image", { method: "POST", body: fd });
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(`Image upload failed: ${error}`);
+      }
+      const { path } = await res.json();
+      imageUrls.push(path);
     }
 
+    // Videos — use a Supabase signed upload URL so large files don't pass
+    // through the Next.js server. Returns a storage path.
     const videoUrls: string[] = [];
     for (const file of videos) {
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name}`;
-      const { data, error } = await supabase.storage.from("product-videos").upload(path, file);
-      if (error) throw new Error(`Video upload failed: ${error.message}`);
-      const { data: { publicUrl } } = supabase.storage.from("product-videos").getPublicUrl(data.path);
-      videoUrls.push(publicUrl);
+      const urlRes = await fetch("/api/create-upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name, contentType: file.type }),
+      });
+      if (!urlRes.ok) throw new Error("Failed to get video upload URL");
+      const { signedUrl, path } = await urlRes.json();
+
+      const uploadRes = await fetch(signedUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
+      if (!uploadRes.ok) throw new Error("Video upload failed");
+      videoUrls.push(path);
     }
 
     return { imageUrls, videoUrls };

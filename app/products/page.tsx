@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { productSlug } from "@/lib/slug";
 import { supabase } from "@/lib/supabase";
+import { resolveImageUrls, isStoragePath } from "@/lib/storage";
 import { FilterSidebar } from "./FilterSidebar";
 import { SortSelect } from "./SortSelect";
 import { Pagination } from "./Pagination";
@@ -110,6 +111,19 @@ export default async function Products({
   const safePage = Math.min(currentPage, Math.max(1, totalPages));
   const paginated = products.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
+  // Resolve signed URLs for any paginated product that uses private storage.
+  // Existing products with public URLs pass through unchanged (isStoragePath check).
+  const firstImagePaths = paginated.map((p) => p.images?.[0] ?? "");
+  const resolvedFirstImages = firstImagePaths.some(isStoragePath)
+    ? await resolveImageUrls(firstImagePaths)
+    : firstImagePaths;
+  const paginatedWithImages = paginated.map((p, i) => ({
+    ...p,
+    images: resolvedFirstImages[i]
+      ? [resolvedFirstImages[i], ...(p.images?.slice(1) ?? [])]
+      : p.images,
+  }));
+
   return (
     <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 py-16">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Products</h1>
@@ -138,7 +152,7 @@ export default async function Products({
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {paginated.map((product) => (
+              {paginatedWithImages.map((product) => (
                 <Link
                   key={product.id}
                   href={`/products/${productSlug(product)}`}

@@ -96,25 +96,49 @@ export function ProductGallery({ images, videos }: { images: string[]; videos: s
     </button>
   );
 
+  // ── Download deterrence ────────────────────────────────────────────────────
+  // This is lightweight deterrence only — not true DRM. A determined person can
+  // still capture frames or use devtools. The goal is to raise the friction for
+  // casual right-click saves and drag-and-drop copying.
+  function blockContextMenu(e: React.MouseEvent) { e.preventDefault(); }
+  function blockDrag(e: React.DragEvent) { e.preventDefault(); }
+
   return (
     <>
       {/* ── Carousel ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3" onContextMenu={blockContextMenu}>
         {/* Main slide */}
         <div
-          className={`relative w-full aspect-square rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 group ${active.type === "image" ? "cursor-zoom-in" : ""}`}
+          className={`relative w-full aspect-square rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 group select-none ${active.type === "image" ? "cursor-zoom-in" : ""}`}
           onClick={() => { if (active.type === "image") setLightboxOpen(true); }}
         >
+          {/* Transparent overlay — blocks right-click save on images */}
+          {active.type === "image" && (
+            <div className="absolute inset-0 z-[1] pointer-events-auto" onContextMenu={blockContextMenu} />
+          )}
           {active.type === "image" ? (
-            <Image src={active.src} alt="Product" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" priority />
+            <Image
+              src={active.src}
+              alt="Product"
+              fill
+              className="object-cover pointer-events-none"
+              draggable={false}
+              sizes="(max-width: 1024px) 100vw, 50vw"
+              priority
+              onDragStart={blockDrag}
+            />
           ) : (
             <video
               key={active.src}
               src={active.src}
               controls
               playsInline
+              /* Download deterrence — not true DRM */
+              controlsList="nodownload"
+              disablePictureInPicture
               className="w-full h-full object-contain bg-black"
               onClick={(e) => e.stopPropagation()}
+              onContextMenu={blockContextMenu}
             />
           )}
 
@@ -210,23 +234,34 @@ export function ProductGallery({ images, videos }: { images: string[]; videos: s
 
           {/* Media */}
           <div
-            className="relative flex items-center justify-center max-w-full max-h-full"
+            className="relative flex items-center justify-center max-w-full max-h-full select-none"
             onClick={(e) => e.stopPropagation()}
+            onContextMenu={blockContextMenu}
           >
             {active.type === "image" ? (
-              <Image
-                src={active.src}
-                alt="Product"
-                width={0}
-                height={0}
-                sizes="90vw"
-                className="w-auto h-auto max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
-              />
+              <>
+                {/* Transparent overlay blocks right-click save in lightbox */}
+                <div className="absolute inset-0 z-[1]" onContextMenu={blockContextMenu} />
+                <Image
+                  src={active.src}
+                  alt="Product"
+                  width={0}
+                  height={0}
+                  sizes="90vw"
+                  draggable={false}
+                  className="w-auto h-auto max-w-[90vw] max-h-[90vh] object-contain rounded-lg pointer-events-none"
+                  onDragStart={blockDrag}
+                />
+              </>
             ) : (
               <video
                 src={active.src}
                 controls
                 autoPlay
+                playsInline
+                controlsList="nodownload"
+                disablePictureInPicture
+                onContextMenu={blockContextMenu}
                 className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
               />
             )}

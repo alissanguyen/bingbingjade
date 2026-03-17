@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { publicIdFromSlug, productSlug } from "@/lib/slug";
+import { resolveImageUrls, resolveVideoUrls } from "@/lib/storage";
 import { ProductGallery } from "./ProductGallery";
 
 interface Product {
@@ -57,6 +58,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const canonical = productSlug(product);
   if (slug !== canonical) redirect(`/products/${canonical}`);
 
+  // Resolve storage paths → signed URLs (no-op for legacy public URLs)
+  const [images, videos] = await Promise.all([
+    resolveImageUrls(product.images ?? []),
+    resolveVideoUrls(product.videos ?? []),
+  ]);
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
       {/* Back */}
@@ -72,7 +79,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
       <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
         {/* Gallery */}
-        <ProductGallery images={product.images ?? []} videos={product.videos ?? []} />
+        <ProductGallery images={images} videos={videos} />
 
         {/* Details */}
         <div className="IndividualProduct_Details flex flex-col">

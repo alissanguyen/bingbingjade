@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
+import { resolveImageUrls, isStoragePath } from "@/lib/storage";
 import { FeaturedCarousel } from "@/app/components/FeaturedCarousel";
 import { ReviewsCarousel } from "@/app/components/ReviewsCarousel";
 
@@ -8,11 +9,23 @@ const HERO_IMG = "https://images.unsplash.com/photo-1705931396849-93822983c1dc?q
 const JADE_IMG  = "https://images.unsplash.com/photo-1767040276964-d2a39a86b1d4?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
 
 export default async function Home() {
-  const { data: featuredProducts } = await supabase
+  const { data: rawFeatured } = await supabase
     .from("products")
     .select("id, name, category, images, tier, price_display_usd, sale_price_usd, status, slug, public_id")
     .eq("is_featured", true)
     .order("created_at", { ascending: false });
+
+  // Resolve signed URLs for private-bucket images (no-op for legacy public URLs)
+  const allFirstImages = (rawFeatured ?? []).map((p) => p.images?.[0] ?? "");
+  const resolvedFirstImages = allFirstImages.some(isStoragePath)
+    ? await resolveImageUrls(allFirstImages)
+    : allFirstImages;
+  const featuredProducts = (rawFeatured ?? []).map((p, i) => ({
+    ...p,
+    images: resolvedFirstImages[i]
+      ? [resolvedFirstImages[i], ...(p.images?.slice(1) ?? [])]
+      : p.images,
+  }));
 
   return (
     <div className="bg-white dark:bg-gray-950">
@@ -58,7 +71,7 @@ export default async function Home() {
       </div>
 
       {/* ── Featured Carousel ── */}
-      <FeaturedCarousel products={featuredProducts ?? []} />
+      <FeaturedCarousel products={featuredProducts} />
 
       {/* ── Reviews Carousel ── */}
       <ReviewsCarousel />

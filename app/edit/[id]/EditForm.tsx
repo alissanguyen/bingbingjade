@@ -216,19 +216,32 @@ export function EditForm({ product, vendors }: Props) {
   const uploadNewFiles = async () => {
     const imageUrls: string[] = [];
     for (const { file } of newImages) {
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name}`;
-      const { data, error } = await supabase.storage.from("product-images").upload(path, file);
-      if (error) throw new Error(`Image upload failed: ${error.message}`);
-      const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(data.path);
-      imageUrls.push(publicUrl);
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload-image", { method: "POST", body: fd });
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(`Image upload failed: ${error}`);
+      }
+      const { path } = await res.json();
+      imageUrls.push(path);
     }
     const videoUrls: string[] = [];
     for (const file of newVideos) {
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name}`;
-      const { data, error } = await supabase.storage.from("product-videos").upload(path, file);
-      if (error) throw new Error(`Video upload failed: ${error.message}`);
-      const { data: { publicUrl } } = supabase.storage.from("product-videos").getPublicUrl(data.path);
-      videoUrls.push(publicUrl);
+      const urlRes = await fetch("/api/create-upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name, contentType: file.type }),
+      });
+      if (!urlRes.ok) throw new Error("Failed to get video upload URL");
+      const { signedUrl, path } = await urlRes.json();
+      const uploadRes = await fetch(signedUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
+      if (!uploadRes.ok) throw new Error("Video upload failed");
+      videoUrls.push(path);
     }
     return { imageUrls, videoUrls };
   };
