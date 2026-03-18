@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { updateProduct, deleteProduct } from "./actions";
+import { ImageCropModal, VideoTrimModal } from "@/app/add/MediaCroppers";
 import type { Vendor } from "@/types/vendor";
 import type { ProductCategory } from "@/types/product";
 
@@ -37,6 +38,23 @@ function XIcon() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+function CropIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 3 6 18 21 18" /><polyline points="3 6 18 6 18 21" />
+    </svg>
+  );
+}
+
+function ScissorsIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" />
+      <line x1="20" y1="4" x2="8.12" y2="15.88" /><line x1="14.47" y1="14.48" x2="20" y2="20" /><line x1="8.12" y1="8.12" x2="12" y2="12" />
     </svg>
   );
 }
@@ -159,6 +177,32 @@ export function EditForm({ product, vendors }: Props) {
   // New files to upload
   const [newImages, setNewImages] = useState<{ file: File; preview: string | null }[]>([]);
   const [newVideos, setNewVideos] = useState<File[]>([]);
+
+  const [cropTarget, setCropTarget] = useState<{ index: number; src: string; fileName: string } | null>(null);
+  const [trimTarget, setTrimTarget] = useState<{ index: number; file: File } | null>(null);
+
+  const handleCropConfirm = (croppedFile: File) => {
+    if (!cropTarget) return;
+    const preview = URL.createObjectURL(croppedFile);
+    setNewImages((prev) => {
+      const updated = [...prev];
+      const old = updated[cropTarget.index];
+      if (old.preview) URL.revokeObjectURL(old.preview);
+      updated[cropTarget.index] = { file: croppedFile, preview };
+      return updated;
+    });
+    setCropTarget(null);
+  };
+
+  const handleTrimConfirm = (trimmedFile: File) => {
+    if (!trimTarget) return;
+    setNewVideos((prev) => {
+      const updated = [...prev];
+      updated[trimTarget.index] = trimmedFile;
+      return updated;
+    });
+    setTrimTarget(null);
+  };
 
   const [imageDragging, setImageDragging] = useState(false);
   const [videoDragging, setVideoDragging] = useState(false);
@@ -436,6 +480,16 @@ export function EditForm({ product, vendors }: Props) {
                     className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow">
                     <XIcon />
                   </button>
+                  {preview && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setCropTarget({ index: i, src: preview, fileName: file.name }); }}
+                      className="absolute bottom-1 right-1 w-6 h-6 rounded-md bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-emerald-600"
+                      title="Crop image"
+                    >
+                      <CropIcon />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -480,7 +534,12 @@ export function EditForm({ product, vendors }: Props) {
                     <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{file.name}</span>
                     <span className="text-xs text-gray-400 shrink-0">{(file.size / 1024 / 1024).toFixed(1)} MB</span>
                   </div>
-                  <button type="button" onClick={() => removeNewVideo(i)} className="ml-3 text-gray-400 hover:text-red-500 transition-colors shrink-0"><XIcon /></button>
+                  <div className="flex items-center gap-2 ml-3 shrink-0">
+                    <button type="button" onClick={() => setTrimTarget({ index: i, file })} className="text-gray-400 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors" title="Trim video">
+                      <ScissorsIcon />
+                    </button>
+                    <button type="button" onClick={() => removeNewVideo(i)} className="text-gray-400 hover:text-red-500 transition-colors"><XIcon /></button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -595,6 +654,23 @@ export function EditForm({ product, vendors }: Props) {
           {isSubmitting ? "Saving…" : "Save Changes"}
         </button>
       </div>
+
+      {cropTarget && (
+        <ImageCropModal
+          src={cropTarget.src}
+          fileName={cropTarget.fileName}
+          onConfirm={handleCropConfirm}
+          onClose={() => setCropTarget(null)}
+        />
+      )}
+
+      {trimTarget && (
+        <VideoTrimModal
+          file={trimTarget.file}
+          onConfirm={handleTrimConfirm}
+          onClose={() => setTrimTarget(null)}
+        />
+      )}
 
       {/* Delete */}
       <div className="border-t border-gray-100 dark:border-gray-800 pt-6">
