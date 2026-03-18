@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { ContactForm } from "./ContactForm";
 import { supabase } from "@/lib/supabase";
+import { resolveImageUrls, isStoragePath } from "@/lib/storage";
 
 export default async function Contact({
   searchParams,
@@ -9,10 +10,20 @@ export default async function Contact({
 }) {
   const { product: preselectedProductId } = await searchParams;
 
-  const { data: products } = await supabase
+  const { data: rawProducts } = await supabase
     .from("products")
     .select("id, name, category, status, price_display_usd, sale_price_usd, public_id, images")
     .order("created_at", { ascending: false });
+
+  const raw = rawProducts ?? [];
+  const firstImages = raw.map((p) => p.images?.[0] ?? "");
+  const resolvedFirstImages = firstImages.some(isStoragePath)
+    ? await resolveImageUrls(firstImages)
+    : firstImages;
+  const products = raw.map((p, i) => ({
+    ...p,
+    images: resolvedFirstImages[i] ? [resolvedFirstImages[i], ...(p.images?.slice(1) ?? [])] : p.images,
+  }));
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-16">
@@ -83,7 +94,7 @@ export default async function Contact({
         <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-6">Or send us a message directly:</p>
       </div>
 
-      <ContactForm products={products ?? []} preselectedProductId={preselectedProductId} />
+      <ContactForm products={products} preselectedProductId={preselectedProductId} />
     </div>
   );
 }
