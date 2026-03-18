@@ -134,7 +134,7 @@ export function ProductGallery({ images, videos }: { images: string[]; videos: s
               controls
               playsInline
               /* Download deterrence — not true DRM */
-              controlsList="nodownload"
+              controlsList="nodownload nofullscreen"
               disablePictureInPicture
               className="w-full h-full object-contain bg-black"
               onClick={(e) => e.stopPropagation()}
@@ -145,6 +145,19 @@ export function ProductGallery({ images, videos }: { images: string[]; videos: s
           {/* Hover overlay — images only */}
           {active.type === "image" && (
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors pointer-events-none" />
+          )}
+
+          {/* Logo overlay on videos — matches image watermark position */}
+          {active.type === "video" && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/watermark.svg"
+              alt=""
+              aria-hidden
+              draggable={false}
+              className="absolute z-2 pointer-events-none select-none"
+              style={{ width: "44%", right: "30%", top: "50%", transform: "translateY(-50%)" }}
+            />
           )}
 
           {/* Expand button for videos */}
@@ -254,16 +267,27 @@ export function ProductGallery({ images, videos }: { images: string[]; videos: s
                 />
               </>
             ) : (
-              <video
-                src={active.src}
-                controls
-                autoPlay
-                playsInline
-                controlsList="nodownload"
-                disablePictureInPicture
-                onContextMenu={blockContextMenu}
-                className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
-              />
+              <div className="relative">
+                <video
+                  src={active.src}
+                  controls
+                  autoPlay
+                  playsInline
+                  controlsList="nodownload nofullscreen"
+                  disablePictureInPicture
+                  onContextMenu={blockContextMenu}
+                  className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
+                />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/watermark.svg"
+                  alt=""
+                  aria-hidden
+                  draggable={false}
+                  className="absolute z-[2] pointer-events-none select-none"
+                  style={{ width: "44%", right: "30%", top: "50%", transform: "translateY(-50%)" }}
+                />
+              </div>
             )}
 
             {/* Lightbox arrows */}

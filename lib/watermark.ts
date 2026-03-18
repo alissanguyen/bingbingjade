@@ -1,5 +1,5 @@
 /**
- * Watermark utility — applies the logo-credit.svg as a semi-transparent
+ * Watermark utility — applies the watermark.svg as a semi-transparent
  * overlay onto product images at upload time.
  *
  * NOTE: This is deterrence / branding, not DRM. A determined person can still
@@ -35,7 +35,7 @@ let _svgBuffer: Buffer | null = null;
 
 function getSvgBuffer(): Buffer {
   if (_svgBuffer) return _svgBuffer;
-  const svgPath = join(process.cwd(), "public", "logo-credit.svg");
+  const svgPath = join(process.cwd(), "public", "watermark.svg");
   _svgBuffer = readFileSync(svgPath);
   return _svgBuffer;
 }

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
-import { updateProduct } from "./actions";
+import { updateProduct, deleteProduct } from "./actions";
 import type { Vendor } from "@/types/vendor";
 import type { ProductCategory } from "@/types/product";
 
@@ -163,6 +163,8 @@ export function EditForm({ product, vendors }: Props) {
   const [imageDragging, setImageDragging] = useState(false);
   const [videoDragging, setVideoDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [result, setResult] = useState<{ success?: boolean; error?: string } | null>(null);
 
   const [vendorId, setVendorId] = useState(product.vendor_id);
@@ -275,6 +277,18 @@ export function EditForm({ product, vendors }: Props) {
       setResult({ error: err instanceof Error ? err.message : "Something went wrong" });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    const res = await deleteProduct(product.id);
+    if (res.error) {
+      setResult({ error: res.error });
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    } else {
+      router.push("/edit");
     }
   };
 
@@ -580,6 +594,31 @@ export function EditForm({ product, vendors }: Props) {
           className="flex-1 rounded-full bg-emerald-700 py-3 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
           {isSubmitting ? "Saving…" : "Save Changes"}
         </button>
+      </div>
+
+      {/* Delete */}
+      <div className="border-t border-gray-100 dark:border-gray-800 pt-6">
+        {!showDeleteConfirm ? (
+          <button type="button" onClick={() => setShowDeleteConfirm(true)}
+            className="w-full rounded-full border border-red-200 dark:border-red-900 py-3 text-sm font-medium text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:border-red-400 dark:hover:border-red-700 transition-colors">
+            Delete Product
+          </button>
+        ) : (
+          <div className="rounded-2xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 p-5">
+            <p className="text-sm font-semibold text-red-700 dark:text-red-400 mb-1">Delete this product?</p>
+            <p className="text-sm text-red-600/80 dark:text-red-400/70 mb-4">This cannot be undone. The product will be permanently removed from the database.</p>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 rounded-full border border-gray-300 dark:border-gray-700 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800 transition-colors">
+                Cancel
+              </button>
+              <button type="button" onClick={handleDelete} disabled={isDeleting}
+                className="flex-1 rounded-full bg-red-600 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                {isDeleting ? "Deleting…" : "Yes, Delete"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </form>
   );

@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { resolveImageUrls, isStoragePath } from "@/lib/storage";
 import { ProductSearch } from "./ProductSearch";
 import { AdminBar } from "@/app/components/AdminBar";
 
@@ -8,6 +9,16 @@ export default async function EditPage() {
     .select("id, name, category, images")
     .order("created_at", { ascending: false });
 
+  const raw = products ?? [];
+  const firstImages = raw.map((p) => p.images?.[0] ?? "");
+  const resolvedFirstImages = firstImages.some(isStoragePath)
+    ? await resolveImageUrls(firstImages)
+    : firstImages;
+  const productsWithDisplayImages = raw.map((p, i) => ({
+    ...p,
+    images: resolvedFirstImages[i] ? [resolvedFirstImages[i]] : [],
+  }));
+
   return (
     <>
       <AdminBar />
@@ -16,7 +27,7 @@ export default async function EditPage() {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Edit Product</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Search and select a product to edit.</p>
         </div>
-        <ProductSearch products={products ?? []} />
+        <ProductSearch products={productsWithDisplayImages} />
       </div>
     </>
   );

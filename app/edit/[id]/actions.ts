@@ -3,6 +3,12 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import type { ProductCategory } from "@/types/product";
 
+export async function deleteProduct(id: string): Promise<{ error?: string; success?: boolean }> {
+  const { error } = await supabaseAdmin.from("products").delete().eq("id", id);
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
 export async function updateProduct(
   id: string,
   formData: FormData

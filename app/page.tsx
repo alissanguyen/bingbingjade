@@ -15,17 +15,21 @@ export default async function Home() {
     .eq("is_featured", true)
     .order("created_at", { ascending: false });
 
-  // Resolve signed URLs for private-bucket images (no-op for legacy public URLs)
-  const allFirstImages = (rawFeatured ?? []).map((p) => p.images?.[0] ?? "");
-  const resolvedFirstImages = allFirstImages.some(isStoragePath)
-    ? await resolveImageUrls(allFirstImages)
-    : allFirstImages;
-  const featuredProducts = (rawFeatured ?? []).map((p, i) => ({
-    ...p,
-    images: resolvedFirstImages[i]
-      ? [resolvedFirstImages[i], ...(p.images?.slice(1) ?? [])]
-      : p.images,
-  }));
+  // Resolve signed URLs for the first two images of each product (carousel uses [0] and [1])
+  const raw = rawFeatured ?? [];
+  const firstTwo = raw.flatMap((p) => [p.images?.[0] ?? "", p.images?.[1] ?? ""]);
+  const resolvedFirstTwo = firstTwo.some(isStoragePath)
+    ? await resolveImageUrls(firstTwo)
+    : firstTwo;
+  const featuredProducts = raw.map((p, i) => {
+    const r0 = resolvedFirstTwo[i * 2];
+    const r1 = resolvedFirstTwo[i * 2 + 1];
+    const rest = p.images?.slice(2) ?? [];
+    return {
+      ...p,
+      images: [r0 || "", r1 || "", ...rest].filter(Boolean),
+    };
+  });
 
   return (
     <div className="bg-white dark:bg-gray-950">
