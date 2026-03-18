@@ -37,7 +37,12 @@ function CloseIcon() {
 
 type MediaItem = { type: "image"; src: string } | { type: "video"; src: string };
 
-export function ProductGallery({ images, videos }: { images: string[]; videos: string[] }) {
+const CENTER_CATEGORIES = new Set(["bangle", "necklace"]);
+
+export function ProductGallery({ images, videos, category = "" }: { images: string[]; videos: string[]; category?: string }) {
+  const wmStyle: React.CSSProperties = CENTER_CATEGORIES.has(category)
+    ? { width: "44%", right: "30%", top: "50%", transform: "translateY(-50%)" }
+    : { width: "44%", left: "10%", bottom: "10%" };
   const [current, setCurrent] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
@@ -156,7 +161,7 @@ export function ProductGallery({ images, videos }: { images: string[]; videos: s
               aria-hidden
               draggable={false}
               className="absolute z-2 pointer-events-none select-none"
-              style={{ width: "44%", right: "30%", top: "50%", transform: "translateY(-50%)" }}
+              style={wmStyle}
             />
           )}
 
@@ -285,7 +290,7 @@ export function ProductGallery({ images, videos }: { images: string[]; videos: s
                   aria-hidden
                   draggable={false}
                   className="absolute z-[2] pointer-events-none select-none"
-                  style={{ width: "44%", right: "30%", top: "50%", transform: "translateY(-50%)" }}
+                  style={wmStyle}
                 />
               </div>
             )}

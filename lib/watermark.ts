@@ -41,10 +41,20 @@ function getSvgBuffer(): Buffer {
 }
 
 /**
- * Applies the logo watermark to an image buffer.
- * Returns a JPEG buffer with the watermark composited in the bottom-right corner.
+ * Categories where the subject fills the center (bangle hole, pendant drop) —
+ * watermark goes center-right so it sits in the empty space.
+ * Everything else (ring, bracelet, etc.) gets bottom-left so it doesn't obscure
+ * the main subject sitting in the middle of the frame.
  */
-export async function applyWatermark(input: Buffer): Promise<Buffer> {
+const CENTER_CATEGORIES = new Set(["bangle", "necklace"]);
+
+/**
+ * Applies the logo watermark to an image buffer.
+ * Position depends on category:
+ *   bangle / necklace  → center-right (30% inset from right, vertically centered)
+ *   everything else    → bottom-left  (10% from left, 10% from bottom)
+ */
+export async function applyWatermark(input: Buffer, category = ""): Promise<Buffer> {
   const image = sharp(input);
   const { width = 800, height = 800 } = await image.metadata();
 
@@ -59,10 +69,18 @@ export async function applyWatermark(input: Buffer): Promise<Buffer> {
 
   const { height: wmarkH = wmarkW } = await sharp(wmarkPng).metadata();
 
-  // Horizontal: right edge of watermark sits marginRightPercent * width from the right border
-  const left = Math.max(0, width - wmarkW - Math.round(width * WATERMARK.marginRightPercent));
-  // Vertical: centered at verticalPositionPercent of image height
-  const top = Math.max(0, Math.round(height * WATERMARK.verticalPositionPercent - wmarkH / 2));
+  let left: number;
+  let top: number;
+
+  if (CENTER_CATEGORIES.has(category)) {
+    // Center-right: right edge 30% inset from right, vertically centered
+    left = Math.max(0, width - wmarkW - Math.round(width * WATERMARK.marginRightPercent));
+    top = Math.max(0, Math.round(height * WATERMARK.verticalPositionPercent - wmarkH / 2));
+  } else {
+    // Bottom-left: 10% from left edge, 10% from bottom edge
+    left = Math.round(width * 0.10);
+    top = Math.max(0, height - wmarkH - Math.round(height * 0.10));
+  }
 
   return image
     .rotate() // auto-rotate based on EXIF so the image is correctly oriented first

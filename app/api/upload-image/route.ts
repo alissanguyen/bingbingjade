@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
   if (!file) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
+  const category = (formData.get("category") as string | null) ?? "";
 
   // ── Process ───────────────────────────────────────────────────────────────
   try {
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
       .upload(originalPath, input, { contentType: file.type, upsert: false });
 
     // Generate watermarked version and upload
-    const watermarked = await applyWatermark(input);
+    const watermarked = await applyWatermark(input, category);
     const wmPath = `wm/${id}.jpg`;
     const { error: uploadErr } = await supabaseAdmin.storage
       .from(IMAGE_BUCKET)

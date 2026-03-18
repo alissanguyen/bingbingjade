@@ -264,6 +264,7 @@ export function EditForm({ product, vendors }: Props) {
     for (const { file } of newImages) {
       const fd = new FormData();
       fd.append("file", file);
+      fd.append("category", form.category);
       const res = await fetch("/api/upload-image", { method: "POST", body: fd });
       if (!res.ok) {
         const { error } = await res.json().catch(() => ({ error: "Unknown error" }));
