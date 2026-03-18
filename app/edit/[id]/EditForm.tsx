@@ -178,6 +178,8 @@ export function EditForm({ product, vendors }: Props) {
   const [newImages, setNewImages] = useState<{ file: File; preview: string | null }[]>([]);
   const [newVideos, setNewVideos] = useState<File[]>([]);
 
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
   const [cropTarget, setCropTarget] = useState<{ index: number; src: string; fileName: string } | null>(null);
   const [trimTarget, setTrimTarget] = useState<{ index: number; file: File } | null>(null);
 
@@ -447,9 +449,9 @@ export function EditForm({ product, vendors }: Props) {
             <p className={labelClass}>Current Images</p>
             <div className="grid grid-cols-4 gap-3 sm:grid-cols-6">
               {existingImages.map((url, i) => (
-                <div key={url} className="relative group aspect-square">
+                <div key={url} className="relative group aspect-square cursor-zoom-in" onClick={() => setLightboxSrc(url)}>
                   <Image src={url} alt="" fill className="rounded-lg object-cover" sizes="120px" loading="lazy" />
-                  <button type="button" onClick={() => removeExistingImage(i)}
+                  <button type="button" onClick={(e) => { e.stopPropagation(); removeExistingImage(i); }}
                     className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow">
                     <XIcon />
                   </button>
@@ -503,12 +505,20 @@ export function EditForm({ product, vendors }: Props) {
             <p className={labelClass}>Current Videos</p>
             <ul className="space-y-2">
               {existingVideos.map((url, i) => (
-                <li key={url} className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3.5 py-2.5">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-emerald-600 dark:text-emerald-400 shrink-0"><VideoIcon /></span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 truncate font-mono">{url.split("/").pop()}</span>
+                <li key={url} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 overflow-hidden">
+                  <div className="flex items-center justify-between px-3.5 py-2.5">
+                    <button type="button" onClick={() => setPreviewVideoUrl(previewVideoUrl === url ? null : url)}
+                      className="flex items-center gap-2.5 min-w-0 text-left hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                      <span className="text-emerald-600 dark:text-emerald-400 shrink-0"><VideoIcon /></span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 truncate font-mono">{url.split("/").pop()?.split("?")[0]}</span>
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400 shrink-0 font-medium">{previewVideoUrl === url ? "Hide" : "Play"}</span>
+                    </button>
+                    <button type="button" onClick={() => { removeExistingVideo(i); if (previewVideoUrl === url) setPreviewVideoUrl(null); }}
+                      className="ml-3 text-gray-400 hover:text-red-500 transition-colors shrink-0"><XIcon /></button>
                   </div>
-                  <button type="button" onClick={() => removeExistingVideo(i)} className="ml-3 text-gray-400 hover:text-red-500 transition-colors shrink-0"><XIcon /></button>
+                  {previewVideoUrl === url && (
+                    <video src={url} controls playsInline className="w-full max-h-72 bg-black" />
+                  )}
                 </li>
               ))}
             </ul>
@@ -655,6 +665,16 @@ export function EditForm({ product, vendors }: Props) {
           {isSubmitting ? "Saving…" : "Save Changes"}
         </button>
       </div>
+
+      {lightboxSrc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" onClick={() => setLightboxSrc(null)}>
+          <button className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors" onClick={() => setLightboxSrc(null)}>
+            <XIcon />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={lightboxSrc} alt="" className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
 
       {cropTarget && (
         <ImageCropModal
