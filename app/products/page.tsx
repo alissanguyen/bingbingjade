@@ -111,18 +111,21 @@ export default async function Products({
   const safePage = Math.min(currentPage, Math.max(1, totalPages));
   const paginated = products.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  // Resolve signed URLs for any paginated product that uses private storage.
-  // Existing products with public URLs pass through unchanged (isStoragePath check).
-  const firstImagePaths = paginated.map((p) => p.images?.[0] ?? "");
-  const resolvedFirstImages = firstImagePaths.some(isStoragePath)
-    ? await resolveImageUrls(firstImagePaths)
-    : firstImagePaths;
-  const paginatedWithImages = paginated.map((p, i) => ({
-    ...p,
-    images: resolvedFirstImages[i]
-      ? [resolvedFirstImages[i], ...(p.images?.slice(1) ?? [])]
-      : p.images,
-  }));
+  // Resolve signed URLs for the first two images of each paginated product
+  // (ProductCardImage uses images[0] and images[1] for the hover slide effect).
+  const firstTwoPaths = paginated.flatMap((p) => [p.images?.[0] ?? "", p.images?.[1] ?? ""]);
+  const resolvedFirstTwo = firstTwoPaths.some(isStoragePath)
+    ? await resolveImageUrls(firstTwoPaths)
+    : firstTwoPaths;
+  const paginatedWithImages = paginated.map((p, i) => {
+    const r0 = resolvedFirstTwo[i * 2];
+    const r1 = resolvedFirstTwo[i * 2 + 1];
+    const rest = p.images?.slice(2) ?? [];
+    return {
+      ...p,
+      images: [r0 || "", r1 || "", ...rest].filter(Boolean),
+    };
+  });
 
   return (
     <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 py-16">
