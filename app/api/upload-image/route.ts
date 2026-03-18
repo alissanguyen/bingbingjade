@@ -22,6 +22,10 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { applyWatermark } from "@/lib/watermark";
 import { IMAGE_BUCKET } from "@/lib/storage";
 
+// Allow large raw image files (iPhone HEIC/RAW can be 15–20 MB)
+export const maxDuration = 60; // seconds — Sharp processing can be slow on large files
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   // ── Auth: must be logged-in admin ─────────────────────────────────────────
   const cookieStore = await cookies();
