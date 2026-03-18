@@ -6,27 +6,128 @@ import emailjs from "@emailjs/browser";
 
 type Status = "idle" | "sending" | "success" | "error";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface ProductOption {
-  id: string;
+  id: string;        // internal UUID — used only for React keys, never sent to EmailJS
   name: string;
   category: string;
   status: string;
   price_display_usd: number | null;
   sale_price_usd: number | null;
-  public_id: string;
+  public_id: string; // public-facing identifier used in URLs and email params
+  slug?: string;     // URL slug prefix — present on new products, may be absent on legacy
   images: string[];
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// Strip trailing slash so concatenation is always clean
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
+
 function formatPrice(p: ProductOption): string {
-  if (p.status === "on_sale" && p.sale_price_usd != null) return `$${p.sale_price_usd.toFixed(2)} (on sale from $${p.price_display_usd?.toFixed(2)})`;
+  if (p.status === "on_sale" && p.sale_price_usd != null) {
+    const sale = `$${p.sale_price_usd.toFixed(2)}`;
+    const original = p.price_display_usd != null ? ` (was $${p.price_display_usd.toFixed(2)})` : "";
+    return `${sale}${original}`;
+  }
   if (p.price_display_usd != null) return `$${p.price_display_usd.toFixed(2)}`;
   return "Contact for price";
 }
 
-function statusLabel(s: string) {
-  if (s === "sold") return " · Sold";
-  if (s === "on_sale") return " · On Sale";
-  return "";
+function formatStatusLabel(s: string): string {
+  if (s === "sold") return "Sold";
+  if (s === "on_sale") return "On Sale";
+  return "Available";
+}
+
+/** Builds the canonical public product URL.
+ *  Uses slug when present (new products), falls back to public_id only (legacy). */
+function buildProductUrl(p: ProductOption): string {
+  const path = p.slug
+    ? `/products/${p.slug}-${p.public_id}`
+    : `/products/${p.public_id}`;
+  return SITE_URL ? `${SITE_URL}${path}` : path;
+}
+
+function getFirstImageUrl(p: ProductOption): string {
+  return p.images?.[0] ?? "";
+}
+
+/** Maps an array of products to a comma-separated string. Falls back to `fallback` if empty. */
+function joinField(products: ProductOption[], fn: (p: ProductOption) => string, fallback = "N/A"): string {
+  if (products.length === 0) return fallback;
+  return products.map(fn).join(", ");
+}
+
+// ─── EmailJS payload ──────────────────────────────────────────────────────────
+
+interface EmailParams extends Record<string, unknown> {
+  from_name: string;
+  from_email: string;
+  message: string;
+  inquiry_type: "Product inquiry" | "General inquiry";
+  // Aggregate — all selected products, comma-separated
+  product_names: string;
+  product_public_ids: string;
+  product_categories: string;
+  product_prices: string;
+  product_statuses: string;
+  product_urls: string;
+  product_image_urls: string;
+  // Primary — first selected product (use for featured card in email template)
+  primary_product_name: string;
+  primary_product_public_id: string;
+  primary_product_category: string;
+  primary_product_price: string;
+  primary_product_status: string;
+  primary_product_url: string;
+  primary_product_image_url: string;
+  // Meta
+  product_count: string;
+  has_multiple_products: "yes" | "no";
+}
+
+function buildEmailParams(
+  fields: { from_name: string; from_email: string; message: string },
+  selectedProducts: ProductOption[],
+): EmailParams {
+  const hasProducts = selectedProducts.length > 0;
+  const primary = hasProducts ? selectedProducts[0] : null;
+
+  return {
+    from_name: fields.from_name,
+    from_email: fields.from_email,
+    message: fields.message,
+    inquiry_type: hasProducts ? "Product inquiry" : "General inquiry",
+    // Aggregate
+    product_names:      joinField(selectedProducts, (p) => p.name),
+    product_public_ids: joinField(selectedProducts, (p) => p.public_id),
+    product_categories: joinField(selectedProducts, (p) => p.category),
+    product_prices:     joinField(selectedProducts, (p) => formatPrice(p)),
+    product_statuses:   joinField(selectedProducts, (p) => formatStatusLabel(p.status)),
+    product_urls:       joinField(selectedProducts, (p) => buildProductUrl(p)),
+    product_image_urls: joinField(selectedProducts, (p) => getFirstImageUrl(p), ""),
+    // Primary
+    primary_product_name:      primary?.name ?? "",
+    primary_product_public_id: primary?.public_id ?? "",
+    primary_product_category:  primary?.category ?? "",
+    primary_product_price:     primary ? formatPrice(primary) : "",
+    primary_product_status:    primary ? formatStatusLabel(primary.status) : "",
+    primary_product_url:       primary ? buildProductUrl(primary) : "",
+    primary_product_image_url: primary ? getFirstImageUrl(primary) : "",
+    // Meta
+    product_count:         String(selectedProducts.length),
+    has_multiple_products: selectedProducts.length > 1 ? "yes" : "no",
+  };
+}
+
+// ─── ProductCard UI ───────────────────────────────────────────────────────────
+
+function statusBadge(s: string) {
+  if (s === "sold") return <span className="ml-1.5 rounded-full bg-red-100 dark:bg-red-950/50 px-1.5 py-0.5 text-red-600 dark:text-red-400 normal-case tracking-normal">Sold</span>;
+  if (s === "on_sale") return <span className="ml-1.5 rounded-full bg-amber-100 dark:bg-amber-950/50 px-1.5 py-0.5 text-amber-600 dark:text-amber-400 normal-case tracking-normal">On Sale</span>;
+  return null;
 }
 
 function ProductCard({ p, onRemove }: { p: ProductOption; onRemove: () => void }) {
@@ -44,16 +145,16 @@ function ProductCard({ p, onRemove }: { p: ProductOption; onRemove: () => void }
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                {p.category}
-                {p.status === "sold" && <span className="ml-1.5 rounded-full bg-red-100 dark:bg-red-950/50 px-1.5 py-0.5 text-red-600 dark:text-red-400 normal-case tracking-normal">Sold</span>}
-                {p.status === "on_sale" && <span className="ml-1.5 rounded-full bg-amber-100 dark:bg-amber-950/50 px-1.5 py-0.5 text-amber-600 dark:text-amber-400 normal-case tracking-normal">On Sale</span>}
+                {p.category}{statusBadge(p.status)}
               </p>
               <p className="mt-0.5 text-sm font-semibold text-gray-900 dark:text-gray-100 leading-snug line-clamp-1">{p.name}</p>
               <p className="mt-0.5 text-sm font-medium text-emerald-700 dark:text-emerald-400">
                 {p.status === "on_sale" && p.sale_price_usd != null ? (
                   <>
                     <span>${p.sale_price_usd.toFixed(2)}</span>
-                    {p.price_display_usd != null && <span className="ml-1.5 text-xs text-gray-400 line-through">${p.price_display_usd.toFixed(2)}</span>}
+                    {p.price_display_usd != null && (
+                      <span className="ml-1.5 text-xs text-gray-400 line-through">${p.price_display_usd.toFixed(2)}</span>
+                    )}
                   </>
                 ) : p.price_display_usd != null ? (
                   `$${p.price_display_usd.toFixed(2)}`
@@ -79,6 +180,8 @@ function ProductCard({ p, onRemove }: { p: ProductOption; onRemove: () => void }
   );
 }
 
+// ─── ContactForm ──────────────────────────────────────────────────────────────
+
 export function ContactForm({
   products = [],
   preselectedProductId,
@@ -89,26 +192,34 @@ export function ContactForm({
   const [status, setStatus] = useState<Status>("idle");
   const [fields, setFields] = useState({ from_name: "", from_email: "", message: "" });
 
-  const preselected = preselectedProductId ? products.find((p) => p.public_id === preselectedProductId) : null;
-  const [selectedIds, setSelectedIds] = useState<string[]>(preselected ? [preselected.id] : []);
+  // Use public_id as the selection key — never exposes internal UUIDs
+  const preselected = preselectedProductId
+    ? products.find((p) => p.public_id === preselectedProductId)
+    : null;
+  const [selectedPublicIds, setSelectedPublicIds] = useState<string[]>(
+    preselected ? [preselected.public_id] : [],
+  );
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const comboRef = useRef<HTMLDivElement>(null);
 
-  const selectedProducts = selectedIds.map((id) => products.find((p) => p.id === id)).filter(Boolean) as ProductOption[];
+  const selectedProducts = selectedPublicIds
+    .map((pid) => products.find((p) => p.public_id === pid))
+    .filter(Boolean) as ProductOption[];
 
   const filtered = (query.trim()
     ? products.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()))
     : products
-  ).filter((p) => !selectedIds.includes(p.id));
+  ).filter((p) => !selectedPublicIds.includes(p.public_id));
 
   function addProduct(p: ProductOption) {
-    setSelectedIds((ids) => [...ids, p.id]);
+    setSelectedPublicIds((ids) => [...ids, p.public_id]);
     setQuery("");
+    setOpen(false);
   }
 
-  function removeProduct(id: string) {
-    setSelectedIds((ids) => ids.filter((i) => i !== id));
+  function removeProduct(publicId: string) {
+    setSelectedPublicIds((ids) => ids.filter((id) => id !== publicId));
   }
 
   useEffect(() => {
@@ -134,24 +245,20 @@ export function ContactForm({
     setStatus("sending");
     try {
       const opts = { publicKey: process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY! };
-      const params = {
-        from_name,
-        from_email,
-        message,
-        product_name: selectedProducts.length > 0 ? selectedProducts.map((p) => p.name).join(", ") : "N/A",
-        product_id: selectedProducts.length > 0 ? selectedProducts.map((p) => p.id).join(", ") : "N/A",
-        product_category: selectedProducts.length > 0 ? selectedProducts.map((p) => p.category).join(", ") : "N/A",
-        product_price: selectedProducts.length > 0 ? selectedProducts.map((p) => formatPrice(p)).join(", ") : "N/A",
-        product_status: selectedProducts.length > 0 ? selectedProducts.map((p) => p.status).join(", ") : "N/A",
-      };
+      const params = buildEmailParams(fields, selectedProducts);
 
       await Promise.all([
         emailjs.send(process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!, process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!, params, opts),
         emailjs.send(process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!, process.env.NEXT_PUBLIC_EMAILJS_NOTIFICATION_TEMPLATE_ID!, params, opts),
       ]);
+
       setStatus("success");
+      // Reset the form fully after a successful send.
+      // We clear the preselected product too — the message was sent, so a clean
+      // slate is the right UX. If the user wants to send another message about
+      // the same product they can easily re-select it or navigate back.
       setFields({ from_name: "", from_email: "", message: "" });
-      setSelectedIds([]);
+      setSelectedPublicIds([]);
       setQuery("");
     } catch (err) {
       console.error("EmailJS error:", err);
@@ -195,14 +302,18 @@ export function ContactForm({
             {open && filtered.length > 0 && (
               <ul className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg text-sm">
                 {filtered.map((p) => (
-                  <li key={p.id}>
+                  <li key={p.public_id}>
                     <button
                       type="button"
-                      onMouseDown={(e) => { e.preventDefault(); addProduct(p); setOpen(false); }}
+                      onMouseDown={(e) => { e.preventDefault(); addProduct(p); }}
                       className="w-full text-left px-4 py-2.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 flex items-center justify-between gap-3"
                     >
                       <span className="text-gray-900 dark:text-gray-100 truncate">{p.name}</span>
-                      <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500">{p.category}{statusLabel(p.status)}</span>
+                      <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500">
+                        {p.category}
+                        {p.status === "sold" && " · Sold"}
+                        {p.status === "on_sale" && " · On Sale"}
+                      </span>
                     </button>
                   </li>
                 ))}
@@ -216,11 +327,10 @@ export function ContactForm({
             )}
           </div>
 
-          {/* Selected product cards */}
           {selectedProducts.length > 0 && (
             <div className="mt-3 flex flex-col gap-2">
               {selectedProducts.map((p) => (
-                <ProductCard key={p.id} p={p} onRemove={() => removeProduct(p.id)} />
+                <ProductCard key={p.public_id} p={p} onRemove={() => removeProduct(p.public_id)} />
               ))}
             </div>
           )}

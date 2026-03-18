@@ -12,7 +12,7 @@ export default async function Contact({
 
   const { data: rawProducts } = await supabase
     .from("products")
-    .select("id, name, category, status, price_display_usd, sale_price_usd, public_id, images")
+    .select("id, name, category, status, price_display_usd, sale_price_usd, public_id, slug, images")
     .order("created_at", { ascending: false });
 
   const raw = rawProducts ?? [];
