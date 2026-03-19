@@ -50,6 +50,13 @@ function buildProductUrl(p: ProductOption): string {
   return SITE_URL ? `${SITE_URL}${path}` : path;
 }
 
+/**
+ * Returns the first image URL for a product.
+ * REQUIREMENT: p.images[0] must already be a fully resolved, publicly accessible
+ * URL (https://...) — not a raw storage path like "wm/abc.jpg".
+ * The contact page resolves signed URLs server-side before passing products here.
+ * If that upstream resolution is skipped, email image cards will be broken.
+ */
 function getFirstImageUrl(p: ProductOption): string {
   return p.images?.[0] ?? "";
 }
@@ -63,6 +70,10 @@ function joinField(products: ProductOption[], fn: (p: ProductOption) => string, 
 // ─── EmailJS payload ──────────────────────────────────────────────────────────
 
 interface EmailParams extends Record<string, unknown> {
+  // Aliases for EmailJS default templates that use {{name}} / {{email}}
+  name: string;
+  email: string;
+  // Explicit fields used by custom templates
   from_name: string;
   from_email: string;
   message: string;
@@ -96,17 +107,19 @@ function buildEmailParams(
   const primary = hasProducts ? selectedProducts[0] : null;
 
   return {
+    name: fields.from_name,
+    email: fields.from_email,
     from_name: fields.from_name,
     from_email: fields.from_email,
     message: fields.message,
     inquiry_type: hasProducts ? "Product inquiry" : "General inquiry",
-    // Aggregate
-    product_names:      joinField(selectedProducts, (p) => p.name),
-    product_public_ids: joinField(selectedProducts, (p) => p.public_id),
-    product_categories: joinField(selectedProducts, (p) => p.category),
-    product_prices:     joinField(selectedProducts, (p) => formatPrice(p)),
-    product_statuses:   joinField(selectedProducts, (p) => formatStatusLabel(p.status)),
-    product_urls:       joinField(selectedProducts, (p) => buildProductUrl(p)),
+    // Aggregate — empty string when no products selected (avoids "N/A" in email templates)
+    product_names:      joinField(selectedProducts, (p) => p.name, ""),
+    product_public_ids: joinField(selectedProducts, (p) => p.public_id, ""),
+    product_categories: joinField(selectedProducts, (p) => p.category, ""),
+    product_prices:     joinField(selectedProducts, (p) => formatPrice(p), ""),
+    product_statuses:   joinField(selectedProducts, (p) => formatStatusLabel(p.status), ""),
+    product_urls:       joinField(selectedProducts, (p) => buildProductUrl(p), ""),
     product_image_urls: joinField(selectedProducts, (p) => getFirstImageUrl(p), ""),
     // Primary
     primary_product_name:      primary?.name ?? "",
@@ -253,12 +266,12 @@ export function ContactForm({
       ]);
 
       setStatus("success");
-      // Reset the form fully after a successful send.
-      // We clear the preselected product too — the message was sent, so a clean
-      // slate is the right UX. If the user wants to send another message about
-      // the same product they can easily re-select it or navigate back.
+      // Clear text fields and query after submit. If the page was opened with a
+      // preselected product (e.g. from /contact?product=xxx), restore that
+      // selection — the customer may want to follow up about the same piece.
+      // Otherwise clear the selection entirely for a clean slate.
       setFields({ from_name: "", from_email: "", message: "" });
-      setSelectedPublicIds([]);
+      setSelectedPublicIds(preselected ? [preselected.public_id] : []);
       setQuery("");
     } catch (err) {
       console.error("EmailJS error:", err);
