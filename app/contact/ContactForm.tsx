@@ -22,8 +22,9 @@ interface ProductOption {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// Strip trailing slash so concatenation is always clean
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
+// Strip trailing slash so concatenation is always clean.
+// Falls back to the production domain so email links are always absolute.
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
 
 function formatPrice(p: ProductOption): string {
   if (p.status === "on_sale" && p.sale_price_usd != null) {
