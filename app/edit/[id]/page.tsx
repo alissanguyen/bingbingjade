@@ -2,13 +2,32 @@ import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { resolveImageUrls, resolveVideoUrls, isStoragePath } from "@/lib/storage";
 import { EditForm } from "./EditForm";
+import type { OptionStatus } from "@/types/product";
+
+interface InitialOptionRaw {
+  label: string | null;
+  size: number | null;
+  price_usd: number | null;
+  status: OptionStatus;
+  images: string[];
+}
+
+interface InitialOption extends InitialOptionRaw {
+  imageUrls: string[]; // resolved for display
+}
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const [{ data: product }, { data: vendors }] = await Promise.all([
+  const [{ data: product }, { data: vendors }, { data: optionsData }] = await Promise.all([
     supabaseAdmin.from("products").select("*").eq("id", id).single(),
     supabaseAdmin.from("vendors").select("*").order("name"),
+    supabaseAdmin
+      .from("product_options")
+      .select("label, size, price_usd, status, images")
+      .eq("product_id", id)
+      .order("sort_order")
+      .returns<InitialOptionRaw[]>(),
   ]);
 
   if (!product) notFound();
@@ -20,6 +39,15 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     imagePaths.some(isStoragePath) ? resolveImageUrls(imagePaths) : Promise.resolve(imagePaths),
     videoPaths.some(isStoragePath) ? resolveVideoUrls(videoPaths) : Promise.resolve(videoPaths),
   ]);
+
+  // Resolve option images for display in the edit form
+  const initialOptions: InitialOption[] = await Promise.all(
+    (optionsData ?? []).map(async (opt) => {
+      const paths = opt.images ?? [];
+      const urls = paths.some(isStoragePath) ? await resolveImageUrls(paths) : paths;
+      return { ...opt, imageUrls: urls };
+    })
+  );
 
   const productWithUrls = {
     ...product,
@@ -33,7 +61,11 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         <p className="text-sm text-gray-400 dark:text-gray-500 mb-1">Editing</p>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{product.name}</h1>
       </div>
-      <EditForm product={productWithUrls} vendors={vendors ?? []} />
+      <EditForm
+        product={productWithUrls}
+        vendors={vendors ?? []}
+        initialOptions={initialOptions}
+      />
     </div>
   );
 }

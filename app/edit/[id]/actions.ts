@@ -3,6 +3,14 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import type { ProductCategory } from "@/types/product";
 
+interface OptionInput {
+  label: string;
+  size: string;
+  price: string;
+  status: string;
+  images?: string[];
+}
+
 export async function deleteProduct(id: string): Promise<{ error?: string; success?: boolean }> {
   const { error } = await supabaseAdmin.from("products").delete().eq("id", id);
   if (error) return { error: error.message };
@@ -15,6 +23,7 @@ export async function updateProduct(
 ): Promise<{ error?: string; success?: boolean }> {
   const imageUrls = formData.getAll("imageUrls") as string[];
   const videoUrls = formData.getAll("videoUrls") as string[];
+  const productStatus = (formData.get("status") as string) || "available";
 
   const { error } = await supabaseAdmin
     .from("products")
@@ -37,12 +46,37 @@ export async function updateProduct(
       imported_price_vnd: Number(formData.get("imported_price_vnd")),
       vendor_id: formData.get("vendor_id") as string,
       is_featured: formData.get("is_featured") === "true",
-      status: (formData.get("status") as string) || "available",
+      status: productStatus,
       images: imageUrls,
       videos: videoUrls,
     })
     .eq("id", id);
 
   if (error) return { error: error.message };
+
+  // Replace options: delete all existing, then reinsert
+  const optionsJson = formData.get("options_json") as string | null;
+  if (optionsJson) {
+    try {
+      const parsedOptions = JSON.parse(optionsJson) as OptionInput[];
+      const isSingleNoLabel = parsedOptions.length === 1 && !parsedOptions[0].label;
+      await supabaseAdmin.from("product_options").delete().eq("product_id", id);
+      const optionsToInsert = parsedOptions.map((o, i) => ({
+        product_id: id,
+        label: o.label || null,
+        size: o.size ? Number(o.size) : null,
+        price_usd: o.price ? Number(o.price) : null,
+        images: o.images ?? [],
+        status: isSingleNoLabel
+          ? (productStatus === "sold" ? "sold" : "available")
+          : (o.status || "available"),
+        sort_order: i,
+      }));
+      await supabaseAdmin.from("product_options").insert(optionsToInsert);
+    } catch {
+      // options_json parse failure is non-fatal
+    }
+  }
+
   return { success: true };
 }

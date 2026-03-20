@@ -1,5 +1,19 @@
 export type ProductCategory = "bracelet" | "bangle" | "ring" | "pendant" | "necklace" | "other";
 
+export type OptionStatus = "available" | "sold";
+
+export interface ProductOption {
+  id: string;
+  product_id: string;
+  label: string | null;
+  size: number | null;
+  price_usd: number | null;
+  images: string[];
+  status: OptionStatus;
+  sort_order: number;
+  created_at: string;
+}
+
 export interface Product {
   id: string;
   name: string;

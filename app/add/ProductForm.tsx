@@ -6,7 +6,18 @@ import { createProduct } from "./actions";
 import { createVendor } from "@/app/addvendor/actions";
 import { ImageCropModal, VideoTrimModal } from "./MediaCroppers";
 import type { Vendor, VendorPlatform } from "@/types/vendor";
-import type { ProductCategory } from "@/types/product";
+import type { ProductCategory, OptionStatus } from "@/types/product";
+
+interface OptionRow {
+  label: string;
+  size: string;
+  price: string;
+  status: OptionStatus;
+  imageFile: File | null;
+  imagePreview: string | null;
+  existingImagePath: string;
+  existingImageUrl: string;
+}
 
 interface Props {
   vendors: Vendor[];
@@ -314,6 +325,14 @@ export function ProductForm({ vendors }: Props) {
 
   const [cropTarget, setCropTarget] = useState<{ index: number; src: string; fileName: string } | null>(null);
   const [trimTarget, setTrimTarget] = useState<{ index: number; file: File } | null>(null);
+  const [variantCropTarget, setVariantCropTarget] = useState<{ index: number; src: string; fileName: string } | null>(null);
+
+  const handleVariantCropConfirm = (croppedFile: File) => {
+    if (!variantCropTarget) return;
+    const preview = URL.createObjectURL(croppedFile);
+    setVariantImage(variantCropTarget.index, croppedFile, preview);
+    setVariantCropTarget(null);
+  };
 
   const handleCropConfirm = (croppedFile: File) => {
     if (!cropTarget) return;
@@ -352,6 +371,42 @@ export function ProductForm({ vendors }: Props) {
   });
   const [selectedTiers, setSelectedTiers] = useState<string[]>([]);
   const [sizeDetailed, setSizeDetailed] = useState<[string, string, string]>(["", "", ""]);
+
+  const blankRow = (): OptionRow => ({ label: "", size: "", price: "", status: "available", imageFile: null, imagePreview: null, existingImagePath: "", existingImageUrl: "" });
+
+  const [optionRows, setOptionRows] = useState<OptionRow[]>([blankRow()]);
+
+  const updateOptionRow = (i: number, field: keyof OptionRow, value: string) =>
+    setOptionRows((prev) => {
+      const next = [...prev];
+      next[i] = { ...next[i], [field]: value };
+      return next;
+    });
+
+  const setVariantImage = (i: number, file: File, preview: string | null) =>
+    setOptionRows((prev) => {
+      const next = [...prev];
+      if (next[i].imagePreview) URL.revokeObjectURL(next[i].imagePreview!);
+      next[i] = { ...next[i], imageFile: file, imagePreview: preview };
+      return next;
+    });
+
+  const clearVariantImage = (i: number) =>
+    setOptionRows((prev) => {
+      const next = [...prev];
+      if (next[i].imagePreview) URL.revokeObjectURL(next[i].imagePreview!);
+      next[i] = { ...next[i], imageFile: null, imagePreview: null, existingImagePath: "", existingImageUrl: "" };
+      return next;
+    });
+
+  const addOptionRow = () =>
+    setOptionRows((prev) => [...prev, blankRow()]);
+
+  const removeOptionRow = (i: number) =>
+    setOptionRows((prev) => {
+      if (prev[i].imagePreview) URL.revokeObjectURL(prev[i].imagePreview!);
+      return prev.filter((_, idx) => idx !== i);
+    });
 
   const toggleColor = (color: string) =>
     setSelectedColors((prev) =>
@@ -428,6 +483,10 @@ export function ProductForm({ vendors }: Props) {
       setResult({ error: "Please select a vendor before saving." });
       return;
     }
+    if (status === "sold" && optionRows.some((r) => r.status !== "sold")) {
+      setResult({ error: "All variants must be marked as Sold before the product can be marked Sold." });
+      return;
+    }
     setIsSubmitting(true);
     setResult(null);
 
@@ -445,6 +504,33 @@ export function ProductForm({ vendors }: Props) {
       imageUrls.forEach((url) => fd.append("imageUrls", url));
       videoUrls.forEach((url) => fd.append("videoUrls", url));
 
+      // Upload variant images
+      const optionImagePaths: string[] = [];
+      for (const row of optionRows) {
+        if (row.imageFile) {
+          const vfd = new FormData();
+          vfd.append("file", row.imageFile);
+          vfd.append("category", form.category);
+          const res = await fetch("/api/upload-image", { method: "POST", body: vfd });
+          if (!res.ok) {
+            const { error } = await res.json().catch(() => ({ error: "Unknown error" }));
+            throw new Error(`Variant image upload failed: ${error}`);
+          }
+          const { path } = await res.json();
+          optionImagePaths.push(path);
+        } else {
+          optionImagePaths.push(row.existingImagePath);
+        }
+      }
+      const optionsForJson = optionRows.map((row, i) => ({
+        label: row.label,
+        size: row.size,
+        price: row.price,
+        status: row.status,
+        images: optionImagePaths[i] ? [optionImagePaths[i]] : [],
+      }));
+      fd.append("options_json", JSON.stringify(optionsForJson));
+
       const res = await createProduct(fd);
       if (res.error) {
         setResult({ error: res.error });
@@ -458,6 +544,7 @@ export function ProductForm({ vendors }: Props) {
         setVideos([]);
         setIsFeatured(false);
         setSizeDetailed(["", "", ""]);
+        setOptionRows([blankRow()]);
       }
     } catch (err) {
       setResult({ error: err instanceof Error ? err.message : "Something went wrong" });
@@ -747,6 +834,139 @@ export function ProductForm({ vendors }: Props) {
         </div>
       </section>
 
+      {/* Variants */}
+      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">Variants</h2>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+          Leave Label empty for a single one-of-one piece. Add multiple variants for items in different sizes or styles.
+        </p>
+        <div className="space-y-2">
+          {optionRows.map((row, i) => (
+            <div key={i} className="flex gap-2 items-end rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-3">
+              {/* Variant image thumbnail */}
+              <div className="shrink-0">
+                <label className="block text-xs text-gray-400 mb-1">Photo</label>
+                <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 cursor-pointer group">
+                  <input
+                    type="file"
+                    accept=".heic,.jpg,.jpeg,image/jpeg"
+                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.name.toLowerCase().endsWith(".heic")) {
+                        setVariantImage(i, file, null);
+                      } else {
+                        const src = URL.createObjectURL(file);
+                        setVariantCropTarget({ index: i, src, fileName: file.name });
+                      }
+                      e.target.value = "";
+                    }}
+                  />
+                  {(row.imagePreview || row.existingImageUrl) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={row.imagePreview || row.existingImageUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600 group-hover:text-emerald-500 transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                        <circle cx="12" cy="13" r="4"/>
+                      </svg>
+                    </div>
+                  )}
+                  {(row.imageFile || row.existingImagePath) && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); clearVariantImage(i); }}
+                      className="absolute top-0 right-0 z-20 w-4 h-4 rounded-bl bg-red-500 text-white flex items-center justify-center"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="flex-1 grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Label</label>
+                  <input
+                    type="text"
+                    value={row.label}
+                    onChange={(e) => updateOptionRow(i, "label", e.target.value)}
+                    placeholder="e.g. Ring A, 51–52mm"
+                    className={`${inputClass} text-xs py-2`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Size (mm)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={row.size}
+                    onChange={(e) => updateOptionRow(i, "size", e.target.value)}
+                    placeholder="inherit"
+                    className={`${inputClass} text-xs py-2`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Price ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={row.price}
+                    onChange={(e) => updateOptionRow(i, "price", e.target.value)}
+                    placeholder="inherit"
+                    className={`${inputClass} text-xs py-2`}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0 pb-0.5">
+                <button
+                  type="button"
+                  onClick={() => updateOptionRow(i, "status", "available")}
+                  className={`px-2.5 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                    row.status === "available"
+                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+                      : "border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300"
+                  }`}
+                >
+                  Avail
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateOptionRow(i, "status", "sold")}
+                  className={`px-2.5 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                    row.status === "sold"
+                      ? "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400"
+                      : "border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300"
+                  }`}
+                >
+                  Sold
+                </button>
+                {optionRows.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeOptionRow(i)}
+                    className="ml-1 text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 transition-colors"
+                  >
+                    <XIcon />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={addOptionRow}
+          className="mt-3 flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Add variant
+        </button>
+      </section>
+
       {/* Options */}
       <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Options</h2>
@@ -774,6 +994,11 @@ export function ProductForm({ vendors }: Props) {
                 </button>
               ))}
             </div>
+            {status === "sold" && optionRows.some((r) => r.status !== "sold") && (
+              <p className="mt-2 text-xs text-red-500 dark:text-red-400">
+                {optionRows.filter((r) => r.status !== "sold").length} variant(s) still marked as available — mark all variants Sold first.
+              </p>
+            )}
           </div>
 
           {/* Featured */}
@@ -819,6 +1044,15 @@ export function ProductForm({ vendors }: Props) {
           fileName={cropTarget.fileName}
           onConfirm={handleCropConfirm}
           onClose={() => setCropTarget(null)}
+        />
+      )}
+
+      {variantCropTarget && (
+        <ImageCropModal
+          src={variantCropTarget.src}
+          fileName={variantCropTarget.fileName}
+          onConfirm={handleVariantCropConfirm}
+          onClose={() => setVariantCropTarget(null)}
         />
       )}
 

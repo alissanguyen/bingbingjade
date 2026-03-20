@@ -25,6 +25,12 @@ interface ProductCard {
   public_id: string;
 }
 
+interface OptionPriceRow {
+  product_id: string;
+  price_usd: number | null;
+  status: string;
+}
+
 const COLOR_SWATCHES: Record<string, string> = {
   white:    "bg-white border border-gray-300",
   green:    "bg-green-500",
@@ -57,13 +63,45 @@ export default async function Products({
   const PAGE_SIZE = 18;
   const currentPage = Math.max(1, Number(params.page ?? "1"));
 
-  const { data: allProducts, error } = await supabase
-    .from("products")
-    .select("id, name, category, images, color, tier, size, price_display_usd, sale_price_usd, description, is_featured, status, slug, public_id")
-    .order("created_at", { ascending: false });
+  const [{ data: allProducts, error }, { data: allOptions }] = await Promise.all([
+    supabase
+      .from("products")
+      .select("id, name, category, images, color, tier, size, price_display_usd, sale_price_usd, description, is_featured, status, slug, public_id")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("product_options")
+      .select("product_id, price_usd, status")
+      .returns<OptionPriceRow[]>(),
+  ]);
 
   if (error) {
     console.error("Failed to load products:", error.message);
+  }
+
+  // Build option map: productId → options[]
+  const optionMap = new Map<string, OptionPriceRow[]>();
+  for (const opt of allOptions ?? []) {
+    const arr = optionMap.get(opt.product_id) ?? [];
+    arr.push(opt);
+    optionMap.set(opt.product_id, arr);
+  }
+
+  // Get effective available-option prices for a product (non-sold options with price overrides,
+  // falling back to product.price_display_usd when an option has no price of its own).
+  function getVariantPrices(p: ProductCard): number[] {
+    const opts = optionMap.get(p.id) ?? [];
+    const available = opts.filter((o) => o.status !== "sold");
+    const pool = available.length > 0 ? available : opts; // if all sold, still compute range
+    return pool
+      .map((o) => o.price_usd ?? p.price_display_usd)
+      .filter((v): v is number => v != null);
+  }
+
+  // Effective sort price: for on_sale products use sale price; otherwise use min variant / display price
+  function effectiveSortPrice(p: ProductCard): number {
+    if (p.status === "on_sale" && p.sale_price_usd != null) return p.sale_price_usd;
+    const vp = getVariantPrices(p);
+    return vp.length > 0 ? Math.min(...vp) : (p.price_display_usd ?? Infinity);
   }
 
   const products = (allProducts as ProductCard[] | null)?.filter((p) => {
@@ -79,13 +117,24 @@ export default async function Products({
     // Size filter
     if (minSize !== null && (p.size == null || p.size < minSize)) return false;
     if (maxSize !== null && (p.size == null || p.size > maxSize)) return false;
-    // Price filter — use effective price
-    const effectivePrice =
-      p.status === "on_sale" && p.sale_price_usd != null
-        ? p.sale_price_usd
-        : p.price_display_usd;
-    if (minPrice !== null && (effectivePrice == null || effectivePrice < minPrice)) return false;
-    if (maxPrice !== null && (effectivePrice == null || effectivePrice > maxPrice)) return false;
+    // Price filter — match if any available variant price overlaps the filter range
+    if (minPrice !== null || maxPrice !== null) {
+      const effectivePrice =
+        p.status === "on_sale" && p.sale_price_usd != null ? p.sale_price_usd : null;
+      const vPrices = getVariantPrices(p);
+      if (vPrices.length > 0) {
+        const vMin = Math.min(...vPrices);
+        const vMax = Math.max(...vPrices);
+        const checkMin = effectivePrice ?? vMin;
+        const checkMax = effectivePrice ?? vMax;
+        if (minPrice !== null && checkMax < minPrice) return false;
+        if (maxPrice !== null && checkMin > maxPrice) return false;
+      } else {
+        const ep = p.status === "on_sale" && p.sale_price_usd != null ? p.sale_price_usd : p.price_display_usd;
+        if (minPrice !== null && (ep == null || ep < minPrice)) return false;
+        if (maxPrice !== null && (ep == null || ep > maxPrice)) return false;
+      }
+    }
     return true;
   }) ?? [];
 
@@ -93,8 +142,8 @@ export default async function Products({
   if (sort) {
     products.sort((a, b) => {
       if (sort === "price_asc" || sort === "price_desc") {
-        const pa = (a.status === "on_sale" && a.sale_price_usd != null ? a.sale_price_usd : a.price_display_usd) ?? Infinity;
-        const pb = (b.status === "on_sale" && b.sale_price_usd != null ? b.sale_price_usd : b.price_display_usd) ?? Infinity;
+        const pa = effectiveSortPrice(a);
+        const pb = effectiveSortPrice(b);
         return sort === "price_asc" ? pa - pb : pb - pa;
       }
       if (sort === "size_asc" || sort === "size_desc") {
@@ -209,32 +258,46 @@ export default async function Products({
                       </div>
                     )}
                     <div className="ProductCard_PriceRow mt-3 flex items-center justify-between">
-                      {product.status === "sold" ? (
-                        <span className="flex items-center gap-2">
-                          <span className="font-medium text-gray-500 dark:text-gray-400">
-                            {product.sale_price_usd != null ? `$${product.sale_price_usd.toFixed(2)}` : product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : "—"}
-                          </span>
-                          {product.sale_price_usd != null && product.price_display_usd != null && (
-                            <>
-                              <span className="text-xs text-gray-400 line-through">${product.price_display_usd.toFixed(2)}</span>
-                              <span className="rounded-full bg-gray-400 dark:bg-gray-600 px-1.5 py-0.5 text-xs font-semibold text-white">
-                                −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
+                      {(() => {
+                        const vp = getVariantPrices(product);
+                        const vMin = vp.length > 0 ? Math.min(...vp) : null;
+                        const vMax = vp.length > 0 ? Math.max(...vp) : null;
+                        const hasRange = vMin != null && vMax != null && vMin !== vMax;
+                        const rangeLabel = hasRange ? `$${vMin!.toFixed(2)} – $${vMax!.toFixed(2)}` : null;
+                        if (product.status === "sold") {
+                          const base = product.sale_price_usd ?? (rangeLabel ? null : product.price_display_usd);
+                          return (
+                            <span className="flex items-center gap-2">
+                              <span className="font-medium text-gray-500 dark:text-gray-400">
+                                {base != null ? `$${base.toFixed(2)}` : rangeLabel ?? "—"}
                               </span>
-                            </>
-                          )}
-                        </span>
-                      ) : product.status === "on_sale" && product.sale_price_usd != null ? (
-                        <span className="flex items-center gap-2">
-                          <span className="font-medium text-amber-600 dark:text-amber-400">${product.sale_price_usd.toFixed(2)}</span>
-                          {product.price_display_usd != null && (
-                            <span className="text-xs text-gray-400 line-through">${product.price_display_usd.toFixed(2)}</span>
-                          )}
-                        </span>
-                      ) : (
-                        <span className="font-medium text-emerald-700 dark:text-emerald-400">
-                          {product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : "Contact for price"}
-                        </span>
-                      )}
+                              {product.sale_price_usd != null && product.price_display_usd != null && (
+                                <>
+                                  <span className="text-xs text-gray-400 line-through">${product.price_display_usd.toFixed(2)}</span>
+                                  <span className="rounded-full bg-gray-400 dark:bg-gray-600 px-1.5 py-0.5 text-xs font-semibold text-white">
+                                    −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
+                                  </span>
+                                </>
+                              )}
+                            </span>
+                          );
+                        }
+                        if (product.status === "on_sale" && product.sale_price_usd != null) {
+                          return (
+                            <span className="flex items-center gap-2">
+                              <span className="font-medium text-amber-600 dark:text-amber-400">${product.sale_price_usd.toFixed(2)}</span>
+                              <span className="text-xs text-gray-400 line-through">
+                                {rangeLabel ?? (product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : null)}
+                              </span>
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                            {rangeLabel ?? (product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : "Contact for price")}
+                          </span>
+                        );
+                      })()}
                       {product.size && (
                         <span className="ProductCard_Size text-xs text-gray-400 dark:text-gray-500">Size {product.size}mm</span>
                       )}
@@ -259,32 +322,46 @@ export default async function Products({
                       </div>
                     )}
                     <div className="ProductCard_PriceRow flex flex-col mt-1">
-                      {product.status === "sold" ? (
-                        <span className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                            {product.sale_price_usd != null ? `$${product.sale_price_usd.toFixed(2)}` : product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : "—"}
-                          </span>
-                          {product.sale_price_usd != null && product.price_display_usd != null && (
-                            <>
-                              <span className="text-[10px] text-gray-400 line-through">${product.price_display_usd.toFixed(2)}</span>
-                              <span className="rounded-full bg-gray-400 dark:bg-gray-600 px-1 py-0.5 text-[10px] font-semibold text-white">
-                                −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
+                      {(() => {
+                        const vp = getVariantPrices(product);
+                        const vMin = vp.length > 0 ? Math.min(...vp) : null;
+                        const vMax = vp.length > 0 ? Math.max(...vp) : null;
+                        const hasRange = vMin != null && vMax != null && vMin !== vMax;
+                        const rangeLabel = hasRange ? `$${vMin!.toFixed(2)} – $${vMax!.toFixed(2)}` : null;
+                        if (product.status === "sold") {
+                          const base = product.sale_price_usd ?? (rangeLabel ? null : product.price_display_usd);
+                          return (
+                            <span className="flex items-center gap-1.5">
+                              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                {base != null ? `$${base.toFixed(2)}` : rangeLabel ?? "—"}
                               </span>
-                            </>
-                          )}
-                        </span>
-                      ) : product.status === "on_sale" && product.sale_price_usd != null ? (
-                        <span className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-amber-600 dark:text-amber-400">${product.sale_price_usd.toFixed(2)}</span>
-                          {product.price_display_usd != null && (
-                            <span className="text-[10px] text-gray-400 line-through">${product.price_display_usd.toFixed(2)}</span>
-                          )}
-                        </span>
-                      ) : (
-                        <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                          {product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : "Contact for price"}
-                        </span>
-                      )}
+                              {product.sale_price_usd != null && product.price_display_usd != null && (
+                                <>
+                                  <span className="text-[10px] text-gray-400 line-through">${product.price_display_usd.toFixed(2)}</span>
+                                  <span className="rounded-full bg-gray-400 dark:bg-gray-600 px-1 py-0.5 text-[10px] font-semibold text-white">
+                                    −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
+                                  </span>
+                                </>
+                              )}
+                            </span>
+                          );
+                        }
+                        if (product.status === "on_sale" && product.sale_price_usd != null) {
+                          return (
+                            <span className="flex items-center gap-1.5">
+                              <span className="text-xs font-medium text-amber-600 dark:text-amber-400">${product.sale_price_usd.toFixed(2)}</span>
+                              <span className="text-[10px] text-gray-400 line-through">
+                                {rangeLabel ?? (product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : null)}
+                              </span>
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                            {rangeLabel ?? (product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : "Contact for price")}
+                          </span>
+                        );
+                      })()}
                       {product.size && (
                         <span className="ProductCard_Size text-[11px] mt-2 md:mt-0 text-gray-400 dark:text-gray-500">Size {product.size}mm</span>
                       )}
