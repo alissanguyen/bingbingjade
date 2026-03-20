@@ -52,12 +52,12 @@ export function CartDrawer() {
 
   return (
     <>
-      {/* Backdrop — z-30 keeps the sticky header (z-40) always on top */}
+      {/* Invisible click-outside trap */}
       <div
         ref={overlayRef}
         onClick={closeDrawer}
-        className={`fixed inset-0 z-30 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${
-          drawerOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        className={`fixed inset-0 z-30 ${
+          drawerOpen ? "pointer-events-auto" : "pointer-events-none"
         }`}
       />
 
