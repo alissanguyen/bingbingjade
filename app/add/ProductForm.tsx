@@ -375,6 +375,7 @@ export function ProductForm({ vendors }: Props) {
 
   const blankRow = (): OptionRow => ({ label: "", size: "", price: "", status: "available", imageFile: null, imagePreview: null, existingImagePath: "", existingImageUrl: "" });
 
+  const [hasVariants, setHasVariants] = useState(false);
   const [optionRows, setOptionRows] = useState<OptionRow[]>([blankRow()]);
 
   const updateOptionRow = (i: number, field: keyof OptionRow, value: string) =>
@@ -484,7 +485,7 @@ export function ProductForm({ vendors }: Props) {
       setResult({ error: "Please select a vendor before saving." });
       return;
     }
-    if (status === "sold" && optionRows.some((r) => r.status !== "sold")) {
+    if (hasVariants && status === "sold" && optionRows.some((r) => r.status !== "sold")) {
       setResult({ error: "All variants must be marked as Sold before the product can be marked Sold." });
       return;
     }
@@ -505,9 +506,10 @@ export function ProductForm({ vendors }: Props) {
       imageUrls.forEach((url) => fd.append("imageUrls", url));
       videoUrls.forEach((url) => fd.append("videoUrls", url));
 
-      // Upload variant images
+      // Upload variant images (skip if no variants)
+      const rowsToSubmit = hasVariants ? optionRows : [{ ...blankRow(), status: status === "sold" ? "sold" as OptionStatus : "available" as OptionStatus }];
       const optionImagePaths: string[] = [];
-      for (const row of optionRows) {
+      for (const row of rowsToSubmit) {
         if (row.imageFile) {
           const vfd = new FormData();
           vfd.append("file", row.imageFile);
@@ -523,7 +525,7 @@ export function ProductForm({ vendors }: Props) {
           optionImagePaths.push(row.existingImagePath);
         }
       }
-      const optionsForJson = optionRows.map((row, i) => ({
+      const optionsForJson = rowsToSubmit.map((row, i) => ({
         label: row.label,
         size: row.size,
         price: row.price,
@@ -845,10 +847,23 @@ export function ProductForm({ vendors }: Props) {
 
       {/* Variants */}
       <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">Variants</h2>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
-          Leave Label empty for a single one-of-one piece. Add multiple variants for items in different sizes or styles.
-        </p>
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Variants</h2>
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <span className="text-xs text-gray-400 dark:text-gray-500">This product has variants</span>
+            <button
+              type="button"
+              onClick={() => setHasVariants((v) => !v)}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${hasVariants ? "bg-emerald-600" : "bg-gray-300 dark:bg-gray-700"}`}
+            >
+              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${hasVariants ? "translate-x-4" : "translate-x-0.5"}`} />
+            </button>
+          </label>
+        </div>
+        {!hasVariants && (
+          <p className="text-xs text-gray-400 dark:text-gray-500">Single one-of-a-kind piece. Enable variants if this product comes in multiple sizes or styles.</p>
+        )}
+        {hasVariants && (<>
         <div className="space-y-2">
           {optionRows.map((row, i) => (
             <div key={i} className="flex gap-2 items-end rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-3">
@@ -974,6 +989,7 @@ export function ProductForm({ vendors }: Props) {
           </svg>
           Add variant
         </button>
+        </>)}
       </section>
 
       {/* Options */}
