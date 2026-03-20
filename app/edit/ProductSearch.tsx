@@ -26,9 +26,12 @@ const STATUS_LABELS: Record<string, string> = {
   sold:      "Sold",
 };
 
+const CATEGORIES = ["bracelet", "bangle", "ring", "pendant", "necklace", "other"] as const;
+
 export function ProductSearch({ products }: { products: ProductStub[] }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<"available" | "on_sale" | "sold">("available");
@@ -37,7 +40,8 @@ export function ProductSearch({ products }: { products: ProductStub[] }) {
   const [isPending, startTransition] = useTransition();
 
   const filtered = products.filter((p) =>
-    p.name.toLowerCase().includes(query.toLowerCase())
+    p.name.toLowerCase().includes(query.toLowerCase()) &&
+    (categoryFilter === null || p.category === categoryFilter)
   );
 
   const toggleSelect = (id: string) => {
@@ -118,6 +122,27 @@ export function ProductSearch({ products }: { products: ProductStub[] }) {
             Cancel
           </button>
         )}
+      </div>
+
+      {/* Category filter pills */}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setCategoryFilter(null)}
+          className={`rounded-full px-3.5 py-1.5 text-sm border transition-all ${categoryFilter === null ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-medium" : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"}`}
+        >
+          All
+        </button>
+        {CATEGORIES.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => setCategoryFilter(categoryFilter === c ? null : c)}
+            className={`rounded-full px-3.5 py-1.5 text-sm border transition-all capitalize ${categoryFilter === c ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-medium" : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"}`}
+          >
+            {c}
+          </button>
+        ))}
       </div>
 
       {/* Select-mode controls */}
