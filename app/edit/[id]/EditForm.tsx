@@ -903,7 +903,7 @@ export function EditForm({ product, vendors, initialOptions = [] }: Props) {
                 </button>
               ))}
             </div>
-            {status === "sold" && optionRows.some((r) => r.status !== "sold") && (
+            {hasVariants && status === "sold" && optionRows.some((r) => r.status !== "sold") && (
               <p className="mt-2 text-xs text-red-500 dark:text-red-400">
                 {optionRows.filter((r) => r.status !== "sold").length} variant(s) still marked as available — mark all variants Sold first.
               </p>
