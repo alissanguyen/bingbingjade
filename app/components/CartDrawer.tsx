@@ -63,7 +63,7 @@ export function CartDrawer() {
 
       {/* Drawer */}
       <div
-        className={`fixed right-0 top-0 bottom-0 z-30 w-full max-w-sm bg-white dark:bg-gray-950 shadow-2xl flex flex-col transition-transform duration-500 ease-in-out ${
+        className={`fixed right-0 top-0 bottom-0 z-30 w-full max-w-sm bg-white dark:bg-gray-950 shadow-2xl flex flex-col transform-gpu transition-transform duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
           drawerOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
