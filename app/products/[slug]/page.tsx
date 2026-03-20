@@ -1,8 +1,9 @@
 import { notFound, redirect } from "next/navigation";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { publicIdFromSlug, productSlug } from "@/lib/slug";
-import { resolveImageUrls, resolveVideoUrls, isStoragePath } from "@/lib/storage";
+import { resolveImageUrls, resolveVideoUrls, resolveFirstImageUrl, isStoragePath } from "@/lib/storage";
 import { ProductPageClient } from "./ProductPageClient";
 
 interface Product {
@@ -36,6 +37,49 @@ interface ProductOptionRaw {
 }
 
 export const revalidate = 21600;
+
+export async function generateMetadata(
+  { params }: { params: Promise<{ slug: string }> }
+): Promise<Metadata> {
+  const { slug } = await params;
+  const publicId = publicIdFromSlug(slug);
+  if (!publicId) return {};
+
+  const { data: product } = await supabase
+    .from("products")
+    .select("name, category, description, color, tier, price_display_usd, images")
+    .eq("public_id", publicId)
+    .single<{ name: string; category: string; description: string | null; color: string[] | null; tier: string[] | null; price_display_usd: number | null; images: string[] }>();
+
+  if (!product) return {};
+
+  const ogImage = await resolveFirstImageUrl(product.images ?? []);
+
+  const descParts: string[] = [];
+  if (product.category) descParts.push(product.category.charAt(0).toUpperCase() + product.category.slice(1));
+  if (product.color?.length) descParts.push(product.color.join(", "));
+  if (product.tier?.length) descParts.push(product.tier.join(", "));
+  if (product.price_display_usd != null) descParts.push(`$${product.price_display_usd}`);
+  const fallbackDesc = descParts.length ? descParts.join(" · ") : "Authentic jade jewelry at BingBing Jade.";
+  const description = product.description || fallbackDesc;
+
+  return {
+    title: product.name,
+    description,
+    openGraph: {
+      title: product.name,
+      description,
+      type: "website",
+      ...(ogImage ? { images: [{ url: ogImage, width: 1200, height: 1200, alt: product.name }] } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: product.name,
+      description,
+      ...(ogImage ? { images: [ogImage] } : {}),
+    },
+  };
+}
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

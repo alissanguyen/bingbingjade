@@ -16,9 +16,30 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const SITE_URL = "https://bingbingjade.com";
+
 export const metadata: Metadata = {
-  title: "BingBing Jade - Authentic Jade Jewelry",
-  description: "Your premier jade jewelry destination",
+  title: {
+    default: "BingBing Jade — Authentic Jade Jewelry",
+    template: "%s | BingBing Jade",
+  },
+  description: "Shop authentic, handpicked jade jewelry — bracelets, bangles, rings, pendants, and necklaces. Direct from trusted vendors.",
+  metadataBase: new URL(SITE_URL),
+  openGraph: {
+    siteName: "BingBing Jade",
+    type: "website",
+    locale: "en_US",
+    url: SITE_URL,
+    title: "BingBing Jade — Authentic Jade Jewelry",
+    description: "Shop authentic, handpicked jade jewelry — bracelets, bangles, rings, pendants, and necklaces.",
+    images: [{ url: "/og-default.jpg", width: 1200, height: 630, alt: "BingBing Jade" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "BingBing Jade — Authentic Jade Jewelry",
+    description: "Shop authentic, handpicked jade jewelry — bracelets, bangles, rings, pendants, and necklaces.",
+    images: ["/og-default.jpg"],
+  },
 };
 
 export default function RootLayout({
