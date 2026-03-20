@@ -55,20 +55,22 @@ export default function RootLayout({
         <ThemeProvider>
           <CartProvider>
           <header className="sticky top-0 z-40 bg-white dark:bg-gray-950">
-            {/* Beta banner */}
-            <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800 px-4 py-2 text-center text-xs text-amber-800 dark:text-amber-300">
-              <span className="font-semibold">Site under beta testing.</span>
-              {" "}Online checkout is temporarily disabled — to purchase, please inquire directly via{" "}
-              <a
-                href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? ""}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline underline-offset-2 font-semibold hover:text-amber-900 dark:hover:text-amber-200 transition-colors"
-              >
-                WhatsApp
-              </a>
-              .
-            </div>
+            {/* Beta banner — only shown in beta mode */}
+            {process.env.NEXT_PUBLIC_CHECKOUT_MODE !== "live" && (
+              <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800 px-4 py-2 text-center text-xs text-amber-800 dark:text-amber-300">
+                <span className="font-semibold">Site under beta testing.</span>
+                {" "}Online checkout is temporarily disabled — to purchase, please inquire directly via{" "}
+                <a
+                  href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? ""}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 font-semibold hover:text-amber-900 dark:hover:text-amber-200 transition-colors"
+                >
+                  WhatsApp
+                </a>
+                .
+              </div>
+            )}
             <div className="border-b border-gray-200 dark:border-gray-800">
               <Navbar />
             </div>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { stripe, webhookSecret } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import type Stripe from "stripe";
 
@@ -10,7 +10,6 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   const sig = req.headers.get("stripe-signature");
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!sig || !webhookSecret) {
     return NextResponse.json({ error: "Missing stripe-signature or webhook secret." }, { status: 400 });

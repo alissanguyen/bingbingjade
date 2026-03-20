@@ -5,13 +5,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCart } from "./CartContext";
 
+const isLiveMode = process.env.NEXT_PUBLIC_CHECKOUT_MODE === "live";
+
 export function CartDrawer() {
   const { items, drawerOpen, closeDrawer, removeFromCart, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [headerHeight, setHeaderHeight] = useState(0);
   const [adminPassword, setAdminPassword] = useState("");
-  const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const [adminUnlocked, setAdminUnlocked] = useState(isLiveMode); // auto-unlocked in live mode
   const [showAdminInput, setShowAdminInput] = useState(false);
   const [adminError, setAdminError] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -224,8 +226,8 @@ export function CartDrawer() {
               </div>
             )}
 
-            {/* Admin unlock */}
-            {!adminUnlocked && (
+            {/* Admin unlock — only shown in beta mode */}
+            {!isLiveMode && !adminUnlocked && (
               <div className="pt-1">
                 {!showAdminInput ? (
                   <button

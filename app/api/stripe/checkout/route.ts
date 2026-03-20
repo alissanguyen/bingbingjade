@@ -6,10 +6,12 @@ import type { CartItem } from "@/types/cart";
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
 
 export async function POST(req: NextRequest) {
-  // Checkout is admin-only during beta
-  const adminPassword = req.headers.get("x-admin-password");
-  if (adminPassword !== process.env.ADMIN_PASSWORD) {
-    return NextResponse.json({ error: "Checkout is currently unavailable." }, { status: 403 });
+  // In beta mode, checkout is admin-only
+  if (process.env.NEXT_PUBLIC_CHECKOUT_MODE !== "live") {
+    const adminPassword = req.headers.get("x-admin-password");
+    if (adminPassword !== process.env.ADMIN_PASSWORD) {
+      return NextResponse.json({ error: "Checkout is currently unavailable." }, { status: 403 });
+    }
   }
 
   let body: { items: CartItem[] };
