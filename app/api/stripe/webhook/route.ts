@@ -100,10 +100,17 @@ export async function POST(req: NextRequest) {
     affectedProductIds.add(item.productId);
 
     if (item.optionId) {
+      // Mark specific option sold
       await supabase
         .from("product_options")
         .update({ status: "sold" })
         .eq("id", item.optionId);
+    } else {
+      // No optionId = single no-label option; mark all options for this product sold
+      await supabase
+        .from("product_options")
+        .update({ status: "sold" })
+        .eq("product_id", item.productId);
     }
   }
 
@@ -118,7 +125,6 @@ export async function POST(req: NextRequest) {
     const allSold = hasOptions && allOptions!.every((o) => o.status === "sold");
 
     if (!hasOptions || allSold) {
-      // No options OR all options sold → mark product sold
       await supabase
         .from("products")
         .update({ status: "sold" })
@@ -126,12 +132,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Trigger ISR revalidation
+  // Trigger ISR revalidation (POST)
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
   const secret = process.env.REVALIDATE_SECRET;
   if (secret) {
-    await fetch(`${siteUrl}/api/revalidate?secret=${secret}&path=/products`, {
-      method: "GET",
+    await fetch(`${siteUrl}/api/revalidate?secret=${secret}`, {
+      method: "POST",
     }).catch(() => {});
   }
 
