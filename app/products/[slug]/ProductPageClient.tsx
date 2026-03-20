@@ -27,6 +27,7 @@ interface ProductClient {
   description: string | null;
   blemishes: string | null;
   is_featured: boolean | null;
+  origin: string | null;
   status: string;
   slug: string;
   public_id: string;
@@ -125,6 +126,11 @@ export function ProductPageClient({ product, productImages, productVideos, optio
           {product.tier?.length > 0 && (
             <span className="IndividualProduct_Tier text-sm font-bold text-gray-400 dark:text-gray-500">
               · {product.tier.join(" · ")}
+            </span>
+          )}
+          {product.origin && (
+            <span className="IndividualProduct_Origin text-sm text-gray-400 dark:text-gray-500">
+              · {product.origin}
             </span>
           )}
           {product.is_featured && (

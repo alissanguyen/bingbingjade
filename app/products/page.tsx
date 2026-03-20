@@ -12,6 +12,7 @@ interface ProductCard {
   id: string;
   name: string;
   category: string;
+  origin: string | null;
   images: string[];
   color: string[] | null;
   tier: string[];
@@ -66,7 +67,7 @@ export default async function Products({
   const [{ data: allProducts, error }, { data: allOptions }] = await Promise.all([
     supabase
       .from("products")
-      .select("id, name, category, images, color, tier, size, price_display_usd, sale_price_usd, description, is_featured, status, slug, public_id")
+      .select("id, name, category, origin, images, color, tier, size, price_display_usd, sale_price_usd, description, is_featured, status, slug, public_id")
       .order("created_at", { ascending: false }),
     supabase
       .from("product_options")
@@ -298,9 +299,9 @@ export default async function Products({
                           </span>
                         );
                       })()}
-                      {product.size && (
-                        <span className="ProductCard_Size text-xs text-gray-400 dark:text-gray-500">Size {product.size}mm</span>
-                      )}
+                      <span className="ProductCard_SizeOrigin text-xs text-gray-400 dark:text-gray-500 text-right">
+                        {[product.size ? `${product.size}mm` : null, product.origin].filter(Boolean).join(" · ")}
+                      </span>
                     </div>
                   </div>
 
@@ -362,8 +363,10 @@ export default async function Products({
                           </span>
                         );
                       })()}
-                      {product.size && (
-                        <span className="ProductCard_Size text-[11px] mt-2 md:mt-0 text-gray-400 dark:text-gray-500">Size {product.size}mm</span>
+                      {(product.size || product.origin) && (
+                        <span className="ProductCard_SizeOrigin text-[11px] mt-1 text-gray-400 dark:text-gray-500">
+                          {[product.size ? `${product.size}mm` : null, product.origin].filter(Boolean).join(" · ")}
+                        </span>
                       )}
                     </div>
                   </div>

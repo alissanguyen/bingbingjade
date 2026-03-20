@@ -10,6 +10,7 @@ interface Product {
   id: string;
   name: string;
   category: string;
+  origin: string | null;
   images: string[];
   videos: string[] | null;
   color: string[] | null;
@@ -47,9 +48,9 @@ export async function generateMetadata(
 
   const { data: product } = await supabase
     .from("products")
-    .select("name, category, description, color, tier, price_display_usd, images")
+    .select("name, category, origin, description, color, tier, price_display_usd, images")
     .eq("public_id", publicId)
-    .single<{ name: string; category: string; description: string | null; color: string[] | null; tier: string[] | null; price_display_usd: number | null; images: string[] }>();
+    .single<{ name: string; category: string; origin: string | null; description: string | null; color: string[] | null; tier: string[] | null; price_display_usd: number | null; images: string[] }>();
 
   if (!product) return {};
 
@@ -66,6 +67,7 @@ export async function generateMetadata(
   const type = product.category ?? "";
   const colors = product.color ?? [];
   const tiers = product.tier ?? [];
+  const origin = product.origin ?? "";
 
   const keywords: string[] = [
     // Base
@@ -87,6 +89,8 @@ export async function generateMetadata(
     ...colors.map((c) => `${c} jade`),
     // Texture/tier-specific
     ...tiers.map((t) => `${t.toLowerCase()} jade`),
+    // Origin-specific
+    ...(origin ? [`${origin} jade`, `${origin} jade ${type}`.trim()] : []),
   ];
 
   return {
@@ -116,7 +120,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const { data: product } = await supabase
     .from("products")
-    .select("id, name, category, images, videos, color, tier, size, size_detailed, price_display_usd, sale_price_usd, description, blemishes, is_featured, status, slug, public_id")
+    .select("id, name, category, origin, images, videos, color, tier, size, size_detailed, price_display_usd, sale_price_usd, description, blemishes, is_featured, status, slug, public_id")
     .eq("public_id", publicId)
     .single<Product>();
 

@@ -362,6 +362,7 @@ export function ProductForm({ vendors }: Props) {
   const [form, setForm] = useState({
     name: "",
     category: "other" as ProductCategory,
+    origin: "",
     size: "",
     description: "",
     blemishes: "",
@@ -537,7 +538,7 @@ export function ProductForm({ vendors }: Props) {
       } else {
         setResult({ success: true });
         setSelectedTiers([]);
-        setForm({ name: "", category: "other", size: "", description: "", blemishes: "", price_display_usd: "", sale_price_usd: "", imported_price_vnd: "" });
+        setForm({ name: "", category: "other", origin: "", size: "", description: "", blemishes: "", price_display_usd: "", sale_price_usd: "", imported_price_vnd: "" });
         setVendorId("");
         setSelectedColors([]);
         setImages([]);
@@ -584,6 +585,15 @@ export function ProductForm({ vendors }: Props) {
                 <VendorSearch vendors={vendors} value={vendorId} onChange={(id) => setVendorId(id)} />
               )}
             </div>
+          </div>
+          <div>
+            <label className={labelClass}>Origin</label>
+            <select value={form.origin} onChange={set("origin")} className={inputClass}>
+              <option value="">— Not specified —</option>
+              <option value="Myanmar">Myanmar</option>
+              <option value="Guatemala">Guatemala</option>
+              <option value="Hetian">Hetian</option>
+            </select>
           </div>
           <div>
             <label className={labelClass}>

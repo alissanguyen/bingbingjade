@@ -29,6 +29,7 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
       slug: slugify(name),
       public_id: generatePublicId(),
       category: formData.get("category") as ProductCategory,
+      origin: (formData.get("origin") as string) || null,
       color: formData.getAll("color") as string[],
       tier: formData.getAll("tier") as string[],
       size: Number(formData.get("size")),
