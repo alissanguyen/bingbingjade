@@ -155,7 +155,7 @@ interface ProductData {
   id: string;
   name: string;
   category: ProductCategory;
-  origin: string | null;
+  origin: string;
   images: string[];
   videos: string[];
   color: string[];
@@ -252,7 +252,7 @@ export function EditForm({ product, vendors, initialOptions = [] }: Props) {
   const [form, setForm] = useState({
     name: product.name,
     category: product.category,
-    origin: product.origin ?? "",
+    origin: product.origin,
     size: String(product.size),
     description: product.description ?? "",
     blemishes: product.blemishes ?? "",
@@ -478,8 +478,7 @@ export function EditForm({ product, vendors, initialOptions = [] }: Props) {
           </div>
           <div>
             <label className={labelClass}>Origin</label>
-            <select value={form.origin} onChange={set("origin")} className={inputClass}>
-              <option value="">— Not specified —</option>
+            <select required value={form.origin} onChange={set("origin")} className={inputClass}>
               <option value="Myanmar">Myanmar</option>
               <option value="Guatemala">Guatemala</option>
               <option value="Hetian">Hetian</option>

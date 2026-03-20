@@ -30,7 +30,7 @@ export async function updateProduct(
     .update({
       name: formData.get("name") as string,
       category: formData.get("category") as ProductCategory,
-      origin: (formData.get("origin") as string) || null,
+      origin: (formData.get("origin") as string) || "Myanmar",
       color: formData.getAll("color") as string[],
       tier: formData.getAll("tier") as string[],
       size: Number(formData.get("size")),

@@ -12,7 +12,7 @@ interface ProductCard {
   id: string;
   name: string;
   category: string;
-  origin: string | null;
+  origin: string;
   images: string[];
   color: string[] | null;
   tier: string[];

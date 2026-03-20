@@ -27,7 +27,7 @@ interface ProductClient {
   description: string | null;
   blemishes: string | null;
   is_featured: boolean | null;
-  origin: string | null;
+  origin: string;
   status: string;
   slug: string;
   public_id: string;
@@ -128,11 +128,9 @@ export function ProductPageClient({ product, productImages, productVideos, optio
               · {product.tier.join(" · ")}
             </span>
           )}
-          {product.origin && (
-            <span className="IndividualProduct_Origin text-sm text-gray-400 dark:text-gray-500">
-              · {product.origin}
-            </span>
-          )}
+          <span className="IndividualProduct_Origin text-sm text-gray-400 dark:text-gray-500">
+            · {product.origin}
+          </span>
           {product.is_featured && (
             <span className="ml-auto rounded-full bg-amber-100 dark:bg-amber-900/40 px-2.5 py-0.5 text-sm font-medium text-amber-700 dark:text-amber-400">
               Featured

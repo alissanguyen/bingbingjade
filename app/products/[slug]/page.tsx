@@ -10,7 +10,7 @@ interface Product {
   id: string;
   name: string;
   category: string;
-  origin: string | null;
+  origin: string;
   images: string[];
   videos: string[] | null;
   color: string[] | null;
