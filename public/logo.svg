@@ -122,7 +122,7 @@
           font-family="Cormorant Garamond, Georgia, serif"
           font-weight="600"
           letter-spacing="1.2"
-          fill="url(#brandGrad)">Bing Bing Jade</text>
+          fill="url(#brandGrad)">BingBing Jade</text>
 
     <line x1="2" y1="76" x2="355" y2="76" stroke="#9ED9CB" stroke-width="1.4" stroke-opacity="0.82"/>
 
