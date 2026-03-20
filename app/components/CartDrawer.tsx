@@ -9,7 +9,19 @@ export function CartDrawer() {
   const { items, drawerOpen, closeDrawer, removeFromCart, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
   const overlayRef = useRef<HTMLDivElement>(null);
+
+  // Measure the sticky header so the drawer starts below it
+  useEffect(() => {
+    const header = document.querySelector("header");
+    if (!header) return;
+    const update = () => setHeaderHeight(header.offsetHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(header);
+    return () => ro.disconnect();
+  }, []);
 
   // Close on Escape
   useEffect(() => {
@@ -56,15 +68,17 @@ export function CartDrawer() {
       <div
         ref={overlayRef}
         onClick={closeDrawer}
-        className={`fixed inset-0 z-30 ${
+        className={`fixed inset-x-0 bottom-0 z-30 ${
           drawerOpen ? "pointer-events-auto" : "pointer-events-none"
         }`}
+        style={{ top: headerHeight }}
       />
 
       {/* Drawer */}
       <div
-        className="fixed right-0 top-0 bottom-0 z-30 w-full max-w-sm bg-white dark:bg-gray-950 border-l border-gray-200 dark:border-gray-800 flex flex-col"
+        className="fixed right-0 bottom-0 z-30 w-full max-w-sm bg-gray-100/10 dark:bg-gray-950 border-l border-gray-200 dark:border-gray-800 flex flex-col"
         style={{
+          top: headerHeight,
           transform: drawerOpen ? "translateX(0)" : "translateX(100%)",
           transition: "transform 600ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}
