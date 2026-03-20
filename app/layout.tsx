@@ -55,7 +55,7 @@ export default function RootLayout({
         <ThemeProvider>
           <CartProvider>
           <header className="sticky top-0 z-40 bg-white dark:bg-gray-950">
-            <div className="border-b border-gray-200 dark:border-gray-800">
+            <div id="main-nav" className="border-b border-gray-200 dark:border-gray-800">
               <Navbar />
             </div>
             <CategoryBar />
