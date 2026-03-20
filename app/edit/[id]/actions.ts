@@ -74,6 +74,16 @@ export async function updateProduct(
         sort_order: i,
       }));
       await supabaseAdmin.from("product_options").insert(optionsToInsert);
+
+      // Auto-mark product sold if all options are now sold
+      const allOptionsSold =
+        optionsToInsert.length > 0 && optionsToInsert.every((o) => o.status === "sold");
+      if (allOptionsSold && productStatus !== "sold") {
+        await supabaseAdmin
+          .from("products")
+          .update({ status: "sold" })
+          .eq("id", id);
+      }
     } catch {
       // options_json parse failure is non-fatal
     }
