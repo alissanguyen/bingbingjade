@@ -10,6 +10,10 @@ export function CartDrawer() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [headerHeight, setHeaderHeight] = useState(0);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const [showAdminInput, setShowAdminInput] = useState(false);
+  const [adminError, setAdminError] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
 
   // Measure the sticky header so the drawer starts below it
@@ -40,13 +44,31 @@ export function CartDrawer() {
 
   const total = items.reduce((sum, i) => sum + i.price, 0);
 
+  async function handleAdminUnlock() {
+    const res = await fetch("/api/stripe/verify-admin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: adminPassword }),
+    });
+    if (res.ok) {
+      setAdminUnlocked(true);
+      setShowAdminInput(false);
+      setAdminError(false);
+    } else {
+      setAdminError(true);
+    }
+  }
+
   async function handleCheckout() {
     setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(adminUnlocked ? { "x-admin-password": adminPassword } : {}),
+        },
         body: JSON.stringify({ items }),
       });
       const data = await res.json();
@@ -187,13 +209,52 @@ export function CartDrawer() {
             <p className="text-xs text-gray-400 dark:text-gray-500">
               Shipping and taxes calculated at checkout.
             </p>
-            <button
-              onClick={handleCheckout}
-              disabled={loading}
-              className="w-full rounded-full bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed text-white py-3 text-sm font-medium transition-colors"
-            >
-              {loading ? "Redirecting to checkout…" : "Checkout"}
-            </button>
+
+            {adminUnlocked ? (
+              <button
+                onClick={handleCheckout}
+                disabled={loading}
+                className="w-full rounded-full bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed text-white py-3 text-sm font-medium transition-colors"
+              >
+                {loading ? "Redirecting to checkout…" : "Checkout"}
+              </button>
+            ) : (
+              <div className="w-full rounded-full bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-500 py-3 text-sm font-medium text-center cursor-not-allowed">
+                Checkout unavailable
+              </div>
+            )}
+
+            {/* Admin unlock */}
+            {!adminUnlocked && (
+              <div className="pt-1">
+                {!showAdminInput ? (
+                  <button
+                    onClick={() => setShowAdminInput(true)}
+                    className="w-full text-xs text-gray-300 dark:text-gray-700 hover:text-gray-400 dark:hover:text-gray-500 transition-colors py-1"
+                  >
+                    Admin access
+                  </button>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      value={adminPassword}
+                      onChange={(e) => { setAdminPassword(e.target.value); setAdminError(false); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleAdminUnlock(); }}
+                      placeholder="Admin password"
+                      className={`flex-1 rounded-lg border px-3 py-1.5 text-xs bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 outline-none focus:ring-1 focus:ring-emerald-500 ${adminError ? "border-red-400" : "border-gray-300 dark:border-gray-700"}`}
+                    />
+                    <button
+                      onClick={handleAdminUnlock}
+                      className="rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 text-xs font-medium transition-colors"
+                    >
+                      Unlock
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             <button
               onClick={() => { clearCart(); closeDrawer(); }}
               className="w-full text-xs text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors py-1"
