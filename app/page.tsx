@@ -1,9 +1,35 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { resolveImageUrls, isStoragePath } from "@/lib/storage";
 import { FeaturedCarousel } from "@/app/components/FeaturedCarousel";
 import { ReviewsCarousel } from "@/app/components/ReviewsCarousel";
+
+export const metadata: Metadata = {
+  keywords: [
+    "jadeite jewelry",
+    "natural jadeite",
+    "Type A jade",
+    "Burmese jade",
+    "jade bangles",
+    "jade bracelets",
+    "jade rings",
+    "jade pendants",
+    "authentic jade",
+    "certified jadeite",
+    "untreated jade",
+    "fine jade jewelry",
+    "luxury jade",
+    "icy jade",
+    "glassy jade",
+    "translucent jade",
+    "green jade jewelry",
+    "jadeite bangle USA",
+    "buy jadeite jewelry",
+    "jade shop online",
+  ],
+};
 
 const HERO_IMG = "https://images.unsplash.com/photo-1705931396849-93822983c1dc?q=80&w=1624&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
 const JADE_IMG  = "https://images.unsplash.com/photo-1767040276964-d2a39a86b1d4?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";

@@ -63,9 +63,36 @@ export async function generateMetadata(
   const fallbackDesc = descParts.length ? descParts.join(" · ") : "Authentic jade jewelry at BingBing Jade.";
   const description = product.description || fallbackDesc;
 
+  const type = product.category ?? "";
+  const colors = product.color ?? [];
+  const tiers = product.tier ?? [];
+
+  const keywords: string[] = [
+    // Base
+    "jadeite",
+    "natural jadeite",
+    "Type A jade",
+    "untreated jade",
+    "authentic jade",
+    "jade jewelry",
+    "fine jade",
+    // Type-specific
+    ...(type ? [
+      `jadeite ${type}`,
+      `jadeite ${type} for sale`,
+      `natural jade ${type}`,
+      `Burmese jade ${type}`,
+    ] : []),
+    // Color-specific
+    ...colors.map((c) => `${c} jade`),
+    // Texture/tier-specific
+    ...tiers.map((t) => `${t.toLowerCase()} jade`),
+  ];
+
   return {
     title: product.name,
     description,
+    keywords,
     openGraph: {
       title: product.name,
       description,
