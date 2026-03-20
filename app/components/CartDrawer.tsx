@@ -9,19 +9,7 @@ export function CartDrawer() {
   const { items, drawerOpen, closeDrawer, removeFromCart, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [navHeight, setNavHeight] = useState(0);
   const overlayRef = useRef<HTMLDivElement>(null);
-
-  // Track the main navbar height so the drawer starts right below it
-  useEffect(() => {
-    const nav = document.getElementById("main-nav");
-    if (!nav) return;
-    const update = () => setNavHeight(nav.offsetHeight);
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(nav);
-    return () => ro.disconnect();
-  }, []);
 
   // Close on Escape
   useEffect(() => {
@@ -68,17 +56,15 @@ export function CartDrawer() {
       <div
         ref={overlayRef}
         onClick={closeDrawer}
-        className={`fixed inset-x-0 bottom-0 z-30 ${
+        className={`fixed inset-0 z-30 ${
           drawerOpen ? "pointer-events-auto" : "pointer-events-none"
         }`}
-        style={{ top: navHeight }}
       />
 
       {/* Drawer */}
       <div
-        className="fixed right-0 bottom-0 z-30 w-full max-w-sm bg-white dark:bg-gray-950 border-l border-gray-200 dark:border-gray-800 flex flex-col"
+        className="fixed right-0 top-0 bottom-0 z-30 w-full max-w-sm bg-white dark:bg-gray-950 border-l border-gray-200 dark:border-gray-800 flex flex-col"
         style={{
-          top: navHeight,
           transform: drawerOpen ? "translateX(0)" : "translateX(100%)",
           transition: "transform 600ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}
