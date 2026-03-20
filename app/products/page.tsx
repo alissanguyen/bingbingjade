@@ -32,6 +32,12 @@ interface OptionPriceRow {
   status: string;
 }
 
+const ORIGIN_TEXT: Record<string, string> = {
+  Myanmar:   "text-emerald-600 dark:text-emerald-400",
+  Guatemala: "text-blue-600 dark:text-blue-400",
+  Hetian:    "text-fuchsia-600 dark:text-fuchsia-400",
+};
+
 const COLOR_SWATCHES: Record<string, string> = {
   white:    "bg-white border border-gray-300",
   green:    "bg-green-500",
@@ -50,11 +56,12 @@ export const revalidate = 21600;
 export default async function Products({
   searchParams,
 }: {
-  searchParams: Promise<{ colors?: string; status?: string; category?: string; minSize?: string; maxSize?: string; minPrice?: string; maxPrice?: string; sort?: string; page?: string }>;
+  searchParams: Promise<{ colors?: string; status?: string; category?: string; origins?: string; minSize?: string; maxSize?: string; minPrice?: string; maxPrice?: string; sort?: string; page?: string }>;
 }) {
   const params = await searchParams;
   const selectedColors   = params.colors?.split(",").filter(Boolean) ?? [];
   const selectedStatuses = params.status?.split(",").filter(Boolean) ?? [];
+  const selectedOrigins  = params.origins?.split(",").filter(Boolean) ?? [];
   const selectedCategory = params.category ?? "";
   const minSize = params.minSize ? Number(params.minSize) : null;
   const maxSize = params.maxSize ? Number(params.maxSize) : null;
@@ -110,6 +117,8 @@ export default async function Products({
     if (selectedCategory && p.category !== selectedCategory) return false;
     // Status filter
     if (selectedStatuses.length > 0 && !selectedStatuses.includes(p.status)) return false;
+    // Origin filter
+    if (selectedOrigins.length > 0 && !selectedOrigins.includes(p.origin)) return false;
     // Color filter — product must have at least one of the selected colors
     if (selectedColors.length > 0) {
       const productColors = p.color ?? [];
@@ -300,7 +309,9 @@ export default async function Products({
                         );
                       })()}
                       <span className="ProductCard_SizeOrigin text-xs text-gray-400 dark:text-gray-500 text-right">
-                        {[product.size ? `${product.size}mm` : null, product.origin].filter(Boolean).join(" · ")}
+                        {product.size ? `${product.size}mm` : ""}
+                        {product.size && product.origin ? " · " : ""}
+                        {product.origin && <span className={ORIGIN_TEXT[product.origin] ?? ""}>{product.origin}</span>}
                       </span>
                     </div>
                   </div>
@@ -365,7 +376,9 @@ export default async function Products({
                       })()}
                       {(product.size || product.origin) && (
                         <span className="ProductCard_SizeOrigin text-[11px] mt-1 text-gray-400 dark:text-gray-500">
-                          {[product.size ? `${product.size}mm` : null, product.origin].filter(Boolean).join(" · ")}
+                          {product.size ? `${product.size}mm` : ""}
+                          {product.size && product.origin ? " · " : ""}
+                          {product.origin && <span className={ORIGIN_TEXT[product.origin] ?? ""}>{product.origin}</span>}
                         </span>
                       )}
                     </div>

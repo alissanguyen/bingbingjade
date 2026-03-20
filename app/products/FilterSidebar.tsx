@@ -22,6 +22,12 @@ const ALL_STATUSES = [
   { value: "sold",      label: "Sold",      dot: "bg-red-500" },
 ];
 
+const ALL_ORIGINS = [
+  { value: "Myanmar",   label: "Myanmar",   dot: "bg-emerald-500" },
+  { value: "Guatemala", label: "Guatemala", dot: "bg-blue-500" },
+  { value: "Hetian",    label: "Hetian",    dot: "bg-fuchsia-500" },
+];
+
 function CheckRow({
   checked,
   onChange,
@@ -68,6 +74,7 @@ export function FilterSidebar() {
 
   const selectedColors   = searchParams.get("colors")?.split(",").filter(Boolean) ?? [];
   const selectedStatuses = searchParams.get("status")?.split(",").filter(Boolean) ?? [];
+  const selectedOrigins  = searchParams.get("origins")?.split(",").filter(Boolean) ?? [];
   const minSize  = searchParams.get("minSize")  ?? "";
   const maxSize  = searchParams.get("maxSize")  ?? "";
   const minPrice = searchParams.get("minPrice") ?? "";
@@ -76,6 +83,7 @@ export function FilterSidebar() {
   const activeCount =
     selectedColors.length +
     selectedStatuses.length +
+    selectedOrigins.length +
     (minSize  ? 1 : 0) +
     (maxSize  ? 1 : 0) +
     (minPrice ? 1 : 0) +
@@ -113,6 +121,13 @@ export function FilterSidebar() {
     push({ status: next.length > 0 ? next.join(",") : null });
   }
 
+  function toggleOrigin(origin: string) {
+    const next = selectedOrigins.includes(origin)
+      ? selectedOrigins.filter((o) => o !== origin)
+      : [...selectedOrigins, origin];
+    push({ origins: next.length > 0 ? next.join(",") : null });
+  }
+
   function clearAll() {
     router.push(pathname);
   }
@@ -125,6 +140,21 @@ export function FilterSidebar() {
         <div className="space-y-1.5">
           {ALL_STATUSES.map(({ value, label, dot }) => (
             <CheckRow key={value} checked={selectedStatuses.includes(value)} onChange={() => toggleStatus(value)}>
+              <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
+              <span className="text-xs text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+                {label}
+              </span>
+            </CheckRow>
+          ))}
+        </div>
+      </div>
+
+      {/* Origin */}
+      <div>
+        <SectionLabel>Origin</SectionLabel>
+        <div className="space-y-1.5">
+          {ALL_ORIGINS.map(({ value, label, dot }) => (
+            <CheckRow key={value} checked={selectedOrigins.includes(value)} onChange={() => toggleOrigin(value)}>
               <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
               <span className="text-xs text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
                 {label}
@@ -274,6 +304,19 @@ export function FilterSidebar() {
               <div className="space-y-2">
                 {ALL_STATUSES.map(({ value, label, dot }) => (
                   <CheckRow key={value} checked={selectedStatuses.includes(value)} onChange={() => toggleStatus(value)}>
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
+                    <span className="text-sm text-gray-600 dark:text-gray-400">{label}</span>
+                  </CheckRow>
+                ))}
+              </div>
+            </div>
+
+            {/* Origin */}
+            <div>
+              <SectionLabel>Origin</SectionLabel>
+              <div className="space-y-2">
+                {ALL_ORIGINS.map(({ value, label, dot }) => (
+                  <CheckRow key={value} checked={selectedOrigins.includes(value)} onChange={() => toggleOrigin(value)}>
                     <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
                     <span className="text-sm text-gray-600 dark:text-gray-400">{label}</span>
                   </CheckRow>

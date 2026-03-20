@@ -33,6 +33,12 @@ interface ProductClient {
   public_id: string;
 }
 
+const ORIGIN_BADGE: Record<string, string> = {
+  Myanmar:   "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400",
+  Guatemala: "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400",
+  Hetian:    "border-fuchsia-200 dark:border-fuchsia-800 bg-fuchsia-50 dark:bg-fuchsia-950/40 text-fuchsia-700 dark:text-fuchsia-400",
+};
+
 const COLOR_SWATCHES: Record<string, string> = {
   white: "bg-white border border-gray-300",
   green: "bg-green-500",
@@ -139,7 +145,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
           <h1 className="IndividualProduct_Title text-2xl font-bold text-gray-900 dark:text-gray-100 leading-snug">
             {product.name}
           </h1>
-          <span className="IndividualProduct_Origin mt-1 shrink-0 rounded-full border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+          <span className={`IndividualProduct_Origin mt-1 shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium ${ORIGIN_BADGE[product.origin] ?? "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}>
             {product.origin}
           </span>
         </div>
