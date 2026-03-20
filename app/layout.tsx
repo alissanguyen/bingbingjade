@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { Navbar } from "./components/Navbar";
 import { CategoryBar } from "./components/CategoryBar";
+import { CartProvider } from "./components/CartContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -51,6 +52,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning style={{ scrollbarGutter: "stable" }}>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100`}>
         <ThemeProvider>
+          <CartProvider>
           <header className="sticky top-0 z-40 bg-white dark:bg-gray-950">
             <div className="border-b border-gray-200 dark:border-gray-800">
               <Navbar />
@@ -73,6 +75,7 @@ export default function RootLayout({
               </div>
             </div>
           </footer>
+          </CartProvider>
         </ThemeProvider>
       </body>
     </html>

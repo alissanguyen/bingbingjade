@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { ProductGallery } from "./ProductGallery";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
+import { useCart } from "@/app/components/CartContext";
+import type { CartItem } from "@/types/cart";
 
 interface ProductOptionClient {
   id: string;
@@ -61,6 +63,9 @@ interface Props {
 }
 
 export function ProductPageClient({ product, productImages, productVideos, options }: Props) {
+  const { addToCart, items: cartItems } = useCart();
+  const [addedToCart, setAddedToCart] = useState(false);
+
   // Show selector if there are multiple options or any option has a label
   const hasSelector = options.length > 1 || (options.length === 1 && options[0].label !== null);
   // Default to the first non-sold option
@@ -103,6 +108,37 @@ export function ProductPageClient({ product, productImages, productVideos, optio
       (o.price_usd ?? product.price_display_usd)! < highestInLot
   );
   const showImageSaleBadge = product.status === "on_sale" || hasDiscountedVariant;
+
+  // Effective checkout price for the currently selected option
+  const checkoutPrice =
+    product.status === "on_sale" && product.sale_price_usd != null
+      ? product.sale_price_usd
+      : effectiveDisplayPrice;
+
+  // Check if currently selected option/product is already in cart
+  const activeOptionId = hasSelector ? (options[selectedIdx]?.id ?? null) : null;
+  const isInCart = cartItems.some(
+    (c) => c.productId === product.id && c.optionId === activeOptionId
+  );
+
+  function handleAddToCart() {
+    if (checkoutPrice == null) return;
+    const thumbnail = effectiveImages[0] ?? null;
+    const activeOption = hasSelector ? options[selectedIdx] : null;
+    const cartItem: CartItem = {
+      productId: product.id,
+      productPublicId: product.public_id,
+      productName: product.name,
+      productSlug: product.slug,
+      optionId: activeOption?.id ?? null,
+      optionLabel: activeOption?.label ?? null,
+      price: checkoutPrice,
+      thumbnail,
+    };
+    addToCart(cartItem);
+    setAddedToCart(true);
+    setTimeout(() => setAddedToCart(false), 2500);
+  }
 
   return (
     <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
@@ -331,18 +367,43 @@ export function ProductPageClient({ product, productImages, productVideos, optio
             )}
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-            Interested in this piece? Reach out directly to inquire or purchase.
+            Interested in this piece? Add to cart to purchase, or reach out directly.
           </p>
-          <Link
-            href={!isEffectivelySold ? `/contact?product=${product.public_id}` : "#"}
-            className={`block w-full rounded-full py-3 text-center text-sm font-medium text-white transition-colors ${
-              isEffectivelySold
-                ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed pointer-events-none"
-                : "bg-emerald-700 hover:bg-emerald-800"
-            }`}
-          >
-            {isEffectivelySold ? "This item has been sold" : "Contact to Purchase"}
-          </Link>
+
+          {/* Add to Cart */}
+          {!isEffectivelySold && checkoutPrice != null ? (
+            <button
+              type="button"
+              onClick={handleAddToCart}
+              disabled={isInCart}
+              className={`block w-full rounded-full py-3 text-center text-sm font-medium text-white transition-colors ${
+                isInCart
+                  ? "bg-emerald-500 cursor-default"
+                  : addedToCart
+                  ? "bg-emerald-600"
+                  : "bg-emerald-700 hover:bg-emerald-800"
+              }`}
+            >
+              {isInCart ? "✓ Added to Cart" : addedToCart ? "✓ Added!" : "Add to Cart"}
+            </button>
+          ) : (
+            <div
+              className="block w-full rounded-full py-3 text-center text-sm font-medium text-white bg-gray-400 dark:bg-gray-600 cursor-not-allowed"
+            >
+              {isEffectivelySold ? "This item has been sold" : "Contact for price"}
+            </div>
+          )}
+
+          {/* Contact to Purchase */}
+          {!isEffectivelySold && (
+            <Link
+              href={`/contact?product=${product.public_id}`}
+              className="mt-3 block w-full rounded-full border border-gray-300 dark:border-gray-700 hover:border-emerald-400 dark:hover:border-emerald-600 py-3 text-center text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors"
+            >
+              Contact to Purchase
+            </Link>
+          )}
+
           {!isEffectivelySold && (
             <a
               href={buildWhatsAppLink([{ name: product.name, public_id: product.public_id, slug: product.slug }])}

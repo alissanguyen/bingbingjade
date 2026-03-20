@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
+import { useCart } from "./CartContext";
+import { CartDrawer } from "./CartDrawer";
 
 const NAV_CATEGORIES = [
   { value: "", label: "All Products" },
@@ -21,6 +23,7 @@ export function Navbar() {
   const [productsOpen, setProductsOpen] = useState(false);
   const [mobileProductsOpen, setMobileProductsOpen] = useState(false);
   const pathname = usePathname();
+  const { count, openDrawer } = useCart();
 
 
   return (
@@ -243,11 +246,48 @@ export function Navbar() {
         <li>
           <ThemeToggle />
         </li>
+        <li>
+          <button
+            onClick={openDrawer}
+            aria-label={`Open cart (${count} items)`}
+            className="relative p-1.5 text-gray-600 dark:text-gray-300 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <path d="M16 10a4 4 0 0 1-8 0" />
+            </svg>
+            {count > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-emerald-600 text-white text-[10px] font-bold leading-none px-1">
+                {count}
+              </span>
+            )}
+          </button>
+        </li>
       </ul>
+
+      {/* Cart Drawer */}
+      <CartDrawer />
 
       {/* Mobile right side */}
       <div className="flex sm:hidden items-center gap-3">
         <ThemeToggle />
+        <button
+          onClick={openDrawer}
+          aria-label={`Open cart (${count} items)`}
+          className="relative p-1 text-gray-600 dark:text-gray-300"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <path d="M16 10a4 4 0 0 1-8 0" />
+          </svg>
+          {count > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-emerald-600 text-white text-[10px] font-bold leading-none px-1">
+              {count}
+            </span>
+          )}
+        </button>
         <button
           onClick={() => setOpen((o) => !o)}
           aria-label="Toggle menu"
