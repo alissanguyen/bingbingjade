@@ -23,7 +23,7 @@ export function Navbar() {
   const [productsOpen, setProductsOpen] = useState(false);
   const [mobileProductsOpen, setMobileProductsOpen] = useState(false);
   const pathname = usePathname();
-  const { count, openDrawer } = useCart();
+  const { count, openDrawer, closeDrawer } = useCart();
 
 
   return (
@@ -248,7 +248,7 @@ export function Navbar() {
         </li>
         <li>
           <button
-            onClick={openDrawer}
+            onClick={() => { setOpen(false); setMobileProductsOpen(false); openDrawer(); }}
             aria-label={`Open cart (${count} items)`}
             className="relative p-1.5 text-gray-600 dark:text-gray-300 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
           >
@@ -273,7 +273,7 @@ export function Navbar() {
       <div className="flex sm:hidden items-center gap-3">
         <ThemeToggle />
         <button
-          onClick={openDrawer}
+          onClick={() => { setOpen(false); setMobileProductsOpen(false); openDrawer(); }}
           aria-label={`Open cart (${count} items)`}
           className="relative p-1 text-gray-600 dark:text-gray-300"
         >
@@ -289,7 +289,7 @@ export function Navbar() {
           )}
         </button>
         <button
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => { setOpen((o) => { if (!o) closeDrawer(); return !o; }); }}
           aria-label="Toggle menu"
           className="p-1 text-gray-600 dark:text-gray-300"
         >

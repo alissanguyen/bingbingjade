@@ -52,18 +52,18 @@ export function CartDrawer() {
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — z-30 keeps the sticky header (z-40) always on top */}
       <div
         ref={overlayRef}
         onClick={closeDrawer}
-        className={`fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${
+        className={`fixed inset-0 z-30 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${
           drawerOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
       />
 
       {/* Drawer */}
       <div
-        className={`fixed right-0 top-0 bottom-0 z-50 w-full max-w-sm bg-white dark:bg-gray-950 shadow-2xl flex flex-col transition-transform duration-300 ease-in-out ${
+        className={`fixed right-0 top-0 bottom-0 z-30 w-full max-w-sm bg-white dark:bg-gray-950 shadow-2xl flex flex-col transition-transform duration-300 ease-in-out ${
           drawerOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
