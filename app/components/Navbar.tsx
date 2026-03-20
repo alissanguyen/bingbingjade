@@ -6,7 +6,6 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
 import { useCart } from "./CartContext";
-import { CartDrawer } from "./CartDrawer";
 
 const NAV_CATEGORIES = [
   { value: "", label: "All Products" },
@@ -265,9 +264,6 @@ export function Navbar() {
           </button>
         </li>
       </ul>
-
-      {/* Cart Drawer */}
-      <CartDrawer />
 
       {/* Mobile right side */}
       <div className="flex sm:hidden items-center gap-3">

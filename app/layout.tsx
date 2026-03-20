@@ -5,6 +5,7 @@ import { ThemeProvider } from "./components/ThemeProvider";
 import { Navbar } from "./components/Navbar";
 import { CategoryBar } from "./components/CategoryBar";
 import { CartProvider } from "./components/CartContext";
+import { CartDrawer } from "./components/CartDrawer";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -59,6 +60,10 @@ export default function RootLayout({
             </div>
             <CategoryBar />
           </header>
+
+          {/* CartDrawer must be outside the header so it sits in the root stacking context,
+              allowing the sticky header (z-40) to always render above it (z-30) */}
+          <CartDrawer />
 
           <main className="flex-1">{children}</main>
 
