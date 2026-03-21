@@ -2,6 +2,7 @@ import Image from "next/image";
 import { ContactForm } from "./ContactForm";
 import { supabase } from "@/lib/supabase";
 import { resolveImageUrls, isStoragePath } from "@/lib/storage";
+import { buildWhatsAppLink } from "@/lib/whatsapp";
 
 export default async function Contact({
   searchParams,
@@ -68,7 +69,7 @@ export default async function Contact({
 
         {/* WhatsApp */}
         <a
-          href="https://api.whatsapp.com/qr/S6N4UOK7EL2NF1"
+          href={buildWhatsAppLink([])}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:border-green-400 hover:text-green-600 dark:hover:text-green-400 transition-colors group"
