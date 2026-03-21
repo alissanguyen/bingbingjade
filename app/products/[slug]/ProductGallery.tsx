@@ -126,6 +126,7 @@ export function ProductGallery({ images, videos, category = "" }: { images: stri
               src={active.src}
               alt="Product"
               fill
+              unoptimized
               className="object-cover pointer-events-none"
               draggable={false}
               sizes="(max-width: 1024px) 100vw, 50vw"
@@ -217,7 +218,7 @@ export function ProductGallery({ images, videos, category = "" }: { images: stri
                 }`}
               >
                 {item.type === "image" ? (
-                  <Image src={item.src} alt="" fill className="object-cover" sizes="64px" loading="lazy" />
+                  <Image src={item.src} alt="" fill unoptimized className="object-cover" sizes="64px" loading="lazy" />
                 ) : (
                   <div className="w-full h-full bg-gray-800 flex items-center justify-center text-white">
                     <PlayIcon />
@@ -265,6 +266,7 @@ export function ProductGallery({ images, videos, category = "" }: { images: stri
                   alt="Product"
                   width={0}
                   height={0}
+                  unoptimized
                   sizes="90vw"
                   draggable={false}
                   className="w-auto h-auto max-w-[90vw] max-h-[90vh] object-contain rounded-lg pointer-events-none"

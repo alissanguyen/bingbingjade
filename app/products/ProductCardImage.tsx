@@ -34,6 +34,7 @@ export function ProductCardImage({
               src={images[0]}
               alt={name}
               fill
+              unoptimized
               className="object-cover"
               sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
               loading="lazy"
@@ -45,6 +46,7 @@ export function ProductCardImage({
                 src={images[1]}
                 alt=""
                 fill
+                unoptimized
                 className="object-cover"
                 sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
                 loading="lazy"

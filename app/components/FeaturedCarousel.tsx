@@ -114,11 +114,11 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
                   {product.images?.[0] ? (
                     <div className={`grid h-full ${product.images.length >= 2 ? "w-[200%] grid-cols-2 group-hover:animate-peek" : "w-full grid-cols-1"}`}>
                       <div className="relative h-full">
-                        <Image src={product.images[0]} alt={product.name} fill className="object-cover" sizes="320px" loading="lazy" />
+                        <Image src={product.images[0]} alt={product.name} fill unoptimized className="object-cover" sizes="320px" loading="lazy" />
                       </div>
                       {product.images[1] && (
                         <div className="relative h-full">
-                          <Image src={product.images[1]} alt="" fill className="object-cover" sizes="320px" loading="lazy" aria-hidden="true" />
+                          <Image src={product.images[1]} alt="" fill unoptimized className="object-cover" sizes="320px" loading="lazy" aria-hidden="true" />
                         </div>
                       )}
                     </div>
