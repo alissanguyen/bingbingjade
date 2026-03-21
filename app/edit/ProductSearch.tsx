@@ -183,7 +183,7 @@ export function ProductSearch({ products }: { products: ProductStub[] }) {
                 >
                   <div className="aspect-square w-full bg-emerald-50 dark:bg-emerald-950 overflow-hidden relative">
                     {product.images?.[0] ? (
-                      <Image src={product.images[0]} alt={product.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="200px" loading="lazy" />
+                      <Image src={product.images[0]} alt={product.name} fill unoptimized className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="200px" loading="lazy" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-3xl">🪨</div>
                     )}
@@ -212,7 +212,7 @@ export function ProductSearch({ products }: { products: ProductStub[] }) {
               >
                 <div className="aspect-square w-full bg-emerald-50 dark:bg-emerald-950 overflow-hidden relative">
                   {product.images?.[0] ? (
-                    <Image src={product.images[0]} alt={product.name} fill className="object-cover" sizes="200px" loading="lazy" />
+                    <Image src={product.images[0]} alt={product.name} fill unoptimized className="object-cover" sizes="200px" loading="lazy" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-3xl">🪨</div>
                   )}

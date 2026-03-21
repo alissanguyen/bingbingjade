@@ -574,7 +574,7 @@ export function EditForm({ product, vendors, initialOptions = [] }: Props) {
             <div className="grid grid-cols-4 gap-3 sm:grid-cols-6">
               {existingImages.map((url, i) => (
                 <div key={url} className="relative group aspect-square cursor-zoom-in" onClick={() => setLightboxSrc(url)}>
-                  <Image src={url} alt="" fill className="rounded-lg object-cover" sizes="120px" loading="lazy" />
+                  <Image src={url} alt="" fill unoptimized className="rounded-lg object-cover" sizes="120px" loading="lazy" />
                   <button type="button" onClick={(e) => { e.stopPropagation(); removeExistingImage(i); }}
                     className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow">
                     <XIcon />
