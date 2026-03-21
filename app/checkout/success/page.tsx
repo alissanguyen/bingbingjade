@@ -44,13 +44,13 @@ export default function CheckoutSuccessPage() {
           </div>
 
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-300 mb-4">
-            Order Confirmed
+          Purchase Confirmed ✓
           </p>
           <h1 className="text-4xl sm:text-5xl font-bold text-white leading-tight tracking-tight drop-shadow-lg max-w-2xl">
-            Thank you for your purchase.
+          Thank you — your piece has been secured.
           </h1>
           <p className="mt-5 text-base text-white/75 max-w-md leading-relaxed">
-            We&apos;ll be in touch within 24–48 hours to arrange shipping and confirm your order details.
+          Each piece is carefully prepared and verified before shipment. Our team will personally reach out within 24–48 hours to confirm your order details and arrange shipping.
           </p>
 
           <div className="mt-8 flex flex-wrap justify-center gap-4">
@@ -73,7 +73,7 @@ export default function CheckoutSuccessPage() {
       {/* Note */}
       <div className="flex justify-center py-8 px-6">
         <p className="text-sm text-gray-400 dark:text-gray-500 text-center max-w-sm">
-          A receipt has been sent to your email by Stripe. Questions? Reach out via WhatsApp or the contact form.
+        A receipt has been sent to your email. For any questions, you’re welcome to reach out via WhatsApp or our contact form.
         </p>
       </div>
     </div>

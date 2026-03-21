@@ -81,7 +81,7 @@ export default async function Home() {
             Carefully Selected,<br />Each Piece Unique
           </h1>
           <p className="mt-5 text-base sm:text-lg text-white/80 max-w-xl leading-relaxed">
-            Type A jadeite from Myanmar and Guatemala — sourced for color, texture, and character.
+            Type A jadeite from Myanmar and Guatemala — carefully sourced and manufactured for color, texture, and character.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <Link
@@ -120,7 +120,7 @@ export default async function Home() {
             </h2>
             <div className="space-y-4 text-gray-600 dark:text-gray-400 leading-relaxed text-[18px]">
               <p>
-                Each piece in our collection is individually sourced and selected for its color, texture, and character. We specialize in natural Type A jadeite, focusing primarily on jade from Myanmar (Burmese) and select pieces from Guatemala.
+                Each piece in our collection is individually sourced and selected for its color, texture, and character. From raw materials to a completed bangle, we specialize in natural Type A jadeite, focusing primarily on jade from Myanmar (Burmese) and select pieces from Guatemala.
               </p>
               <p>
                 Jade is not simply a gemstone — it is a material shaped by nature over millions of years. Every bangle, bracelet, and carving carries its own pattern, translucency, and subtle variations that make it completely unique.

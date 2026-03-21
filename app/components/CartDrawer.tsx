@@ -100,7 +100,7 @@ export function CartDrawer() {
 
       {/* Drawer */}
       <div
-        className="fixed right-0 bottom-0 z-30 w-full max-w-sm bg-gray-100/10 dark:bg-gray-950 border-l border-gray-200 dark:border-gray-800 flex flex-col"
+        className="fixed right-0 bottom-0 z-30 w-full max-w-sm bg-white/90 dark:bg-gray-950 border-l border-gray-200 dark:border-gray-800 flex flex-col"
         style={{
           top: headerHeight,
           transform: drawerOpen ? "translateX(0)" : "translateX(100%)",
