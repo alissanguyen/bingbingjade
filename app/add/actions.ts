@@ -46,6 +46,7 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
       imported_price_vnd: Number(formData.get("imported_price_vnd")),
       vendor_id,
       is_featured: formData.get("is_featured") === "true",
+      is_published: formData.get("is_published") === "true",
       status: productStatus,
       images: imageUrls,
       videos: videoUrls,

@@ -8,6 +8,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Invalid secret" }, { status: 401 });
   }
 
+  revalidatePath("/");
   revalidatePath("/products");
+  revalidatePath("/products/[slug]", "page");
   return NextResponse.json({ revalidated: true, timestamp: new Date().toISOString() });
 }

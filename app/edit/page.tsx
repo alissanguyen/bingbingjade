@@ -6,7 +6,7 @@ import { AdminBar } from "@/app/components/AdminBar";
 export default async function EditPage() {
   const { data: products } = await supabaseAdmin
     .from("products")
-    .select("id, name, category, status, images")
+    .select("id, name, category, status, is_published, images")
     .order("created_at", { ascending: false });
 
   const raw = products ?? [];
@@ -19,6 +19,7 @@ export default async function EditPage() {
     name: p.name,
     category: p.category,
     status: p.status as "available" | "on_sale" | "sold",
+    is_published: p.is_published as boolean,
     images: resolvedFirstImages[i] ? [resolvedFirstImages[i]] : [],
   }));
 

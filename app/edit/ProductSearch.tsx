@@ -11,6 +11,7 @@ interface ProductStub {
   name: string;
   category: string;
   status: "available" | "on_sale" | "sold";
+  is_published: boolean;
   images: string[];
 }
 
@@ -190,6 +191,11 @@ export function ProductSearch({ products }: { products: ProductStub[] }) {
                     <span className={`absolute bottom-1.5 left-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_STYLES[product.status]}`}>
                       {STATUS_LABELS[product.status]}
                     </span>
+                    {!product.is_published && (
+                      <span className="absolute top-1.5 right-1.5 rounded-full bg-gray-600 px-2 py-0.5 text-[10px] font-medium text-white">
+                        Draft
+                      </span>
+                    )}
                   </div>
                   <div className="p-3">
                     <p className="text-xs font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-400">{product.category}</p>
@@ -220,6 +226,11 @@ export function ProductSearch({ products }: { products: ProductStub[] }) {
                     {STATUS_LABELS[product.status]}
                   </span>
                   {/* Checkbox overlay */}
+                    {!product.is_published && (
+                      <span className="absolute top-1.5 left-1.5 rounded-full bg-gray-600 px-2 py-0.5 text-[10px] font-medium text-white">
+                        Draft
+                      </span>
+                    )}
                   <span className={`absolute top-2 right-2 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${isSelected ? "border-emerald-500 bg-emerald-500" : "border-white/80 bg-black/20"}`}>
                     {isSelected && (
                       <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">

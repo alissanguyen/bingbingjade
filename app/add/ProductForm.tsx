@@ -321,6 +321,7 @@ export function ProductForm({ vendors }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ success?: boolean; error?: string } | null>(null);
   const [isFeatured, setIsFeatured] = useState(false);
+  const [isPublished, setIsPublished] = useState(false);
   const [status, setStatus] = useState<"available" | "sold" | "on_sale">("available");
 
   const [cropTarget, setCropTarget] = useState<{ index: number; src: string; fileName: string } | null>(null);
@@ -501,6 +502,7 @@ export function ProductForm({ vendors }: Props) {
       selectedColors.forEach((c) => fd.append("color", c));
       selectedTiers.forEach((t) => fd.append("tier", t));
       fd.append("is_featured", String(isFeatured));
+      fd.append("is_published", String(isPublished));
       fd.append("status", status);
       sizeDetailed.forEach((v, i) => fd.append(`size_detailed_${i}`, v));
       imageUrls.forEach((url) => fd.append("imageUrls", url));
@@ -1025,6 +1027,20 @@ export function ProductForm({ vendors }: Props) {
               </p>
             )}
           </div>
+
+          {/* Published */}
+          <button
+            type="button"
+            onClick={() => setIsPublished((v) => !v)}
+            className="flex items-center gap-3 group"
+          >
+            <div className={`relative w-10 h-6 rounded-full transition-colors ${isPublished ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"}`}>
+              <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${isPublished ? "translate-x-4" : ""}`} />
+            </div>
+            <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+              {isPublished ? "Published — visible on storefront" : "Draft — hidden from storefront"}
+            </span>
+          </button>
 
           {/* Featured */}
           <button

@@ -169,6 +169,7 @@ interface ProductData {
   imported_price_vnd: number;
   vendor_id: string;
   is_featured: boolean;
+  is_published: boolean;
   status: "available" | "sold";
 }
 
@@ -247,6 +248,7 @@ export function EditForm({ product, vendors, initialOptions = [] }: Props) {
   const [selectedColors, setSelectedColors] = useState<string[]>(product.color ?? []);
   const [selectedTiers, setSelectedTiers] = useState<string[]>(product.tier ?? []);
   const [isFeatured, setIsFeatured] = useState(product.is_featured);
+  const [isPublished, setIsPublished] = useState(product.is_published);
   const [status, setStatus] = useState<"available" | "sold" | "on_sale">(product.status ?? "available");
 
   const [form, setForm] = useState({
@@ -393,6 +395,7 @@ export function EditForm({ product, vendors, initialOptions = [] }: Props) {
       Object.entries(form).forEach(([k, v]) => fd.append(k, v));
       fd.append("vendor_id", vendorId);
       fd.append("is_featured", String(isFeatured));
+      fd.append("is_published", String(isPublished));
       fd.append("status", status);
       sizeDetailed.forEach((v, i) => fd.append(`size_detailed_${i}`, v));
       selectedColors.forEach((c) => fd.append("color", c));
@@ -909,6 +912,16 @@ export function EditForm({ product, vendors, initialOptions = [] }: Props) {
               </p>
             )}
           </div>
+
+          {/* Published */}
+          <button type="button" onClick={() => setIsPublished((v) => !v)} className="flex items-center gap-3 group">
+            <div className={`relative w-10 h-6 rounded-full transition-colors ${isPublished ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"}`}>
+              <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${isPublished ? "translate-x-4" : ""}`} />
+            </div>
+            <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+              {isPublished ? "Published — visible on storefront" : "Draft — hidden from storefront"}
+            </span>
+          </button>
 
           {/* Featured */}
           <button type="button" onClick={() => setIsFeatured((v) => !v)} className="flex items-center gap-3 group">

@@ -26,6 +26,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Cart is empty." }, { status: 400 });
   }
 
+  const MAX_CART_SIZE = 10;
+  if (items.length > MAX_CART_SIZE) {
+    return NextResponse.json(
+      { error: `Cart cannot exceed ${MAX_CART_SIZE} items. Please contact us for large orders.` },
+      { status: 400 }
+    );
+  }
+
   const supabase = supabaseAdmin;
 
   // Validate each item server-side
@@ -106,14 +114,23 @@ export async function POST(req: NextRequest) {
     validatedItems.push({ ...item, price: serverPrice });
   }
 
-  // Build metadata for webhook
-  const metaItems = validatedItems.map((i) => ({
-    productId: i.productId,
-    optionId: i.optionId,
-    productName: i.productName,
-    optionLabel: i.optionLabel,
-    price: i.price,
+  // Build compact metadata for webhook.
+  // Stripe limits each metadata value to 500 chars; full names would blow that for 3+ items.
+  // Compact format: {p: productId, o: optionId|null, $: priceUsd}
+  // Split into chunks of 4 items per key (items_0, items_1, …) — ~391 chars each worst case.
+  const compactItems = validatedItems.map((i) => ({
+    p: i.productId,
+    ...(i.optionId ? { o: i.optionId } : {}),
+    $: i.price,
   }));
+
+  const CHUNK_SIZE = 4;
+  const metadata: Record<string, string> = {};
+  for (let idx = 0; idx < compactItems.length; idx += CHUNK_SIZE) {
+    metadata[`items_${Math.floor(idx / CHUNK_SIZE)}`] = JSON.stringify(
+      compactItems.slice(idx, idx + CHUNK_SIZE)
+    );
+  }
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
@@ -127,9 +144,7 @@ export async function POST(req: NextRequest) {
         message: "I agree to the [Store Policy](https://www.bingbingjade.com/policy) and [FAQ](https://www.bingbingjade.com/faq).",
       },
     },
-    metadata: {
-      items: JSON.stringify(metaItems),
-    },
+    metadata,
   });
 
   return NextResponse.json({ url: session.url });

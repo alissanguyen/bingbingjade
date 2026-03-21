@@ -21,6 +21,7 @@ interface ProductCard {
   sale_price_usd: number | null;
   description: string | null;
   is_featured: boolean;
+  is_published: boolean;
   status: string;
   slug: string;
   public_id: string;
@@ -71,11 +72,17 @@ export default async function Products({
   const PAGE_SIZE = 18;
   const currentPage = Math.max(1, Number(params.page ?? "1"));
 
+  const isDev = process.env.NODE_ENV === "development";
+
+  const productsQuery = supabase
+    .from("products")
+    .select("id, name, category, origin, images, color, tier, size, price_display_usd, sale_price_usd, description, is_featured, status, slug, public_id, is_published")
+    .order("created_at", { ascending: false });
+
+  if (!isDev) productsQuery.eq("is_published", true);
+
   const [{ data: allProducts, error }, { data: allOptions }] = await Promise.all([
-    supabase
-      .from("products")
-      .select("id, name, category, origin, images, color, tier, size, price_display_usd, sale_price_usd, description, is_featured, status, slug, public_id")
-      .order("created_at", { ascending: false }),
+    productsQuery,
     supabase
       .from("product_options")
       .select("product_id, price_usd, status")
@@ -239,6 +246,11 @@ export default async function Products({
                 >
                   {/* Image strip — slides to peek at second image on hover/touch */}
                   <ProductCardImage images={product.images ?? []} name={product.name} priority={i === 0}>
+                    {isDev && !product.is_published && (
+                      <div className="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 z-10 bg-gray-600 text-white text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow">
+                        Draft
+                      </div>
+                    )}
                     {product.status === "sold" && (
                       <div className="ProductCard_Badge_Sold absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-10 bg-black text-white text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow">
                         Sold

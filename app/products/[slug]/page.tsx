@@ -22,6 +22,7 @@ interface Product {
   description: string | null;
   blemishes: string | null;
   is_featured: boolean | null;
+  is_published: boolean;
   status: string;
   slug: string;
   public_id: string;
@@ -120,11 +121,14 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const { data: product } = await supabase
     .from("products")
-    .select("id, name, category, origin, images, videos, color, tier, size, size_detailed, price_display_usd, sale_price_usd, description, blemishes, is_featured, status, slug, public_id")
+    .select("id, name, category, origin, images, videos, color, tier, size, size_detailed, price_display_usd, sale_price_usd, description, blemishes, is_featured, is_published, status, slug, public_id")
     .eq("public_id", publicId)
     .single<Product>();
 
   if (!product) notFound();
+
+  // Draft products are only visible in development
+  if (!product.is_published && process.env.NODE_ENV !== "development") notFound();
 
   // Redirect to canonical URL if slug prefix is wrong
   const canonical = productSlug(product);
