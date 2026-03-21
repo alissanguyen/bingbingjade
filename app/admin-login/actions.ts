@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 export async function adminLogin(
   redirectTo: string,
@@ -23,6 +24,12 @@ export async function adminLogin(
   });
 
   redirect(redirectTo || "/add");
+}
+
+export async function revalidateAll() {
+  revalidatePath("/");
+  revalidatePath("/products");
+  revalidatePath("/products/[slug]", "page");
 }
 
 export async function adminLogout() {
