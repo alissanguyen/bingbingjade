@@ -227,7 +227,7 @@ export default async function Products({
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {paginatedWithImages.map((product) => (
+              {paginatedWithImages.map((product, i) => (
                 <Link
                   key={product.id}
                   href={`/products/${productSlug(product)}`}
@@ -238,7 +238,7 @@ export default async function Products({
                   }`}
                 >
                   {/* Image strip — slides to peek at second image on hover/touch */}
-                  <ProductCardImage images={product.images ?? []} name={product.name}>
+                  <ProductCardImage images={product.images ?? []} name={product.name} priority={i === 0}>
                     {product.status === "sold" && (
                       <div className="ProductCard_Badge_Sold absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-10 bg-black text-white text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow">
                         Sold

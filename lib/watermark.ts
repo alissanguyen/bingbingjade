@@ -55,8 +55,16 @@ const CENTER_CATEGORIES = new Set(["bangle", "necklace"]);
  *   everything else    → bottom-left  (10% from left, 10% from bottom)
  */
 export async function applyWatermark(input: Buffer, category = ""): Promise<Buffer> {
-  const image = sharp(input);
-  const { width = 800, height = 800 } = await image.metadata();
+  // Step 1: auto-rotate (EXIF) and cap at 2000px — covers 2× high-DPI displays
+  // (product images are shown at most ~1000px wide). No visible quality difference.
+  const resized = await sharp(input)
+    .rotate()
+    .resize(2000, 2000, { fit: "inside", withoutEnlargement: true })
+    .jpeg({ quality: WATERMARK.outputQuality })
+    .toBuffer();
+
+  // Step 2: read actual dimensions after resize for watermark positioning
+  const { width = 800, height = 800 } = await sharp(resized).metadata();
 
   const wmarkW = Math.max(60, Math.round(width * WATERMARK.sizePercent));
 
@@ -82,8 +90,8 @@ export async function applyWatermark(input: Buffer, category = ""): Promise<Buff
     top = Math.max(0, height - wmarkH - Math.round(height * 0.10));
   }
 
-  return image
-    .rotate() // auto-rotate based on EXIF so the image is correctly oriented first
+  // Step 3: apply watermark onto the resized image
+  return sharp(resized)
     .composite([{ input: wmarkPng, left, top, blend: "over" }])
     .jpeg({ quality: WATERMARK.outputQuality })
     .toBuffer();

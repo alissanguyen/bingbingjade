@@ -6,10 +6,12 @@ import Image from "next/image";
 export function ProductCardImage({
   images,
   name,
+  priority = false,
   children,
 }: {
   images: string[];
   name: string;
+  priority?: boolean;
   children?: React.ReactNode;
 }) {
   const [peeking, setPeeking] = useState(false);
@@ -37,7 +39,8 @@ export function ProductCardImage({
               unoptimized
               className="object-cover"
               sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
-              loading="lazy"
+              priority={priority}
+              loading={priority ? undefined : "lazy"}
             />
           </div>
           {images[1] && (
