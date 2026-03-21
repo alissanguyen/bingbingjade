@@ -153,7 +153,7 @@ export function FilterSidebar({
                 {label}
               </span>
               {statusCounts[value] != null && (
-                <span className="text-[11px] text-gray-400 dark:text-gray-600 tabular-nums">({statusCounts[value]})</span>
+                <span className="text-[13px] text-gray-400 dark:text-gray-600 tabular-nums">({statusCounts[value]})</span>
               )}
             </CheckRow>
           ))}
@@ -171,7 +171,7 @@ export function FilterSidebar({
                 {label}
               </span>
               {originCounts[value] != null && (
-                <span className="text-[11px] text-gray-400 dark:text-gray-600 tabular-nums">({originCounts[value]})</span>
+                <span className="text-[13px] text-gray-400 dark:text-gray-600 tabular-nums">({originCounts[value]})</span>
               )}
             </CheckRow>
           ))}
@@ -189,7 +189,7 @@ export function FilterSidebar({
                 {label}
               </span>
               {colorCounts[value] != null && (
-                <span className="text-[11px] text-gray-400 dark:text-gray-600 tabular-nums">({colorCounts[value]})</span>
+                <span className="text-[13px] text-gray-400 dark:text-gray-600 tabular-nums">({colorCounts[value]})</span>
               )}
             </CheckRow>
           ))}
