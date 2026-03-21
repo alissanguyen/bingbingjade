@@ -165,6 +165,19 @@ export default async function Products({
     });
   }
 
+  // Compute counts from the full unfiltered product list for the filter sidebar
+  const allProductsList = (allProducts as ProductCard[] | null) ?? [];
+  const statusCounts: Record<string, number> = {};
+  const originCounts: Record<string, number> = {};
+  const colorCounts: Record<string, number> = {};
+  for (const p of allProductsList) {
+    statusCounts[p.status] = (statusCounts[p.status] ?? 0) + 1;
+    if (p.origin) originCounts[p.origin] = (originCounts[p.origin] ?? 0) + 1;
+    for (const c of p.color ?? []) {
+      if (c) colorCounts[c] = (colorCounts[c] ?? 0) + 1;
+    }
+  }
+
   const totalCount = products.length;
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
   const safePage = Math.min(currentPage, Math.max(1, totalPages));
@@ -194,7 +207,7 @@ export default async function Products({
       <div className="mt-10 flex gap-6">
         {/* Filter sidebar — desktop only */}
         <Suspense>
-          <FilterSidebar />
+          <FilterSidebar statusCounts={statusCounts} originCounts={originCounts} colorCounts={colorCounts} />
         </Suspense>
 
         {/* Product grid */}

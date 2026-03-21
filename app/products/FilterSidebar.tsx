@@ -38,7 +38,7 @@ function CheckRow({
   children: React.ReactNode;
 }) {
   return (
-    <label className="flex items-center gap-2 cursor-pointer group">
+    <label className="flex items-center gap-2 cursor-pointer group w-full">
       <input type="checkbox" checked={checked} onChange={onChange} className="sr-only" />
       <span
         className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
@@ -66,7 +66,15 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function FilterSidebar() {
+export function FilterSidebar({
+  statusCounts = {},
+  originCounts = {},
+  colorCounts = {},
+}: {
+  statusCounts?: Record<string, number>;
+  originCounts?: Record<string, number>;
+  colorCounts?: Record<string, number>;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -141,9 +149,12 @@ export function FilterSidebar() {
           {ALL_STATUSES.map(({ value, label, dot }) => (
             <CheckRow key={value} checked={selectedStatuses.includes(value)} onChange={() => toggleStatus(value)}>
               <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
-              <span className="text-xs text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+              <span className="text-xs text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors flex-1">
                 {label}
               </span>
+              {statusCounts[value] != null && (
+                <span className="text-[10px] text-gray-400 dark:text-gray-600 tabular-nums">{statusCounts[value]}</span>
+              )}
             </CheckRow>
           ))}
         </div>
@@ -156,9 +167,12 @@ export function FilterSidebar() {
           {ALL_ORIGINS.map(({ value, label, dot }) => (
             <CheckRow key={value} checked={selectedOrigins.includes(value)} onChange={() => toggleOrigin(value)}>
               <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
-              <span className="text-xs text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+              <span className="text-xs text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors flex-1">
                 {label}
               </span>
+              {originCounts[value] != null && (
+                <span className="text-[10px] text-gray-400 dark:text-gray-600 tabular-nums">{originCounts[value]}</span>
+              )}
             </CheckRow>
           ))}
         </div>
@@ -171,9 +185,12 @@ export function FilterSidebar() {
           {ALL_COLORS.map(({ value, label, swatch }) => (
             <CheckRow key={value} checked={selectedColors.includes(value)} onChange={() => toggleColor(value)}>
               <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${swatch}`} />
-              <span className="text-xs text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+              <span className="text-xs text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors flex-1">
                 {label}
               </span>
+              {colorCounts[value] != null && (
+                <span className="text-[10px] text-gray-400 dark:text-gray-600 tabular-nums">{colorCounts[value]}</span>
+              )}
             </CheckRow>
           ))}
         </div>
@@ -305,7 +322,10 @@ export function FilterSidebar() {
                 {ALL_STATUSES.map(({ value, label, dot }) => (
                   <CheckRow key={value} checked={selectedStatuses.includes(value)} onChange={() => toggleStatus(value)}>
                     <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
-                    <span className="text-sm text-gray-600 dark:text-gray-400">{label}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400 flex-1">{label}</span>
+                    {statusCounts[value] != null && (
+                      <span className="text-xs text-gray-400 dark:text-gray-600 tabular-nums">{statusCounts[value]}</span>
+                    )}
                   </CheckRow>
                 ))}
               </div>
@@ -318,7 +338,10 @@ export function FilterSidebar() {
                 {ALL_ORIGINS.map(({ value, label, dot }) => (
                   <CheckRow key={value} checked={selectedOrigins.includes(value)} onChange={() => toggleOrigin(value)}>
                     <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
-                    <span className="text-sm text-gray-600 dark:text-gray-400">{label}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400 flex-1">{label}</span>
+                    {originCounts[value] != null && (
+                      <span className="text-xs text-gray-400 dark:text-gray-600 tabular-nums">{originCounts[value]}</span>
+                    )}
                   </CheckRow>
                 ))}
               </div>
@@ -367,7 +390,10 @@ export function FilterSidebar() {
                 {ALL_COLORS.map(({ value, label, swatch }) => (
                   <CheckRow key={value} checked={selectedColors.includes(value)} onChange={() => toggleColor(value)}>
                     <span className={`w-3 h-3 rounded-full shrink-0 ${swatch}`} />
-                    <span className="text-sm text-gray-600 dark:text-gray-400">{label}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400 flex-1">{label}</span>
+                    {colorCounts[value] != null && (
+                      <span className="text-xs text-gray-400 dark:text-gray-600 tabular-nums">{colorCounts[value]}</span>
+                    )}
                   </CheckRow>
                 ))}
               </div>
