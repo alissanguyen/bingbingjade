@@ -21,6 +21,24 @@ export async function bulkUpdateStatus(
   return { count: count ?? ids.length };
 }
 
+export async function bulkUpdatePublished(
+  ids: string[],
+  is_published: boolean
+): Promise<{ error?: string; count?: number }> {
+  if (ids.length === 0) return { count: 0 };
+
+  const { error, count } = await supabaseAdmin
+    .from("products")
+    .update({ is_published })
+    .in("id", ids);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/edit");
+  revalidatePath("/products");
+  return { count: count ?? ids.length };
+}
+
 export async function bulkDelete(
   ids: string[]
 ): Promise<{ error?: string; count?: number }> {

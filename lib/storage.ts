@@ -9,9 +9,10 @@
  * isStoragePath() detects which is which — public URLs are returned as-is so
  * existing products keep working without any migration.
  *
- * Signed URL TTL: 24 hours. Product listing pages use 6-hour ISR, so the
- * worst-case URL age when served is < 30 hours — within the 24-hour window.
- * (ISR regenerates the page every 6h, embedding fresh 24h signed URLs.)
+ * Signed URL TTL: 7 days. ISR revalidates every 6 hours, but Vercel's CDN
+ * edge can serve stale pages beyond the revalidation window (stale-while-
+ * revalidate, edge cache). A 24h TTL proved too short in production. 7 days
+ * gives a comfortable buffer — product images are watermarked and non-sensitive.
  */
 
 import { supabaseAdmin } from "./supabase-admin";
@@ -19,8 +20,8 @@ import { supabaseAdmin } from "./supabase-admin";
 export const IMAGE_BUCKET = "jade-images";
 export const VIDEO_BUCKET = "jade-videos";
 
-/** Signed URL TTL in seconds. 24 hours. */
-const TTL = 60 * 60 * 24;
+/** Signed URL TTL in seconds. 7 days. */
+const TTL = 60 * 60 * 24 * 7;
 
 /** Returns true if the value is a storage path rather than a full URL. */
 export function isStoragePath(value: string): boolean {
