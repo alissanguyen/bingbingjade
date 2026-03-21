@@ -55,16 +55,12 @@ const CENTER_CATEGORIES = new Set(["bangle", "necklace"]);
  *   everything else    → bottom-left  (10% from left, 10% from bottom)
  */
 export async function applyWatermark(input: Buffer, category = ""): Promise<Buffer> {
-  // Step 1: auto-rotate (EXIF) and cap at 2000px — covers 2× high-DPI displays
-  // (product images are shown at most ~1000px wide). No visible quality difference.
-  const resized = await sharp(input)
-    .rotate()
-    .resize(2000, 2000, { fit: "inside", withoutEnlargement: true })
-    .jpeg({ quality: WATERMARK.outputQuality })
-    .toBuffer();
-
-  // Step 2: read actual dimensions after resize for watermark positioning
-  const { width = 800, height = 800 } = await sharp(resized).metadata();
+  // Compute post-resize dimensions without encoding an intermediate JPEG.
+  // Sharp's fit:"inside" with withoutEnlargement scales by min(2000/w, 2000/h, 1).
+  const { width: origW = 800, height: origH = 800 } = await sharp(input).metadata();
+  const scale = Math.min(1, 2000 / Math.max(origW, origH));
+  const width = Math.round(origW * scale);
+  const height = Math.round(origH * scale);
 
   const wmarkW = Math.max(60, Math.round(width * WATERMARK.sizePercent));
 
@@ -90,8 +86,10 @@ export async function applyWatermark(input: Buffer, category = ""): Promise<Buff
     top = Math.max(0, height - wmarkH - Math.round(height * 0.10));
   }
 
-  // Step 3: apply watermark onto the resized image
-  return sharp(resized)
+  // Single pipeline: rotate → resize → composite → JPEG. No intermediate encoding.
+  return sharp(input)
+    .rotate()
+    .resize(2000, 2000, { fit: "inside", withoutEnlargement: true })
     .composite([{ input: wmarkPng, left, top, blend: "over" }])
     .jpeg({ quality: WATERMARK.outputQuality })
     .toBuffer();
