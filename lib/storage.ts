@@ -30,8 +30,28 @@ export function isStoragePath(value: string): boolean {
 }
 
 /**
- * Build a permanent public URL for a watermarked image path.
- * Requires the jade-images bucket to have public read enabled.
+ * Normalise any Supabase Storage URL for a managed bucket back to a bare
+ * storage path. This corrects the case where a resolved URL was accidentally
+ * saved to the database instead of the original path.
+ *
+ * Examples:
+ *   "wm/abc.jpg"                                       → "wm/abc.jpg"  (no-op)
+ *   ".../object/sign/jade-images/wm/abc.jpg?token=…"  → "wm/abc.jpg"
+ *   ".../object/public/jade-images/wm/abc.jpg"         → "wm/abc.jpg"
+ *   ".../object/public/product-images/abc.jpg"         → unchanged    (legacy bucket)
+ */
+export function toStoragePath(urlOrPath: string): string {
+  if (!urlOrPath.startsWith("http")) return urlOrPath;
+  for (const bucket of [IMAGE_BUCKET, VIDEO_BUCKET]) {
+    const match = urlOrPath.match(new RegExp(`/object/(?:sign|public)/${bucket}/([^?]+)`));
+    if (match) return match[1];
+  }
+  return urlOrPath; // legacy public-bucket URL — keep as-is
+}
+
+/**
+ * Build a permanent public URL for a storage path.
+ * Requires the jade-images bucket to have public read enabled (migration_017).
  */
 function publicImageUrl(path: string): string {
   const { data } = supabaseAdmin.storage.from(IMAGE_BUCKET).getPublicUrl(path);
@@ -41,12 +61,16 @@ function publicImageUrl(path: string): string {
 // ── Image helpers — permanent public URLs, no async needed ───────────────────
 
 export async function resolveImageUrl(pathOrUrl: string): Promise<string> {
-  if (!isStoragePath(pathOrUrl)) return pathOrUrl;
-  return publicImageUrl(pathOrUrl);
+  const path = toStoragePath(pathOrUrl); // normalise any accidentally-stored URLs
+  if (!isStoragePath(path)) return path;
+  return publicImageUrl(path);
 }
 
 export async function resolveImageUrls(pathsOrUrls: string[]): Promise<string[]> {
-  return pathsOrUrls.map((p) => (isStoragePath(p) ? publicImageUrl(p) : p));
+  return pathsOrUrls.map((p) => {
+    const path = toStoragePath(p);
+    return isStoragePath(path) ? publicImageUrl(path) : path;
+  });
 }
 
 export async function resolveFirstImageUrl(images: string[]): Promise<string | null> {

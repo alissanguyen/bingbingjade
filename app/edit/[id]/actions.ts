@@ -1,6 +1,7 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { toStoragePath } from "@/lib/storage";
 import type { ProductCategory } from "@/types/product";
 
 interface OptionInput {
@@ -21,8 +22,8 @@ export async function updateProduct(
   id: string,
   formData: FormData
 ): Promise<{ error?: string; success?: boolean }> {
-  const imageUrls = formData.getAll("imageUrls") as string[];
-  const videoUrls = formData.getAll("videoUrls") as string[];
+  const imageUrls = (formData.getAll("imageUrls") as string[]).map(toStoragePath);
+  const videoUrls = (formData.getAll("videoUrls") as string[]).map(toStoragePath);
   const productStatus = (formData.get("status") as string) || "available";
 
   const { error } = await supabaseAdmin
