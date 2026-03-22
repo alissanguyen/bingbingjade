@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { AdminBar } from "@/app/components/AdminBar";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { resolveFirstImageUrl } from "@/lib/storage";
 import { OrderDetailClient } from "./OrderDetailClient";
 
 export const dynamic = "force-dynamic";
@@ -38,17 +39,17 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   if (productIds.length > 0) {
     const { data: products } = await supabaseAdmin
       .from("products")
-      .select("id, images, slug, public_id")
+      .select("id, images")
       .in("id", productIds);
 
-    productImages = Object.fromEntries(
-      (products ?? []).map((p) => {
-        const raw = (p.images as string[])?.[0] ?? "";
-        // Ensure the path is absolute so it resolves correctly from any route
-        const src = raw && !raw.startsWith("http") && !raw.startsWith("/") ? `/${raw}` : raw;
-        return [p.id, src];
+    // resolveFirstImageUrl converts storage paths (wm/file.jpg) → full public URLs
+    const resolved = await Promise.all(
+      (products ?? []).map(async (p) => {
+        const url = await resolveFirstImageUrl(p.images as string[]);
+        return [p.id, url ?? ""] as [string, string];
       })
     );
+    productImages = Object.fromEntries(resolved);
   }
 
   return (
