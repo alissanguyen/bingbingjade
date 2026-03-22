@@ -3,10 +3,20 @@ import { Suspense } from "react";
 import { productSlug } from "@/lib/slug";
 import { supabase } from "@/lib/supabase";
 import { resolveImageUrls, isStoragePath } from "@/lib/storage";
+import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
 import { FilterSidebar } from "./FilterSidebar";
 import { SortSelect } from "./SortSelect";
 import { Pagination } from "./Pagination";
 import { ProductCardImage } from "./ProductCardImage";
+
+/** Format a card price, obfuscating high-value amounts. */
+function fmtCardPrice(price: number): string {
+  return requiresInquiry(price) ? obfuscatedPrice(price) : `$${price.toFixed(2)}`;
+}
+/** Build a range label, obfuscating if either bound is high-value. */
+function fmtRangeLabel(min: number, max: number): string {
+  return `${fmtCardPrice(min)} – ${fmtCardPrice(max)}`;
+}
 
 interface ProductCard {
   id: string;
@@ -298,17 +308,17 @@ export default async function Products({
                         const vMin = vp.length > 0 ? Math.min(...vp) : null;
                         const vMax = vp.length > 0 ? Math.max(...vp) : null;
                         const hasRange = vMin != null && vMax != null && vMin !== vMax;
-                        const rangeLabel = hasRange ? `$${vMin!.toFixed(2)} – $${vMax!.toFixed(2)}` : null;
+                        const rangeLabel = hasRange ? fmtRangeLabel(vMin!, vMax!) : null;
                         if (product.status === "sold") {
                           const base = product.sale_price_usd ?? (rangeLabel ? null : product.price_display_usd);
                           return (
                             <span className="flex items-center gap-2">
                               <span className="font-medium text-gray-500 dark:text-gray-400">
-                                {base != null ? `$${base.toFixed(2)}` : rangeLabel ?? "—"}
+                                {base != null ? fmtCardPrice(base) : rangeLabel ?? "—"}
                               </span>
                               {product.sale_price_usd != null && product.price_display_usd != null && (
                                 <>
-                                  <span className="text-xs text-gray-400 line-through">${product.price_display_usd.toFixed(2)}</span>
+                                  <span className="text-xs text-gray-400 line-through">{fmtCardPrice(product.price_display_usd)}</span>
                                   <span className="rounded-full bg-gray-400 dark:bg-gray-600 px-1.5 py-0.5 text-xs font-semibold text-white">
                                     −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
                                   </span>
@@ -320,16 +330,16 @@ export default async function Products({
                         if (product.status === "on_sale" && product.sale_price_usd != null) {
                           return (
                             <span className="flex items-center gap-2">
-                              <span className="font-medium text-amber-600 dark:text-amber-400">${product.sale_price_usd.toFixed(2)}</span>
+                              <span className="font-medium text-amber-600 dark:text-amber-400">{fmtCardPrice(product.sale_price_usd)}</span>
                               <span className="text-xs text-gray-400 line-through">
-                                {rangeLabel ?? (product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : null)}
+                                {rangeLabel ?? (product.price_display_usd != null ? fmtCardPrice(product.price_display_usd) : null)}
                               </span>
                             </span>
                           );
                         }
                         return (
                           <span className="font-medium text-emerald-700 dark:text-emerald-400">
-                            {rangeLabel ?? (product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : "Contact for price")}
+                            {rangeLabel ?? (product.price_display_usd != null ? fmtCardPrice(product.price_display_usd) : "Contact for price")}
                           </span>
                         );
                       })()}
@@ -364,17 +374,17 @@ export default async function Products({
                         const vMin = vp.length > 0 ? Math.min(...vp) : null;
                         const vMax = vp.length > 0 ? Math.max(...vp) : null;
                         const hasRange = vMin != null && vMax != null && vMin !== vMax;
-                        const rangeLabel = hasRange ? `$${vMin!.toFixed(2)} – $${vMax!.toFixed(2)}` : null;
+                        const rangeLabel = hasRange ? fmtRangeLabel(vMin!, vMax!) : null;
                         if (product.status === "sold") {
                           const base = product.sale_price_usd ?? (rangeLabel ? null : product.price_display_usd);
                           return (
                             <span className="flex items-center gap-1.5">
                               <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                                {base != null ? `$${base.toFixed(2)}` : rangeLabel ?? "—"}
+                                {base != null ? fmtCardPrice(base) : rangeLabel ?? "—"}
                               </span>
                               {product.sale_price_usd != null && product.price_display_usd != null && (
                                 <>
-                                  <span className="text-[10px] text-gray-400 line-through">${product.price_display_usd.toFixed(2)}</span>
+                                  <span className="text-[10px] text-gray-400 line-through">{fmtCardPrice(product.price_display_usd)}</span>
                                   <span className="rounded-full bg-gray-400 dark:bg-gray-600 px-1 py-0.5 text-[10px] font-semibold text-white">
                                     −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
                                   </span>
@@ -386,16 +396,16 @@ export default async function Products({
                         if (product.status === "on_sale" && product.sale_price_usd != null) {
                           return (
                             <span className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-amber-600 dark:text-amber-400">${product.sale_price_usd.toFixed(2)}</span>
+                              <span className="text-xs font-medium text-amber-600 dark:text-amber-400">{fmtCardPrice(product.sale_price_usd)}</span>
                               <span className="text-[10px] text-gray-400 line-through">
-                                {rangeLabel ?? (product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : null)}
+                                {rangeLabel ?? (product.price_display_usd != null ? fmtCardPrice(product.price_display_usd) : null)}
                               </span>
                             </span>
                           );
                         }
                         return (
                           <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                            {rangeLabel ?? (product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : "Contact for price")}
+                            {rangeLabel ?? (product.price_display_usd != null ? fmtCardPrice(product.price_display_usd) : "Contact for price")}
                           </span>
                         );
                       })()}

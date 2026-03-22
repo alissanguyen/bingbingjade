@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ProductGallery } from "./ProductGallery";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { useCart } from "@/app/components/CartContext";
+import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
 import type { CartItem } from "@/types/cart";
 
 interface ProductOptionClient {
@@ -114,6 +115,9 @@ export function ProductPageClient({ product, productImages, productVideos, optio
     product.status === "on_sale" && product.sale_price_usd != null
       ? product.sale_price_usd
       : effectiveDisplayPrice;
+
+  // High-value items ($20k+) show an obfuscated price and skip direct checkout
+  const needsInquiry = requiresInquiry(checkoutPrice);
 
   // Check if currently selected option/product is already in cart
   const activeOptionId = hasSelector ? (options[selectedIdx]?.id ?? null) : null;
@@ -238,16 +242,20 @@ export function ProductPageClient({ product, productImages, productVideos, optio
         )}
 
         {/* Price */}
-        <div className="IndividualProduct_PriceRow mt-3 flex items-baseline gap-3">
+        <div className="IndividualProduct_PriceRow mt-3 flex items-baseline gap-3 flex-wrap">
           {product.status === "on_sale" && product.sale_price_usd != null ? (
             <>
               <span className="text-2xl font-semibold text-amber-600 dark:text-amber-400">
-                ${Number(product.sale_price_usd).toFixed(2)}
+                {requiresInquiry(product.sale_price_usd)
+                  ? obfuscatedPrice(product.sale_price_usd)
+                  : `$${Number(product.sale_price_usd).toFixed(2)}`}
               </span>
               {effectiveDisplayPrice != null && (
                 <>
                   <span className="text-lg text-gray-400 line-through">
-                    ${Number(effectiveDisplayPrice).toFixed(2)}
+                    {requiresInquiry(effectiveDisplayPrice)
+                      ? obfuscatedPrice(effectiveDisplayPrice)
+                      : `$${Number(effectiveDisplayPrice).toFixed(2)}`}
                   </span>
                   <span className="rounded-full bg-red-500/80 px-2.5 py-0.5 text-sm font-semibold text-white shadow-sm">
                     −{Math.round((1 - product.sale_price_usd / effectiveDisplayPrice) * 100)}%
@@ -259,15 +267,21 @@ export function ProductPageClient({ product, productImages, productVideos, optio
             <>
               <span className="text-2xl font-semibold text-gray-400 dark:text-gray-600">
                 {product.sale_price_usd != null
-                  ? `$${Number(product.sale_price_usd).toFixed(2)}`
+                  ? requiresInquiry(product.sale_price_usd)
+                    ? obfuscatedPrice(product.sale_price_usd)
+                    : `$${Number(product.sale_price_usd).toFixed(2)}`
                   : effectiveDisplayPrice != null
-                    ? `$${Number(effectiveDisplayPrice).toFixed(2)}`
+                    ? requiresInquiry(effectiveDisplayPrice)
+                      ? obfuscatedPrice(effectiveDisplayPrice)
+                      : `$${Number(effectiveDisplayPrice).toFixed(2)}`
                     : "—"}
               </span>
               {product.sale_price_usd != null && effectiveDisplayPrice != null && (
                 <>
                   <span className="text-lg text-gray-400 line-through">
-                    ${Number(effectiveDisplayPrice).toFixed(2)}
+                    {requiresInquiry(effectiveDisplayPrice)
+                      ? obfuscatedPrice(effectiveDisplayPrice)
+                      : `$${Number(effectiveDisplayPrice).toFixed(2)}`}
                   </span>
                   <span className="rounded-full bg-gray-400 dark:bg-gray-600 px-2.5 py-0.5 text-sm font-semibold text-white shadow-sm">
                     −{Math.round((1 - product.sale_price_usd / effectiveDisplayPrice) * 100)}%
@@ -276,11 +290,18 @@ export function ProductPageClient({ product, productImages, productVideos, optio
               )}
             </>
           ) : (
-            <span className="text-2xl font-semibold text-emerald-700 dark:text-emerald-400">
-              {effectiveDisplayPrice != null
-                ? `$${Number(effectiveDisplayPrice).toFixed(2)}`
-                : "Contact for price"}
-            </span>
+            <>
+              <span className="text-2xl font-semibold text-emerald-700 dark:text-emerald-400">
+                {effectiveDisplayPrice != null
+                  ? needsInquiry
+                    ? obfuscatedPrice(effectiveDisplayPrice)
+                    : `$${Number(effectiveDisplayPrice).toFixed(2)}`
+                  : "Contact for price"}
+              </span>
+              {needsInquiry && effectiveDisplayPrice != null && (
+                <span className="text-xs text-gray-400 dark:text-gray-500">— inquire for exact price</span>
+              )}
+            </>
           )}
         </div>
 
@@ -369,21 +390,30 @@ export function ProductPageClient({ product, productImages, productVideos, optio
             Interested in this piece? Add to cart to purchase, or reach out directly.
           </p>
 
-          {/* Add to Cart */}
+          {/* Add to Cart / Inquire to Purchase */}
           {!isEffectivelySold && checkoutPrice != null ? (
-            <button
-              type="button"
-              onClick={handleAddToCart}
-              disabled={isInCart}
-              className={`block w-full rounded-full py-3 text-center text-sm font-medium text-white transition-colors ${isInCart
-                  ? "bg-emerald-500 cursor-default"
-                  : addedToCart
-                    ? "bg-emerald-600"
-                    : "bg-emerald-700 hover:bg-emerald-800"
-                }`}
-            >
-              {isInCart ? "✓ Added to Cart" : addedToCart ? "✓ Added!" : "Add to Cart"}
-            </button>
+            needsInquiry ? (
+              <Link
+                href={`/contact?product=${product.public_id}`}
+                className="block w-full rounded-full py-3 text-center text-sm font-medium text-white bg-emerald-700 hover:bg-emerald-800 transition-colors"
+              >
+                Inquire to Purchase
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                disabled={isInCart}
+                className={`block w-full rounded-full py-3 text-center text-sm font-medium text-white transition-colors ${isInCart
+                    ? "bg-emerald-500 cursor-default"
+                    : addedToCart
+                      ? "bg-emerald-600"
+                      : "bg-emerald-700 hover:bg-emerald-800"
+                  }`}
+              >
+                {isInCart ? "✓ Added to Cart" : addedToCart ? "✓ Added!" : "Add to Cart"}
+              </button>
+            )
           ) : (
             <div
               className="block w-full rounded-full py-3 text-center text-sm font-medium text-white bg-gray-400 dark:bg-gray-600 cursor-not-allowed"
