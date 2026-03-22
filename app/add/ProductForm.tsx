@@ -328,6 +328,77 @@ export function ProductForm({ vendors }: Props) {
   const [trimTarget, setTrimTarget] = useState<{ index: number; file: File } | null>(null);
   const [variantCropTarget, setVariantCropTarget] = useState<{ index: number; src: string; fileName: string } | null>(null);
 
+  // AI copy generation — local state only, not saved to DB
+  const [sourceNotes, setSourceNotes] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+
+  // Resize an image File to max 1024px and return base64 JPEG string.
+  // Used only for AI analysis — does not affect the actual upload quality.
+  // Returns null if the browser cannot decode the file (e.g. HEIC on non-Safari).
+  const resizeImageForAI = (file: File): Promise<string | null> =>
+    new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const MAX = 1024;
+        const scale = Math.min(MAX / img.naturalWidth, MAX / img.naturalHeight, 1);
+        const w = Math.round(img.naturalWidth * scale);
+        const h = Math.round(img.naturalHeight * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+        // Split off the "data:image/jpeg;base64," prefix
+        resolve(canvas.toDataURL("image/jpeg", 0.85).split(",")[1]);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+      img.src = url;
+    });
+
+  const generateCopy = async () => {
+    setIsGenerating(true);
+    setGenerateError(null);
+    try {
+      // Encode up to 3 images for Claude vision (resize to 1024px — AI-only, upload is unaffected)
+      const imagePayloads: { data: string; mediaType: "image/jpeg" }[] = [];
+      for (const img of images.slice(0, 3)) {
+        const b64 = await resizeImageForAI(img.file);
+        if (b64) imagePayloads.push({ data: b64, mediaType: "image/jpeg" });
+      }
+
+      const res = await fetch("/api/generate-product-copy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: form.category,
+          colors: selectedColors,
+          tiers: selectedTiers,
+          size: form.size,
+          origin: form.origin,
+          sourceNotes,
+          images: imagePayloads,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setGenerateError(data.error ?? "Generation failed");
+        return;
+      }
+      setForm((f) => ({
+        ...f,
+        name: data.title ?? f.name,
+        description: data.description ?? f.description,
+        blemishes: data.blemishes ?? f.blemishes,
+      }));
+    } catch {
+      setGenerateError("Network error — could not reach generation endpoint");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleVariantCropConfirm = (croppedFile: File) => {
     if (!variantCropTarget) return;
     const preview = URL.createObjectURL(croppedFile);
@@ -804,6 +875,56 @@ export function ProductForm({ vendors }: Props) {
       <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Details</h2>
         <div className="space-y-4">
+
+          {/* AI Copy Generation */}
+          <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                AI Copy Generation
+              </p>
+              <button
+                type="button"
+                onClick={generateCopy}
+                disabled={isGenerating}
+                className="flex items-center gap-1.5 rounded-full bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-1.5 text-xs font-medium text-white transition-colors"
+              >
+                {isGenerating ? (
+                  <>
+                    <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                    </svg>
+                    Generating…
+                  </>
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
+                    Generate Copy
+                  </>
+                )}
+              </button>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                Source / vendor notes <span className="font-normal text-gray-400">(optional — Vietnamese or English)</span>
+              </label>
+              <textarea
+                rows={2}
+                value={sourceNotes}
+                onChange={(e) => setSourceNotes(e.target.value)}
+                placeholder="e.g. hoàn hảo cao, không sớ rạn, màu xanh ngọc đậm, loại A…"
+                className={`${inputClass} text-xs`}
+              />
+            </div>
+            <p className="text-xs text-gray-400 dark:text-gray-500">
+              Analyzes your uploaded photos + product facts to fill Product Name, Description, and Blemishes. Review and edit before saving.
+            </p>
+            {generateError && (
+              <p className="text-xs text-red-500 dark:text-red-400">{generateError}</p>
+            )}
+          </div>
+
           <div>
             <label className={labelClass}>Description</label>
             <textarea rows={3} value={form.description} onChange={set("description")} placeholder="Describe the piece — quality, appearance, origin..." className={inputClass} />
