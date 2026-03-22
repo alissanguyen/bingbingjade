@@ -333,6 +333,21 @@ export function ProductForm({ vendors }: Props) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
 
+  const fillNotesFromForm = () => {
+    const parts: string[] = [];
+    if (form.category) parts.push(`Category: ${form.category}`);
+    if (selectedColors.length > 0) parts.push(`Colors: ${selectedColors.join(", ")}`);
+    if (selectedTiers.length > 0) parts.push(`Tier: ${selectedTiers.join(", ")}`);
+    if (form.size) parts.push(`Size: ${form.size}mm`);
+    if (sizeDetailed.some(Boolean)) {
+      const labels = ["size", "width", "thickness"];
+      parts.push(`Dimensions: ${sizeDetailed.map((v, i) => v ? `${labels[i]} ${v}mm` : "").filter(Boolean).join(", ")}`);
+    }
+    if (form.origin) parts.push(`Origin: ${form.origin}`);
+    if (form.imported_price_vnd) parts.push(`Imported price: ${form.imported_price_vnd} VND`);
+    setSourceNotes(parts.join("\n"));
+  };
+
   // Resize an image File to max 1024px and return base64 JPEG string.
   // Used only for AI analysis — does not affect the actual upload quality.
   // Returns null if the browser cannot decode the file (e.g. HEIC on non-Safari).
@@ -391,7 +406,18 @@ export function ProductForm({ vendors }: Props) {
         name: data.title ?? f.name,
         description: data.description ?? f.description,
         blemishes: data.blemishes ?? f.blemishes,
+        size: data.size != null ? String(data.size) : f.size,
+        origin: data.origin ?? f.origin,
+        imported_price_vnd: data.imported_price_vnd != null ? String(data.imported_price_vnd) : f.imported_price_vnd,
       }));
+      // Apply size_detailed if Claude returned width or thickness
+      if (data.size != null || data.width != null || data.thickness != null) {
+        setSizeDetailed((prev) => [
+          data.size != null ? String(data.size) : prev[0],
+          data.width != null ? String(data.width) : prev[1],
+          data.thickness != null ? String(data.thickness) : prev[2],
+        ]);
+      }
     } catch {
       setGenerateError("Network error — could not reach generation endpoint");
     } finally {
@@ -906,19 +932,28 @@ export function ProductForm({ vendors }: Props) {
               </button>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                Source / vendor notes <span className="font-normal text-gray-400">(optional — Vietnamese or English)</span>
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs text-gray-500 dark:text-gray-400">
+                  Source / vendor notes <span className="font-normal text-gray-400">(Vietnamese or English)</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={fillNotesFromForm}
+                  className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline"
+                >
+                  Fill from form ↓
+                </button>
+              </div>
               <textarea
-                rows={2}
+                rows={3}
                 value={sourceNotes}
                 onChange={(e) => setSourceNotes(e.target.value)}
-                placeholder="e.g. hoàn hảo cao, không sớ rạn, màu xanh ngọc đậm, loại A…"
+                placeholder="e.g. hoàn hảo cao, không sớ rạn, màu xanh ngọc đậm, size 54mm, giá nhập 5 triệu…"
                 className={`${inputClass} text-xs`}
               />
             </div>
             <p className="text-xs text-gray-400 dark:text-gray-500">
-              Analyzes your uploaded photos + product facts to fill Product Name, Description, and Blemishes. Review and edit before saving.
+              Analyzes photos + notes to fill Name, Description, Blemishes, Size, Origin, and Imported Price. Review before saving.
             </p>
             {generateError && (
               <p className="text-xs text-red-500 dark:text-red-400">{generateError}</p>

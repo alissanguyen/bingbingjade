@@ -60,12 +60,17 @@ PRODUCT FACTS:
 - Origin: ${origin}
 - Source/vendor notes: ${notesStr}
 
-Generate exactly three fields. Return STRICT JSON with no markdown, no code fences, no commentary:
+Generate exactly these fields. Return STRICT JSON with no markdown, no code fences, no commentary:
 
 {
   "title": "...",
   "description": "...",
-  "blemishes": "..."
+  "blemishes": "...",
+  "size": <number in mm, or null if not determinable>,
+  "width": <number in mm, or null if not provided>,
+  "thickness": <number in mm, or null if not provided>,
+  "origin": <"Myanmar" | "Guatemala" | "Hetian" — default to "Myanmar" if not specified>,
+  "imported_price_vnd": <integer in VND, or null if not mentioned — parse Vietnamese currency expressions like "5 triệu" = 5000000, "2.5tr" = 2500000>
 }
 
 TITLE RULES:
@@ -150,10 +155,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "AI response missing required fields" }, { status: 500 });
     }
 
+    const toNum = (v: unknown) => (typeof v === "number" && isFinite(v) ? v : null);
+
     return NextResponse.json({
       title: parsed.title.trim(),
       description: parsed.description.trim(),
       blemishes: parsed.blemishes.trim(),
+      size: toNum(parsed.size),
+      width: toNum(parsed.width),
+      thickness: toNum(parsed.thickness),
+      origin: ["Myanmar", "Guatemala", "Hetian"].includes(parsed.origin) ? parsed.origin : "Myanmar",
+      imported_price_vnd: toNum(parsed.imported_price_vnd),
     });
   } catch (err) {
     // Surface the real error message so it's visible in the UI during debugging
