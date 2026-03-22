@@ -39,6 +39,31 @@ type MediaItem = { type: "image"; src: string } | { type: "video"; src: string }
 
 const CENTER_CATEGORIES = new Set(["bangle", "necklace"]);
 
+function ArrowButton({
+  direction,
+  onClick,
+  lightbox = false,
+}: {
+  direction: "prev" | "next";
+  onClick: (e: React.MouseEvent) => void;
+  lightbox?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`absolute top-1/2 -translate-y-1/2 z-10 flex items-center justify-center rounded-full transition-all ${
+        direction === "prev" ? "left-2" : "right-2"
+      } ${
+        lightbox
+          ? "w-11 h-11 bg-white/10 hover:bg-white/25 text-white"
+          : "w-9 h-9 bg-black/30 hover:bg-black/50 text-white opacity-0 group-hover:opacity-100"
+      }`}
+    >
+      {direction === "prev" ? <ChevronLeft /> : <ChevronRight />}
+    </button>
+  );
+}
+
 export function ProductGallery({ images, videos, category = "" }: { images: string[]; videos: string[]; category?: string }) {
   const wmStyle: React.CSSProperties = CENTER_CATEGORIES.has(category)
     ? { width: "44%", right: "30%", top: "50%", transform: "translateY(-50%)" }
@@ -77,29 +102,6 @@ export function ProductGallery({ images, videos, category = "" }: { images: stri
   }
 
   const active = all[current];
-
-  const ArrowButton = ({
-    direction,
-    onClick,
-    lightbox = false,
-  }: {
-    direction: "prev" | "next";
-    onClick: (e: React.MouseEvent) => void;
-    lightbox?: boolean;
-  }) => (
-    <button
-      onClick={onClick}
-      className={`absolute top-1/2 -translate-y-1/2 z-10 flex items-center justify-center rounded-full transition-all ${
-        direction === "prev" ? "left-2" : "right-2"
-      } ${
-        lightbox
-          ? "w-11 h-11 bg-white/10 hover:bg-white/25 text-white"
-          : "w-9 h-9 bg-black/30 hover:bg-black/50 text-white opacity-0 group-hover:opacity-100"
-      }`}
-    >
-      {direction === "prev" ? <ChevronLeft /> : <ChevronRight />}
-    </button>
-  );
 
   // ── Download deterrence ────────────────────────────────────────────────────
   // This is lightweight deterrence only — not true DRM. A determined person can

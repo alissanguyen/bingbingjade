@@ -6,5 +6,6 @@ export interface CartItem {
   optionId: string | null;
   optionLabel: string | null;
   price: number;
+  originalPrice: number | null;
   thumbnail: string | null;
 }

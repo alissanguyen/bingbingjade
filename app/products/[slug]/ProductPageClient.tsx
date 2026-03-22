@@ -137,6 +137,10 @@ export function ProductPageClient({ product, productImages, productVideos, optio
       optionId: activeOption?.id ?? null,
       optionLabel: activeOption?.label ?? null,
       price: checkoutPrice,
+      originalPrice:
+        effectiveDisplayPrice != null && effectiveDisplayPrice !== checkoutPrice
+          ? effectiveDisplayPrice
+          : null,
       thumbnail,
     };
     addToCart(cartItem);

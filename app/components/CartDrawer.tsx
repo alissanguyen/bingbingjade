@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCart } from "./CartContext";
 import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
+import { supabase } from "@/lib/supabase";
 
 function fmtPrice(price: number): string {
   return requiresInquiry(price) ? obfuscatedPrice(price) : `$${price.toFixed(2)}`;
@@ -21,7 +22,38 @@ export function CartDrawer() {
   const [adminUnlocked, setAdminUnlocked] = useState(isLiveMode); // auto-unlocked in live mode
   const [showAdminInput, setShowAdminInput] = useState(false);
   const [adminError, setAdminError] = useState(false);
+  const [soldKeys, setSoldKeys] = useState<Set<string>>(new Set());
   const overlayRef = useRef<HTMLDivElement>(null);
+
+  // Check live availability when drawer opens
+  useEffect(() => {
+    if (!drawerOpen || items.length === 0) return;
+    async function checkAvailability() {
+      const productIds = [...new Set(items.map((i) => i.productId))];
+      const optionIds = items.map((i) => i.optionId).filter((id): id is string => id !== null);
+
+      const [{ data: products }, { data: options }] = await Promise.all([
+        supabase.from("products").select("id, status").in("id", productIds),
+        optionIds.length > 0
+          ? supabase.from("product_options").select("id, status").in("id", optionIds)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      const productStatus = new Map(products?.map((p: { id: string; status: string }) => [p.id, p.status]) ?? []);
+      const optionStatus = new Map((options ?? []).map((o: { id: string; status: string }) => [o.id, o.status]));
+
+      const sold = new Set<string>();
+      for (const item of items) {
+        const key = `${item.productId}-${item.optionId}`;
+        const isSold = item.optionId !== null
+          ? optionStatus.get(item.optionId) === "sold"
+          : productStatus.get(item.productId) === "sold";
+        if (isSold) sold.add(key);
+      }
+      setSoldKeys(sold);
+    }
+    checkAvailability();
+  }, [drawerOpen, items]);
 
   // Measure the sticky header so the drawer starts below it
   useEffect(() => {
@@ -49,7 +81,10 @@ export function CartDrawer() {
     return () => { document.body.style.overflow = ""; };
   }, [drawerOpen]);
 
-  const total = items.reduce((sum, i) => sum + i.price, 0);
+  const availableItems = items.filter((i) => !soldKeys.has(`${i.productId}-${i.optionId}`));
+  const total = availableItems.reduce((sum, i) => sum + i.price, 0);
+  const originalTotal = availableItems.reduce((sum, i) => sum + (i.originalPrice ?? i.price), 0);
+  const totalSavings = originalTotal - total;
 
   async function handleAdminUnlock() {
     const res = await fetch("/api/stripe/verify-admin", {
@@ -76,7 +111,7 @@ export function CartDrawer() {
           "Content-Type": "application/json",
           ...(adminUnlocked ? { "x-admin-password": adminPassword } : {}),
         },
-        body: JSON.stringify({ items }),
+        body: JSON.stringify({ items: availableItems }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -143,66 +178,119 @@ export function CartDrawer() {
               </button>
             </div>
           ) : (
-            items.map((item) => {
-              const productPath = item.productSlug
-                ? `/products/${item.productSlug}-${item.productPublicId}`
-                : `/products/${item.productPublicId}`;
-              return (
-                <div key={`${item.productId}-${item.optionId}`} className="flex gap-3">
-                  {/* Thumbnail */}
-                  <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
+            <>
+              {/* Available items */}
+              {items.filter((item) => !soldKeys.has(`${item.productId}-${item.optionId}`)).map((item) => {
+                const productPath = item.productSlug
+                  ? `/products/${item.productSlug}-${item.productPublicId}`
+                  : `/products/${item.productPublicId}`;
+                return (
+                  <div key={`${item.productId}-${item.optionId}`} className="flex gap-3">
+                    {/* Thumbnail */}
+                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
+                      {item.thumbnail ? (
+                        <Image
+                          src={item.thumbnail}
+                          alt={item.productName}
+                          width={64}
+                          height={64}
+                          className="w-full h-full object-cover"
+                          unoptimized
+                          loading="eager"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        href={productPath}
+                        onClick={closeDrawer}
+                        className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-emerald-700 dark:hover:text-emerald-400 line-clamp-2 leading-snug"
+                      >
+                        {item.productName}
+                      </Link>
+                      {item.optionLabel && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.optionLabel}</p>
+                      )}
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className={`text-sm font-semibold ${item.originalPrice != null ? "text-amber-600 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}`}>
+                          {fmtPrice(item.price)}
+                        </span>
+                        {item.originalPrice != null && (
+                          <span className="text-xs text-gray-400 line-through">
+                            {fmtPrice(item.originalPrice)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Remove */}
+                    <button
+                      onClick={() => removeFromCart(item.productId, item.optionId)}
+                      aria-label="Remove item"
+                      className="p-1 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors shrink-0 self-start mt-0.5"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+                );
+              })}
+
+              {/* Sold / unavailable items */}
+              {items.filter((item) => soldKeys.has(`${item.productId}-${item.optionId}`)).map((item) => (
+                <div key={`sold-${item.productId}-${item.optionId}`} className="flex gap-3 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/20 p-2.5">
+                  {/* Thumbnail — grayscale */}
+                  <div className="w-14 h-14 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
                     {item.thumbnail ? (
                       <Image
                         src={item.thumbnail}
                         alt={item.productName}
-                        width={64}
-                        height={64}
-                        className="w-full h-full object-cover"
+                        width={56}
+                        height={56}
+                        className="w-full h-full object-cover grayscale opacity-50"
                         unoptimized
+                        loading="eager"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
                       </div>
                     )}
                   </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <Link
-                      href={productPath}
-                      onClick={closeDrawer}
-                      className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-emerald-700 dark:hover:text-emerald-400 line-clamp-2 leading-snug"
-                    >
-                      {item.productName}
-                    </Link>
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 line-clamp-1 leading-snug">{item.productName}</p>
                     {item.optionLabel && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.optionLabel}</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{item.optionLabel}</p>
                     )}
-                    <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 mt-1">
-                      {fmtPrice(item.price)}
-                    </p>
+                    <p className="text-xs text-red-600 dark:text-red-400 font-medium mt-1">This product is no longer available.</p>
                   </div>
 
                   {/* Remove */}
                   <button
                     onClick={() => removeFromCart(item.productId, item.optionId)}
                     aria-label="Remove item"
-                    className="p-1 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors shrink-0 self-start mt-0.5"
+                    className="text-xs text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors shrink-0 self-center font-medium px-1"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
+                    Remove
                   </button>
                 </div>
-              );
-            })
+              ))}
+            </>
           )}
         </div>
 
         {/* Footer */}
-        {items.length > 0 && (
+        {availableItems.length > 0 && (
           <div className="border-t border-gray-200 dark:border-gray-800 px-5 py-4 space-y-3">
             {error && (
               <p className="text-sm text-red-600 dark:text-red-400 rounded-lg bg-red-50 dark:bg-red-950/30 px-3 py-2">
@@ -211,17 +299,29 @@ export function CartDrawer() {
             )}
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-500 dark:text-gray-400">Subtotal</span>
-              <span className="font-semibold text-gray-900 dark:text-gray-100">{fmtPrice(total)}</span>
+              <div className="flex items-center gap-2">
+                {totalSavings > 0 && (
+                  <span className="text-xs text-gray-400 line-through">{fmtPrice(originalTotal)}</span>
+                )}
+                <span className={`font-semibold ${totalSavings > 0 ? "text-amber-600 dark:text-amber-400" : "text-gray-900 dark:text-gray-100"}`}>
+                  {fmtPrice(total)}
+                </span>
+              </div>
             </div>
+            {totalSavings > 0 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                You save {fmtPrice(totalSavings)} with current sale prices.
+              </p>
+            )}
             <p className="text-xs text-gray-400 dark:text-gray-500">
               Shipping and taxes calculated at checkout.
             </p>
             <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2.5 space-y-1.5">
               <p className="text-xs text-amber-800 dark:text-amber-300">
-                Items in your cart are not reserved — availability is confirmed only upon completed checkout.
+                Items might sell while in cart — availability is confirmed only upon completed checkout.
               </p>
               <p className="text-xs text-amber-800 dark:text-amber-300">
-                💳 Paying via <span className="font-semibold">Zelle</span>? You&apos;ll receive a <span className="font-semibold">3% discount</span> — reach out before checking out.
+                💳 Paying via <span className="font-semibold">Zelle</span> or <span className="font-semibold">Wire Transfer</span>? You&apos;ll receive a <span className="font-semibold">3% discount</span> — reach out before checking out.
               </p>
             </div>
 
