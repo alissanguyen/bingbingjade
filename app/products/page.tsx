@@ -132,8 +132,13 @@ export default async function Products({
   const products = (allProducts as ProductCard[] | null)?.filter((p) => {
     // Category filter
     if (selectedCategory && p.category !== selectedCategory) return false;
-    // Status filter
-    if (selectedStatuses.length > 0 && !selectedStatuses.includes(p.status)) return false;
+    // Status filter — "available" also matches "on_sale" products
+    if (selectedStatuses.length > 0) {
+      const effectiveStatus = selectedStatuses.includes("available") && p.status === "on_sale"
+        ? "available"
+        : p.status;
+      if (!selectedStatuses.includes(effectiveStatus)) return false;
+    }
     // Origin filter
     if (selectedOrigins.length > 0 && !selectedOrigins.includes(p.origin)) return false;
     // Color filter — product must have at least one of the selected colors
