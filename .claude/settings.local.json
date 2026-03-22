@@ -6,7 +6,22 @@
       "Bash(npm run:*)",
       "Bash(git diff:*)",
       "Bash(git restore:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx next:*)",
+      "Bash(grep -n \"size\\\\|tier\\\\|category\" /Users/nouveau/Documents/workspaces/jade-shop/app/products/[slug]/ProductPageClient.tsx)",
+      "Bash(grep -rn NEXT_PUBLIC_WHATSAPP /Users/nouveau/Documents/workspaces/jade-shop/ --include=*.env* --include=*.example*)",
+      "Bash(grep -n \"Contact\\\\|href\\\\|button\\\\|Link\" /Users/nouveau/Documents/workspaces/jade-shop/app/products/[slug]/ProductPageClient.tsx)",
+      "Bash(npx vercel:*)",
+      "Bash(npm install:*)",
+      "Bash(node:*)",
+      "Bash(node -e \"const s = require\\(''''stripe''''\\); const inst = new s\\(''''sk_test_x''''\\); console.log\\(inst.getApiField?.\\(''''version''''\\) ?? ''''check package''''\\)\")",
+      "Bash(ls:*)",
+      "Bash(grep -n \"status\" /Users/nouveau/Documents/workspaces/jade-shop/app/edit/[id]/actions.ts)",
+      "Bash(cat /Users/nouveau/Documents/workspaces/jade-shop/app/products/[slug]/page.tsx)",
+      "Bash(npm test:*)",
+      "Bash(grep -E \"anthropic|ANTHROPIC\" /Users/nouveau/Documents/workspaces/jade-shop/package.json /Users/nouveau/Documents/workspaces/jade-shop/.env*)",
+      "Bash(grep -n \"getPublicUrl\\\\|createSignedUrl\\\\|storage\\\\|IMAGE_BUCKET\\\\|supabase\" /Users/nouveau/Documents/workspaces/jade-shop/app/products/[slug]/page.tsx)"
     ]
   }
 }

@@ -8,47 +8,47 @@ export const metadata: Metadata = {
 const SECTIONS = [
   {
     title: "Information We Collect",
-    body: "When you make a purchase or contact us, we collect information you provide directly — such as your name, email address, shipping address, and payment details. Payment information is processed securely by Stripe and is never stored on our servers. We may also collect basic usage data (pages visited, browser type) through standard server logs.",
+    body: "When you make a purchase or contact us, we collect the information you provide directly, such as your name, email address, shipping address, and order details. Payment information is processed securely by Stripe and is never stored on our servers. We may also collect limited technical data (such as browser type and pages visited) through standard server logs to ensure the site functions properly.",
   },
   {
     title: "How We Use Your Information",
-    body: "We use your information solely to process and fulfill your order, respond to your inquiries, send order confirmations and shipping updates, and comply with applicable legal obligations. We do not use your data for advertising or marketing without your consent.",
+    body: "Your information is used solely to process and fulfill orders, provide customer support, send order confirmations and shipping updates, and comply with applicable legal and accounting obligations. We do not use your information for unsolicited marketing or advertising.",
   },
   {
     title: "Sharing of Information",
-    body: "We do not sell, rent, or trade your personal information to third parties. We share your data only with service providers directly involved in fulfilling your order — such as Stripe for payment processing and shipping carriers for delivery. These parties are bound by their own privacy policies and are only permitted to use your data for the purpose of providing their services.",
+    body: "We do not sell, rent, or trade your personal information. Your data is shared only with trusted service providers necessary to complete your order, such as Stripe for payment processing and shipping carriers for delivery. These providers are authorized to use your information only for the services they perform on our behalf.",
   },
   {
     title: "Payment Security",
-    body: "All payments are processed by Stripe, a PCI-DSS Level 1 certified payment processor. Your card number and payment credentials are transmitted directly to Stripe using TLS encryption and are never stored on our systems.",
+    body: "All payments are processed securely by Stripe, a PCI-DSS Level 1 certified payment provider. Your payment details are encrypted and transmitted directly to Stripe using industry-standard TLS encryption. We do not store or have access to your full payment credentials.",
   },
   {
     title: "Cookies",
-    body: "Our website uses only essential cookies necessary for the site to function — such as cart state stored in your browser's localStorage. We do not use advertising cookies, tracking pixels, or third-party analytics beyond what is necessary to operate the site.",
+    body: "We use only essential technologies required for the website to function, such as storing cart or session data in your browser. We do not use advertising cookies, behavioral tracking, or unnecessary third-party analytics.",
   },
   {
     title: "Data Retention",
-    body: "We retain order records (name, email, items purchased, and transaction details) for accounting and legal purposes in accordance with applicable law. If you would like your personal data removed, please contact us and we will accommodate your request to the extent permitted by law.",
+    body: "We retain order and transaction records as required for legitimate business, accounting, and legal purposes. If you request deletion of your personal data, we will honor your request where legally permissible.",
   },
   {
     title: "Your Rights",
-    body: "You have the right to request access to, correction of, or deletion of any personal information we hold about you. To exercise any of these rights, please contact us via the Contact page. We will respond to all requests within a reasonable timeframe.",
+    body: "You may request access to, correction of, or deletion of your personal information at any time. Requests can be submitted through our Contact page, and we will respond within a reasonable timeframe in accordance with applicable laws.",
   },
   {
     title: "Third-Party Links",
-    body: "Our site may contain links to third-party platforms such as Instagram, Reddit, and WhatsApp. We are not responsible for the privacy practices of those platforms. We encourage you to review their respective privacy policies.",
+    body: "Our website may include links to third-party platforms such as Instagram, Reddit, or WhatsApp. We are not responsible for the privacy practices or content of those external services. We encourage you to review their policies before engaging with them.",
   },
   {
     title: "Children's Privacy",
-    body: "Our website is not directed to children under the age of 13. We do not knowingly collect personal information from children. If you believe a child has provided us with personal information, please contact us and we will promptly remove it.",
+    body: "Our website is not intended for individuals under the age of 13, and we do not knowingly collect personal information from children. If such information is identified, it will be promptly removed.",
   },
   {
     title: "Changes to This Policy",
-    body: "We may update this Privacy Policy from time to time. Any changes will be posted on this page with an updated effective date. Continued use of our website after changes are posted constitutes your acceptance of the updated policy.",
+    body: "We reserve the right to update this Privacy Policy as needed. Any updates will be reflected on this page with a revised effective date. Continued use of the website constitutes acceptance of any updates.",
   },
   {
     title: "Contact",
-    body: "If you have any questions about this Privacy Policy or how we handle your data, please reach out via our Contact page. We are happy to address any concerns.",
+    body: "For any questions or concerns regarding this Privacy Policy or how your information is handled, please contact us through our Contact page. We are committed to providing clarity and support.",
   },
 ];
 

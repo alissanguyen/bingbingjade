@@ -29,10 +29,10 @@ A production e-commerce application for an authentic jade jewelry business, buil
 ┌─────────────────────────────────────────────────────────────┐
 │                      Next.js App Router                     │
 │                                                             │
-│  ┌──────────────┐   ┌──────────────┐   ┌────────────────┐  │
-│  │  Storefront  │   │  Admin CMS   │   │  API Routes    │  │
-│  │  (RSC + ISR) │   │  (protected) │   │  (serverless)  │  │
-│  └──────────────┘   └──────────────┘   └────────────────┘  │
+│  ┌──────────────┐   ┌──────────────┐   ┌────────────────┐   │
+│  │  Storefront  │   │  Admin CMS   │   │  API Routes    │   │
+│  │  (RSC + ISR) │   │  (protected) │   │  (serverless)  │   │
+│  └──────────────┘   └──────────────┘   └────────────────┘   │
 │           │                 │                    │          │
 └───────────┼─────────────────┼────────────────────┼──────────┘
             │                 │                    │
