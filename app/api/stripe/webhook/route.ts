@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe, webhookSecret } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { decodeCheckoutItems } from "@/lib/stripe-metadata";
+import {
+  upsertCustomer,
+  saveShippingAddress,
+  generateOrderNumber,
+  sendOrderConfirmationEmail,
+} from "@/lib/orders";
 import type Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -8,51 +15,7 @@ export const runtime = "nodejs";
 // Disable body parsing — we need the raw body for signature verification
 export const dynamic = "force-dynamic";
 
-/** Compact item shape stored in session metadata (keys kept short to stay under Stripe's 500-char limit). */
-interface CompactItem {
-  p: string;          // productId
-  o?: string | null;  // optionId (omitted when null)
-  $: number;          // price_usd
-}
-
-/** Normalised shape used throughout this handler. */
-interface MetaItem {
-  productId: string;
-  optionId: string | null;
-  price: number;
-}
-
-/** Collect items from all `items_N` metadata keys (new compact format).
- *  Falls back to the legacy `items` key if no `items_0` exists. */
-function parseMetaItems(metadata: Stripe.Metadata | null): MetaItem[] {
-  if (!metadata) return [];
-
-  // New compact format: items_0, items_1, …
-  if ("items_0" in metadata) {
-    const result: MetaItem[] = [];
-    let idx = 0;
-    while (`items_${idx}` in metadata) {
-      const chunk: CompactItem[] = JSON.parse(metadata[`items_${idx}`]);
-      for (const c of chunk) {
-        result.push({ productId: c.p, optionId: c.o ?? null, price: c.$ });
-      }
-      idx++;
-    }
-    return result;
-  }
-
-  // Legacy format: items key with full objects
-  if ("items" in metadata) {
-    const legacy = JSON.parse(metadata.items);
-    return legacy.map((i: { productId: string; optionId?: string | null; price: number }) => ({
-      productId: i.productId,
-      optionId: i.optionId ?? null,
-      price: i.price,
-    }));
-  }
-
-  return [];
-}
+import type { MetaItem } from "@/lib/stripe-metadata";
 
 export async function POST(req: NextRequest) {
   const sig = req.headers.get("stripe-signature");
@@ -79,7 +42,7 @@ export async function POST(req: NextRequest) {
   const session = event.data.object as Stripe.Checkout.Session;
   const supabase = supabaseAdmin;
 
-  // Idempotency: check if this session was already processed
+  // ── Idempotency: check if this session was already processed ──────────────
   const { data: existing } = await supabase
     .from("orders")
     .select("id")
@@ -90,10 +53,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true });
   }
 
-  // Parse items from metadata
+  // ── Parse items from metadata ─────────────────────────────────────────────
   let metaItems: MetaItem[] = [];
   try {
-    metaItems = parseMetaItems(session.metadata);
+    metaItems = decodeCheckoutItems(session.metadata);
   } catch {
     console.error("[webhook] Failed to parse metadata for session", session.id, session.metadata);
     return NextResponse.json({ error: "Invalid metadata." }, { status: 400 });
@@ -104,7 +67,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No items in metadata." }, { status: 400 });
   }
 
-  // Fetch product/option names for order_items snapshot
+  // ── Fetch product/option names for order_items snapshot ───────────────────
   const productIds = [...new Set(metaItems.map((i) => i.productId))];
   const optionIds = metaItems.map((i) => i.optionId).filter(Boolean) as string[];
 
@@ -118,16 +81,98 @@ export async function POST(req: NextRequest) {
   const productNameMap = new Map((productsResult.data ?? []).map((p) => [p.id, p.name as string]));
   const optionLabelMap = new Map((optionsResult.data ?? []).map((o) => [o.id, o.label as string | null]));
 
-  // Create order record — guard against duplicate-delivery race condition (PostgreSQL 23505)
+  // ── Customer & address (non-critical — failures do not block order creation) ─
+  const customerEmail = session.customer_details?.email ?? null;
+  const customerName = session.customer_details?.name ?? null;
+  const customerPhone = session.customer_details?.phone ?? null;
+  const stripeCustomerId = typeof session.customer === "string" ? session.customer : null;
+
+  let customerId: string | null = null;
+  if (customerEmail && customerName) {
+    try {
+      customerId = await upsertCustomer({
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
+        stripeCustomerId,
+      });
+    } catch (err) {
+      console.error("[webhook] Customer upsert failed (non-fatal):", err);
+    }
+  }
+
+  let shippingAddressId: string | null = null;
+  // shipping_details is only present when the Stripe session collects shipping.
+  // Cast through unknown to avoid Stripe SDK type narrowing issues at runtime.
+  const shippingDetails = (session as unknown as {
+    shipping_details?: {
+      name?: string | null;
+      address?: {
+        line1?: string | null;
+        line2?: string | null;
+        city?: string | null;
+        state?: string | null;
+        postal_code?: string | null;
+        country?: string | null;
+      };
+    } | null;
+  }).shipping_details;
+
+  if (customerId && shippingDetails?.address) {
+    const addr = shippingDetails.address;
+    if (addr.line1 && addr.city && addr.postal_code && addr.country) {
+      try {
+        shippingAddressId = await saveShippingAddress({
+          customerId,
+          recipientName: shippingDetails.name ?? null,
+          line1: addr.line1,
+          line2: addr.line2 ?? null,
+          city: addr.city,
+          state: addr.state ?? "",
+          postal: addr.postal_code,
+          country: addr.country,
+        });
+      } catch (err) {
+        console.error("[webhook] Address save failed (non-fatal):", err);
+      }
+    }
+  }
+
+  // ── Generate order number (non-critical — order is still created with NULL) ─
+  let orderNumber: string | null = null;
+  try {
+    orderNumber = await generateOrderNumber();
+  } catch (err) {
+    console.error("[webhook] Order number generation failed (non-fatal):", err);
+  }
+
+  // ── Retrieve payment_intent_id if needed (session may expand it already) ──
+  // session.payment_intent is string | Stripe.PaymentIntent | null
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : (session.payment_intent as Stripe.PaymentIntent | null)?.id ?? null;
+
+  // ── Create order record ────────────────────────────────────────────────────
+  // The UNIQUE constraint on stripe_session_id guards against duplicate-delivery
+  // race conditions (23505 = unique_violation). This is the same as before.
   const { data: order, error: orderErr } = await supabase
     .from("orders")
     .insert({
       stripe_session_id: session.id,
-      customer_email: session.customer_details?.email ?? null,
-      customer_name: session.customer_details?.name ?? null,
+      stripe_payment_intent_id: paymentIntentId,
+      stripe_customer_id: stripeCustomerId,
+      order_number: orderNumber,
+      customer_id: customerId,
+      customer_email: customerEmail,
+      customer_name: customerName,
+      customer_phone_snapshot: customerPhone,
       amount_total: session.amount_total ?? null,
       currency: session.currency ?? "usd",
       status: "paid",
+      order_status: "order_confirmed",
+      source: "stripe",
+      shipping_address_id: shippingAddressId,
     })
     .select("id")
     .single();
@@ -142,19 +187,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to create order." }, { status: 500 });
   }
 
-  // Create order items
+  // ── Create order items ────────────────────────────────────────────────────
   await supabase.from("order_items").insert(
-    metaItems.map((item) => ({
-      order_id: order.id,
-      product_id: item.productId,
-      product_option_id: item.optionId ?? null,
-      product_name: productNameMap.get(item.productId) ?? item.productId,
-      option_label: item.optionId ? (optionLabelMap.get(item.optionId) ?? null) : null,
-      price_usd: item.price,
-    }))
+    metaItems.map((item) => {
+      const productName = productNameMap.get(item.productId) ?? item.productId;
+      const optionLabel = item.optionId ? (optionLabelMap.get(item.optionId) ?? null) : null;
+      return {
+        order_id: order.id,
+        product_id: item.productId,
+        product_option_id: item.optionId ?? null,
+        product_name: productName,
+        option_label: optionLabel,
+        price_usd: item.price,
+        quantity: 1,
+        line_total: item.price,
+      };
+    })
   );
 
-  // Mark options and products as sold — parallelise across items
+  // ── Mark options and products as sold ─────────────────────────────────────
   const affectedProductIds = new Set<string>(metaItems.map((i) => i.productId));
 
   await Promise.all(
@@ -165,7 +216,7 @@ export async function POST(req: NextRequest) {
     )
   );
 
-  // Auto-mark product sold if all its options are now sold — parallelise across products
+  // Auto-mark product sold if all its options are now sold
   await Promise.all(
     [...affectedProductIds].map(async (productId) => {
       const { data: allOptions } = await supabase
@@ -185,13 +236,30 @@ export async function POST(req: NextRequest) {
   console.info(
     "[webhook] Order created",
     order.id,
+    orderNumber ? `(${orderNumber})` : "(no order number)",
     "for session",
     session.id,
     "— items:",
     metaItems.length
   );
 
-  // Trigger ISR revalidation
+  // ── Send branded confirmation email ───────────────────────────────────────
+  if (orderNumber && customerName && customerEmail) {
+    await sendOrderConfirmationEmail({
+      orderNumber,
+      customerName,
+      customerEmail,
+      amountTotalCents: session.amount_total ?? 0,
+      items: metaItems.map((item) => ({
+        name: productNameMap.get(item.productId) ?? item.productId,
+        option: item.optionId ? (optionLabelMap.get(item.optionId) ?? null) : null,
+        price: item.price,
+        quantity: 1,
+      })),
+    });
+  }
+
+  // ── Trigger ISR revalidation ──────────────────────────────────────────────
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
   const secret = process.env.REVALIDATE_SECRET;
   if (secret) {

@@ -1,0 +1,359 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+import type { OrderStatus } from "@/types/orders";
+
+// Revalidate every 5 minutes so status updates surface quickly
+export const revalidate = 300;
+
+// ── Status timeline ────────────────────────────────────────────────────────
+const STATUS_STEPS: { key: OrderStatus; label: string; description: string }[] = [
+  {
+    key: "order_confirmed",
+    label: "Order Confirmed",
+    description: "Payment received. Your order is in our system.",
+  },
+  {
+    key: "quality_control",
+    label: "Quality Control",
+    description: "Our team is carefully inspecting your piece.",
+  },
+  {
+    key: "certifying",
+    label: "Certification",
+    description: "Your jade is being authenticated and certified.",
+  },
+  {
+    key: "inbound_shipping",
+    label: "Shipping to Our Location",
+    description: "The piece is on its way to our main location.",
+  },
+  {
+    key: "outbound_shipping",
+    label: "On the Way to You",
+    description: "Your order has been dispatched and is heading your way.",
+  },
+  {
+    key: "delivered",
+    label: "Delivered",
+    description: "Your order has arrived. Enjoy your piece.",
+  },
+];
+
+// order_created is a pre-confirmation state (admin/manual orders not yet confirmed)
+const STATUS_ORDER: OrderStatus[] = [
+  "order_created",
+  "order_confirmed",
+  "quality_control",
+  "certifying",
+  "inbound_shipping",
+  "outbound_shipping",
+  "delivered",
+];
+
+function statusIndex(status: OrderStatus): number {
+  return STATUS_ORDER.indexOf(status);
+}
+
+// ── Data fetch ─────────────────────────────────────────────────────────────
+async function getOrder(orderNumber: string) {
+  const { data: order } = await supabaseAdmin
+    .from("orders")
+    .select(`
+      order_number,
+      created_at,
+      amount_total,
+      currency,
+      order_status,
+      estimated_delivery_date,
+      customer_name,
+      order_items (
+        product_name,
+        option_label,
+        price_usd,
+        quantity,
+        line_total
+      )
+    `)
+    .eq("order_number", orderNumber.toUpperCase())
+    .maybeSingle();
+
+  return order;
+}
+
+// ── Metadata ───────────────────────────────────────────────────────────────
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ orderNumber: string }>;
+}): Promise<Metadata> {
+  const { orderNumber } = await params;
+  return {
+    title: `Order ${orderNumber.toUpperCase()}`,
+    description: "Track your BingBing Jade order status.",
+    robots: { index: false, follow: false },
+  };
+}
+
+// ── Page ───────────────────────────────────────────────────────────────────
+export default async function TrackOrderPage({
+  params,
+}: {
+  params: Promise<{ orderNumber: string }>;
+}) {
+  const { orderNumber } = await params;
+  const order = await getOrder(orderNumber);
+
+  if (!order) notFound();
+
+  const currentStatus = order.order_status as OrderStatus;
+  const currentIdx = statusIndex(currentStatus);
+  const isDelivered = currentStatus === "delivered";
+  const isPreConfirm = currentStatus === "order_created";
+
+  const orderDate = new Date(order.created_at).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const totalFormatted =
+    order.amount_total != null
+      ? `$${(order.amount_total / 100).toFixed(2)}`
+      : "—";
+
+  // Use typed array for order_items
+  const items = (order.order_items ?? []) as {
+    product_name: string;
+    option_label: string | null;
+    price_usd: number | null;
+    quantity: number;
+    line_total: number | null;
+  }[];
+
+  return (
+    <div className="mx-auto max-w-2xl px-6 py-16">
+      {/* Header */}
+      <div className="mb-10">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 mb-2">
+          Order Tracking
+        </p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+          {order.order_number}
+        </h1>
+        <p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
+          Placed on {orderDate}
+          {order.customer_name && (
+            <> · <span className="text-gray-600 dark:text-gray-300">{order.customer_name.split(" ")[0]}</span></>
+          )}
+        </p>
+      </div>
+
+      {/* Current status badge */}
+      <div
+        className={`rounded-xl border px-5 py-4 mb-10 ${
+          isDelivered
+            ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40"
+            : "border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30"
+        }`}
+      >
+        <div className="flex items-start gap-3">
+          <div
+            className={`mt-0.5 w-2.5 h-2.5 rounded-full shrink-0 ${
+              isDelivered
+                ? "bg-emerald-500"
+                : "bg-amber-400 animate-pulse"
+            }`}
+          />
+          <div>
+            <p
+              className={`text-sm font-semibold ${
+                isDelivered
+                  ? "text-emerald-700 dark:text-emerald-300"
+                  : "text-amber-700 dark:text-amber-300"
+              }`}
+            >
+              {isPreConfirm
+                ? "Awaiting Confirmation"
+                : (STATUS_STEPS.find((s) => s.key === currentStatus)?.label ?? currentStatus)}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
+              {isPreConfirm
+                ? "Your order has been received and is awaiting confirmation from our team."
+                : (STATUS_STEPS.find((s) => s.key === currentStatus)?.description ?? "")}
+            </p>
+            {!isDelivered && !isPreConfirm && (
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 italic">
+                Jade sourcing, certification, and international shipping take time — we appreciate your patience.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Timeline */}
+      {!isPreConfirm && (
+        <div className="mb-10">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-5">
+            Progress
+          </h2>
+          <ol className="relative">
+            {STATUS_STEPS.map((step, idx) => {
+              const stepIdx = statusIndex(step.key);
+              const isCompleted = stepIdx < currentIdx;
+              const isCurrent = step.key === currentStatus;
+              const isPending = stepIdx > currentIdx;
+
+              return (
+                <li key={step.key} className="flex gap-4 pb-7 last:pb-0">
+                  {/* Line + dot */}
+                  <div className="flex flex-col items-center">
+                    <div
+                      className={`w-3 h-3 rounded-full border-2 shrink-0 z-10 ${
+                        isCompleted
+                          ? "bg-emerald-500 border-emerald-500"
+                          : isCurrent
+                          ? "bg-amber-400 border-amber-400"
+                          : "bg-white dark:bg-gray-950 border-gray-300 dark:border-gray-700"
+                      }`}
+                    />
+                    {idx < STATUS_STEPS.length - 1 && (
+                      <div
+                        className={`w-px flex-1 mt-1 ${
+                          isCompleted ? "bg-emerald-400 dark:bg-emerald-700" : "bg-gray-200 dark:bg-gray-800"
+                        }`}
+                      />
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div className="pb-1">
+                    <p
+                      className={`text-sm font-medium ${
+                        isCurrent
+                          ? "text-gray-900 dark:text-gray-100"
+                          : isCompleted
+                          ? "text-gray-600 dark:text-gray-400"
+                          : "text-gray-400 dark:text-gray-600"
+                      }`}
+                    >
+                      {step.label}
+                      {isCompleted && (
+                        <svg
+                          className="inline ml-1.5 text-emerald-500"
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </p>
+                    {isCurrent && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
+                        {step.description}
+                      </p>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      )}
+
+      {/* Estimated delivery */}
+      {order.estimated_delivery_date && (
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 px-5 py-4 mb-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-1">
+            Estimated Delivery
+          </p>
+          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            {new Date(order.estimated_delivery_date).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </p>
+        </div>
+      )}
+
+      {/* Order summary */}
+      {items.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-4">
+            Order Summary
+          </h2>
+          <div className="divide-y divide-gray-100 dark:divide-gray-800 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+            {items.map((item, i) => (
+              <div key={i} className="flex justify-between items-start px-5 py-3.5">
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-snug">
+                    {item.product_name}
+                  </p>
+                  {item.option_label && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.option_label}</p>
+                  )}
+                  {item.quantity > 1 && (
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Qty: {item.quantity}</p>
+                  )}
+                </div>
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 ml-6 shrink-0">
+                  {item.line_total != null
+                    ? `$${item.line_total.toFixed(2)}`
+                    : item.price_usd != null
+                    ? `$${item.price_usd.toFixed(2)}`
+                    : "—"}
+                </p>
+              </div>
+            ))}
+            <div className="flex justify-between items-center px-5 py-3.5 bg-gray-50 dark:bg-gray-900">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Total paid</p>
+              <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{totalFormatted}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reassurance note */}
+      <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/60 px-5 py-4 text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-8">
+        <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">About your order timeline</p>
+        <p>
+          Authentic jadeite requires careful sourcing, independent certification, and international
+          shipping — each step takes time. This page will reflect your order's progress. If you have
+          questions at any point, please reach out via{" "}
+          <Link
+            href="/contact"
+            className="text-emerald-600 dark:text-emerald-400 hover:underline"
+          >
+            our contact form
+          </Link>{" "}
+          or WhatsApp. We're always happy to provide a personal update.
+        </p>
+      </div>
+
+      {/* Actions */}
+      <div className="flex flex-wrap gap-3">
+        <Link
+          href="/products"
+          className="rounded-full border border-gray-200 dark:border-gray-700 px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:border-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+        >
+          Browse Products
+        </Link>
+        <Link
+          href="/contact"
+          className="rounded-full border border-gray-200 dark:border-gray-700 px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:border-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+        >
+          Contact Us
+        </Link>
+      </div>
+    </div>
+  );
+}
