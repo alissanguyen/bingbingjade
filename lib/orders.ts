@@ -326,12 +326,15 @@ export async function fetchEmailItems(orderId: string): Promise<EmailItem[]> {
 
   const productIds = rows.map((r) => r.product_id).filter((id): id is string => !!id);
   let imageMap: Record<string, string> = {};
+  let hrefMap: Record<string, string> = {};
 
   if (productIds.length > 0) {
     const { data: products } = await supabaseAdmin
       .from("products")
-      .select("id, images")
+      .select("id, images, slug, public_id")
       .in("id", productIds);
+
+    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
 
     const resolved = await Promise.all(
       (products ?? []).map(async (p) => {
@@ -340,6 +343,12 @@ export async function fetchEmailItems(orderId: string): Promise<EmailItem[]> {
       })
     );
     imageMap = Object.fromEntries(resolved);
+
+    hrefMap = Object.fromEntries(
+      (products ?? [])
+        .filter((p) => p.slug && p.public_id)
+        .map((p) => [p.id, `${siteUrl}/products/${p.slug}-${p.public_id}`])
+    );
   }
 
   return rows.map((r) => ({
@@ -348,6 +357,7 @@ export async function fetchEmailItems(orderId: string): Promise<EmailItem[]> {
     price: r.price_usd ?? 0,
     quantity: r.quantity ?? 1,
     imageUrl: r.product_id ? (imageMap[r.product_id] ?? null) : null,
+    href: r.product_id ? (hrefMap[r.product_id] ?? null) : null,
   }));
 }
 
@@ -357,6 +367,7 @@ export type EmailItem = {
   price: number;
   quantity?: number;
   imageUrl?: string | null;
+  href?: string | null;
 };
 
 // Shared helper — same item-row HTML used in all email templates
@@ -367,18 +378,20 @@ function buildItemRowsHtml(items: EmailItem[]): string {
       const qty = i.quantity && i.quantity > 1 ? ` &times; ${i.quantity}` : "";
       const label = i.option ? `${i.name} &mdash; ${i.option}` : i.name;
       const lineTotal = i.price * (i.quantity ?? 1);
-      const imgCell = i.imageUrl
-        ? `<td style="width:56px;padding-right:14px;vertical-align:middle;">
-            <img src="${i.imageUrl}" width="56" height="56" alt="" style="display:block;border-radius:8px;object-fit:cover;width:56px;height:56px;" />
-          </td>`
-        : `<td style="width:56px;padding-right:14px;vertical-align:middle;">
-            <div style="width:56px;height:56px;border-radius:8px;background:#ecfdf5;"></div>
-          </td>`;
+      const imgContent = i.imageUrl
+        ? `<img src="${i.imageUrl}" width="56" height="56" alt="" style="display:block;border-radius:8px;object-fit:cover;width:56px;height:56px;" />`
+        : `<div style="width:56px;height:56px;border-radius:8px;background:#ecfdf5;"></div>`;
+      const imgCell = `<td style="width:56px;padding-right:14px;vertical-align:middle;">${
+        i.href ? `<a href="${i.href}" style="display:block;text-decoration:none;">${imgContent}</a>` : imgContent
+      }</td>`;
+      const nameDisplay = i.href
+        ? `<a href="${i.href}" style="color:#065f46;text-decoration:none;font-weight:500;">${label}</a>${qty}`
+        : `${label}${qty}`;
       return `<tr>
           <td style="padding:10px 0;border-bottom:1px solid #f0f0f0;">
             <table cellpadding="0" cellspacing="0" width="100%"><tr>
               ${imgCell}
-              <td style="vertical-align:middle;color:#374151;font-size:14px;">${label}${qty}</td>
+              <td style="vertical-align:middle;color:#374151;font-size:14px;">${nameDisplay}</td>
               <td style="vertical-align:middle;text-align:right;white-space:nowrap;color:#374151;font-size:14px;font-weight:600;">$${lineTotal.toFixed(2)}</td>
             </tr></table>
           </td>
