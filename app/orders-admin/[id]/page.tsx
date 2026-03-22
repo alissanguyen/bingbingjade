@@ -42,7 +42,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       .in("id", productIds);
 
     productImages = Object.fromEntries(
-      (products ?? []).map((p) => [p.id, (p.images as string[])?.[0] ?? ""])
+      (products ?? []).map((p) => {
+        const raw = (p.images as string[])?.[0] ?? "";
+        // Ensure the path is absolute so it resolves correctly from any route
+        const src = raw && !raw.startsWith("http") && !raw.startsWith("/") ? `/${raw}` : raw;
+        return [p.id, src];
+      })
     );
   }
 
