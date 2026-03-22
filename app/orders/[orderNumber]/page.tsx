@@ -5,6 +5,7 @@ import Image from "next/image";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { resolveFirstImageUrl } from "@/lib/storage";
 import type { OrderStatus } from "@/types/orders";
+import ReviewForm from "./ReviewForm";
 
 // Revalidate every 5 minutes so status updates surface quickly
 export const revalidate = 300;
@@ -63,6 +64,7 @@ async function getOrder(orderNumber: string) {
   const { data: order } = await supabaseAdmin
     .from("orders")
     .select(`
+      id,
       order_number,
       created_at,
       amount_total,
@@ -110,7 +112,14 @@ async function getOrder(orderNumber: string) {
     productMeta = Object.fromEntries(resolved);
   }
 
-  return { ...order, productMeta };
+  // Fetch existing review (if any)
+  const { data: review } = await supabaseAdmin
+    .from("reviews")
+    .select("rating, description, date_rated")
+    .eq("order_id", order.id)
+    .maybeSingle();
+
+  return { ...order, productMeta, existingReview: review ?? null };
 }
 
 // ── Metadata ───────────────────────────────────────────────────────────────
@@ -162,7 +171,7 @@ export default async function TrackOrderPage({
     quantity: number;
     line_total: number | null;
   }[];
-  const { productMeta } = order;
+  const { productMeta, existingReview } = order;
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-16">
@@ -392,6 +401,14 @@ export default async function TrackOrderPage({
           or WhatsApp. We're always happy to provide a personal update.
         </p>
       </div>
+
+      {/* Review form — delivered orders only */}
+      {isDelivered && (
+        <ReviewForm
+          orderNumber={order.order_number}
+          existingReview={existingReview}
+        />
+      )}
 
       {/* Actions */}
       <div className="flex flex-wrap gap-3">

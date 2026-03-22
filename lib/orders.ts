@@ -438,12 +438,14 @@ export async function sendOrderStatusEmail(params: {
       ? `<p style="margin:0 0 24px;font-size:14px;color:#4b5563;line-height:1.6;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;">Estimated delivery: <strong>${params.estimatedDelivery}</strong></p>`
       : "";
 
+  const isDelivered = params.newStatus === "delivered";
+  const ctaLabel = isDelivered ? "Leave a Review &rarr;" : "Track Your Order &rarr;";
   const ctaSection = !isCancelled
     ? `<table cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
         <tr>
           <td style="background:#065f46;border-radius:999px;">
             <a href="${trackUrl}" style="display:inline-block;padding:13px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.01em;">
-              Track Your Order &rarr;
+              ${ctaLabel}
             </a>
           </td>
         </tr>
