@@ -23,6 +23,7 @@ export function CartDrawer() {
   const [showAdminInput, setShowAdminInput] = useState(false);
   const [adminError, setAdminError] = useState(false);
   const [soldKeys, setSoldKeys] = useState<Set<string>>(new Set());
+  const [staleKeys, setStaleKeys] = useState<Set<string>>(new Set());
   const overlayRef = useRef<HTMLDivElement>(null);
 
   // Check live availability when drawer opens
@@ -43,19 +44,29 @@ export function CartDrawer() {
       const optionStatus = new Map((options ?? []).map((o: { id: string; status: string }) => [o.id, o.status]));
 
       const sold = new Set<string>();
+      const stale = new Set<string>();
       for (const item of items) {
         const key = `${item.productId}-${item.optionId}`;
-        let isUnavailable: boolean;
         if (item.optionId !== null) {
-          // Option is unavailable if it's sold OR if it no longer exists in the DB
-          // (e.g. product was re-edited and options were recreated with new UUIDs)
-          isUnavailable = !optionStatus.has(item.optionId) || optionStatus.get(item.optionId) === "sold";
+          if (optionStatus.get(item.optionId) === "sold") {
+            sold.add(key);
+          } else if (!optionStatus.has(item.optionId)) {
+            // Option no longer exists — product was re-edited (options recreated with new UUIDs)
+            // If the product itself is sold, treat as sold; otherwise just stale
+            if (productStatus.get(item.productId) === "sold") {
+              sold.add(key);
+            } else {
+              stale.add(key);
+            }
+          }
         } else {
-          isUnavailable = productStatus.get(item.productId) === "sold";
+          if (productStatus.get(item.productId) === "sold") {
+            sold.add(key);
+          }
         }
-        if (isUnavailable) sold.add(key);
       }
       setSoldKeys(sold);
+      setStaleKeys(stale);
     }
     checkAvailability();
   }, [drawerOpen, items]);
@@ -86,7 +97,7 @@ export function CartDrawer() {
     return () => { document.body.style.overflow = ""; };
   }, [drawerOpen]);
 
-  const availableItems = items.filter((i) => !soldKeys.has(`${i.productId}-${i.optionId}`));
+  const availableItems = items.filter((i) => !soldKeys.has(`${i.productId}-${i.optionId}`) && !staleKeys.has(`${i.productId}-${i.optionId}`));
   const total = availableItems.reduce((sum, i) => sum + i.price, 0);
   const originalTotal = availableItems.reduce((sum, i) => sum + (i.originalPrice ?? i.price), 0);
   const totalSavings = originalTotal - total;
@@ -249,10 +260,9 @@ export function CartDrawer() {
                 );
               })}
 
-              {/* Sold / unavailable items */}
+              {/* Sold items */}
               {items.filter((item) => soldKeys.has(`${item.productId}-${item.optionId}`)).map((item) => (
                 <div key={`sold-${item.productId}-${item.optionId}`} className="flex gap-3 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/20 p-2.5">
-                  {/* Thumbnail — grayscale */}
                   <div className="w-14 h-14 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
                     {item.thumbnail ? (
                       <Image
@@ -270,8 +280,6 @@ export function CartDrawer() {
                       </div>
                     )}
                   </div>
-
-                  {/* Info */}
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-gray-500 dark:text-gray-400 line-clamp-1 leading-snug">{item.productName}</p>
                     {item.optionLabel && (
@@ -279,8 +287,6 @@ export function CartDrawer() {
                     )}
                     <p className="text-xs text-red-600 dark:text-red-400 font-medium mt-1">This product is no longer available.</p>
                   </div>
-
-                  {/* Remove */}
                   <button
                     onClick={() => removeFromCart(item.productId, item.optionId)}
                     aria-label="Remove item"
@@ -290,6 +296,51 @@ export function CartDrawer() {
                   </button>
                 </div>
               ))}
+
+              {/* Stale items — product still available but option was recreated */}
+              {items.filter((item) => staleKeys.has(`${item.productId}-${item.optionId}`)).map((item) => {
+                const productPath = item.productSlug
+                  ? `/products/${item.productSlug}-${item.productPublicId}`
+                  : `/products/${item.productPublicId}`;
+                return (
+                  <div key={`stale-${item.productId}-${item.optionId}`} className="flex gap-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-2.5">
+                    <div className="w-14 h-14 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
+                      {item.thumbnail ? (
+                        <Image
+                          src={item.thumbnail}
+                          alt={item.productName}
+                          width={56}
+                          height={56}
+                          className="w-full h-full object-cover opacity-60"
+                          unoptimized
+                          loading="eager"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 line-clamp-1 leading-snug">{item.productName}</p>
+                      {item.optionLabel && (
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{item.optionLabel}</p>
+                      )}
+                      <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mt-1">
+                        This item was updated —{" "}
+                        <Link href={productPath} onClick={closeDrawer} className="underline">re-add it from the product page</Link>.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => removeFromCart(item.productId, item.optionId)}
+                      aria-label="Remove item"
+                      className="text-xs text-amber-500 hover:text-amber-700 dark:hover:text-amber-300 transition-colors shrink-0 self-center font-medium px-1"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                );
+              })}
             </>
           )}
         </div>
