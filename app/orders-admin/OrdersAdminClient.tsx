@@ -44,6 +44,14 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   order_cancelled: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 };
 
+const SOURCE_LABELS: Record<OrderSource, string> = {
+  stripe: "Stripe",
+  whatsapp: "WhatsApp",
+  cash: "Cash/Zelle",
+  custom: "Custom",
+  admin: "Admin",
+};
+
 const SOURCE_COLORS: Record<OrderSource, string> = {
   stripe: "bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400",
   whatsapp: "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400",
@@ -75,14 +83,30 @@ function fmtDate(iso: string) {
 
 // ── Create-order modal types ──────────────────────────────────────────────────
 
+interface ProductOption {
+  id: string;
+  label: string | null;
+  price_usd: number | null;
+  status: string;
+}
+
+interface ProductChoice {
+  id: string;
+  name: string;
+  status: string;
+  product_options: ProductOption[];
+}
+
 interface NewItem {
+  productId: string;
   productName: string;
+  optionId: string;
   optionLabel: string;
   price: string;
   quantity: string;
 }
 
-const EMPTY_ITEM: NewItem = { productName: "", optionLabel: "", price: "", quantity: "1" };
+const EMPTY_ITEM: NewItem = { productId: "", productName: "", optionId: "", optionLabel: "", price: "", quantity: "1" };
 
 const EMPTY_FORM = {
   customerName: "",
@@ -123,6 +147,9 @@ export function OrdersAdminClient() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
+  const [allProducts, setAllProducts] = useState<ProductChoice[]>([]);
+  const [activeCombobox, setActiveCombobox] = useState<number | null>(null);
+
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const LIMIT = 50;
 
@@ -153,6 +180,15 @@ export function OrdersAdminClient() {
 
   const totalPages = Math.ceil(total / LIMIT);
 
+  // ── Load products for combobox ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!showCreate || allProducts.length > 0) return;
+    fetch("/api/admin/products")
+      .then((r) => r.json())
+      .then((d) => setAllProducts(d.products ?? []))
+      .catch(() => {});
+  }, [showCreate]); // eslint-disable-line
+
   // ── Create order ────────────────────────────────────────────────────────────
   function setField<K extends keyof typeof EMPTY_FORM>(k: K, v: (typeof EMPTY_FORM)[K]) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -172,6 +208,8 @@ export function OrdersAdminClient() {
       optionLabel: i.optionLabel.trim() || undefined,
       price: parseFloat(i.price) || 0,
       quantity: parseInt(i.quantity) || 1,
+      ...(i.productId ? { productId: i.productId } : {}),
+      ...(i.optionId ? { optionId: i.optionId } : {}),
     }));
 
     const body: Record<string, unknown> = {
@@ -305,7 +343,7 @@ export function OrdersAdminClient() {
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${SOURCE_COLORS[order.source]}`}>
-                          {order.source}
+                          {SOURCE_LABELS[order.source]}
                         </span>
                       </td>
                     </tr>
@@ -374,7 +412,7 @@ export function OrdersAdminClient() {
                     <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Source <span className="text-red-500">*</span></label>
                     <select value={form.source} onChange={(e) => setField("source", e.target.value as OrderSource)} required
                       className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                      <option value="cash">Cash</option>
+                      <option value="cash">Cash/Zelle</option>
                       <option value="whatsapp">WhatsApp</option>
                       <option value="custom">Custom</option>
                       <option value="admin">Admin</option>
@@ -424,41 +462,142 @@ export function OrdersAdminClient() {
               {/* Items */}
               <section>
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Items <span className="text-red-500">*</span></h3>
-                <div className="space-y-2">
-                  {items.map((item, i) => (
-                    <div key={i} className="grid grid-cols-12 gap-2 items-start">
-                      <div className="col-span-4">
-                        {i === 0 && <label className="block text-xs text-gray-400 mb-1">Product Name</label>}
-                        <input value={item.productName} onChange={(e) => updateItem(i, "productName", e.target.value)} required
-                          placeholder="Product name" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                      </div>
-                      <div className="col-span-3">
-                        {i === 0 && <label className="block text-xs text-gray-400 mb-1">Option / Variant</label>}
-                        <input value={item.optionLabel} onChange={(e) => updateItem(i, "optionLabel", e.target.value)}
-                          placeholder="e.g. Size 54" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                      </div>
-                      <div className="col-span-2">
-                        {i === 0 && <label className="block text-xs text-gray-400 mb-1">Price (USD)</label>}
-                        <input type="number" min="0" step="0.01" value={item.price} onChange={(e) => updateItem(i, "price", e.target.value)} required
-                          placeholder="0.00" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                      </div>
-                      <div className="col-span-2">
-                        {i === 0 && <label className="block text-xs text-gray-400 mb-1">Qty</label>}
-                        <input type="number" min="1" value={item.quantity} onChange={(e) => updateItem(i, "quantity", e.target.value)}
-                          className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                      </div>
-                      <div className={`col-span-1 flex items-center ${i === 0 ? "pt-5" : ""}`}>
-                        {items.length > 1 && (
-                          <button type="button" onClick={() => setItems((prev) => prev.filter((_, idx) => idx !== i))}
-                            className="p-1.5 text-gray-300 dark:text-gray-600 hover:text-red-500 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                            </svg>
-                          </button>
+                <div className="space-y-3">
+                  {items.map((item, i) => {
+                    const matched = allProducts.filter((p) =>
+                      item.productName.trim() === "" || p.name.toLowerCase().includes(item.productName.toLowerCase())
+                    );
+                    const selectedProduct = allProducts.find((p) => p.id === item.productId) ?? null;
+                    const availableOptions = selectedProduct?.product_options.filter((o) => o.status !== "sold") ?? [];
+
+                    return (
+                      <div key={i} className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-gray-400">Item {i + 1}</span>
+                          {items.length > 1 && (
+                            <button type="button" onClick={() => setItems((prev) => prev.filter((_, idx) => idx !== i))}
+                              className="text-gray-300 dark:text-gray-600 hover:text-red-500 transition-colors p-0.5">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Product combobox */}
+                        <div className="relative">
+                          <label className="block text-xs text-gray-400 mb-1">Product <span className="text-red-500">*</span></label>
+                          <input
+                            value={item.productName}
+                            onChange={(e) => {
+                              updateItem(i, "productName", e.target.value);
+                              updateItem(i, "productId", "");
+                              updateItem(i, "optionId", "");
+                              updateItem(i, "optionLabel", "");
+                              setActiveCombobox(i);
+                            }}
+                            onFocus={() => setActiveCombobox(i)}
+                            onBlur={() => setTimeout(() => setActiveCombobox((c) => (c === i ? null : c)), 150)}
+                            required
+                            placeholder="Search by product name…"
+                            autoComplete="off"
+                            className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          />
+                          {activeCombobox === i && matched.length > 0 && (
+                            <ul className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg max-h-52 overflow-y-auto">
+                              {matched.slice(0, 20).map((p) => (
+                                <li key={p.id}>
+                                  <button
+                                    type="button"
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => {
+                                      const firstAvailable = p.product_options.find((o) => o.status !== "sold");
+                                      setItems((prev) => prev.map((it, idx) => {
+                                        if (idx !== i) return it;
+                                        return {
+                                          ...it,
+                                          productId: p.id,
+                                          productName: p.name,
+                                          optionId: "",
+                                          optionLabel: "",
+                                          price: firstAvailable?.price_usd != null ? String(firstAvailable.price_usd) : it.price,
+                                        };
+                                      }));
+                                      setActiveCombobox(null);
+                                    }}
+                                    className="w-full text-left px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 flex items-center justify-between gap-2"
+                                  >
+                                    <span>{p.name}</span>
+                                    {p.product_options.length > 0 && (
+                                      <span className="text-xs text-gray-400 shrink-0">
+                                        {p.product_options.filter((o) => o.status !== "sold").length} option{p.product_options.filter((o) => o.status !== "sold").length !== 1 ? "s" : ""}
+                                      </span>
+                                    )}
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+
+                        {/* Option dropdown — shown when product has options */}
+                        {availableOptions.length > 0 && (
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1">Option / Variant</label>
+                            <select
+                              value={item.optionId}
+                              onChange={(e) => {
+                                const opt = availableOptions.find((o) => o.id === e.target.value);
+                                setItems((prev) => prev.map((it, idx) => {
+                                  if (idx !== i) return it;
+                                  return {
+                                    ...it,
+                                    optionId: opt?.id ?? "",
+                                    optionLabel: opt?.label ?? "",
+                                    price: opt?.price_usd != null ? String(opt.price_usd) : it.price,
+                                  };
+                                }));
+                              }}
+                              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            >
+                              <option value="">— select option —</option>
+                              {availableOptions.map((o) => (
+                                <option key={o.id} value={o.id}>
+                                  {o.label ?? "Untitled"}{o.price_usd != null ? ` — $${o.price_usd}` : ""}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         )}
+
+                        {/* No options: show free-text option/variant input */}
+                        {selectedProduct && availableOptions.length === 0 && (
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1">Option / Variant</label>
+                            <input value={item.optionLabel} onChange={(e) => updateItem(i, "optionLabel", e.target.value)}
+                              placeholder="e.g. Size 54"
+                              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1">Price (USD) <span className="text-red-500">*</span></label>
+                            <input type="number" min="0" step="0.01" value={item.price}
+                              onChange={(e) => updateItem(i, "price", e.target.value)} required
+                              placeholder="0.00"
+                              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1">Qty</label>
+                            <input type="number" min="1" value={item.quantity}
+                              onChange={(e) => updateItem(i, "quantity", e.target.value)}
+                              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 <button type="button" onClick={() => setItems((prev) => [...prev, { ...EMPTY_ITEM }])}
                   className="mt-2 text-xs text-emerald-700 dark:text-emerald-400 hover:underline">
