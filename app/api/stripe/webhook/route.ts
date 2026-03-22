@@ -7,6 +7,7 @@ import {
   saveShippingAddress,
   generateOrderNumber,
   sendOrderConfirmationEmail,
+  fetchEmailItems,
 } from "@/lib/orders";
 import type Stripe from "stripe";
 
@@ -233,17 +234,13 @@ export async function POST(req: NextRequest) {
 
   // ── Send branded confirmation email ───────────────────────────────────────
   if (orderNumber && customerName && customerEmail) {
+    const emailItems = await fetchEmailItems(order.id);
     await sendOrderConfirmationEmail({
       orderNumber,
       customerName,
       customerEmail,
       amountTotalCents: session.amount_total ?? 0,
-      items: metaItems.map((item) => ({
-        name: productNameMap.get(item.productId) ?? item.productId,
-        option: item.optionId ? (optionLabelMap.get(item.optionId) ?? null) : null,
-        price: item.price,
-        quantity: 1,
-      })),
+      items: emailItems,
     });
   }
 

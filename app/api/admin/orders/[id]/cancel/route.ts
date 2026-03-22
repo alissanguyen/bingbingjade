@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { sendOrderStatusEmail } from "@/lib/orders";
+import { sendOrderStatusEmail, fetchEmailItems } from "@/lib/orders";
 
 async function isAdmin(): Promise<boolean> {
   const cookieStore = await cookies();
@@ -32,16 +32,7 @@ export async function POST(
   }
 
   if (sendEmail && order.customer_name && order.customer_email && order.order_number) {
-    const { data: orderItems } = await supabaseAdmin
-      .from("order_items")
-      .select("product_name, option_label, price_usd, quantity")
-      .eq("order_id", id);
-    const items = (orderItems ?? []).map((i) => ({
-      name: i.product_name,
-      option: i.option_label,
-      price: i.price_usd ?? 0,
-      quantity: i.quantity ?? 1,
-    }));
+    const items = await fetchEmailItems(id);
     await sendOrderStatusEmail({
       orderNumber: order.order_number,
       customerName: order.customer_name,

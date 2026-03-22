@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { sendOrderConfirmationEmail } from "@/lib/orders";
+import { sendOrderConfirmationEmail, fetchEmailItems } from "@/lib/orders";
 
 async function isAdmin(): Promise<boolean> {
   const cookieStore = await cookies();
@@ -36,17 +36,13 @@ export async function POST(
     );
   }
 
+  const items = await fetchEmailItems(order.id);
   await sendOrderConfirmationEmail({
     orderNumber: order.order_number,
     customerName: order.customer_name,
     customerEmail: order.customer_email,
     amountTotalCents: order.amount_total ?? 0,
-    items: (order.order_items ?? []).map((i: { product_name: string; option_label: string | null; price_usd: number | null; quantity: number }) => ({
-      name: i.product_name,
-      option: i.option_label,
-      price: i.price_usd ?? 0,
-      quantity: i.quantity ?? 1,
-    })),
+    items,
     estimatedDelivery: order.estimated_delivery_date ?? null,
   });
 

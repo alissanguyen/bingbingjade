@@ -6,6 +6,7 @@
  */
 
 import { supabaseAdmin } from "./supabase-admin";
+import { resolveFirstImageUrl } from "./storage";
 
 // ── Customer ──────────────────────────────────────────────────────────────────
 
@@ -125,7 +126,7 @@ export async function sendOrderConfirmationEmail(params: {
   customerName: string;
   customerEmail: string;
   amountTotalCents: number;
-  items: { name: string; option?: string | null; price: number; quantity?: number }[];
+  items: EmailItem[];
   estimatedDelivery?: string | null;
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
@@ -147,22 +148,7 @@ export async function sendOrderConfirmationEmail(params: {
   });
   const firstName = params.customerName.split(" ")[0];
 
-  const itemRows = params.items
-    .map((i) => {
-      const qty = i.quantity && i.quantity > 1 ? ` &times; ${i.quantity}` : "";
-      const label = i.option ? `${i.name} &mdash; ${i.option}` : i.name;
-      const lineTotal = i.price * (i.quantity ?? 1);
-      return `
-        <tr>
-          <td style="padding:12px 0;border-bottom:1px solid #f0f0f0;color:#374151;font-size:14px;">
-            ${label}${qty}
-          </td>
-          <td style="padding:12px 0;border-bottom:1px solid #f0f0f0;color:#374151;font-size:14px;text-align:right;white-space:nowrap;">
-            $${lineTotal.toFixed(2)}
-          </td>
-        </tr>`;
-    })
-    .join("");
+  const itemRows = buildItemRowsHtml(params.items);
 
   const deliveryNote =
     params.estimatedDelivery
@@ -205,14 +191,11 @@ export async function sendOrderConfirmationEmail(params: {
             </table>
 
             <!-- Items -->
+            ${itemRows}
             <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
               <tr>
-                <td colspan="2" style="padding-bottom:8px;font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#9ca3af;">Order Summary</td>
-              </tr>
-              ${itemRows}
-              <tr>
-                <td style="padding:14px 0 0;font-size:14px;font-weight:600;color:#111827;">Total paid</td>
-                <td style="padding:14px 0 0;font-size:15px;font-weight:700;color:#065f46;text-align:right;">${amountFormatted}</td>
+                <td style="padding:10px 0 0;font-size:14px;font-weight:600;color:#111827;">Total paid</td>
+                <td style="padding:10px 0 0;font-size:15px;font-weight:700;color:#065f46;text-align:right;">${amountFormatted}</td>
               </tr>
             </table>
 
@@ -329,25 +312,82 @@ const STATUS_META: Record<
  * Always sent from notification@bingbingjade.com.
  * Silently skips if RESEND_API_KEY is not set or the status has no customer-facing email.
  */
+/**
+ * Fetch order items for an order with resolved product image URLs.
+ * Use this whenever building items to pass to any email function.
+ */
+export async function fetchEmailItems(orderId: string): Promise<EmailItem[]> {
+  const { data: rows } = await supabaseAdmin
+    .from("order_items")
+    .select("product_name, option_label, price_usd, quantity, product_id")
+    .eq("order_id", orderId);
+
+  if (!rows?.length) return [];
+
+  const productIds = rows.map((r) => r.product_id).filter((id): id is string => !!id);
+  let imageMap: Record<string, string> = {};
+
+  if (productIds.length > 0) {
+    const { data: products } = await supabaseAdmin
+      .from("products")
+      .select("id, images")
+      .in("id", productIds);
+
+    const resolved = await Promise.all(
+      (products ?? []).map(async (p) => {
+        const url = await resolveFirstImageUrl(p.images as string[]);
+        return [p.id, url ?? ""] as [string, string];
+      })
+    );
+    imageMap = Object.fromEntries(resolved);
+  }
+
+  return rows.map((r) => ({
+    name: r.product_name,
+    option: r.option_label,
+    price: r.price_usd ?? 0,
+    quantity: r.quantity ?? 1,
+    imageUrl: r.product_id ? (imageMap[r.product_id] ?? null) : null,
+  }));
+}
+
+export type EmailItem = {
+  name: string;
+  option?: string | null;
+  price: number;
+  quantity?: number;
+  imageUrl?: string | null;
+};
+
 // Shared helper — same item-row HTML used in all email templates
-function buildItemRowsHtml(
-  items: { name: string; option?: string | null; price: number; quantity?: number }[]
-): string {
+function buildItemRowsHtml(items: EmailItem[]): string {
   if (!items.length) return "";
   const rows = items
     .map((i) => {
       const qty = i.quantity && i.quantity > 1 ? ` &times; ${i.quantity}` : "";
       const label = i.option ? `${i.name} &mdash; ${i.option}` : i.name;
       const lineTotal = i.price * (i.quantity ?? 1);
+      const imgCell = i.imageUrl
+        ? `<td style="width:56px;padding-right:14px;vertical-align:middle;">
+            <img src="${i.imageUrl}" width="56" height="56" alt="" style="display:block;border-radius:8px;object-fit:cover;width:56px;height:56px;" />
+          </td>`
+        : `<td style="width:56px;padding-right:14px;vertical-align:middle;">
+            <div style="width:56px;height:56px;border-radius:8px;background:#ecfdf5;"></div>
+          </td>`;
       return `<tr>
-          <td style="padding:10px 0;border-bottom:1px solid #f0f0f0;color:#374151;font-size:14px;">${label}${qty}</td>
-          <td style="padding:10px 0;border-bottom:1px solid #f0f0f0;color:#374151;font-size:14px;text-align:right;white-space:nowrap;">$${lineTotal.toFixed(2)}</td>
+          <td style="padding:10px 0;border-bottom:1px solid #f0f0f0;">
+            <table cellpadding="0" cellspacing="0" width="100%"><tr>
+              ${imgCell}
+              <td style="vertical-align:middle;color:#374151;font-size:14px;">${label}${qty}</td>
+              <td style="vertical-align:middle;text-align:right;white-space:nowrap;color:#374151;font-size:14px;font-weight:600;">$${lineTotal.toFixed(2)}</td>
+            </tr></table>
+          </td>
         </tr>`;
     })
     .join("");
   return `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
       <tr>
-        <td colspan="2" style="padding-bottom:8px;font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#9ca3af;">Order Summary</td>
+        <td style="padding-bottom:8px;font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#9ca3af;">Order Summary</td>
       </tr>
       ${rows}
     </table>`;
@@ -359,7 +399,7 @@ export async function sendOrderStatusEmail(params: {
   customerEmail: string;
   newStatus: OrderStatus;
   estimatedDelivery?: string | null;
-  items?: { name: string; option?: string | null; price: number; quantity?: number }[];
+  items?: EmailItem[];
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return;
@@ -479,7 +519,7 @@ export async function sendDeliveryDateEmail(params: {
   customerName: string;
   customerEmail: string;
   estimatedDelivery: string;
-  items?: { name: string; option?: string | null; price: number; quantity?: number }[];
+  items?: EmailItem[];
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return;

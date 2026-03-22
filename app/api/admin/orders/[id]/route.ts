@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { sendOrderStatusEmail, sendDeliveryDateEmail } from "@/lib/orders";
+import { sendOrderStatusEmail, sendDeliveryDateEmail, fetchEmailItems } from "@/lib/orders";
 import type { OrderStatus } from "@/types/orders";
 
 async function isAdmin(): Promise<boolean> {
@@ -106,21 +106,11 @@ export async function PATCH(
 
   const canEmail = !!(order.customer_name && order.customer_email && order.order_number);
 
-  // Fetch items once if we'll need them for either email
+  // Fetch items (with images) once if we'll need them for either email
   const deliveryDateChanged = estimatedDeliveryDate && estimatedDeliveryDate !== previousDeliveryDate;
-  let emailItems: { name: string; option?: string | null; price: number; quantity?: number }[] = [];
-  if (canEmail && ((sendEmail && orderStatus) || deliveryDateChanged)) {
-    const { data: orderItems } = await supabaseAdmin
-      .from("order_items")
-      .select("product_name, option_label, price_usd, quantity")
-      .eq("order_id", id);
-    emailItems = (orderItems ?? []).map((i) => ({
-      name: i.product_name,
-      option: i.option_label,
-      price: i.price_usd ?? 0,
-      quantity: i.quantity ?? 1,
-    }));
-  }
+  const emailItems = canEmail && ((sendEmail && orderStatus) || deliveryDateChanged)
+    ? await fetchEmailItems(id)
+    : [];
 
   // Send status change email if requested
   if (sendEmail && orderStatus && canEmail) {
