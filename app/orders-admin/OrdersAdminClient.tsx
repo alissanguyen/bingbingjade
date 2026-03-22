@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { OrderStatus, OrderSource } from "@/types/orders";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -10,42 +11,13 @@ interface OrderListItem {
   order_number: string | null;
   customer_name: string | null;
   customer_email: string | null;
-  customer_phone_snapshot: string | null;
   amount_total: number | null;
   currency: string;
   status: string;
   order_status: OrderStatus;
   source: OrderSource;
   created_at: string;
-  notes: string | null;
   item_count: number;
-}
-
-interface OrderItem {
-  id: string;
-  product_name: string;
-  option_label: string | null;
-  price_usd: number | null;
-  quantity: number;
-  line_total: number | null;
-}
-
-interface ShippingAddress {
-  recipient_name: string | null;
-  address_line1: string;
-  address_line2: string | null;
-  city: string;
-  state_or_region: string;
-  postal_code: string;
-  country: string;
-}
-
-interface OrderDetail extends OrderListItem {
-  stripe_session_id: string | null;
-  stripe_payment_intent_id: string | null;
-  estimated_delivery_date: string | null;
-  order_items: OrderItem[];
-  shipping_address: ShippingAddress | null;
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -92,26 +64,52 @@ const ALL_STATUSES: OrderStatus[] = [
   "delivered", "order_cancelled",
 ];
 
-// Statuses that have a customer-facing notification email
-const EMAILABLE_STATUSES = new Set<OrderStatus>([
-  "order_confirmed", "quality_control", "certifying",
-  "inbound_shipping", "outbound_shipping", "delivered", "order_cancelled",
-]);
-
 function fmtAmount(cents: number | null, currency: string) {
   if (cents == null) return "—";
   return `$${(cents / 100).toFixed(2)} ${currency.toUpperCase()}`;
 }
 
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short", day: "numeric", year: "numeric",
-  });
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// ── Create-order modal types ──────────────────────────────────────────────────
+
+interface NewItem {
+  productName: string;
+  optionLabel: string;
+  price: string;
+  quantity: string;
+}
+
+const EMPTY_ITEM: NewItem = { productName: "", optionLabel: "", price: "", quantity: "1" };
+
+const EMPTY_FORM = {
+  customerName: "",
+  customerEmail: "",
+  customerPhone: "",
+  source: "cash" as OrderSource,
+  paidStatus: "paid" as "paid" | "unpaid",
+  orderStatus: "" as OrderStatus | "",
+  currency: "usd",
+  notes: "",
+  estimatedDeliveryDate: "",
+  sendConfirmation: true,
+  hasShipping: false,
+  shipRecipient: "",
+  shipLine1: "",
+  shipLine2: "",
+  shipCity: "",
+  shipState: "",
+  shipPostal: "",
+  shipCountry: "US",
+};
+
+// ── Component ────────────────────────────────────────────────────────────────
 
 export function OrdersAdminClient() {
+  const router = useRouter();
+
   const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -119,18 +117,11 @@ export function OrdersAdminClient() {
   const [statusFilter, setStatusFilter] = useState("");
   const [listLoading, setListLoading] = useState(true);
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<OrderDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-
-  // Edit state
-  const [editStatus, setEditStatus] = useState<OrderStatus>("order_confirmed");
-  const [editDelivery, setEditDelivery] = useState("");
-  const [editNotes, setEditNotes] = useState("");
-  const [sendEmail, setSendEmail] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [items, setItems] = useState<NewItem[]>([{ ...EMPTY_ITEM }]);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const LIMIT = 50;
@@ -155,140 +146,90 @@ export function OrdersAdminClient() {
 
   useEffect(() => {
     if (searchRef.current) clearTimeout(searchRef.current);
-    searchRef.current = setTimeout(() => {
-      setPage(1);
-      fetchOrders(1, search, statusFilter);
-    }, 300);
+    searchRef.current = setTimeout(() => { setPage(1); fetchOrders(1, search, statusFilter); }, 300);
   }, [search, statusFilter, fetchOrders]);
 
-  useEffect(() => {
-    fetchOrders(page, search, statusFilter);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
-
-  // ── Fetch detail ────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!selectedId) { setDetail(null); return; }
-    setDetailLoading(true);
-    fetch(`/api/admin/orders/${selectedId}`)
-      .then((r) => r.json())
-      .then((d) => {
-        setDetail(d.order ?? null);
-        if (d.order) {
-          setEditStatus(d.order.order_status);
-          setEditDelivery(d.order.estimated_delivery_date ?? "");
-          setEditNotes(d.order.notes ?? "");
-          setSendEmail(EMAILABLE_STATUSES.has(d.order.order_status));
-        }
-      })
-      .finally(() => setDetailLoading(false));
-  }, [selectedId]);
-
-  function showToast(type: "ok" | "err", msg: string) {
-    setToast({ type, msg });
-    setTimeout(() => setToast(null), 4000);
-  }
-
-  // ── Save status/delivery/notes ──────────────────────────────────────────────
-  async function handleSave() {
-    if (!detail) return;
-    setSaving(true);
-    try {
-      const statusChanged = editStatus !== detail.order_status;
-      const res = await fetch(`/api/admin/orders/${detail.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          orderStatus: editStatus,
-          estimatedDeliveryDate: editDelivery || null,
-          notes: editNotes || null,
-          sendEmail: statusChanged && sendEmail,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) { showToast("err", data.error ?? "Save failed"); return; }
-      setDetail((prev) => prev ? { ...prev, ...data.order } : prev);
-      setOrders((prev) => prev.map((o) => o.id === detail.id ? { ...o, order_status: editStatus, notes: editNotes || null } : o));
-      showToast("ok", statusChanged && sendEmail ? "Saved and email sent" : "Saved");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  // ── Cancel ──────────────────────────────────────────────────────────────────
-  async function handleCancel() {
-    if (!detail || !confirm("Cancel this order?")) return;
-    setActionLoading("cancel");
-    try {
-      const res = await fetch(`/api/admin/orders/${detail.id}/cancel`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sendEmail }),
-      });
-      const data = await res.json();
-      if (!res.ok) { showToast("err", data.error ?? "Cancel failed"); return; }
-      setDetail((prev) => prev ? { ...prev, ...data.order } : prev);
-      setEditStatus("order_cancelled");
-      setOrders((prev) => prev.map((o) => o.id === detail.id ? { ...o, order_status: "order_cancelled" } : o));
-      showToast("ok", sendEmail ? "Order cancelled and customer notified" : "Order cancelled");
-    } finally {
-      setActionLoading(null);
-    }
-  }
-
-  // ── Refund ──────────────────────────────────────────────────────────────────
-  async function handleRefund() {
-    if (!detail || !confirm("Issue a full Stripe refund for this order?")) return;
-    setActionLoading("refund");
-    try {
-      const res = await fetch(`/api/admin/orders/${detail.id}/refund`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) { showToast("err", data.error ?? "Refund failed"); return; }
-      setDetail((prev) => prev ? { ...prev, ...data.order } : prev);
-      setEditStatus("order_cancelled");
-      setOrders((prev) => prev.map((o) => o.id === detail.id ? { ...o, order_status: "order_cancelled", status: "refunded" } : o));
-      showToast("ok", "Refund issued via Stripe");
-    } finally {
-      setActionLoading(null);
-    }
-  }
-
-  // ── Resend confirmation ─────────────────────────────────────────────────────
-  async function handleResend() {
-    if (!detail) return;
-    setActionLoading("resend");
-    try {
-      const res = await fetch(`/api/admin/orders/${detail.id}/resend-confirmation`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) { showToast("err", data.error ?? "Resend failed"); return; }
-      showToast("ok", "Confirmation email resent");
-    } finally {
-      setActionLoading(null);
-    }
-  }
+  useEffect(() => { fetchOrders(page, search, statusFilter); }, [page]); // eslint-disable-line
 
   const totalPages = Math.ceil(total / LIMIT);
-  const isCancelled = detail?.order_status === "order_cancelled";
+
+  // ── Create order ────────────────────────────────────────────────────────────
+  function setField<K extends keyof typeof EMPTY_FORM>(k: K, v: (typeof EMPTY_FORM)[K]) {
+    setForm((f) => ({ ...f, [k]: v }));
+  }
+
+  function updateItem(i: number, k: keyof NewItem, v: string) {
+    setItems((prev) => prev.map((it, idx) => idx === i ? { ...it, [k]: v } : it));
+  }
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setCreating(true);
+    setCreateError(null);
+
+    const parsedItems = items.map((i) => ({
+      productName: i.productName.trim(),
+      optionLabel: i.optionLabel.trim() || undefined,
+      price: parseFloat(i.price) || 0,
+      quantity: parseInt(i.quantity) || 1,
+    }));
+
+    const body: Record<string, unknown> = {
+      source: form.source,
+      paidStatus: form.paidStatus,
+      currency: form.currency,
+      items: parsedItems,
+      ...(form.customerName.trim() ? { customerName: form.customerName.trim() } : {}),
+      ...(form.customerEmail.trim() ? { customerEmail: form.customerEmail.trim() } : {}),
+      ...(form.customerPhone.trim() ? { customerPhone: form.customerPhone.trim() } : {}),
+      ...(form.notes.trim() ? { notes: form.notes.trim() } : {}),
+      ...(form.estimatedDeliveryDate ? { estimatedDeliveryDate: form.estimatedDeliveryDate } : {}),
+      ...(form.orderStatus ? { orderStatus: form.orderStatus } : {}),
+    };
+
+    if (form.hasShipping && form.shipLine1.trim()) {
+      body.shippingAddress = {
+        recipientName: form.shipRecipient.trim() || undefined,
+        line1: form.shipLine1.trim(),
+        line2: form.shipLine2.trim() || undefined,
+        city: form.shipCity.trim(),
+        state: form.shipState.trim(),
+        postal: form.shipPostal.trim(),
+        country: form.shipCountry || "US",
+      };
+    }
+
+    try {
+      const res = await fetch("/api/admin/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) { setCreateError(data.error ?? "Failed to create order"); return; }
+      setShowCreate(false);
+      router.push(`/orders-admin/${data.order.id}`);
+    } finally {
+      setCreating(false);
+    }
+  }
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      {/* Toast */}
-      {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all ${
-          toast.type === "ok"
-            ? "bg-emerald-700 text-white"
-            : "bg-red-600 text-white"
-        }`}>
-          {toast.msg}
-        </div>
-      )}
-
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
-        {/* Page header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Orders</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{total} total orders</p>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Orders</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{total} total</p>
+          </div>
+          <button
+            onClick={() => { setForm(EMPTY_FORM); setItems([{ ...EMPTY_ITEM }]); setCreateError(null); setShowCreate(true); }}
+            className="rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 text-sm font-medium transition-colors"
+          >
+            + New Order
+          </button>
         </div>
 
         {/* Filters */}
@@ -306,9 +247,7 @@ export function OrdersAdminClient() {
             className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-3 py-2 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
             <option value="">All statuses</option>
-            {ALL_STATUSES.map((s) => (
-              <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-            ))}
+            {ALL_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
           </select>
           <button
             onClick={() => fetchOrders(page, search, statusFilter)}
@@ -318,289 +257,289 @@ export function OrdersAdminClient() {
           </button>
         </div>
 
-        {/* Split layout */}
-        <div className="flex gap-5 items-start">
-
-          {/* Orders list */}
-          <div className={`flex-1 min-w-0 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden ${selectedId ? "hidden lg:block" : ""}`}>
-            {listLoading ? (
-              <div className="flex items-center justify-center h-48 text-sm text-gray-400">Loading…</div>
-            ) : orders.length === 0 ? (
-              <div className="flex items-center justify-center h-48 text-sm text-gray-400">No orders found</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-100 dark:border-gray-800">
-                      <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Order</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Customer</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Date</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Amount</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Status</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Source</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                    {orders.map((order) => (
-                      <tr
-                        key={order.id}
-                        onClick={() => setSelectedId(order.id === selectedId ? null : order.id)}
-                        className={`cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50 ${
-                          order.id === selectedId ? "bg-emerald-50/50 dark:bg-emerald-900/10" : ""
-                        }`}
-                      >
-                        <td className="px-4 py-3 font-mono font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">
-                          {order.order_number ?? <span className="text-gray-400">—</span>}
-                          <span className="block text-xs font-normal text-gray-400 font-sans">{order.item_count} item{order.item_count !== 1 ? "s" : ""}</span>
-                        </td>
-                        <td className="px-4 py-3 max-w-[180px]">
-                          <p className="truncate text-gray-800 dark:text-gray-200 font-medium">{order.customer_name ?? "—"}</p>
-                          <p className="truncate text-xs text-gray-400">{order.customer_email ?? ""}</p>
-                        </td>
-                        <td className="px-4 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap text-xs">
-                          {fmtDate(order.created_at)}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <span className={`font-medium ${PAID_STATUS_COLORS[order.status] ?? "text-gray-700"}`}>
-                            {fmtAmount(order.amount_total, order.currency)}
-                          </span>
-                          <span className="block text-xs text-gray-400 capitalize">{order.status}</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[order.order_status]}`}>
-                            {STATUS_LABELS[order.order_status]}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${SOURCE_COLORS[order.source]}`}>
-                            {order.source}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-800">
-                <p className="text-xs text-gray-400">Page {page} of {totalPages}</p>
-                <div className="flex gap-2">
-                  <button
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => p - 1)}
-                    className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                  >
-                    ← Prev
-                  </button>
-                  <button
-                    disabled={page >= totalPages}
-                    onClick={() => setPage((p) => p + 1)}
-                    className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                  >
-                    Next →
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Detail panel */}
-          {selectedId && (
-            <div className="w-full lg:w-[420px] shrink-0 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-              {/* Panel header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {detail?.order_number ?? "Order Detail"}
-                </h2>
-                <button
-                  onClick={() => setSelectedId(null)}
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </div>
-
-              {detailLoading ? (
-                <div className="flex items-center justify-center h-64 text-sm text-gray-400">Loading…</div>
-              ) : detail ? (
-                <div className="overflow-y-auto max-h-[calc(100vh-220px)]">
-
-                  {/* Customer & meta */}
-                  <section className="px-5 py-4 border-b border-gray-50 dark:border-gray-800 space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Customer</p>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{detail.customer_name ?? "—"}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{detail.customer_email ?? "—"}</p>
-                    {detail.customer_phone_snapshot && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{detail.customer_phone_snapshot}</p>
-                    )}
-                    <div className="flex items-center gap-3 pt-1">
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${PAID_STATUS_COLORS[detail.status] ?? ""}`}>
-                        {detail.status}
-                      </span>
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${SOURCE_COLORS[detail.source]}`}>
-                        {detail.source}
-                      </span>
-                      <span className="text-xs text-gray-400">{fmtDate(detail.created_at)}</span>
-                    </div>
-                    {detail.stripe_payment_intent_id && (
-                      <p className="text-xs text-gray-400 font-mono truncate">pi: {detail.stripe_payment_intent_id}</p>
-                    )}
-                  </section>
-
-                  {/* Shipping address */}
-                  {detail.shipping_address && (
-                    <section className="px-5 py-4 border-b border-gray-50 dark:border-gray-800">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Shipping Address</p>
-                      <p className="text-sm text-gray-700 dark:text-gray-300">
-                        {detail.shipping_address.recipient_name && <span className="block font-medium">{detail.shipping_address.recipient_name}</span>}
-                        <span className="block">{detail.shipping_address.address_line1}</span>
-                        {detail.shipping_address.address_line2 && <span className="block">{detail.shipping_address.address_line2}</span>}
-                        <span className="block">{detail.shipping_address.city}, {detail.shipping_address.state_or_region} {detail.shipping_address.postal_code}</span>
-                        <span className="block">{detail.shipping_address.country}</span>
-                      </p>
-                    </section>
-                  )}
-
-                  {/* Order items */}
-                  <section className="px-5 py-4 border-b border-gray-50 dark:border-gray-800">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Items</p>
-                    <div className="space-y-2">
-                      {detail.order_items.map((item) => (
-                        <div key={item.id} className="flex justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-sm text-gray-800 dark:text-gray-200 truncate">{item.product_name}</p>
-                            {item.option_label && <p className="text-xs text-gray-400">{item.option_label}</p>}
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                              ${(item.line_total ?? item.price_usd ?? 0).toFixed(2)}
-                            </p>
-                            {item.quantity > 1 && <p className="text-xs text-gray-400">×{item.quantity}</p>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex justify-between">
-                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Total</span>
-                      <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                        {fmtAmount(detail.amount_total, detail.currency)}
-                      </span>
-                    </div>
-                  </section>
-
-                  {/* Edit section */}
-                  <section className="px-5 py-4 space-y-4">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Manage Order</p>
-
-                    {/* Status */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Order Status</label>
-                      <select
-                        value={editStatus}
-                        onChange={(e) => {
-                          const s = e.target.value as OrderStatus;
-                          setEditStatus(s);
-                          setSendEmail(EMAILABLE_STATUSES.has(s));
-                        }}
-                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      >
-                        {ALL_STATUSES.map((s) => (
-                          <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Estimated delivery */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Estimated Delivery Date</label>
-                      <input
-                        type="date"
-                        value={editDelivery}
-                        onChange={(e) => setEditDelivery(e.target.value)}
-                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      />
-                    </div>
-
-                    {/* Notes */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Internal Notes</label>
-                      <textarea
-                        value={editNotes}
-                        onChange={(e) => setEditNotes(e.target.value)}
-                        rows={3}
-                        placeholder="Notes visible to admin only…"
-                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-                      />
-                    </div>
-
-                    {/* Send email toggle */}
-                    {EMAILABLE_STATUSES.has(editStatus) && editStatus !== detail.order_status && (
-                      <label className="flex items-center gap-2.5 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={sendEmail}
-                          onChange={(e) => setSendEmail(e.target.checked)}
-                          className="rounded text-emerald-600 focus:ring-emerald-500"
-                        />
-                        <span className="text-sm text-gray-600 dark:text-gray-300">
-                          Notify customer via email
-                        </span>
-                      </label>
-                    )}
-
-                    {/* Save */}
-                    <button
-                      onClick={handleSave}
-                      disabled={saving}
-                      className="w-full rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white py-2.5 text-sm font-medium transition-colors"
+        {/* Table */}
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+          {listLoading ? (
+            <div className="flex items-center justify-center h-48 text-sm text-gray-400">Loading…</div>
+          ) : orders.length === 0 ? (
+            <div className="flex items-center justify-center h-48 text-sm text-gray-400">No orders found</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 dark:border-gray-800">
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Order</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Customer</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Date</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Amount</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Status</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Source</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                  {orders.map((order) => (
+                    <tr
+                      key={order.id}
+                      onClick={() => router.push(`/orders-admin/${order.id}`)}
+                      className="cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
                     >
-                      {saving ? "Saving…" : "Save Changes"}
-                    </button>
+                      <td className="px-4 py-3 font-mono font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                        {order.order_number ?? <span className="text-gray-400 font-sans text-xs">no number</span>}
+                        <span className="block text-xs font-normal text-gray-400 font-sans">{order.item_count} item{order.item_count !== 1 ? "s" : ""}</span>
+                      </td>
+                      <td className="px-4 py-3 max-w-[200px]">
+                        <p className="truncate text-gray-800 dark:text-gray-200 font-medium">{order.customer_name ?? "—"}</p>
+                        <p className="truncate text-xs text-gray-400">{order.customer_email ?? ""}</p>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{fmtDate(order.created_at)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`font-medium text-sm ${PAID_STATUS_COLORS[order.status] ?? "text-gray-700"}`}>
+                          {fmtAmount(order.amount_total, order.currency)}
+                        </span>
+                        <span className="block text-xs text-gray-400 capitalize">{order.status}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[order.order_status]}`}>
+                          {STATUS_LABELS[order.order_status]}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${SOURCE_COLORS[order.source]}`}>
+                          {order.source}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-                    {/* Action buttons */}
-                    <div className="pt-2 space-y-2">
-                      <button
-                        onClick={handleResend}
-                        disabled={actionLoading === "resend"}
-                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60 text-gray-700 dark:text-gray-300 py-2.5 text-sm font-medium transition-colors"
-                      >
-                        {actionLoading === "resend" ? "Sending…" : "Resend Confirmation Email"}
-                      </button>
-
-                      {!isCancelled && detail.stripe_payment_intent_id && (
-                        <button
-                          onClick={handleRefund}
-                          disabled={actionLoading === "refund" || detail.status === "refunded"}
-                          className="w-full rounded-lg border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-60 text-red-600 dark:text-red-400 py-2.5 text-sm font-medium transition-colors"
-                        >
-                          {actionLoading === "refund" ? "Refunding…" : detail.status === "refunded" ? "Already Refunded" : "Refund via Stripe"}
-                        </button>
-                      )}
-
-                      {!isCancelled && (
-                        <button
-                          onClick={handleCancel}
-                          disabled={actionLoading === "cancel"}
-                          className="w-full rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60 text-gray-500 dark:text-gray-400 py-2.5 text-sm font-medium transition-colors"
-                        >
-                          {actionLoading === "cancel" ? "Cancelling…" : "Cancel Order"}
-                        </button>
-                      )}
-                    </div>
-                  </section>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-64 text-sm text-gray-400">Order not found</div>
-              )}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-800">
+              <p className="text-xs text-gray-400">Page {page} of {totalPages}</p>
+              <div className="flex gap-2">
+                <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}
+                  className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">← Prev</button>
+                <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}
+                  className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Next →</button>
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* ── Create order modal ──────────────────────────────────────────────── */}
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 overflow-y-auto py-8 px-4">
+          <div className="w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl">
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-800">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Create Manual Order</h2>
+              <button onClick={() => setShowCreate(false)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleCreate} className="px-6 py-5 space-y-6">
+              {/* Customer */}
+              <section>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Customer</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Name</label>
+                    <input value={form.customerName} onChange={(e) => setField("customerName", e.target.value)}
+                      placeholder="Full name" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Email</label>
+                    <input type="email" value={form.customerEmail} onChange={(e) => setField("customerEmail", e.target.value)}
+                      placeholder="email@example.com" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Phone</label>
+                    <input value={form.customerPhone} onChange={(e) => setField("customerPhone", e.target.value)}
+                      placeholder="+1 555 000 0000" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  </div>
+                </div>
+              </section>
+
+              {/* Order details */}
+              <section>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Order Details</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Source <span className="text-red-500">*</span></label>
+                    <select value={form.source} onChange={(e) => setField("source", e.target.value as OrderSource)} required
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                      <option value="cash">Cash</option>
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="custom">Custom</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Payment Status</label>
+                    <select value={form.paidStatus} onChange={(e) => setField("paidStatus", e.target.value as "paid" | "unpaid")}
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                      <option value="paid">Paid</option>
+                      <option value="unpaid">Unpaid</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Order Status <span className="text-gray-400">(auto if blank)</span></label>
+                    <select value={form.orderStatus} onChange={(e) => setField("orderStatus", e.target.value as OrderStatus | "")}
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                      <option value="">Auto</option>
+                      {ALL_STATUSES.filter(s => s !== "order_cancelled").map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Currency</label>
+                    <select value={form.currency} onChange={(e) => setField("currency", e.target.value)}
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                      <option value="usd">USD</option>
+                      <option value="cad">CAD</option>
+                      <option value="aud">AUD</option>
+                      <option value="gbp">GBP</option>
+                      <option value="sgd">SGD</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Est. Delivery Date</label>
+                    <input type="date" value={form.estimatedDeliveryDate} onChange={(e) => setField("estimatedDeliveryDate", e.target.value)}
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Internal Notes</label>
+                  <textarea value={form.notes} onChange={(e) => setField("notes", e.target.value)} rows={2}
+                    placeholder="Notes visible to admin only…"
+                    className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
+                </div>
+              </section>
+
+              {/* Items */}
+              <section>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Items <span className="text-red-500">*</span></h3>
+                <div className="space-y-2">
+                  {items.map((item, i) => (
+                    <div key={i} className="grid grid-cols-12 gap-2 items-start">
+                      <div className="col-span-4">
+                        {i === 0 && <label className="block text-xs text-gray-400 mb-1">Product Name</label>}
+                        <input value={item.productName} onChange={(e) => updateItem(i, "productName", e.target.value)} required
+                          placeholder="Product name" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                      </div>
+                      <div className="col-span-3">
+                        {i === 0 && <label className="block text-xs text-gray-400 mb-1">Option / Variant</label>}
+                        <input value={item.optionLabel} onChange={(e) => updateItem(i, "optionLabel", e.target.value)}
+                          placeholder="e.g. Size 54" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                      </div>
+                      <div className="col-span-2">
+                        {i === 0 && <label className="block text-xs text-gray-400 mb-1">Price (USD)</label>}
+                        <input type="number" min="0" step="0.01" value={item.price} onChange={(e) => updateItem(i, "price", e.target.value)} required
+                          placeholder="0.00" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                      </div>
+                      <div className="col-span-2">
+                        {i === 0 && <label className="block text-xs text-gray-400 mb-1">Qty</label>}
+                        <input type="number" min="1" value={item.quantity} onChange={(e) => updateItem(i, "quantity", e.target.value)}
+                          className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                      </div>
+                      <div className={`col-span-1 flex items-center ${i === 0 ? "pt-5" : ""}`}>
+                        {items.length > 1 && (
+                          <button type="button" onClick={() => setItems((prev) => prev.filter((_, idx) => idx !== i))}
+                            className="p-1.5 text-gray-300 dark:text-gray-600 hover:text-red-500 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button type="button" onClick={() => setItems((prev) => [...prev, { ...EMPTY_ITEM }])}
+                  className="mt-2 text-xs text-emerald-700 dark:text-emerald-400 hover:underline">
+                  + Add another item
+                </button>
+              </section>
+
+              {/* Shipping */}
+              <section>
+                <label className="flex items-center gap-2 cursor-pointer mb-3">
+                  <input type="checkbox" checked={form.hasShipping} onChange={(e) => setField("hasShipping", e.target.checked)}
+                    className="rounded text-emerald-600 focus:ring-emerald-500" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Add Shipping Address</span>
+                </label>
+                {form.hasShipping && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Recipient Name</label>
+                      <input value={form.shipRecipient} onChange={(e) => setField("shipRecipient", e.target.value)}
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Address Line 1</label>
+                      <input value={form.shipLine1} onChange={(e) => setField("shipLine1", e.target.value)}
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Address Line 2</label>
+                      <input value={form.shipLine2} onChange={(e) => setField("shipLine2", e.target.value)}
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">City</label>
+                      <input value={form.shipCity} onChange={(e) => setField("shipCity", e.target.value)}
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">State / Region</label>
+                      <input value={form.shipState} onChange={(e) => setField("shipState", e.target.value)}
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Postal Code</label>
+                      <input value={form.shipPostal} onChange={(e) => setField("shipPostal", e.target.value)}
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Country</label>
+                      <input value={form.shipCountry} onChange={(e) => setField("shipCountry", e.target.value)}
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              {/* Email toggle */}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.sendConfirmation} onChange={(e) => setField("sendConfirmation", e.target.checked)}
+                  className="rounded text-emerald-600 focus:ring-emerald-500" />
+                <span className="text-sm text-gray-600 dark:text-gray-300">Send order confirmation email to customer</span>
+              </label>
+
+              {createError && (
+                <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 rounded-lg px-3 py-2">{createError}</p>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-1">
+                <button type="button" onClick={() => setShowCreate(false)}
+                  className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 py-2.5 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" disabled={creating}
+                  className="flex-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white py-2.5 text-sm font-medium transition-colors">
+                  {creating ? "Creating…" : "Create Order"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
