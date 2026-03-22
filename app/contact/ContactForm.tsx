@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import emailjs from "@emailjs/browser";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
+import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
 
 type Status = "idle" | "sending" | "success" | "error";
 
@@ -27,13 +28,17 @@ interface ProductOption {
 // Falls back to the production domain so email links are always absolute.
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
 
+function fmtPrice(price: number): string {
+  return requiresInquiry(price) ? obfuscatedPrice(price) : `$${price.toFixed(2)}`;
+}
+
 function formatPrice(p: ProductOption): string {
   if (p.status === "on_sale" && p.sale_price_usd != null) {
-    const sale = `$${p.sale_price_usd.toFixed(2)}`;
-    const original = p.price_display_usd != null ? ` (was $${p.price_display_usd.toFixed(2)})` : "";
+    const sale = fmtPrice(p.sale_price_usd);
+    const original = p.price_display_usd != null ? ` (was ${fmtPrice(p.price_display_usd)})` : "";
     return `${sale}${original}`;
   }
-  if (p.price_display_usd != null) return `$${p.price_display_usd.toFixed(2)}`;
+  if (p.price_display_usd != null) return fmtPrice(p.price_display_usd);
   return "Contact for price";
 }
 
@@ -166,13 +171,13 @@ function ProductCard({ p, onRemove }: { p: ProductOption; onRemove: () => void }
               <p className="mt-0.5 text-sm font-medium text-emerald-700 dark:text-emerald-400">
                 {p.status === "on_sale" && p.sale_price_usd != null ? (
                   <>
-                    <span>${p.sale_price_usd.toFixed(2)}</span>
+                    <span>{fmtPrice(p.sale_price_usd)}</span>
                     {p.price_display_usd != null && (
-                      <span className="ml-1.5 text-xs text-gray-400 line-through">${p.price_display_usd.toFixed(2)}</span>
+                      <span className="ml-1.5 text-xs text-gray-400 line-through">{fmtPrice(p.price_display_usd)}</span>
                     )}
                   </>
                 ) : p.price_display_usd != null ? (
-                  `$${p.price_display_usd.toFixed(2)}`
+                  fmtPrice(p.price_display_usd)
                 ) : (
                   "Contact for price"
                 )}

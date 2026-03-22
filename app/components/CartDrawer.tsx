@@ -4,6 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCart } from "./CartContext";
+import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
+
+function fmtPrice(price: number): string {
+  return requiresInquiry(price) ? obfuscatedPrice(price) : `$${price.toFixed(2)}`;
+}
 
 const isLiveMode = process.env.NEXT_PUBLIC_CHECKOUT_MODE === "live";
 
@@ -175,7 +180,7 @@ export function CartDrawer() {
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.optionLabel}</p>
                     )}
                     <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 mt-1">
-                      ${item.price.toFixed(2)}
+                      {fmtPrice(item.price)}
                     </p>
                   </div>
 
@@ -206,7 +211,7 @@ export function CartDrawer() {
             )}
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-500 dark:text-gray-400">Subtotal</span>
-              <span className="font-semibold text-gray-900 dark:text-gray-100">${total.toFixed(2)}</span>
+              <span className="font-semibold text-gray-900 dark:text-gray-100">{fmtPrice(total)}</span>
             </div>
             <p className="text-xs text-gray-400 dark:text-gray-500">
               Shipping and taxes calculated at checkout.

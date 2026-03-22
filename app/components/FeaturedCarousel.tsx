@@ -4,6 +4,11 @@ import { useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { productSlug } from "@/lib/slug";
+import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
+
+function fmtPrice(price: number): string {
+  return requiresInquiry(price) ? obfuscatedPrice(price) : `$${price.toFixed(2)}`;
+}
 
 interface FeaturedProduct {
   id: string;
@@ -142,11 +147,11 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
                     {isSold ? (
                       <span className="flex items-center gap-2">
                         <span className="text-sm font-medium text-gray-400 dark:text-gray-500">
-                          {product.sale_price_usd != null ? `$${product.sale_price_usd.toFixed(2)}` : product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : "—"}
+                          {product.sale_price_usd != null ? fmtPrice(product.sale_price_usd) : product.price_display_usd != null ? fmtPrice(product.price_display_usd) : "—"}
                         </span>
                         {product.sale_price_usd != null && product.price_display_usd != null && (
                           <>
-                            <span className="text-xs text-gray-400 line-through">${product.price_display_usd.toFixed(2)}</span>
+                            <span className="text-xs text-gray-400 line-through">{fmtPrice(product.price_display_usd)}</span>
                             <span className="rounded-full bg-gray-400 dark:bg-gray-600 px-1.5 py-0.5 text-xs font-semibold text-white">
                               −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
                             </span>
@@ -155,14 +160,14 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
                       </span>
                     ) : isOnSale && product.sale_price_usd != null ? (
                       <span className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-amber-600 dark:text-amber-400">${product.sale_price_usd.toFixed(2)}</span>
+                        <span className="text-sm font-medium text-amber-600 dark:text-amber-400">{fmtPrice(product.sale_price_usd)}</span>
                         {product.price_display_usd != null && (
-                          <span className="text-xs text-gray-400 line-through">${product.price_display_usd.toFixed(2)}</span>
+                          <span className="text-xs text-gray-400 line-through">{fmtPrice(product.price_display_usd)}</span>
                         )}
                       </span>
                     ) : (
                       <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
-                        {product.price_display_usd != null ? `$${product.price_display_usd.toFixed(2)}` : "Contact for price"}
+                        {product.price_display_usd != null ? fmtPrice(product.price_display_usd) : "Contact for price"}
                       </span>
                     )}
                   </div>
