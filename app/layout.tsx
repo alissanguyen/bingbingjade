@@ -93,6 +93,9 @@ export default function RootLayout({
                 <Link href="/policy" className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
                   Store Policy
                 </Link>
+                <Link href="/privacy-policy" className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
+                  Privacy Policy
+                </Link>
               </div>
             </div>
           </footer>
