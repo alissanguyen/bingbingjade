@@ -370,37 +370,54 @@ export function OrdersAdminClient() {
 
       {/* ── Create order modal ──────────────────────────────────────────────── */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 overflow-y-auto py-8 px-4">
-          <div className="w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl">
-            {/* Modal header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-800">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Create Manual Order</h2>
-              <button onClick={() => setShowCreate(false)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+        // On mobile: bottom sheet. On desktop: centered modal.
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-start sm:justify-center bg-black/50 sm:overflow-y-auto sm:py-8 sm:px-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowCreate(false); }}
+        >
+          <div className="w-full sm:max-w-2xl bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] sm:max-h-none">
+
+            {/* Drag handle (mobile only) */}
+            <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
+              <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-700" />
+            </div>
+
+            {/* Sticky header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">New Order</h2>
+              <button
+                onClick={() => setShowCreate(false)}
+                className="p-2 -mr-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
             </div>
 
-            <form onSubmit={handleCreate} className="px-6 py-5 space-y-6">
+            {/* Scrollable body */}
+            <form id="create-order-form" onSubmit={handleCreate} className="overflow-y-auto px-5 py-5 space-y-5 flex-1">
+
               {/* Customer */}
               <section>
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Customer</h3>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Name</label>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Name</label>
                     <input value={form.customerName} onChange={(e) => setField("customerName", e.target.value)}
-                      placeholder="Full name" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                      placeholder="Full name" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Email</label>
-                    <input type="email" value={form.customerEmail} onChange={(e) => setField("customerEmail", e.target.value)}
-                      placeholder="email@example.com" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Phone</label>
-                    <input value={form.customerPhone} onChange={(e) => setField("customerPhone", e.target.value)}
-                      placeholder="+1 555 000 0000" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Email</label>
+                      <input type="email" inputMode="email" value={form.customerEmail} onChange={(e) => setField("customerEmail", e.target.value)}
+                        placeholder="email@example.com" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Phone</label>
+                      <input type="tel" inputMode="tel" value={form.customerPhone} onChange={(e) => setField("customerPhone", e.target.value)}
+                        placeholder="+1 555 000 0000" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    </div>
                   </div>
                 </div>
               </section>
@@ -410,9 +427,9 @@ export function OrdersAdminClient() {
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Order Details</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Source <span className="text-red-500">*</span></label>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Source <span className="text-red-500">*</span></label>
                     <select value={form.source} onChange={(e) => setField("source", e.target.value as OrderSource)} required
-                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
                       <option value="cash">Cash/Zelle</option>
                       <option value="whatsapp">WhatsApp</option>
                       <option value="custom">Custom</option>
@@ -420,25 +437,25 @@ export function OrdersAdminClient() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Payment Status</label>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Payment</label>
                     <select value={form.paidStatus} onChange={(e) => setField("paidStatus", e.target.value as "paid" | "unpaid")}
-                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
                       <option value="paid">Paid</option>
                       <option value="unpaid">Unpaid</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Order Status <span className="text-gray-400">(auto if blank)</span></label>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Status</label>
                     <select value={form.orderStatus} onChange={(e) => setField("orderStatus", e.target.value as OrderStatus | "")}
-                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
                       <option value="">Auto</option>
                       {ALL_STATUSES.filter(s => s !== "order_cancelled").map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Currency</label>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Currency</label>
                     <select value={form.currency} onChange={(e) => setField("currency", e.target.value)}
-                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
                       <option value="usd">USD</option>
                       <option value="cad">CAD</option>
                       <option value="aud">AUD</option>
@@ -446,17 +463,17 @@ export function OrdersAdminClient() {
                       <option value="sgd">SGD</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Est. Delivery Date</label>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Est. Delivery Date</label>
                     <input type="date" value={form.estimatedDeliveryDate} onChange={(e) => setField("estimatedDeliveryDate", e.target.value)}
-                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                   </div>
                 </div>
                 <div className="mt-3">
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Internal Notes</label>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Internal Notes</label>
                   <textarea value={form.notes} onChange={(e) => setField("notes", e.target.value)} rows={2}
                     placeholder="Notes visible to admin only…"
-                    className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
+                    className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
                 </div>
               </section>
 
@@ -502,7 +519,7 @@ export function OrdersAdminClient() {
                             required
                             placeholder="Search by product name…"
                             autoComplete="off"
-                            className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                           />
                           {activeCombobox === i && matched.length > 0 && (
                             <ul className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg max-h-52 overflow-y-auto">
@@ -561,7 +578,7 @@ export function OrdersAdminClient() {
                                   };
                                 }));
                               }}
-                              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                             >
                               <option value="">— select option —</option>
                               {availableOptions.map((o) => (
@@ -575,17 +592,17 @@ export function OrdersAdminClient() {
 
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-xs text-gray-400 mb-1">Price (USD) <span className="text-red-500">*</span></label>
-                            <input type="number" min="0" step="0.01" value={item.price}
+                            <label className="block text-xs text-gray-400 mb-1.5">Price (USD) <span className="text-red-500">*</span></label>
+                            <input type="number" inputMode="decimal" min="0" step="0.01" value={item.price}
                               onChange={(e) => updateItem(i, "price", e.target.value)} required
                               placeholder="0.00"
-                              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-400 mb-1">Qty</label>
-                            <input type="number" min="1" value={item.quantity}
+                            <label className="block text-xs text-gray-400 mb-1.5">Qty</label>
+                            <input type="number" inputMode="numeric" min="1" value={item.quantity}
                               onChange={(e) => updateItem(i, "quantity", e.target.value)}
-                              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                           </div>
                         </div>
                       </div>
@@ -606,69 +623,75 @@ export function OrdersAdminClient() {
                   <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Add Shipping Address</span>
                 </label>
                 {form.hasShipping && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="col-span-2">
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Recipient Name</label>
+                  <div className="space-y-3 mt-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Recipient Name</label>
                       <input value={form.shipRecipient} onChange={(e) => setField("shipRecipient", e.target.value)}
-                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                     </div>
-                    <div className="col-span-2">
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Address Line 1</label>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Address Line 1</label>
                       <input value={form.shipLine1} onChange={(e) => setField("shipLine1", e.target.value)}
-                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                     </div>
-                    <div className="col-span-2">
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Address Line 2</label>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Address Line 2</label>
                       <input value={form.shipLine2} onChange={(e) => setField("shipLine2", e.target.value)}
-                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">City</label>
-                      <input value={form.shipCity} onChange={(e) => setField("shipCity", e.target.value)}
-                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">State / Region</label>
-                      <input value={form.shipState} onChange={(e) => setField("shipState", e.target.value)}
-                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Postal Code</label>
-                      <input value={form.shipPostal} onChange={(e) => setField("shipPostal", e.target.value)}
-                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Country</label>
-                      <input value={form.shipCountry} onChange={(e) => setField("shipCountry", e.target.value)}
-                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">City</label>
+                        <input value={form.shipCity} onChange={(e) => setField("shipCity", e.target.value)}
+                          className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">State / Region</label>
+                        <input value={form.shipState} onChange={(e) => setField("shipState", e.target.value)}
+                          className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Postal Code</label>
+                        <input value={form.shipPostal} onChange={(e) => setField("shipPostal", e.target.value)}
+                          className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Country</label>
+                        <input value={form.shipCountry} onChange={(e) => setField("shipCountry", e.target.value)}
+                          className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                      </div>
                     </div>
                   </div>
                 )}
               </section>
 
               {/* Email toggle */}
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex items-center gap-2.5 cursor-pointer py-1">
                 <input type="checkbox" checked={form.sendConfirmation} onChange={(e) => setField("sendConfirmation", e.target.checked)}
-                  className="rounded text-emerald-600 focus:ring-emerald-500" />
-                <span className="text-sm text-gray-600 dark:text-gray-300">Send order confirmation email to customer</span>
+                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500" />
+                <span className="text-sm text-gray-600 dark:text-gray-300">Send confirmation email to customer</span>
               </label>
 
               {createError && (
                 <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 rounded-lg px-3 py-2">{createError}</p>
               )}
 
-              {/* Actions */}
-              <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => setShowCreate(false)}
-                  className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 py-2.5 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                  Cancel
-                </button>
-                <button type="submit" disabled={creating}
-                  className="flex-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white py-2.5 text-sm font-medium transition-colors">
-                  {creating ? "Creating…" : "Create Order"}
-                </button>
-              </div>
+              {/* Spacer so last field isn't hidden behind sticky footer */}
+              <div className="h-2" />
             </form>
+
+            {/* Sticky footer */}
+            <div className="shrink-0 px-5 py-4 border-t border-gray-100 dark:border-gray-800 flex gap-3 bg-white dark:bg-gray-900">
+              <button type="button" onClick={() => setShowCreate(false)}
+                className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 py-3 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                Cancel
+              </button>
+              <button type="submit" form="create-order-form" disabled={creating}
+                className="flex-1 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white py-3 text-sm font-semibold transition-colors">
+                {creating ? "Creating…" : "Create Order"}
+              </button>
+            </div>
+
           </div>
         </div>
       )}
