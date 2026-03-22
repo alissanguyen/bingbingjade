@@ -45,10 +45,15 @@ export function CartDrawer() {
       const sold = new Set<string>();
       for (const item of items) {
         const key = `${item.productId}-${item.optionId}`;
-        const isSold = item.optionId !== null
-          ? optionStatus.get(item.optionId) === "sold"
-          : productStatus.get(item.productId) === "sold";
-        if (isSold) sold.add(key);
+        let isUnavailable: boolean;
+        if (item.optionId !== null) {
+          // Option is unavailable if it's sold OR if it no longer exists in the DB
+          // (e.g. product was re-edited and options were recreated with new UUIDs)
+          isUnavailable = !optionStatus.has(item.optionId) || optionStatus.get(item.optionId) === "sold";
+        } else {
+          isUnavailable = productStatus.get(item.productId) === "sold";
+        }
+        if (isUnavailable) sold.add(key);
       }
       setSoldKeys(sold);
     }

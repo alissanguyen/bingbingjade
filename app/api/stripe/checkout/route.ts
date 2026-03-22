@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (oErr || !option) {
-        return NextResponse.json({ error: `Option not found for "${product.name}".` }, { status: 400 });
+        return NextResponse.json({ error: `Your cart item "${product.name}" is outdated — please remove it and re-add it from the product page.` }, { status: 400 });
       }
 
       if (option.status === "sold") {
