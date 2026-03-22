@@ -106,6 +106,22 @@ export async function PATCH(
 
   const canEmail = !!(order.customer_name && order.customer_email && order.order_number);
 
+  // Fetch items once if we'll need them for either email
+  const deliveryDateChanged = estimatedDeliveryDate && estimatedDeliveryDate !== previousDeliveryDate;
+  let emailItems: { name: string; option?: string | null; price: number; quantity?: number }[] = [];
+  if (canEmail && ((sendEmail && orderStatus) || deliveryDateChanged)) {
+    const { data: orderItems } = await supabaseAdmin
+      .from("order_items")
+      .select("product_name, option_label, price_usd, quantity")
+      .eq("order_id", id);
+    emailItems = (orderItems ?? []).map((i) => ({
+      name: i.product_name,
+      option: i.option_label,
+      price: i.price_usd ?? 0,
+      quantity: i.quantity ?? 1,
+    }));
+  }
+
   // Send status change email if requested
   if (sendEmail && orderStatus && canEmail) {
     await sendOrderStatusEmail({
@@ -114,20 +130,18 @@ export async function PATCH(
       customerEmail: order.customer_email!,
       newStatus: orderStatus as OrderStatus,
       estimatedDelivery: order.estimated_delivery_date ?? null,
+      items: emailItems,
     });
   }
 
   // Auto-send delivery date email whenever it's set or changed
-  const deliveryDateChanged =
-    estimatedDeliveryDate &&
-    estimatedDeliveryDate !== previousDeliveryDate;
-
   if (deliveryDateChanged && canEmail) {
     await sendDeliveryDateEmail({
       orderNumber: order.order_number!,
       customerName: order.customer_name!,
       customerEmail: order.customer_email!,
       estimatedDelivery: estimatedDeliveryDate!,
+      items: emailItems,
     });
   }
 

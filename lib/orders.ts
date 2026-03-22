@@ -329,12 +329,37 @@ const STATUS_META: Record<
  * Always sent from notification@bingbingjade.com.
  * Silently skips if RESEND_API_KEY is not set or the status has no customer-facing email.
  */
+// Shared helper — same item-row HTML used in all email templates
+function buildItemRowsHtml(
+  items: { name: string; option?: string | null; price: number; quantity?: number }[]
+): string {
+  if (!items.length) return "";
+  const rows = items
+    .map((i) => {
+      const qty = i.quantity && i.quantity > 1 ? ` &times; ${i.quantity}` : "";
+      const label = i.option ? `${i.name} &mdash; ${i.option}` : i.name;
+      const lineTotal = i.price * (i.quantity ?? 1);
+      return `<tr>
+          <td style="padding:10px 0;border-bottom:1px solid #f0f0f0;color:#374151;font-size:14px;">${label}${qty}</td>
+          <td style="padding:10px 0;border-bottom:1px solid #f0f0f0;color:#374151;font-size:14px;text-align:right;white-space:nowrap;">$${lineTotal.toFixed(2)}</td>
+        </tr>`;
+    })
+    .join("");
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+      <tr>
+        <td colspan="2" style="padding-bottom:8px;font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#9ca3af;">Order Summary</td>
+      </tr>
+      ${rows}
+    </table>`;
+}
+
 export async function sendOrderStatusEmail(params: {
   orderNumber: string;
   customerName: string;
   customerEmail: string;
   newStatus: OrderStatus;
   estimatedDelivery?: string | null;
+  items?: { name: string; option?: string | null; price: number; quantity?: number }[];
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return;
@@ -404,6 +429,7 @@ export async function sendOrderStatusEmail(params: {
               </tr>
             </table>
 
+            ${buildItemRowsHtml(params.items ?? [])}
             ${deliveryNote}
             ${ctaSection}
 
@@ -453,6 +479,7 @@ export async function sendDeliveryDateEmail(params: {
   customerName: string;
   customerEmail: string;
   estimatedDelivery: string;
+  items?: { name: string; option?: string | null; price: number; quantity?: number }[];
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return;
@@ -497,6 +524,8 @@ export async function sendDeliveryDateEmail(params: {
                 </td>
               </tr>
             </table>
+
+            ${buildItemRowsHtml(params.items ?? [])}
 
             <!-- CTA -->
             <table cellpadding="0" cellspacing="0" style="margin-bottom:28px;">

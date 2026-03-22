@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { resolveFirstImageUrl } from "@/lib/storage";
 import type { OrderStatus } from "@/types/orders";
 
 // Revalidate every 5 minutes so status updates surface quickly
@@ -69,6 +71,7 @@ async function getOrder(orderNumber: string) {
       estimated_delivery_date,
       customer_name,
       order_items (
+        product_id,
         product_name,
         option_label,
         price_usd,
@@ -79,7 +82,35 @@ async function getOrder(orderNumber: string) {
     .eq("order_number", orderNumber.toUpperCase())
     .maybeSingle();
 
-  return order;
+  if (!order) return null;
+
+  // Resolve product images and slugs for each item that has a product_id
+  const productIds = (order.order_items as { product_id: string | null }[])
+    .map((i) => i.product_id)
+    .filter((id): id is string => !!id);
+
+  type ProductMeta = { id: string; imageUrl: string; href: string };
+  let productMeta: Record<string, ProductMeta> = {};
+
+  if (productIds.length > 0) {
+    const { data: products } = await supabaseAdmin
+      .from("products")
+      .select("id, images, slug, public_id")
+      .in("id", productIds);
+
+    const resolved = await Promise.all(
+      (products ?? []).map(async (p) => {
+        const imageUrl = await resolveFirstImageUrl(p.images as string[]) ?? "";
+        const href = p.slug && p.public_id
+          ? `/products/${p.slug}-${p.public_id}`
+          : `/products/${p.public_id}`;
+        return [p.id, { id: p.id, imageUrl, href }] as [string, ProductMeta];
+      })
+    );
+    productMeta = Object.fromEntries(resolved);
+  }
+
+  return { ...order, productMeta };
 }
 
 // ── Metadata ───────────────────────────────────────────────────────────────
@@ -123,14 +154,15 @@ export default async function TrackOrderPage({
       ? `$${(order.amount_total / 100).toFixed(2)}`
       : "—";
 
-  // Use typed array for order_items
   const items = (order.order_items ?? []) as {
+    product_id: string | null;
     product_name: string;
     option_label: string | null;
     price_usd: number | null;
     quantity: number;
     line_total: number | null;
   }[];
+  const { productMeta } = order;
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-16">
@@ -292,28 +324,50 @@ export default async function TrackOrderPage({
             Order Summary
           </h2>
           <div className="divide-y divide-gray-100 dark:divide-gray-800 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-            {items.map((item, i) => (
-              <div key={i} className="flex justify-between items-start px-5 py-3.5">
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-snug">
-                    {item.product_name}
-                  </p>
-                  {item.option_label && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.option_label}</p>
-                  )}
-                  {item.quantity > 1 && (
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Qty: {item.quantity}</p>
-                  )}
+            {items.map((item, i) => {
+              const meta = item.product_id ? productMeta[item.product_id] : null;
+              const price = item.line_total != null
+                ? `$${item.line_total.toFixed(2)}`
+                : item.price_usd != null
+                ? `$${item.price_usd.toFixed(2)}`
+                : "—";
+              return (
+                <div key={i} className="flex items-center gap-4 px-5 py-4">
+                  {/* Thumbnail */}
+                  <div className="w-14 h-14 rounded-lg overflow-hidden bg-emerald-50 dark:bg-emerald-950 shrink-0">
+                    {meta?.imageUrl ? (
+                      <Image
+                        src={meta.imageUrl}
+                        alt={item.product_name}
+                        width={56}
+                        height={56}
+                        className="w-full h-full object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-2xl">🪨</div>
+                    )}
+                  </div>
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    {meta?.href ? (
+                      <Link href={meta.href} className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-emerald-700 dark:hover:text-emerald-400 leading-snug transition-colors line-clamp-2">
+                        {item.product_name}
+                      </Link>
+                    ) : (
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-snug">{item.product_name}</p>
+                    )}
+                    {item.option_label && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.option_label}</p>
+                    )}
+                    {item.quantity > 1 && (
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Qty: {item.quantity}</p>
+                    )}
+                  </div>
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 ml-4 shrink-0">{price}</p>
                 </div>
-                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 ml-6 shrink-0">
-                  {item.line_total != null
-                    ? `$${item.line_total.toFixed(2)}`
-                    : item.price_usd != null
-                    ? `$${item.price_usd.toFixed(2)}`
-                    : "—"}
-                </p>
-              </div>
-            ))}
+              );
+            })}
             <div className="flex justify-between items-center px-5 py-3.5 bg-gray-50 dark:bg-gray-900">
               <p className="text-sm text-gray-500 dark:text-gray-400">Total paid</p>
               <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{totalFormatted}</p>
