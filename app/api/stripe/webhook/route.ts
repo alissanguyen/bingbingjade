@@ -102,21 +102,9 @@ export async function POST(req: NextRequest) {
   }
 
   let shippingAddressId: string | null = null;
-  // shipping_details is only present when the Stripe session collects shipping.
-  // Cast through unknown to avoid Stripe SDK type narrowing issues at runtime.
-  const shippingDetails = (session as unknown as {
-    shipping_details?: {
-      name?: string | null;
-      address?: {
-        line1?: string | null;
-        line2?: string | null;
-        city?: string | null;
-        state?: string | null;
-        postal_code?: string | null;
-        country?: string | null;
-      };
-    } | null;
-  }).shipping_details;
+  // In Stripe API 2026-02-25.clover, shipping address collected during Checkout
+  // is available at session.collected_information.shipping_details.
+  const shippingDetails = session.collected_information?.shipping_details ?? null;
 
   if (customerId && shippingDetails?.address) {
     const addr = shippingDetails.address;

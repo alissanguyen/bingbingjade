@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { encodeCheckoutItems } from "@/lib/stripe-metadata";
 import type { CartItem } from "@/types/cart";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
@@ -114,28 +115,23 @@ export async function POST(req: NextRequest) {
     validatedItems.push({ ...item, price: serverPrice });
   }
 
-  // Build compact metadata for webhook.
-  // Stripe limits each metadata value to 500 chars; full names would blow that for 3+ items.
-  // Compact format: {p: productId, o: optionId|null, $: priceUsd}
-  // Split into chunks of 4 items per key (items_0, items_1, …) — ~391 chars each worst case.
-  const compactItems = validatedItems.map((i) => ({
-    p: i.productId,
-    ...(i.optionId ? { o: i.optionId } : {}),
-    $: i.price,
-  }));
-
-  const CHUNK_SIZE = 4;
-  const metadata: Record<string, string> = {};
-  for (let idx = 0; idx < compactItems.length; idx += CHUNK_SIZE) {
-    metadata[`items_${Math.floor(idx / CHUNK_SIZE)}`] = JSON.stringify(
-      compactItems.slice(idx, idx + CHUNK_SIZE)
-    );
-  }
+  const metadata = encodeCheckoutItems(
+    validatedItems.map((i) => ({ productId: i.productId, optionId: i.optionId ?? null, price: i.price! }))
+  );
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
     line_items: lineItems,
     // Omitting payment_method_types lets Stripe enable all applicable methods automatically
+    shipping_address_collection: {
+      // Extend this list as needed — covers the most common customer countries for jade buyers
+      allowed_countries: [
+        "US", "CA", "GB", "AU", "NZ",
+        "SG", "MY", "HK", "TW", "JP", "KR", "TH", "VN", "PH", "ID", "IN",
+        "DE", "FR", "IT", "ES", "NL", "BE", "AT", "CH", "SE", "NO", "DK", "FI",
+        "CN",
+      ],
+    },
     success_url: `${SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${SITE_URL}/checkout/cancel`,
     consent_collection: { terms_of_service: "required" },
