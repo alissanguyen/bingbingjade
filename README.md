@@ -15,6 +15,7 @@ A production e-commerce application for an authentic jade jewelry business, buil
 | Database | Supabase (PostgreSQL) |
 | Storage | Supabase Storage (private buckets, signed URLs) |
 | Payments | Stripe Checkout + Webhooks |
+| AI / LLM | Anthropic Claude API (claude-opus-4-6, vision + text) |
 | Image Processing | Sharp (native Node.js) |
 | Styling | Tailwind CSS 4 |
 | Deployment | Vercel (with ISR and serverless functions) |
@@ -62,6 +63,7 @@ The application is split into a **customer storefront** and a **password-protect
 ### Admin CMS (Password-Protected)
 
 - **Add product** — rich form with media upload, image crop (react-easy-crop), video trim, category/origin/color/tier tagging, pricing, and vendor attribution
+- **AI-assisted copy generation** — admin can click "Generate Copy" to have Claude analyse the actual uploaded product photos (via vision API) alongside structured product facts and raw vendor notes (Vietnamese or English). Claude generates an elevated product title, a luxury single-paragraph description, and a trust-building blemishes note. All fields are editable before saving. Claude also extracts size, dimensions, origin, and imported price from the vendor notes. A pre-flight token-count check enforces a per-request cost cap ($0.20) before any tokens are billed
 - **Edit product** — same full-featured form, pre-populated with existing data; includes lightbox for existing images and inline video preview
 - **Draft/publish workflow** — products default to draft and are hidden from the storefront until explicitly published; drafts remain visible in the admin panel and on localhost
 - **Bulk operations** — select multiple products to batch-update status (available / on sale / sold) or bulk delete
@@ -141,6 +143,8 @@ jade-shop/
 │   │   │   ├── checkout/route.ts       # Cart validation + session creation
 │   │   │   ├── webhook/route.ts        # Order creation + inventory update
 │   │   │   └── verify-admin/route.ts   # Beta mode gate
+│   │   ├── generate-product-copy/
+│   │   │   └── route.ts               # Claude vision API — AI copy generation
 │   │   ├── upload-image/route.ts       # Image processing pipeline
 │   │   ├── create-upload-url/route.ts  # Signed URL for direct video upload
 │   │   └── revalidate/route.ts         # ISR cache invalidation
@@ -153,6 +157,8 @@ jade-shop/
 │       └── ...
 │
 ├── lib/
+│   ├── claude.ts                       # Anthropic client singleton (server-only)
+│   ├── price.ts                        # Price obfuscation helpers
 │   ├── watermark.ts                    # Sharp image pipeline
 │   ├── storage.ts                      # Signed URL helpers
 │   ├── stripe.ts                       # Dual-mode Stripe client
@@ -171,6 +177,30 @@ jade-shop/
 ---
 
 ## Data Flows
+
+### AI Copy Generation
+
+```
+Admin uploads photos + fills product facts + pastes vendor notes
+  → Click "Generate Copy"
+  → Client resizes each image to 1024px JPEG (canvas — AI only, does not affect upload)
+  → POST /api/generate-product-copy
+      → Auth check (admin_session cookie)
+      → Build content array: [image blocks…, text prompt]
+      → anthropic.messages.countTokens(content)  ← free, no billing
+      → Estimate cost = (input_tokens / 1M) × $15 + (1024 / 1M) × $75
+      → Reject with 400 if estimate > $0.20
+      → anthropic.messages.create(claude-opus-4-6, content)
+          → Claude analyses photos for translucency, texture, color, surface
+          → Returns strict JSON: { title, description, blemishes,
+                                   size, width, thickness, origin,
+                                   imported_price_vnd }
+      → Validate + sanitise response
+      → Return to client
+  → Client prefills name, description, blemishes, size, dimensions,
+    origin, imported_price_vnd in existing form fields
+  → Admin edits as needed → saves via normal createProduct flow (unchanged)
+```
 
 ### Product Creation
 
@@ -240,8 +270,9 @@ resolveImageUrl("wm/abc123.jpg")
 | `/api/stripe/checkout` | POST | Beta: x-admin-password header | Validates cart and creates Stripe checkout session |
 | `/api/stripe/webhook` | POST | Stripe-Signature header | Handles `checkout.session.completed` events |
 | `/api/stripe/verify-admin` | POST | — | Verifies admin password for beta checkout UI |
-| `/api/upload-image` | POST | — | Receives image file, applies watermark, uploads to storage |
-| `/api/create-upload-url` | POST | — | Returns a signed URL for direct client-side video upload |
+| `/api/upload-image` | POST | admin_session cookie | Receives image file, applies watermark, uploads to storage |
+| `/api/create-upload-url` | POST | admin_session cookie | Returns a signed URL for direct client-side video upload |
+| `/api/generate-product-copy` | POST | admin_session cookie | Calls Claude vision API; returns AI-generated title, description, blemishes, and extracted product facts |
 | `/api/revalidate` | POST | `?secret=` query param | Clears Next.js ISR cache for product pages |
 
 ---
@@ -280,6 +311,9 @@ NEXT_PUBLIC_EMAILJS_TEMPLATE_ID=
 NEXT_PUBLIC_EMAILJS_PUBLIC_KEY=
 NEXT_PUBLIC_EMAILJS_NOTIFICATION_TEMPLATE_ID=
 
+# Anthropic Claude API (server-only — never exposed to client)
+ANTHROPIC_API_KEY=                  # Required for AI copy generation in admin
+
 # ISR
 REVALIDATE_SECRET=                  # Shared secret for /api/revalidate
 ```
@@ -308,6 +342,8 @@ All schema changes are tracked as numbered SQL files in `/supabase/`. Run them i
 | 014 | Add `orders` and `order_items` tables |
 | 015 | Performance indexes + Row Level Security on `orders`, `order_items`, `product_options` |
 | 016 | Add `is_published` (default: `false`) — draft/publish workflow |
+| 017 | Make `jade-images` bucket publicly readable (eliminates signed-URL expiry on ISR pages) |
+| 018 | Widen `imported_price_vnd` from `integer` to `bigint` (supports values > 2.1 billion VND) |
 
 ---
 
@@ -363,3 +399,12 @@ When a product sells, its detail page should show "Sold" as close to immediately
 
 **Why is the checkout idempotency check not sufficient on its own?**
 The pre-check (`SELECT id WHERE stripe_session_id = ?`) has a TOCTOU race: two concurrent webhook deliveries can both pass the check before either commits. The UNIQUE constraint on `orders.stripe_session_id` is the actual guard — the application code just avoids returning `500` when it fires (PostgreSQL error code `23505`), so Stripe does not retry unnecessarily.
+
+**Why resize images to 1024px for Claude instead of sending originals?**
+iPhone RAW photos are 15–20 MB and encode to several hundred KB in base64. Sending them raw would produce JSON request bodies in the tens of megabytes, approaching Next.js route handler limits and adding unnecessary API latency. Claude's vision model does not need 20-megapixel resolution to analyse colour, translucency, and surface quality — 1024px provides more than enough fidelity. The resize happens entirely on the client via the Canvas API before the request is made, so the actual product upload quality is completely unaffected.
+
+**Why use `countTokens` before calling Claude?**
+The generate-copy endpoint includes up to three product photos as base64 image blocks, which can significantly inflate input token counts. A pre-flight `countTokens` call (which is free and not billed) allows the server to estimate the full request cost before issuing it. Requests estimated above the $0.20 cap are rejected with a clear error message, protecting against runaway costs if unusually large images are submitted. The worst-case output cost (1024 tokens × $75/MTok) is included in the estimate.
+
+**Why obfuscate prices above $20,000 rather than hiding them entirely?**
+High-value jade pieces ($20k+) attract a different buyer who expects a personal relationship before committing to a purchase. Showing an exact price publicly can invite low-ball offers or comparison shopping that devalues the piece. The obfuscated format (`$2X,XXX`) communicates the price range clearly enough for the buyer to self-qualify, while directing them through an inquiry flow where a proper conversation can happen. "Contact for price" alone tends to be ignored; a visible but intentionally inexact price is more informative and still encourages contact.
