@@ -270,3 +270,174 @@ export async function sendOrderConfirmationEmail(params: {
     console.error("[orders] Failed to send confirmation email:", err);
   }
 }
+
+// ── Order status update email (Resend) ────────────────────────────────────────
+
+import type { OrderStatus } from "@/types/orders";
+
+const STATUS_META: Record<
+  OrderStatus,
+  { subject: string; headline: string; badge: string; body: string } | null
+> = {
+  order_created: null, // no customer-facing email for this internal state
+  order_confirmed: {
+    subject: "Your BingBing Jade Order is Confirmed",
+    headline: "Order Confirmed",
+    badge: "Confirmed",
+    body: "Your order has been confirmed and our team is personally reviewing it. We will reach out within 24–48 hours to coordinate the next steps.",
+  },
+  quality_control: {
+    subject: "Your Piece is Being Inspected",
+    headline: "Quality Inspection",
+    badge: "Quality Control",
+    body: "Your jade piece is currently undergoing our quality control inspection to ensure it meets our exacting standards before it moves to the next stage.",
+  },
+  certifying: {
+    subject: "Your Piece is Being Certified",
+    headline: "Certification in Progress",
+    badge: "Certifying",
+    body: "Your piece is currently being certified for authenticity and quality. This important step ensures you receive a fully verified, genuine piece.",
+  },
+  inbound_shipping: {
+    subject: "Your Piece is On Its Way to Us",
+    headline: "Inbound Shipping",
+    badge: "Inbound Shipping",
+    body: "Your piece is currently being shipped to our fulfillment location. Once it arrives and passes final inspection, we will ship it directly to you.",
+  },
+  outbound_shipping: {
+    subject: "Your Order Has Shipped!",
+    headline: "Your Order Has Shipped",
+    badge: "Shipped",
+    body: "Great news — your BingBing Jade order is on its way to you! You will receive your piece soon.",
+  },
+  delivered: {
+    subject: "Your Order Has Been Delivered",
+    headline: "Order Delivered",
+    badge: "Delivered",
+    body: "Your BingBing Jade order has been marked as delivered. We hope you absolutely love your piece. If you have any questions or concerns, please don't hesitate to reach out.",
+  },
+  order_cancelled: {
+    subject: "Your BingBing Jade Order Has Been Cancelled",
+    headline: "Order Cancelled",
+    badge: "Cancelled",
+    body: "Your order has been cancelled. If this was unexpected or you have any questions, please reach out to us and we will be happy to assist you.",
+  },
+};
+
+/**
+ * Send an order status update email via Resend.
+ * Always sent from notification@bingbingjade.com.
+ * Silently skips if RESEND_API_KEY is not set or the status has no customer-facing email.
+ */
+export async function sendOrderStatusEmail(params: {
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  newStatus: OrderStatus;
+  estimatedDelivery?: string | null;
+}): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return;
+
+  const meta = STATUS_META[params.newStatus];
+  if (!meta) return;
+
+  const resend = new Resend(apiKey);
+  const from = "BingBing Jade <notification@bingbingjade.com>";
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
+  const trackUrl = `${siteUrl}/orders/${params.orderNumber}`;
+  const firstName = params.customerName.split(" ")[0];
+
+  const isCancelled = params.newStatus === "order_cancelled";
+  const headerBg = isCancelled ? "#991b1b" : "#065f46";
+  const badgeBg = isCancelled ? "#fee2e2" : "#f0fdf4";
+  const badgeBorder = isCancelled ? "#fca5a5" : "#bbf7d0";
+  const badgeColor = isCancelled ? "#991b1b" : "#059669";
+  const orderNumColor = isCancelled ? "#7f1d1d" : "#065f46";
+
+  const deliveryNote =
+    !isCancelled && params.estimatedDelivery
+      ? `<p style="margin:0 0 24px;font-size:14px;color:#4b5563;line-height:1.6;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;">Estimated delivery: <strong>${params.estimatedDelivery}</strong></p>`
+      : "";
+
+  const ctaSection = !isCancelled
+    ? `<table cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+        <tr>
+          <td style="background:#065f46;border-radius:999px;">
+            <a href="${trackUrl}" style="display:inline-block;padding:13px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.01em;">
+              Track Your Order &rarr;
+            </a>
+          </td>
+        </tr>
+      </table>`
+    : "";
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:${headerBg};padding:32px 40px;text-align:center;">
+            <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:#6ee7b7;">Order Update</p>
+            <h1 style="margin:8px 0 0;font-size:26px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">BingBing Jade</h1>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:36px 40px;">
+            <p style="margin:0 0 20px;font-size:16px;color:#111827;">Hi ${firstName},</p>
+            <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">${meta.body}</p>
+
+            <!-- Order number callout -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:${badgeBg};border:1px solid ${badgeBorder};border-radius:8px;margin-bottom:28px;">
+              <tr>
+                <td style="padding:16px 20px;">
+                  <p style="margin:0 0 2px;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:${badgeColor};">${meta.badge}</p>
+                  <p style="margin:0;font-size:22px;font-weight:700;color:${orderNumColor};letter-spacing:0.04em;">${params.orderNumber}</p>
+                </td>
+              </tr>
+            </table>
+
+            ${deliveryNote}
+            ${ctaSection}
+
+            <p style="margin:0;font-size:14px;color:#374151;line-height:1.6;">
+              Questions? Reply to this email or reach out via <a href="${siteUrl}/contact" style="color:#059669;text-decoration:none;">our contact page</a> or WhatsApp &mdash; we&rsquo;re always happy to give a personal update.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding:20px 40px 28px;border-top:1px solid #f3f4f6;text-align:center;">
+            <p style="margin:0;font-size:12px;color:#9ca3af;">
+              &copy; ${new Date().getFullYear()} BingBing Jade &middot;
+              <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  try {
+    const { error } = await resend.emails.send({
+      from,
+      to: params.customerEmail,
+      subject: `${meta.subject} — ${params.orderNumber}`,
+      html,
+    });
+    if (error) console.error("[orders] Resend status email error:", error);
+  } catch (err) {
+    console.error("[orders] Failed to send status email:", err);
+  }
+}

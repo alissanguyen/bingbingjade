@@ -31,6 +31,7 @@ export function AdminBar() {
           <a href="/addvendor" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Add Vendor</a>
           <a href="/edit" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Edit Product</a>
           <a href="/editvendor" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Edit Vendor</a>
+          <a href="/orders-admin" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Orders</a>
           <button
             type="button"
             onClick={handleRevalidate}

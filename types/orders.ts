@@ -5,7 +5,8 @@ export type OrderStatus =
   | "certifying"
   | "inbound_shipping"
   | "outbound_shipping"
-  | "delivered";
+  | "delivered"
+  | "order_cancelled";
 
 export type OrderSource = "stripe" | "whatsapp" | "cash" | "custom" | "admin";
 
