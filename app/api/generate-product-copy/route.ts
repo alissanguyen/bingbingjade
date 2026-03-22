@@ -120,6 +120,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "category is required" }, { status: 400 });
   }
 
+  // claude-opus-4-6 pricing (per million tokens)
+  const INPUT_COST_PER_MTOK = 15;
+  const OUTPUT_COST_PER_MTOK = 75;
+  const COST_LIMIT_USD = 0.20;
+
   try {
     // Build content array — images first so Claude sees them before the instructions
     const content: Parameters<typeof anthropic.messages.create>[0]["messages"][0]["content"] = [];
@@ -132,6 +137,22 @@ export async function POST(req: NextRequest) {
     }
 
     content.push({ type: "text", text: buildPrompt({ category, colors, tiers, size, origin, sourceNotes, images }) });
+
+    // Pre-flight cost check — count input tokens before spending anything
+    const { input_tokens } = await anthropic.messages.countTokens({
+      model: "claude-opus-4-6",
+      messages: [{ role: "user", content }],
+    });
+    const estimatedCost =
+      (input_tokens / 1_000_000) * INPUT_COST_PER_MTOK +
+      (1024 / 1_000_000) * OUTPUT_COST_PER_MTOK; // 1024 = max_tokens worst case
+
+    if (estimatedCost > COST_LIMIT_USD) {
+      return NextResponse.json(
+        { error: `Request would cost ~$${estimatedCost.toFixed(3)}, which exceeds the $${COST_LIMIT_USD.toFixed(2)} limit. Try reducing the number of images or shortening the notes.` },
+        { status: 400 }
+      );
+    }
 
     const message = await anthropic.messages.create({
       model: "claude-opus-4-6",
