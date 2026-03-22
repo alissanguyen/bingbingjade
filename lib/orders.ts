@@ -167,7 +167,7 @@ export async function sendOrderConfirmationEmail(params: {
   const deliveryNote =
     params.estimatedDelivery
       ? `Estimated delivery: <strong>${params.estimatedDelivery}</strong>`
-      : "We will be in touch once your order ships. Authentic jade sourcing, certification, and international shipping take time — typically 2–6 weeks.";
+      : "We will be in touch once your order ships. Authentic jade sourcing, certification, and international shipping take time — typically 2–4 weeks.";
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -439,5 +439,107 @@ export async function sendOrderStatusEmail(params: {
     if (error) console.error("[orders] Resend status email error:", error);
   } catch (err) {
     console.error("[orders] Failed to send status email:", err);
+  }
+}
+
+// ── Estimated delivery date update email (Resend) ─────────────────────────────
+
+/**
+ * Notify the customer that their estimated delivery date has been set or updated.
+ * Sent from notification@bingbingjade.com.
+ */
+export async function sendDeliveryDateEmail(params: {
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  estimatedDelivery: string;
+}): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return;
+
+  const resend = new Resend(apiKey);
+  const from = "BingBing Jade <notification@bingbingjade.com>";
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
+  const trackUrl = `${siteUrl}/orders/${params.orderNumber}`;
+  const firstName = params.customerName.split(" ")[0];
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:#065f46;padding:32px 40px;text-align:center;">
+            <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:#6ee7b7;">Delivery Update</p>
+            <h1 style="margin:8px 0 0;font-size:26px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">BingBing Jade</h1>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:36px 40px;">
+            <p style="margin:0 0 20px;font-size:16px;color:#111827;">Hi ${firstName},</p>
+            <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
+              We have an updated estimated delivery date for your order. Please see the details below.
+            </p>
+
+            <!-- Delivery date callout -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;margin-bottom:28px;">
+              <tr>
+                <td style="padding:16px 20px;">
+                  <p style="margin:0 0 2px;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#92400e;">Estimated Delivery</p>
+                  <p style="margin:0;font-size:22px;font-weight:700;color:#78350f;letter-spacing:0.01em;">${params.estimatedDelivery}</p>
+                  <p style="margin:6px 0 0;font-size:12px;color:#6b7280;">Order ${params.orderNumber}</p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- CTA -->
+            <table cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+              <tr>
+                <td style="background:#065f46;border-radius:999px;">
+                  <a href="${trackUrl}" style="display:inline-block;padding:13px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.01em;">
+                    Track Your Order &rarr;
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:0;font-size:14px;color:#374151;line-height:1.6;">
+              Questions? Reply to this email or reach out via <a href="${siteUrl}/contact" style="color:#059669;text-decoration:none;">our contact page</a> or WhatsApp &mdash; we&rsquo;re always happy to give a personal update.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding:20px 40px 28px;border-top:1px solid #f3f4f6;text-align:center;">
+            <p style="margin:0;font-size:12px;color:#9ca3af;">
+              &copy; ${new Date().getFullYear()} BingBing Jade &middot;
+              <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  try {
+    const { error } = await resend.emails.send({
+      from,
+      to: params.customerEmail,
+      subject: `Delivery Update for Your Order ${params.orderNumber}`,
+      html,
+    });
+    if (error) console.error("[orders] Resend delivery email error:", error);
+  } catch (err) {
+    console.error("[orders] Failed to send delivery date email:", err);
   }
 }
