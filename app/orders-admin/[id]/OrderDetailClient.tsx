@@ -61,14 +61,14 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
 };
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
-  order_created: "bg-gray-100 text-gray-600",
-  order_confirmed: "bg-blue-100 text-blue-700",
-  quality_control: "bg-purple-100 text-purple-700",
-  certifying: "bg-indigo-100 text-indigo-700",
-  inbound_shipping: "bg-amber-100 text-amber-700",
-  outbound_shipping: "bg-orange-100 text-orange-700",
-  delivered: "bg-emerald-100 text-emerald-700",
-  order_cancelled: "bg-red-100 text-red-700",
+  order_created: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  order_confirmed: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  quality_control: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+  certifying: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+  inbound_shipping: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  outbound_shipping: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+  delivered: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+  order_cancelled: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 };
 
 const ALL_STATUSES: OrderStatus[] = [
@@ -83,7 +83,7 @@ const EMAILABLE_STATUSES = new Set<OrderStatus>([
 ]);
 
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -182,131 +182,248 @@ export function OrderDetailClient({
 
   const isCancelled = order.order_status === "order_cancelled";
   const total = order.order_items.reduce((s, i) => s + (i.line_total ?? (i.price_usd ?? 0) * i.quantity), 0);
+  const displayTotal = (order.amount_total != null ? order.amount_total / 100 : total).toFixed(2);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Toast */}
       {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${
+        <div className={`fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-auto z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium text-center sm:text-left ${
           toast.type === "ok" ? "bg-emerald-700 text-white" : "bg-red-600 text-white"
         }`}>
           {toast.msg}
         </div>
       )}
 
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-5 sm:py-8">
         {/* Back */}
-        <button onClick={() => router.push("/orders-admin")}
-          className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mb-6 transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <button
+          onClick={() => router.push("/orders-admin")}
+          className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mb-5 transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />
           </svg>
           All Orders
         </button>
 
         {/* Order header */}
-        <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
-          <div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-bold font-mono text-gray-900 dark:text-gray-100">
+        <div className="mb-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold font-mono text-gray-900 dark:text-gray-100 truncate">
                 {order.order_number ?? "No Order #"}
               </h1>
-              <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_COLORS[order.order_status]}`}>
-                {STATUS_LABELS[order.order_status]}
-              </span>
-              <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
-                order.status === "paid" ? "bg-emerald-100 text-emerald-700" :
-                order.status === "refunded" ? "bg-red-100 text-red-700" :
-                "bg-amber-100 text-amber-700"
-              }`}>
-                {order.status}
-              </span>
+              <p className="text-xs text-gray-400 mt-0.5">{fmtDate(order.created_at)} · {order.source}</p>
             </div>
-            <p className="text-sm text-gray-400 mt-1">{fmtDate(order.created_at)} · {order.source}</p>
+            <div className="text-right shrink-0">
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
+                ${displayTotal}
+              </p>
+              <p className="text-xs text-gray-400 uppercase">{order.currency}</p>
+            </div>
           </div>
-          <div className="text-right">
-            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              ${(order.amount_total != null ? order.amount_total / 100 : total).toFixed(2)} {order.currency.toUpperCase()}
-            </p>
+          <div className="flex flex-wrap gap-2 mt-3">
+            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_COLORS[order.order_status]}`}>
+              {STATUS_LABELS[order.order_status]}
+            </span>
+            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+              order.status === "paid" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" :
+              order.status === "refunded" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
+              "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+            }`}>
+              {order.status}
+            </span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* Left column */}
-          <div className="lg:col-span-2 space-y-5">
+        {/* Two-column grid — management panel renders first in DOM (shown first on mobile) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+
+          {/* RIGHT column — Manage + Actions (order-first on mobile) */}
+          <div className="lg:col-start-3 space-y-4 order-first lg:order-last">
+
+            {/* Manage Order */}
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-4 space-y-4">
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Manage Order</h2>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Order Status</label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => {
+                    const s = e.target.value as OrderStatus;
+                    setEditStatus(s);
+                    setSendEmail(EMAILABLE_STATUSES.has(s) && s !== order.order_status);
+                  }}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  {ALL_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Estimated Delivery Date</label>
+                <input
+                  type="date"
+                  value={editDelivery}
+                  onChange={(e) => setEditDelivery(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                {editDelivery && editDelivery !== (order.estimated_delivery_date ?? "") && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Customer will be emailed the new date on save.</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Internal Notes</label>
+                <textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  rows={3}
+                  placeholder="Admin-only notes…"
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                />
+              </div>
+
+              {EMAILABLE_STATUSES.has(editStatus) && editStatus !== order.order_status && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sendEmail}
+                    onChange={(e) => setSendEmail(e.target.checked)}
+                    className="rounded text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="text-sm text-gray-600 dark:text-gray-300">Notify customer via email</span>
+                </label>
+              )}
+
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white py-2.5 text-sm font-medium transition-colors"
+              >
+                {saving ? "Saving…" : "Save Changes"}
+              </button>
+            </div>
+
+            {/* Actions */}
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-4 space-y-2">
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Actions</h2>
+
+              <button
+                onClick={handleResend}
+                disabled={actionLoading === "resend"}
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60 text-gray-700 dark:text-gray-300 py-2.5 text-sm font-medium transition-colors"
+              >
+                {actionLoading === "resend" ? "Sending…" : "Resend Confirmation Email"}
+              </button>
+
+              {!isCancelled && order.stripe_payment_intent_id && (
+                <button
+                  onClick={handleRefund}
+                  disabled={actionLoading === "refund" || order.status === "refunded"}
+                  className="w-full rounded-lg border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-60 text-red-600 dark:text-red-400 py-2.5 text-sm font-medium transition-colors"
+                >
+                  {actionLoading === "refund" ? "Refunding…" : order.status === "refunded" ? "Already Refunded" : "Refund via Stripe"}
+                </button>
+              )}
+
+              {!isCancelled && (
+                <button
+                  onClick={handleCancel}
+                  disabled={actionLoading === "cancel"}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60 text-gray-500 dark:text-gray-400 py-2.5 text-sm font-medium transition-colors"
+                >
+                  {actionLoading === "cancel" ? "Cancelling…" : "Cancel Order"}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* LEFT column — Items, Customer, Shipping (order-last on mobile) */}
+          <div className="lg:col-span-2 space-y-4 order-last lg:order-first">
+
             {/* Items */}
             <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Items ({order.order_items.length})</h2>
+              <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  Items ({order.order_items.length})
+                </h2>
               </div>
               <div className="divide-y divide-gray-50 dark:divide-gray-800">
                 {order.order_items.map((item) => {
                   const imgSrc = item.product_id ? productImages[item.product_id] : "";
+                  const lineTotal = (item.line_total ?? (item.price_usd ?? 0) * item.quantity).toFixed(2);
                   return (
-                    <div key={item.id} className="flex gap-4 px-5 py-4 items-center">
-                      {/* Product image */}
-                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
+                    <div key={item.id} className="flex gap-3 px-4 py-3 items-center">
+                      <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
                         {imgSrc ? (
                           <Image
                             src={imgSrc}
                             alt={item.product_name}
-                            width={64}
-                            height={64}
+                            width={56}
+                            height={56}
                             className="w-full h-full object-cover"
                             unoptimized
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                               <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
                             </svg>
                           </div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{item.product_name}</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-snug line-clamp-2">{item.product_name}</p>
                         {item.option_label && <p className="text-xs text-gray-400 mt-0.5">{item.option_label}</p>}
                         {item.quantity > 1 && <p className="text-xs text-gray-400">×{item.quantity}</p>}
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                          ${(item.line_total ?? (item.price_usd ?? 0) * item.quantity).toFixed(2)}
-                        </p>
-                        {item.quantity > 1 && item.price_usd != null && (
-                          <p className="text-xs text-gray-400">${item.price_usd.toFixed(2)} each</p>
-                        )}
-                      </div>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 shrink-0 ml-2">
+                        ${lineTotal}
+                      </p>
                     </div>
                   );
                 })}
               </div>
-              <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center">
+              <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-900/60">
                 <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">Total</span>
                 <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                  ${(order.amount_total != null ? order.amount_total / 100 : total).toFixed(2)} {order.currency.toUpperCase()}
+                  ${displayTotal} {order.currency.toUpperCase()}
                 </span>
               </div>
             </div>
 
             {/* Customer */}
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-5 py-4">
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-4">
               <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Customer</h2>
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{order.customer_name ?? "—"}</p>
-              {order.customer_email && (
-                <a href={`mailto:${order.customer_email}`} className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline">{order.customer_email}</a>
-              )}
-              {order.customer_phone_snapshot && <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{order.customer_phone_snapshot}</p>}
-              {order.stripe_payment_intent_id && (
-                <p className="text-xs text-gray-400 font-mono mt-2 truncate">pi: {order.stripe_payment_intent_id}</p>
-              )}
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{order.customer_name ?? "—"}</p>
+                {order.customer_email && (
+                  <a href={`mailto:${order.customer_email}`} className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline block truncate">
+                    {order.customer_email}
+                  </a>
+                )}
+                {order.customer_phone_snapshot && (
+                  <a href={`tel:${order.customer_phone_snapshot}`} className="text-sm text-gray-500 dark:text-gray-400 hover:underline block">
+                    {order.customer_phone_snapshot}
+                  </a>
+                )}
+                {order.stripe_payment_intent_id && (
+                  <p className="text-xs text-gray-400 font-mono pt-1 truncate">pi: {order.stripe_payment_intent_id}</p>
+                )}
+              </div>
             </div>
 
             {/* Shipping address */}
             {order.shipping_address && (
-              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-5 py-4">
+              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-4">
                 <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Shipping Address</h2>
                 <address className="not-italic text-sm text-gray-600 dark:text-gray-300 space-y-0.5">
-                  {order.shipping_address.recipient_name && <p className="font-medium">{order.shipping_address.recipient_name}</p>}
+                  {order.shipping_address.recipient_name && (
+                    <p className="font-medium">{order.shipping_address.recipient_name}</p>
+                  )}
                   <p>{order.shipping_address.address_line1}</p>
                   {order.shipping_address.address_line2 && <p>{order.shipping_address.address_line2}</p>}
                   <p>{order.shipping_address.city}, {order.shipping_address.state_or_region} {order.shipping_address.postal_code}</p>
@@ -320,88 +437,14 @@ export function OrderDetailClient({
               <Link
                 href={`/orders/${order.order_number}`}
                 target="_blank"
-                className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400 hover:underline"
+                className="inline-flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400 hover:underline"
               >
-                View customer tracking page ↗
+                View customer tracking page
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
               </Link>
             )}
-          </div>
-
-          {/* Right column — management */}
-          <div className="space-y-5">
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-5 py-5 space-y-4">
-              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Manage Order</h2>
-
-              {/* Status */}
-              <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Order Status</label>
-                <select value={editStatus}
-                  onChange={(e) => {
-                    const s = e.target.value as OrderStatus;
-                    setEditStatus(s);
-                    setSendEmail(EMAILABLE_STATUSES.has(s) && s !== order.order_status);
-                  }}
-                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                  {ALL_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-                </select>
-              </div>
-
-              {/* Estimated delivery */}
-              <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Estimated Delivery Date</label>
-                <input type="date" value={editDelivery} onChange={(e) => setEditDelivery(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                {editDelivery && editDelivery !== (order.estimated_delivery_date ?? "") && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Customer will be emailed the new date on save.</p>
-                )}
-              </div>
-
-              {/* Notes */}
-              <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Internal Notes</label>
-                <textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} rows={3}
-                  placeholder="Admin-only notes…"
-                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
-              </div>
-
-              {/* Email toggle — shown when status has changed to one with an email */}
-              {EMAILABLE_STATUSES.has(editStatus) && editStatus !== order.order_status && (
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={sendEmail} onChange={(e) => setSendEmail(e.target.checked)}
-                    className="rounded text-emerald-600 focus:ring-emerald-500" />
-                  <span className="text-sm text-gray-600 dark:text-gray-300">Notify customer via email</span>
-                </label>
-              )}
-
-              <button onClick={handleSave} disabled={saving}
-                className="w-full rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white py-2.5 text-sm font-medium transition-colors">
-                {saving ? "Saving…" : "Save Changes"}
-              </button>
-            </div>
-
-            {/* Actions */}
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-5 py-5 space-y-2">
-              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Actions</h2>
-
-              <button onClick={handleResend} disabled={actionLoading === "resend"}
-                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60 text-gray-700 dark:text-gray-300 py-2.5 text-sm font-medium transition-colors">
-                {actionLoading === "resend" ? "Sending…" : "Resend Confirmation Email"}
-              </button>
-
-              {!isCancelled && order.stripe_payment_intent_id && (
-                <button onClick={handleRefund} disabled={actionLoading === "refund" || order.status === "refunded"}
-                  className="w-full rounded-lg border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-60 text-red-600 dark:text-red-400 py-2.5 text-sm font-medium transition-colors">
-                  {actionLoading === "refund" ? "Refunding…" : order.status === "refunded" ? "Already Refunded" : "Refund via Stripe"}
-                </button>
-              )}
-
-              {!isCancelled && (
-                <button onClick={handleCancel} disabled={actionLoading === "cancel"}
-                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60 text-gray-500 dark:text-gray-400 py-2.5 text-sm font-medium transition-colors">
-                  {actionLoading === "cancel" ? "Cancelling…" : "Cancel Order"}
-                </button>
-              )}
-            </div>
           </div>
         </div>
       </div>
