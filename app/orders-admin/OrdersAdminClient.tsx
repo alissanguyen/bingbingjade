@@ -513,10 +513,7 @@ export function OrdersAdminClient() {
                                     onMouseDown={(e) => e.preventDefault()}
                                     onClick={() => {
                                       const avail = p.product_options.filter((o) => o.status !== "sold");
-                                      // For products with no options, auto-fill from product price
-                                      const autoPrice = avail.length === 0
-                                        ? (p.price_display_usd != null ? String(p.price_display_usd) : "")
-                                        : "";
+                                      const firstPrice = avail[0]?.price_usd ?? p.price_display_usd;
                                       setItems((prev) => prev.map((it, idx) => {
                                         if (idx !== i) return it;
                                         return {
@@ -525,7 +522,7 @@ export function OrdersAdminClient() {
                                           productName: p.name,
                                           optionId: "",
                                           optionLabel: "",
-                                          price: autoPrice || it.price,
+                                          price: firstPrice != null ? String(firstPrice) : it.price,
                                         };
                                       }));
                                       setActiveCombobox(null);
