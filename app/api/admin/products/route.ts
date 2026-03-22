@@ -19,6 +19,7 @@ export async function GET() {
       id,
       name,
       status,
+      price_display_usd,
       product_options (
         id,
         label,

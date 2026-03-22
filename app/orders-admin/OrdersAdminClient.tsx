@@ -94,6 +94,7 @@ interface ProductChoice {
   id: string;
   name: string;
   status: string;
+  price_display_usd: number | null;
   product_options: ProductOption[];
 }
 
@@ -511,7 +512,11 @@ export function OrdersAdminClient() {
                                     type="button"
                                     onMouseDown={(e) => e.preventDefault()}
                                     onClick={() => {
-                                      const firstAvailable = p.product_options.find((o) => o.status !== "sold");
+                                      const avail = p.product_options.filter((o) => o.status !== "sold");
+                                      // For products with no options, auto-fill from product price
+                                      const autoPrice = avail.length === 0
+                                        ? (p.price_display_usd != null ? String(p.price_display_usd) : "")
+                                        : "";
                                       setItems((prev) => prev.map((it, idx) => {
                                         if (idx !== i) return it;
                                         return {
@@ -520,7 +525,7 @@ export function OrdersAdminClient() {
                                           productName: p.name,
                                           optionId: "",
                                           optionLabel: "",
-                                          price: firstAvailable?.price_usd != null ? String(firstAvailable.price_usd) : it.price,
+                                          price: autoPrice || it.price,
                                         };
                                       }));
                                       setActiveCombobox(null);
@@ -548,13 +553,14 @@ export function OrdersAdminClient() {
                               value={item.optionId}
                               onChange={(e) => {
                                 const opt = availableOptions.find((o) => o.id === e.target.value);
+                                const resolvedPrice = opt?.price_usd ?? selectedProduct?.price_display_usd;
                                 setItems((prev) => prev.map((it, idx) => {
                                   if (idx !== i) return it;
                                   return {
                                     ...it,
                                     optionId: opt?.id ?? "",
                                     optionLabel: opt?.label ?? "",
-                                    price: opt?.price_usd != null ? String(opt.price_usd) : it.price,
+                                    price: resolvedPrice != null ? String(resolvedPrice) : it.price,
                                   };
                                 }));
                               }}
@@ -567,16 +573,6 @@ export function OrdersAdminClient() {
                                 </option>
                               ))}
                             </select>
-                          </div>
-                        )}
-
-                        {/* No options: show free-text option/variant input */}
-                        {selectedProduct && availableOptions.length === 0 && (
-                          <div>
-                            <label className="block text-xs text-gray-400 mb-1">Option / Variant</label>
-                            <input value={item.optionLabel} onChange={(e) => updateItem(i, "optionLabel", e.target.value)}
-                              placeholder="e.g. Size 54"
-                              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                           </div>
                         )}
 
