@@ -404,10 +404,12 @@ export default async function TrackOrderPage({
 
       {/* Review form — delivered orders only */}
       {isDelivered && (
-        <ReviewForm
-          orderNumber={order.order_number}
-          existingReview={existingReview}
-        />
+        <div id="review">
+          <ReviewForm
+            orderNumber={order.order_number}
+            existingReview={existingReview}
+          />
+        </div>
       )}
 
       {/* Actions */}

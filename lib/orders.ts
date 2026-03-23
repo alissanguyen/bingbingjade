@@ -440,11 +440,12 @@ export async function sendOrderStatusEmail(params: {
 
   const isDelivered = params.newStatus === "delivered";
   const ctaLabel = isDelivered ? "Leave a Review &rarr;" : "Track Your Order &rarr;";
+  const ctaUrl = isDelivered ? `${trackUrl}#review` : trackUrl;
   const ctaSection = !isCancelled
     ? `<table cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
         <tr>
           <td style="background:#065f46;border-radius:999px;">
-            <a href="${trackUrl}" style="display:inline-block;padding:13px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.01em;">
+            <a href="${ctaUrl}" style="display:inline-block;padding:13px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.01em;">
               ${ctaLabel}
             </a>
           </td>
