@@ -18,6 +18,7 @@ export async function bulkUpdateStatus(
 
   revalidatePath("/edit");
   revalidatePath("/products");
+  revalidatePath("/products-admin");
   return { count: count ?? ids.length };
 }
 
@@ -36,6 +37,7 @@ export async function bulkUpdatePublished(
 
   revalidatePath("/edit");
   revalidatePath("/products");
+  revalidatePath("/products-admin");
   return { count: count ?? ids.length };
 }
 
@@ -53,5 +55,6 @@ export async function bulkDelete(
 
   revalidatePath("/edit");
   revalidatePath("/products");
+  revalidatePath("/products-admin");
   return { count: count ?? ids.length };
 }
