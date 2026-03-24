@@ -57,7 +57,15 @@ const CENTER_CATEGORIES = new Set(["bangle", "necklace"]);
 export async function applyWatermark(input: Buffer, category = ""): Promise<Buffer> {
   // Compute post-resize dimensions without encoding an intermediate JPEG.
   // Sharp's fit:"inside" with withoutEnlargement scales by min(2000/w, 2000/h, 1).
-  const { width: origW = 800, height: origH = 800 } = await sharp(input).metadata();
+  //
+  // IMPORTANT: sharp(input).metadata() returns the *stored* pixel dimensions, but
+  // the pipeline starts with .rotate() which applies EXIF auto-rotation. For phone
+  // photos shot in portrait mode, the stored width/height are transposed relative
+  // to the final output. EXIF orientations 5–8 rotate 90° or 270°, swapping axes.
+  const { width: storedW = 800, height: storedH = 800, orientation } = await sharp(input).metadata();
+  const isTransposed = typeof orientation === "number" && orientation >= 5 && orientation <= 8;
+  const origW = isTransposed ? storedH : storedW;
+  const origH = isTransposed ? storedW : storedH;
   const scale = Math.min(1, 2000 / Math.max(origW, origH));
   const width = Math.round(origW * scale);
   const height = Math.round(origH * scale);
