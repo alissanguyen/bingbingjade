@@ -119,7 +119,7 @@ const EMPTY_FORM = {
   customerPhone: "",
   source: "cash" as OrderSource,
   paidStatus: "paid" as "paid" | "unpaid",
-  orderStatus: "" as OrderStatus | "",
+  orderStatus: "order_confirmed" as OrderStatus,
   currency: "usd",
   isCustomOrder: false,
   notes: "",
@@ -229,7 +229,7 @@ export function OrdersAdminClient() {
       ...(form.customerPhone.trim() ? { customerPhone: form.customerPhone.trim() } : {}),
       ...(form.notes.trim() ? { notes: form.notes.trim() } : {}),
       ...(form.estimatedDeliveryDate ? { estimatedDeliveryDate: form.estimatedDeliveryDate } : {}),
-      ...(form.orderStatus ? { orderStatus: form.orderStatus } : {}),
+      orderStatus: form.orderStatus,
     };
 
     if (form.hasShipping && form.shipLine1.trim()) {
@@ -452,9 +452,8 @@ export function OrdersAdminClient() {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Status</label>
-                    <select value={form.orderStatus} onChange={(e) => setField("orderStatus", e.target.value as OrderStatus | "")}
+                    <select value={form.orderStatus} onChange={(e) => setField("orderStatus", e.target.value as OrderStatus)}
                       className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                      <option value="">Auto</option>
                       {ALL_STATUSES.filter(s => s !== "order_cancelled").map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                     </select>
                   </div>
