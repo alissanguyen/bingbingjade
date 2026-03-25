@@ -11,7 +11,7 @@ import type { AdminProduct } from "./page";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const CATEGORIES = ["bracelet", "bangle", "ring", "pendant", "necklace", "other"] as const;
+const CATEGORIES = ["bracelet", "bangle", "ring", "pendant", "necklace", "other", "custom_order"] as const;
 
 const STATUS_META: Record<string, { label: string; badge: string }> = {
   available: { label: "Available",  badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" },
@@ -25,7 +25,8 @@ const CAT_LABEL: Record<string, string> = {
   ring:     "Ring",
   pendant:  "Pendant",
   necklace: "Necklace",
-  other:    "Other",
+  other:        "Other",
+  custom_order: "Custom Order",
 };
 
 // ── Main component ────────────────────────────────────────────────────────────
