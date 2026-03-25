@@ -28,6 +28,8 @@ export async function POST(
   const REASON_LABELS: Record<string, string> = {
     customer_changed_mind: "Customer changed their mind",
     payment_not_completed: "Customer did not complete payment on time",
+    admin_mistake: "Order created by mistake by admin",
+    product_unavailable: "Product no longer available",
   };
 
   // Fetch current order (for notes) and items (for restore)

@@ -518,6 +518,8 @@ export function OrderDetailClient({
               >
                 <option value="customer_changed_mind">Customer changed their mind</option>
                 <option value="payment_not_completed">Customer did not complete payment on time</option>
+                <option value="admin_mistake">Order created by mistake by admin</option>
+                <option value="product_unavailable">Product no longer available</option>
               </select>
             </div>
 
