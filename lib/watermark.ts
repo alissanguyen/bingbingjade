@@ -11,7 +11,7 @@
  */
 
 import sharp from "sharp";
-import { readFileSync, existsSync } from "fs";
+import { readFileSync } from "fs";
 import { join } from "path";
 
 // ── Tweak these to adjust watermark appearance ───────────────────────────────
@@ -30,18 +30,14 @@ export const WATERMARK = {
 };
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Load watermark.png (preferred — avoids server-side font rendering issues with SVG).
-// Falls back to watermark.svg only if the PNG is not present.
-// To regenerate: open public/watermark.svg in a browser or Figma and export as PNG
-// at 3× resolution (≥ 2280 × 780 px), save as public/watermark.png.
-let _wmBuffer: Buffer | null = null;
+// Cache the raw SVG buffer after first read so we don't hit disk on every upload.
+let _svgBuffer: Buffer | null = null;
 
-function getWatermarkBuffer(): Buffer {
-  if (_wmBuffer) return _wmBuffer;
-  const pngPath = join(process.cwd(), "public", "watermark.png");
+function getSvgBuffer(): Buffer {
+  if (_svgBuffer) return _svgBuffer;
   const svgPath = join(process.cwd(), "public", "watermark.svg");
-  _wmBuffer = readFileSync(existsSync(pngPath) ? pngPath : svgPath);
-  return _wmBuffer;
+  _svgBuffer = readFileSync(svgPath);
+  return _svgBuffer;
 }
 
 /**
@@ -76,10 +72,9 @@ export async function applyWatermark(input: Buffer, category = ""): Promise<Buff
 
   const wmarkW = Math.max(60, Math.round(width * WATERMARK.sizePercent));
 
-  // Resize the watermark (PNG or SVG) to the target width.
-  // Using a pre-rendered PNG via watermark.png avoids server-side font rendering —
-  // SVG text requires the exact fonts to be installed on the server.
-  const wmarkPng = await sharp(getWatermarkBuffer())
+  // Rasterize SVG to PNG at the target width.
+  // Sharp uses librsvg for SVG → the SVG's own opacity/blur styling is preserved.
+  const wmarkPng = await sharp(getSvgBuffer())
     .resize(wmarkW, null, { fit: "inside", withoutEnlargement: false })
     .png()
     .toBuffer();
