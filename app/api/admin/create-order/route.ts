@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
     notes?: string;
     estimatedDeliveryDate?: string;
     currency?: string;
-    isCustomOrder?: boolean;
+    orderType?: "standard" | "custom";
     items: {
       productName: string;
       optionLabel?: string | null;
@@ -203,7 +203,7 @@ export async function POST(req: NextRequest) {
       status: paidStatus,
       order_status: orderStatus,
       source: body.source,
-      is_custom_order: body.isCustomOrder ?? false,
+      order_type: body.orderType ?? "standard",
       notes: body.notes ?? null,
       estimated_delivery_date: body.estimatedDeliveryDate ?? null,
       shipping_address_id: shippingAddressId,

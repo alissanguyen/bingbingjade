@@ -42,7 +42,7 @@ export interface Order {
   status: string;           // paid | unpaid | refunded
   order_status: OrderStatus;
   source: OrderSource;
-  is_custom_order: boolean;
+  order_type: "standard" | "custom";
   estimated_delivery_date: string | null;
   shipping_address_id: string | null;
   notes: string | null;

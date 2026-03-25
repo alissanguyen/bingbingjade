@@ -1,6 +1,6 @@
 -- ============================================================
 -- migration_022: Custom order support
--- Adds in_production + polishing statuses and is_custom_order flag
+-- Adds in_production + polishing statuses and order_type column
 -- ============================================================
 
 -- Expand order_status check to include manufacturing statuses
@@ -22,6 +22,7 @@ ALTER TABLE public.orders
     'order_cancelled'
   ));
 
--- Flag to distinguish custom/bespoke commissioned orders from ready-made purchases
+-- Order type: standard (ready-made purchase) or custom (bespoke commission)
 ALTER TABLE public.orders
-  ADD COLUMN IF NOT EXISTS is_custom_order boolean NOT NULL DEFAULT false;
+  ADD COLUMN IF NOT EXISTS order_type text NOT NULL DEFAULT 'standard'
+  CHECK (order_type IN ('standard', 'custom'));

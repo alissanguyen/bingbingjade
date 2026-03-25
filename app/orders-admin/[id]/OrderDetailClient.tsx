@@ -39,7 +39,7 @@ interface Order {
   status: string;
   order_status: OrderStatus;
   source: string;
-  is_custom_order: boolean;
+  order_type: "standard" | "custom";
   stripe_payment_intent_id: string | null;
   estimated_delivery_date: string | null;
   notes: string | null;
@@ -106,7 +106,7 @@ export function OrderDetailClient({
   const [editStatus, setEditStatus] = useState<OrderStatus>(order.order_status);
   const [editDelivery, setEditDelivery] = useState(order.estimated_delivery_date ?? "");
   const [editNotes, setEditNotes] = useState(order.notes ?? "");
-  const [isCustomOrder, setIsCustomOrder] = useState(order.is_custom_order);
+  const [orderType, setOrderType] = useState<"standard" | "custom">(order.order_type);
   const [sendEmail, setSendEmail] = useState(false);
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -128,7 +128,7 @@ export function OrderDetailClient({
           orderStatus: editStatus,
           estimatedDeliveryDate: editDelivery || null,
           notes: editNotes || null,
-          isCustomOrder: isCustomOrder,
+          orderType: orderType,
           sendEmail: statusChanged && sendEmail,
         }),
       });
@@ -241,7 +241,7 @@ export function OrderDetailClient({
             }`}>
               {order.status}
             </span>
-            {isCustomOrder && (
+            {orderType === "custom" && (
               <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
                 Custom Order
               </span>
@@ -298,24 +298,26 @@ export function OrderDetailClient({
                 />
               </div>
 
-              {/* Custom order toggle */}
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={isCustomOrder}
+              {/* Order type */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Order Type</label>
+                <select
+                  value={orderType}
                   onChange={async (e) => {
-                    const val = e.target.checked;
-                    setIsCustomOrder(val);
+                    const val = e.target.value as "standard" | "custom";
+                    setOrderType(val);
                     await fetch(`/api/admin/orders/${order.id}`, {
                       method: "PATCH",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ isCustomOrder: val }),
+                      body: JSON.stringify({ orderType: val }),
                     });
                   }}
-                  className="w-4 h-4 rounded text-emerald-600 border-gray-300 dark:border-gray-600 focus:ring-emerald-500"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">Custom / Bespoke Order</span>
-              </label>
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="standard">Standard Order</option>
+                  <option value="custom">Custom Order</option>
+                </select>
+              </div>
 
               {EMAILABLE_STATUSES.has(editStatus) && editStatus !== order.order_status && (
                 <label className="flex items-center gap-2 cursor-pointer">

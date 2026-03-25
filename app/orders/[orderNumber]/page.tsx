@@ -120,7 +120,7 @@ async function getOrder(orderNumber: string) {
       amount_total,
       currency,
       order_status,
-      is_custom_order,
+      order_type,
       estimated_delivery_date,
       customer_name,
       order_items (
@@ -199,7 +199,7 @@ export default async function TrackOrderPage({
   if (!order) notFound();
 
   const currentStatus = order.order_status as OrderStatus;
-  const isCustom = order.is_custom_order as boolean;
+  const isCustom = order.order_type === "custom";
   const currentIdx = statusIndex(currentStatus, isCustom);
   const isDelivered = currentStatus === "delivered";
   const isPreConfirm = currentStatus === "order_created";

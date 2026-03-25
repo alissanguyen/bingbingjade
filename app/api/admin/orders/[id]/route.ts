@@ -64,12 +64,12 @@ export async function PATCH(
   const { id } = await params;
   const body = await req.json();
 
-  const { orderStatus, estimatedDeliveryDate, notes, sendEmail, isCustomOrder } = body as {
+  const { orderStatus, estimatedDeliveryDate, notes, sendEmail, orderType } = body as {
     orderStatus?: string;
     estimatedDeliveryDate?: string | null;
     notes?: string | null;
     sendEmail?: boolean;
-    isCustomOrder?: boolean;
+    orderType?: "standard" | "custom";
   };
 
   if (orderStatus && !VALID_STATUSES.includes(orderStatus as OrderStatus)) {
@@ -80,7 +80,7 @@ export async function PATCH(
   if (orderStatus !== undefined) updates.order_status = orderStatus;
   if (estimatedDeliveryDate !== undefined) updates.estimated_delivery_date = estimatedDeliveryDate || null;
   if (notes !== undefined) updates.notes = notes || null;
-  if (isCustomOrder !== undefined) updates.is_custom_order = isCustomOrder;
+  if (orderType !== undefined) updates.order_type = orderType;
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });
