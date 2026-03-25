@@ -25,6 +25,8 @@ interface OrderListItem {
 const STATUS_LABELS: Record<OrderStatus, string> = {
   order_created: "Order Created",
   order_confirmed: "Confirmed",
+  in_production: "In Production",
+  polishing: "Finishing & Polishing",
   quality_control: "Quality Control",
   certifying: "Certifying",
   inbound_shipping: "Inbound Shipping",
@@ -36,6 +38,8 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
 const STATUS_COLORS: Record<OrderStatus, string> = {
   order_created: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
   order_confirmed: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  in_production: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
+  polishing: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400",
   quality_control: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
   certifying: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
   inbound_shipping: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
@@ -67,8 +71,8 @@ const PAID_STATUS_COLORS: Record<string, string> = {
 };
 
 const ALL_STATUSES: OrderStatus[] = [
-  "order_created", "order_confirmed", "quality_control",
-  "certifying", "inbound_shipping", "outbound_shipping",
+  "order_created", "order_confirmed", "in_production", "polishing",
+  "quality_control", "certifying", "inbound_shipping", "outbound_shipping",
   "delivered", "order_cancelled",
 ];
 
@@ -117,6 +121,7 @@ const EMPTY_FORM = {
   paidStatus: "paid" as "paid" | "unpaid",
   orderStatus: "" as OrderStatus | "",
   currency: "usd",
+  isCustomOrder: false,
   notes: "",
   estimatedDeliveryDate: "",
   sendConfirmation: true,
@@ -217,6 +222,7 @@ export function OrdersAdminClient() {
       source: form.source,
       paidStatus: form.paidStatus,
       currency: form.currency,
+      isCustomOrder: form.isCustomOrder,
       items: parsedItems,
       ...(form.customerName.trim() ? { customerName: form.customerName.trim() } : {}),
       ...(form.customerEmail.trim() ? { customerEmail: form.customerEmail.trim() } : {}),
@@ -467,6 +473,17 @@ export function OrdersAdminClient() {
                     <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Est. Delivery Date</label>
                     <input type="date" value={form.estimatedDeliveryDate} onChange={(e) => setField("estimatedDeliveryDate", e.target.value)}
                       className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={form.isCustomOrder}
+                        onChange={(e) => setField("isCustomOrder", e.target.checked)}
+                        className="w-4 h-4 rounded text-emerald-600 border-gray-300 dark:border-gray-600 focus:ring-emerald-500"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">Custom / Bespoke Order</span>
+                    </label>
                   </div>
                 </div>
                 <div className="mt-3">

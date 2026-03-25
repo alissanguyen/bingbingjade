@@ -58,8 +58,8 @@ import type { OrderStatus, OrderSource } from "@/types/orders";
 
 const VALID_SOURCES: OrderSource[] = ["whatsapp", "cash", "custom", "admin"];
 const VALID_ORDER_STATUSES: OrderStatus[] = [
-  "order_created", "order_confirmed", "quality_control",
-  "certifying", "inbound_shipping", "outbound_shipping", "delivered",
+  "order_created", "order_confirmed", "in_production", "polishing",
+  "quality_control", "certifying", "inbound_shipping", "outbound_shipping", "delivered",
 ];
 
 async function isAdmin(): Promise<boolean> {
@@ -84,6 +84,7 @@ export async function POST(req: NextRequest) {
     notes?: string;
     estimatedDeliveryDate?: string;
     currency?: string;
+    isCustomOrder?: boolean;
     items: {
       productName: string;
       optionLabel?: string | null;
@@ -202,6 +203,7 @@ export async function POST(req: NextRequest) {
       status: paidStatus,
       order_status: orderStatus,
       source: body.source,
+      is_custom_order: body.isCustomOrder ?? false,
       notes: body.notes ?? null,
       estimated_delivery_date: body.estimatedDeliveryDate ?? null,
       shipping_address_id: shippingAddressId,

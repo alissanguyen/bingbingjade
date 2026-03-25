@@ -39,6 +39,7 @@ interface Order {
   status: string;
   order_status: OrderStatus;
   source: string;
+  is_custom_order: boolean;
   stripe_payment_intent_id: string | null;
   estimated_delivery_date: string | null;
   notes: string | null;
@@ -52,6 +53,8 @@ interface Order {
 const STATUS_LABELS: Record<OrderStatus, string> = {
   order_created: "Order Created",
   order_confirmed: "Confirmed",
+  in_production: "In Production",
+  polishing: "Finishing & Polishing",
   quality_control: "Quality Control",
   certifying: "Certifying",
   inbound_shipping: "Inbound Shipping",
@@ -63,6 +66,8 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
 const STATUS_COLORS: Record<OrderStatus, string> = {
   order_created: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
   order_confirmed: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  in_production: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
+  polishing: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400",
   quality_control: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
   certifying: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
   inbound_shipping: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
@@ -72,13 +77,13 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
 };
 
 const ALL_STATUSES: OrderStatus[] = [
-  "order_created", "order_confirmed", "quality_control",
-  "certifying", "inbound_shipping", "outbound_shipping",
+  "order_created", "order_confirmed", "in_production", "polishing",
+  "quality_control", "certifying", "inbound_shipping", "outbound_shipping",
   "delivered", "order_cancelled",
 ];
 
 const EMAILABLE_STATUSES = new Set<OrderStatus>([
-  "order_confirmed", "quality_control", "certifying",
+  "order_confirmed", "in_production", "polishing", "quality_control", "certifying",
   "inbound_shipping", "outbound_shipping", "delivered", "order_cancelled",
 ]);
 
@@ -101,6 +106,7 @@ export function OrderDetailClient({
   const [editStatus, setEditStatus] = useState<OrderStatus>(order.order_status);
   const [editDelivery, setEditDelivery] = useState(order.estimated_delivery_date ?? "");
   const [editNotes, setEditNotes] = useState(order.notes ?? "");
+  const [isCustomOrder, setIsCustomOrder] = useState(order.is_custom_order);
   const [sendEmail, setSendEmail] = useState(false);
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -122,6 +128,7 @@ export function OrderDetailClient({
           orderStatus: editStatus,
           estimatedDeliveryDate: editDelivery || null,
           notes: editNotes || null,
+          isCustomOrder: isCustomOrder,
           sendEmail: statusChanged && sendEmail,
         }),
       });
@@ -234,6 +241,11 @@ export function OrderDetailClient({
             }`}>
               {order.status}
             </span>
+            {isCustomOrder && (
+              <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
+                Custom Order
+              </span>
+            )}
           </div>
         </div>
 
@@ -285,6 +297,25 @@ export function OrderDetailClient({
                   className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
                 />
               </div>
+
+              {/* Custom order toggle */}
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isCustomOrder}
+                  onChange={async (e) => {
+                    const val = e.target.checked;
+                    setIsCustomOrder(val);
+                    await fetch(`/api/admin/orders/${order.id}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ isCustomOrder: val }),
+                    });
+                  }}
+                  className="w-4 h-4 rounded text-emerald-600 border-gray-300 dark:border-gray-600 focus:ring-emerald-500"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">Custom / Bespoke Order</span>
+              </label>
 
               {EMAILABLE_STATUSES.has(editStatus) && editStatus !== order.order_status && (
                 <label className="flex items-center gap-2 cursor-pointer">

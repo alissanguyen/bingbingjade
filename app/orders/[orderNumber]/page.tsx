@@ -11,7 +11,10 @@ import ReviewForm from "./ReviewForm";
 export const revalidate = 300;
 
 // ── Status timeline ────────────────────────────────────────────────────────
-const STATUS_STEPS: { key: OrderStatus; label: string; description: string }[] = [
+
+type StatusStep = { key: OrderStatus; label: string; description: string };
+
+const STANDARD_STEPS: StatusStep[] = [
   {
     key: "order_confirmed",
     label: "Order Confirmed",
@@ -44,19 +47,66 @@ const STATUS_STEPS: { key: OrderStatus; label: string; description: string }[] =
   },
 ];
 
-// order_created is a pre-confirmation state (admin/manual orders not yet confirmed)
-const STATUS_ORDER: OrderStatus[] = [
-  "order_created",
-  "order_confirmed",
-  "quality_control",
-  "certifying",
-  "inbound_shipping",
-  "outbound_shipping",
-  "delivered",
+const CUSTOM_STEPS: StatusStep[] = [
+  {
+    key: "order_confirmed",
+    label: "Order Confirmed",
+    description: "Your commission has been received and confirmed.",
+  },
+  {
+    key: "in_production",
+    label: "In Production",
+    description: "Your piece is being hand-crafted in the factory.",
+  },
+  {
+    key: "polishing",
+    label: "Finishing & Polishing",
+    description: "The piece is receiving its final surface refinement and polish.",
+  },
+  {
+    key: "quality_control",
+    label: "Quality Control",
+    description: "Our team is carefully inspecting your finished piece.",
+  },
+  {
+    key: "certifying",
+    label: "Certification",
+    description: "Your jade is being authenticated and certified.",
+  },
+  {
+    key: "inbound_shipping",
+    label: "Shipping to Our Location",
+    description: "The piece is on its way to our main location.",
+  },
+  {
+    key: "outbound_shipping",
+    label: "On the Way to You",
+    description: "Your order has been dispatched and is heading your way.",
+  },
+  {
+    key: "delivered",
+    label: "Delivered",
+    description: "Your order has arrived. Enjoy your piece.",
+  },
 ];
 
-function statusIndex(status: OrderStatus): number {
-  return STATUS_ORDER.indexOf(status);
+// order_created is a pre-confirmation state (admin/manual orders not yet confirmed)
+const STANDARD_ORDER: OrderStatus[] = [
+  "order_created", "order_confirmed", "quality_control",
+  "certifying", "inbound_shipping", "outbound_shipping", "delivered",
+];
+
+const CUSTOM_ORDER: OrderStatus[] = [
+  "order_created", "order_confirmed", "in_production", "polishing",
+  "quality_control", "certifying", "inbound_shipping", "outbound_shipping", "delivered",
+];
+
+function getSteps(isCustom: boolean) {
+  return isCustom ? CUSTOM_STEPS : STANDARD_STEPS;
+}
+
+function statusIndex(status: OrderStatus, isCustom: boolean): number {
+  return (isCustom ? CUSTOM_ORDER : STANDARD_ORDER).indexOf(status);
 }
 
 // ── Data fetch ─────────────────────────────────────────────────────────────
@@ -70,6 +120,7 @@ async function getOrder(orderNumber: string) {
       amount_total,
       currency,
       order_status,
+      is_custom_order,
       estimated_delivery_date,
       customer_name,
       order_items (
@@ -148,9 +199,11 @@ export default async function TrackOrderPage({
   if (!order) notFound();
 
   const currentStatus = order.order_status as OrderStatus;
-  const currentIdx = statusIndex(currentStatus);
+  const isCustom = order.is_custom_order as boolean;
+  const currentIdx = statusIndex(currentStatus, isCustom);
   const isDelivered = currentStatus === "delivered";
   const isPreConfirm = currentStatus === "order_created";
+  const statusSteps = getSteps(isCustom);
 
   const orderDate = new Date(order.created_at).toLocaleDateString("en-US", {
     year: "numeric",
@@ -217,12 +270,12 @@ export default async function TrackOrderPage({
             >
               {isPreConfirm
                 ? "Awaiting Confirmation"
-                : (STATUS_STEPS.find((s) => s.key === currentStatus)?.label ?? currentStatus)}
+                : (statusSteps.find((s) => s.key === currentStatus)?.label ?? currentStatus)}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
               {isPreConfirm
                 ? "Your order has been received and is awaiting confirmation from our team."
-                : (STATUS_STEPS.find((s) => s.key === currentStatus)?.description ?? "")}
+                : (statusSteps.find((s) => s.key === currentStatus)?.description ?? "")}
             </p>
             {!isDelivered && !isPreConfirm && (
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 italic">
@@ -240,8 +293,8 @@ export default async function TrackOrderPage({
             Progress
           </h2>
           <ol className="relative">
-            {STATUS_STEPS.map((step, idx) => {
-              const stepIdx = statusIndex(step.key);
+            {statusSteps.map((step, idx) => {
+              const stepIdx = statusIndex(step.key, isCustom);
               const isCompleted = stepIdx < currentIdx;
               const isCurrent = step.key === currentStatus;
               const isPending = stepIdx > currentIdx;
@@ -259,7 +312,7 @@ export default async function TrackOrderPage({
                           : "bg-white dark:bg-gray-950 border-gray-300 dark:border-gray-700"
                       }`}
                     />
-                    {idx < STATUS_STEPS.length - 1 && (
+                    {idx < statusSteps.length - 1 && (
                       <div
                         className={`w-px flex-1 mt-1 ${
                           isCompleted ? "bg-emerald-400 dark:bg-emerald-700" : "bg-gray-200 dark:bg-gray-800"

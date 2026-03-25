@@ -13,6 +13,8 @@ async function isAdmin(): Promise<boolean> {
 const VALID_STATUSES: OrderStatus[] = [
   "order_created",
   "order_confirmed",
+  "in_production",
+  "polishing",
   "quality_control",
   "certifying",
   "inbound_shipping",
@@ -62,11 +64,12 @@ export async function PATCH(
   const { id } = await params;
   const body = await req.json();
 
-  const { orderStatus, estimatedDeliveryDate, notes, sendEmail } = body as {
+  const { orderStatus, estimatedDeliveryDate, notes, sendEmail, isCustomOrder } = body as {
     orderStatus?: string;
     estimatedDeliveryDate?: string | null;
     notes?: string | null;
     sendEmail?: boolean;
+    isCustomOrder?: boolean;
   };
 
   if (orderStatus && !VALID_STATUSES.includes(orderStatus as OrderStatus)) {
@@ -77,6 +80,7 @@ export async function PATCH(
   if (orderStatus !== undefined) updates.order_status = orderStatus;
   if (estimatedDeliveryDate !== undefined) updates.estimated_delivery_date = estimatedDeliveryDate || null;
   if (notes !== undefined) updates.notes = notes || null;
+  if (isCustomOrder !== undefined) updates.is_custom_order = isCustomOrder;
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });

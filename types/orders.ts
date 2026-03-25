@@ -1,6 +1,8 @@
 export type OrderStatus =
   | "order_created"
   | "order_confirmed"
+  | "in_production"
+  | "polishing"
   | "quality_control"
   | "certifying"
   | "inbound_shipping"
@@ -40,6 +42,7 @@ export interface Order {
   status: string;           // paid | unpaid | refunded
   order_status: OrderStatus;
   source: OrderSource;
+  is_custom_order: boolean;
   estimated_delivery_date: string | null;
   shipping_address_id: string | null;
   notes: string | null;
