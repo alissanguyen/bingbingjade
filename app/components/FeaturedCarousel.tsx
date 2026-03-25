@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { productSlug } from "@/lib/slug";
 import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
+import { getCategoryLabel } from "../products/categories";
 
 function fmtPrice(price: number): string {
   return requiresInquiry(price) ? obfuscatedPrice(price) : `$${price.toFixed(2)}`;
@@ -83,7 +84,7 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
           style={{ scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {products.map((product) => {
-            const isSold   = product.status === "sold";
+            const isSold = product.status === "sold";
             const isOnSale = product.status === "on_sale";
 
             return (
@@ -91,11 +92,10 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
                 key={product.id}
                 href={`/products/${productSlug(product)}`}
                 style={{ scrollSnapAlign: "start" }}
-                className={`group rounded-2xl border overflow-hidden transition-all hover:shadow-lg block shrink-0 w-[80vw] sm:w-[calc(50%-10px)] lg:w-[calc(25%-15px)] min-w-55 max-w-xs ${
-                  isSold
+                className={`group rounded-2xl border overflow-hidden transition-all hover:shadow-lg block shrink-0 w-[80vw] sm:w-[calc(50%-10px)] lg:w-[calc(25%-15px)] min-w-55 max-w-xs ${isSold
                     ? "border-gray-300 dark:border-gray-700 bg-gray-900/20 dark:bg-gray-700"
                     : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-emerald-300 dark:hover:border-emerald-700"
-                }`}
+                  }`}
               >
                 {/* Image */}
                 <div className="relative w-full aspect-square bg-emerald-50 dark:bg-emerald-950 overflow-hidden">
@@ -136,7 +136,7 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
                 <div className={`p-4 ${isSold ? "opacity-80" : ""}`}>
                   <div className="flex items-center gap-2 mb-1.5">
                     <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                      {product.category}
+                      {getCategoryLabel(product.category)}
                     </span>
                     {product.tier?.length > 0 && (
                       <span className="text-xs text-gray-400 dark:text-gray-500">· {product.tier.join(" · ")}</span>

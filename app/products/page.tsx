@@ -62,6 +62,8 @@ const COLOR_SWATCHES: Record<string, string> = {
   marbling: "bg-gradient-to-br from-gray-200 via-white to-gray-400 border border-gray-300",
 };
 
+import { getCategoryLabel } from "./categories";
+
 export const revalidate = 21600;
 
 export default async function Products({
@@ -205,19 +207,21 @@ export default async function Products({
   const safePage = Math.min(currentPage, Math.max(1, totalPages));
   const paginated = products.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  // Resolve signed URLs for the first two images of each paginated product
+  // Resolve public URLs for the first two images of each paginated product
   // (ProductCardImage uses images[0] and images[1] for the hover slide effect).
+  // Only include non-empty paths so that single-image products don't get a
+  // malformed URL injected as images[1], which would falsely enable peek animation.
   const firstTwoPaths = paginated.flatMap((p) => [p.images?.[0] ?? "", p.images?.[1] ?? ""]);
-  const resolvedFirstTwo = firstTwoPaths.some(isStoragePath)
-    ? await resolveImageUrls(firstTwoPaths)
-    : firstTwoPaths;
+  const resolvedFirstTwo = await resolveImageUrls(firstTwoPaths);
   const paginatedWithImages = paginated.map((p, i) => {
-    const r0 = resolvedFirstTwo[i * 2];
-    const r1 = resolvedFirstTwo[i * 2 + 1];
+    const raw0 = firstTwoPaths[i * 2];
+    const raw1 = firstTwoPaths[i * 2 + 1];
+    const r0 = raw0 ? resolvedFirstTwo[i * 2] : "";
+    const r1 = raw1 ? resolvedFirstTwo[i * 2 + 1] : "";
     const rest = p.images?.slice(2) ?? [];
     return {
       ...p,
-      images: [r0 || "", r1 || "", ...rest].filter(Boolean),
+      images: [r0, r1, ...rest].filter(Boolean),
     };
   });
 
@@ -289,7 +293,7 @@ export default async function Products({
                   <div className={`ProductCard_InfoDesktop hidden sm:block p-4 ${product.status === "sold" ? "opacity-80" : ""}`}>
                     <div className="flex items-center gap-2 mb-2">
                       <span className="ProductCard_Category text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                        {product.category}
+                      {getCategoryLabel(product.category)}
                       </span>
                       {product.tier?.length > 0 && (
                         <span className="ProductCard_Tier text-xs text-gray-400 dark:text-gray-500">· {product.tier.join(" · ")}</span>
@@ -358,7 +362,7 @@ export default async function Products({
 
                   {/* Info — mobile only */}
                   <div className={`ProductCard_InfoMobile sm:hidden p-2.5 flex flex-col gap-0.5 ${product.status === "sold" ? "opacity-80" : ""}`}>
-                    <span className="ProductCard_Category text-[14px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">{product.category}</span>
+                    <span className="ProductCard_Category text-[14px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">{getCategoryLabel(product.category)}</span>
                     {product.tier?.length > 0 && (
                       <span className="ProductCard_Tier text-[13px] text-gray-400 dark:text-gray-500">{product.tier.join(" · ")}</span>
                     )}

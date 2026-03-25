@@ -7,6 +7,7 @@ import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { useCart } from "@/app/components/CartContext";
 import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
 import type { CartItem } from "@/types/cart";
+import { getCategoryLabel } from "../categories";
 
 interface ProductOptionClient {
   id: string;
@@ -152,7 +153,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
     <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
       {/* Gallery */}
       <div className="relative">
-        <ProductGallery images={effectiveImages} videos={productVideos} category={product.category} />
+        <ProductGallery images={effectiveImages} videos={productVideos} category={getCategoryLabel(product.category)} />
         {showImageSaleBadge && (
           <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 pointer-events-none">
             <div className="bg-amber-400 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">
@@ -172,7 +173,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
         {/* Category + tier + featured */}
         <div className="IndividualProduct_CategoryRow flex items-center gap-2 flex-wrap mb-3">
           <span className="IndividualProduct_Category text-md font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-            {product.category}
+            {getCategoryLabel(product.category)}
           </span>
           {product.tier?.length > 0 && (
             <span className="IndividualProduct_Tier text-sm font-bold text-gray-400 dark:text-gray-500">
@@ -223,10 +224,10 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                     type="button"
                     onClick={() => { if (opt.status !== "sold") setSelectedIdx(i); }}
                     className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm border transition-all ${i === selectedIdx
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-medium"
-                        : opt.status === "sold"
-                          ? "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 line-through cursor-not-allowed opacity-60"
-                          : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-400 dark:hover:border-emerald-600 cursor-pointer"
+                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-medium"
+                      : opt.status === "sold"
+                        ? "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 line-through cursor-not-allowed opacity-60"
+                        : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-400 dark:hover:border-emerald-600 cursor-pointer"
                       }`}
                   >
                     {opt.label}
@@ -409,10 +410,10 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                 onClick={handleAddToCart}
                 disabled={isInCart}
                 className={`block w-full rounded-full py-3 text-center text-sm font-medium text-white transition-colors ${isInCart
-                    ? "bg-emerald-500 cursor-default"
-                    : addedToCart
-                      ? "bg-emerald-600"
-                      : "bg-emerald-700 hover:bg-emerald-800"
+                  ? "bg-emerald-500 cursor-default"
+                  : addedToCart
+                    ? "bg-emerald-600"
+                    : "bg-emerald-700 hover:bg-emerald-800"
                   }`}
               >
                 {isInCart ? "✓ Added to Cart" : addedToCart ? "✓ Added!" : "Add to Cart"}

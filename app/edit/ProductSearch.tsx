@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { bulkUpdateStatus, bulkUpdatePublished, bulkDelete } from "./bulk-actions";
+import { getCategoryLabel } from "../products/categories";
 
 interface ProductStub {
   id: string;
@@ -211,7 +212,7 @@ export function ProductSearch({ products }: { products: ProductStub[] }) {
                     )}
                   </div>
                   <div className="p-3">
-                    <p className="text-xs font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-400">{product.category}</p>
+                    <p className="text-xs font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-400">{getCategoryLabel(product.category)}</p>
                     <p className="mt-0.5 text-sm font-semibold text-gray-900 dark:text-gray-100 line-clamp-1">{product.name}</p>
                   </div>
                 </Link>
@@ -253,7 +254,7 @@ export function ProductSearch({ products }: { products: ProductStub[] }) {
                   </span>
                 </div>
                 <div className="p-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-400">{product.category}</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-400">{getCategoryLabel(product.category)}</p>
                   <p className="mt-0.5 text-sm font-semibold text-gray-900 dark:text-gray-100 line-clamp-1">{product.name}</p>
                 </div>
               </button>
