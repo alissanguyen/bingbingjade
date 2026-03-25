@@ -499,7 +499,7 @@ export function OrdersAdminClient() {
                       item.productName.trim() === "" || p.name.toLowerCase().includes(item.productName.toLowerCase())
                     );
                     const selectedProduct = allProducts.find((p) => p.id === item.productId) ?? null;
-                    const availableOptions = selectedProduct?.product_options.filter((o) => o.status !== "sold") ?? [];
+                    const availableOptions = selectedProduct?.product_options ?? [];
 
                     return (
                       <div key={i} className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
@@ -542,8 +542,7 @@ export function OrdersAdminClient() {
                                     type="button"
                                     onMouseDown={(e) => e.preventDefault()}
                                     onClick={() => {
-                                      const avail = p.product_options.filter((o) => o.status !== "sold");
-                                      const firstPrice = avail[0]?.price_usd ?? p.price_display_usd;
+                                      const firstPrice = p.product_options[0]?.price_usd ?? p.price_display_usd;
                                       setItems((prev) => prev.map((it, idx) => {
                                         if (idx !== i) return it;
                                         return {
@@ -562,7 +561,7 @@ export function OrdersAdminClient() {
                                     <span>{p.name}</span>
                                     {p.product_options.length > 0 && (
                                       <span className="text-xs text-gray-400 shrink-0">
-                                        {p.product_options.filter((o) => o.status !== "sold").length} option{p.product_options.filter((o) => o.status !== "sold").length !== 1 ? "s" : ""}
+                                        {p.product_options.length} option{p.product_options.length !== 1 ? "s" : ""}
                                       </span>
                                     )}
                                   </button>

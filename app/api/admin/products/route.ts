@@ -27,7 +27,7 @@ export async function GET() {
         status
       )
     `)
-    .neq("status", "sold")
+    .eq("is_published", true)
     .order("name");
 
   if (error) {
