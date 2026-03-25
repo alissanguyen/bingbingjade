@@ -112,6 +112,11 @@ export function OrderDetailClient({
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
 
+  // Cancel modal state
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState("customer_changed_mind");
+  const [restoreItems, setRestoreItems] = useState(false);
+
   function showToast(type: "ok" | "err", msg: string) {
     setToast({ type, msg });
     setTimeout(() => setToast(null), 4000);
@@ -142,19 +147,19 @@ export function OrderDetailClient({
   }
 
   async function handleCancel() {
-    if (!confirm("Cancel this order?")) return;
+    setShowCancelModal(false);
     setActionLoading("cancel");
     try {
       const res = await fetch(`/api/admin/orders/${order.id}/cancel`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sendEmail: true }),
+        body: JSON.stringify({ sendEmail: true, reason: cancelReason, restoreItems }),
       });
       const data = await res.json();
       if (!res.ok) { showToast("err", data.error ?? "Cancel failed"); return; }
       setOrder((prev) => ({ ...prev, ...data.order }));
       setEditStatus("order_cancelled");
-      showToast("ok", "Order cancelled — customer notified");
+      showToast("ok", restoreItems ? "Order cancelled — items restored to available" : "Order cancelled — customer notified");
     } finally {
       setActionLoading(null);
     }
@@ -192,6 +197,7 @@ export function OrderDetailClient({
   const displayTotal = (order.amount_total != null ? order.amount_total / 100 : total).toFixed(2);
 
   return (
+    <>
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Toast */}
       {toast && (
@@ -364,9 +370,9 @@ export function OrderDetailClient({
 
               {!isCancelled && (
                 <button
-                  onClick={handleCancel}
+                  onClick={() => { setCancelReason("customer_changed_mind"); setRestoreItems(false); setShowCancelModal(true); }}
                   disabled={actionLoading === "cancel"}
-                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60 text-gray-500 dark:text-gray-400 py-2.5 text-sm font-medium transition-colors"
+                  className="w-full rounded-lg border border-red-200 dark:border-red-800/50 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-60 text-red-600 dark:text-red-400 py-2.5 text-sm font-medium transition-colors"
                 >
                   {actionLoading === "cancel" ? "Cancelling…" : "Cancel Order"}
                 </button>
@@ -482,5 +488,70 @@ export function OrderDetailClient({
         </div>
       </div>
     </div>
+
+    {/* Cancel Order Modal */}
+    {showCancelModal && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+        onClick={(e) => { if (e.target === e.currentTarget) setShowCancelModal(false); }}
+      >
+        <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Cancel Order</h2>
+            <button
+              onClick={() => setShowCancelModal(false)}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="px-5 py-5 space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Reason for Cancellation</label>
+              <select
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2.5 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-red-400"
+              >
+                <option value="customer_changed_mind">Customer changed their mind</option>
+                <option value="payment_not_completed">Customer did not complete payment on time</option>
+              </select>
+            </div>
+
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={restoreItems}
+                onChange={(e) => setRestoreItems(e.target.checked)}
+                className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Restore item(s) to <span className="font-medium">Available</span>
+                <span className="block text-xs text-gray-400 mt-0.5">Re-lists the linked products as available in the shop.</span>
+              </span>
+            </label>
+          </div>
+
+          <div className="flex gap-3 px-5 py-4 border-t border-gray-100 dark:border-gray-800">
+            <button
+              onClick={() => setShowCancelModal(false)}
+              className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 py-2.5 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              Keep Order
+            </button>
+            <button
+              onClick={handleCancel}
+              className="flex-1 rounded-xl bg-red-600 hover:bg-red-700 text-white py-2.5 text-sm font-semibold transition-colors"
+            >
+              Confirm Cancellation
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

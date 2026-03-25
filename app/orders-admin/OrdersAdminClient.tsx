@@ -294,6 +294,27 @@ export function OrdersAdminClient() {
             <option value="">All statuses</option>
             {ALL_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
           </select>
+          {/* Quick-filter pills */}
+          <button
+            onClick={() => { setStatusFilter(statusFilter === "delivered" ? "" : "delivered"); setPage(1); }}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
+              statusFilter === "delivered"
+                ? "bg-emerald-700 text-white border-emerald-700"
+                : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+            }`}
+          >
+            Delivered
+          </button>
+          <button
+            onClick={() => { setStatusFilter(statusFilter === "order_cancelled" ? "" : "order_cancelled"); setPage(1); }}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
+              statusFilter === "order_cancelled"
+                ? "bg-red-600 text-white border-red-600"
+                : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+            }`}
+          >
+            Cancelled
+          </button>
           <button
             onClick={() => fetchOrders(page, search, statusFilter)}
             className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-3 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
