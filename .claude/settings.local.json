@@ -21,7 +21,13 @@
       "Bash(cat /Users/nouveau/Documents/workspaces/jade-shop/app/products/[slug]/page.tsx)",
       "Bash(npm test:*)",
       "Bash(grep -E \"anthropic|ANTHROPIC\" /Users/nouveau/Documents/workspaces/jade-shop/package.json /Users/nouveau/Documents/workspaces/jade-shop/.env*)",
-      "Bash(grep -n \"getPublicUrl\\\\|createSignedUrl\\\\|storage\\\\|IMAGE_BUCKET\\\\|supabase\" /Users/nouveau/Documents/workspaces/jade-shop/app/products/[slug]/page.tsx)"
+      "Bash(grep -n \"getPublicUrl\\\\|createSignedUrl\\\\|storage\\\\|IMAGE_BUCKET\\\\|supabase\" /Users/nouveau/Documents/workspaces/jade-shop/app/products/[slug]/page.tsx)",
+      "Bash(grep -n \"order_status\\\\|is_custom\\\\|insert\\\\|source\\\\|status\" /Users/nouveau/Documents/workspaces/jade-shop/app/api/admin/orders/[id]/route.ts)",
+      "Bash(grep -l \"order_status\\\\|orders\" /Users/nouveau/Documents/workspaces/jade-shop/supabase/migration_00*.sql)",
+      "Bash(grep:*)",
+      "Bash(sed -i '' 's/const CATEGORIES: ProductCategory\\\\[\\\\] = \\\\[\"\"bracelet\"\", \"\"bangle\"\", \"\"ring\"\", \"\"pendant\"\", \"\"necklace\"\", \"\"other\"\"\\\\]/const CATEGORIES: ProductCategory[] = [\"\"bracelet\"\", \"\"bangle\"\", \"\"ring\"\", \"\"pendant\"\", \"\"necklace\"\", \"\"other\"\", \"\"custom_order\"\"]/' /Users/nouveau/Documents/workspaces/jade-shop/app/add/ProductForm.tsx)",
+      "Bash(__NEW_LINE_6d4e501374a36002__ sed:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }
