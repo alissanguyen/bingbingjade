@@ -112,6 +112,23 @@ export function OrderDetailClient({
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
 
+  // Edit info state
+  const [showEditInfo, setShowEditInfo] = useState(false);
+  const [editName, setEditName] = useState(order.customer_name ?? "");
+  const [editEmail, setEditEmail] = useState(order.customer_email ?? "");
+  const [editPhone, setEditPhone] = useState(order.customer_phone_snapshot ?? "");
+  const [editOrderNum, setEditOrderNum] = useState(order.order_number ?? "");
+  const [editShip, setEditShip] = useState({
+    recipientName: order.shipping_address?.recipient_name ?? "",
+    line1: order.shipping_address?.address_line1 ?? "",
+    line2: order.shipping_address?.address_line2 ?? "",
+    city: order.shipping_address?.city ?? "",
+    state: order.shipping_address?.state_or_region ?? "",
+    postal: order.shipping_address?.postal_code ?? "",
+    country: order.shipping_address?.country ?? "US",
+  });
+  const [savingInfo, setSavingInfo] = useState(false);
+
   // Cancel modal state
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState("customer_changed_mind");
@@ -143,6 +160,56 @@ export function OrderDetailClient({
       showToast("ok", statusChanged && sendEmail ? "Saved — customer notified" : "Saved");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSaveInfo() {
+    setSavingInfo(true);
+    try {
+      const body: Record<string, unknown> = {
+        customerName: editName,
+        customerEmail: editEmail,
+        customerPhone: editPhone || null,
+        orderNumber: editOrderNum,
+      };
+      if (editShip.line1.trim()) {
+        body.shippingAddress = {
+          recipientName: editShip.recipientName || undefined,
+          line1: editShip.line1,
+          line2: editShip.line2 || undefined,
+          city: editShip.city,
+          state: editShip.state,
+          postal: editShip.postal,
+          country: editShip.country || "US",
+        };
+      }
+      const res = await fetch(`/api/admin/orders/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast("err", data.error ?? "Save failed"); return; }
+      setOrder((prev) => ({
+        ...prev,
+        customer_name: editName || null,
+        customer_email: editEmail || null,
+        customer_phone_snapshot: editPhone || null,
+        order_number: editOrderNum || null,
+        shipping_address: editShip.line1.trim() ? {
+          recipient_name: editShip.recipientName || null,
+          address_line1: editShip.line1,
+          address_line2: editShip.line2 || null,
+          city: editShip.city,
+          state_or_region: editShip.state,
+          postal_code: editShip.postal,
+          country: editShip.country || "US",
+        } : prev.shipping_address,
+      }));
+      setShowEditInfo(false);
+      showToast("ok", "Order info updated");
+    } finally {
+      setSavingInfo(false);
     }
   }
 
@@ -351,6 +418,28 @@ export function OrderDetailClient({
               <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Actions</h2>
 
               <button
+                onClick={() => {
+                  setEditName(order.customer_name ?? "");
+                  setEditEmail(order.customer_email ?? "");
+                  setEditPhone(order.customer_phone_snapshot ?? "");
+                  setEditOrderNum(order.order_number ?? "");
+                  setEditShip({
+                    recipientName: order.shipping_address?.recipient_name ?? "",
+                    line1: order.shipping_address?.address_line1 ?? "",
+                    line2: order.shipping_address?.address_line2 ?? "",
+                    city: order.shipping_address?.city ?? "",
+                    state: order.shipping_address?.state_or_region ?? "",
+                    postal: order.shipping_address?.postal_code ?? "",
+                    country: order.shipping_address?.country ?? "US",
+                  });
+                  setShowEditInfo(true);
+                }}
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 py-2.5 text-sm font-medium transition-colors"
+              >
+                Edit Order Info
+              </button>
+
+              <button
                 onClick={handleResend}
                 disabled={actionLoading === "resend"}
                 className="w-full rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60 text-gray-700 dark:text-gray-300 py-2.5 text-sm font-medium transition-colors"
@@ -488,6 +577,116 @@ export function OrderDetailClient({
         </div>
       </div>
     </div>
+
+    {/* Edit Order Info Modal */}
+    {showEditInfo && (
+      <div
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 sm:px-4"
+        onClick={(e) => { if (e.target === e.currentTarget) setShowEditInfo(false); }}
+      >
+        <div className="w-full sm:max-w-lg bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90dvh]">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
+            <div>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Edit Order Info</h2>
+              <p className="text-xs text-gray-400 mt-0.5">No email will be sent unless you use &quot;Resend Confirmation&quot;.</p>
+            </div>
+            <button onClick={() => setShowEditInfo(false)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+
+          <div className="overflow-y-auto px-5 py-5 space-y-4 flex-1">
+            {/* Order number */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Order Number (BBJ-XXXX)</label>
+              <input
+                value={editOrderNum}
+                onChange={(e) => setEditOrderNum(e.target.value.toUpperCase())}
+                placeholder="BBJ-0001"
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <hr className="border-gray-100 dark:border-gray-800" />
+
+            {/* Customer */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Customer</p>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Name</label>
+                <input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Full name"
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Email</label>
+                <input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="email@example.com"
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Phone</label>
+                <input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="+1 555 000 0000"
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+            </div>
+
+            <hr className="border-gray-100 dark:border-gray-800" />
+
+            {/* Shipping address */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Shipping Address</p>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Recipient Name</label>
+                <input value={editShip.recipientName} onChange={(e) => setEditShip((s) => ({ ...s, recipientName: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Address Line 1</label>
+                <input value={editShip.line1} onChange={(e) => setEditShip((s) => ({ ...s, line1: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Address Line 2</label>
+                <input value={editShip.line2} onChange={(e) => setEditShip((s) => ({ ...s, line2: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">City</label>
+                  <input value={editShip.city} onChange={(e) => setEditShip((s) => ({ ...s, city: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">State / Region</label>
+                  <input value={editShip.state} onChange={(e) => setEditShip((s) => ({ ...s, state: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Postal Code</label>
+                  <input value={editShip.postal} onChange={(e) => setEditShip((s) => ({ ...s, postal: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Country</label>
+                  <input value={editShip.country} onChange={(e) => setEditShip((s) => ({ ...s, country: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-gray-100 dark:border-gray-800">
+            <button onClick={() => setShowEditInfo(false)}
+              className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 py-2.5 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              Cancel
+            </button>
+            <button onClick={handleSaveInfo} disabled={savingInfo}
+              className="flex-1 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white py-2.5 text-sm font-semibold transition-colors">
+              {savingInfo ? "Saving…" : "Save Info"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* Cancel Order Modal */}
     {showCancelModal && (

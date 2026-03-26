@@ -64,12 +64,28 @@ export async function PATCH(
   const { id } = await params;
   const body = await req.json();
 
-  const { orderStatus, estimatedDeliveryDate, notes, sendEmail, orderType } = body as {
+  const {
+    orderStatus, estimatedDeliveryDate, notes, sendEmail, orderType,
+    customerName, customerEmail, customerPhone, orderNumber, shippingAddress,
+  } = body as {
     orderStatus?: string;
     estimatedDeliveryDate?: string | null;
     notes?: string | null;
     sendEmail?: boolean;
     orderType?: "standard" | "custom";
+    customerName?: string;
+    customerEmail?: string;
+    customerPhone?: string | null;
+    orderNumber?: string;
+    shippingAddress?: {
+      recipientName?: string;
+      line1: string;
+      line2?: string;
+      city: string;
+      state: string;
+      postal: string;
+      country?: string;
+    };
   };
 
   if (orderStatus && !VALID_STATUSES.includes(orderStatus as OrderStatus)) {
@@ -81,6 +97,10 @@ export async function PATCH(
   if (estimatedDeliveryDate !== undefined) updates.estimated_delivery_date = estimatedDeliveryDate || null;
   if (notes !== undefined) updates.notes = notes || null;
   if (orderType !== undefined) updates.order_type = orderType;
+  if (customerName !== undefined) updates.customer_name = customerName.trim() || null;
+  if (customerEmail !== undefined) updates.customer_email = customerEmail.trim().toLowerCase() || null;
+  if (customerPhone !== undefined) updates.customer_phone_snapshot = customerPhone?.trim() || null;
+  if (orderNumber !== undefined) updates.order_number = orderNumber.trim().toUpperCase() || null;
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });
@@ -106,6 +126,34 @@ export async function PATCH(
 
   if (error || !order) {
     return NextResponse.json({ error: error?.message ?? "Update failed" }, { status: 500 });
+  }
+
+  // Update or create shipping address
+  if (shippingAddress && shippingAddress.line1?.trim()) {
+    const addrData = {
+      recipient_name: shippingAddress.recipientName?.trim() || null,
+      address_line1: shippingAddress.line1.trim(),
+      address_line2: shippingAddress.line2?.trim() || null,
+      city: shippingAddress.city.trim(),
+      state_or_region: shippingAddress.state.trim(),
+      postal_code: shippingAddress.postal.trim(),
+      country: shippingAddress.country?.trim() || "US",
+    };
+    if ((order as Record<string, unknown>).shipping_address_id) {
+      await supabaseAdmin
+        .from("customer_addresses")
+        .update(addrData)
+        .eq("id", (order as Record<string, unknown>).shipping_address_id as string);
+    } else if ((order as Record<string, unknown>).customer_id) {
+      const { data: newAddr } = await supabaseAdmin
+        .from("customer_addresses")
+        .insert({ ...addrData, customer_id: (order as Record<string, unknown>).customer_id })
+        .select("id")
+        .single();
+      if (newAddr) {
+        await supabaseAdmin.from("orders").update({ shipping_address_id: newAddr.id }).eq("id", id);
+      }
+    }
   }
 
   const canEmail = !!(order.customer_name && order.customer_email && order.order_number);
