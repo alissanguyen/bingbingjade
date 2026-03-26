@@ -88,7 +88,7 @@ export async function PATCH(
       postal: string;
       country?: string;
     };
-    feeBreakdown?: { shipping?: number; tax?: number; paypal?: number; other?: number; otherLabel?: string } | null;
+    feeBreakdown?: { shipping?: number; tax?: number; paypal?: number; insurance?: number; discount?: number; other?: number; otherLabel?: string } | null;
     orderItems?: { id: string; price_usd: number; quantity: number }[];
   };
 
@@ -136,7 +136,7 @@ export async function PATCH(
       effectiveFees = (existing?.fee_breakdown as typeof feeBreakdown) ?? null;
     }
     const feesTotal = (effectiveFees?.shipping ?? 0) + (effectiveFees?.tax ?? 0)
-      + (effectiveFees?.paypal ?? 0) + (effectiveFees?.other ?? 0);
+      + (effectiveFees?.paypal ?? 0) + (effectiveFees?.insurance ?? 0) - (effectiveFees?.discount ?? 0) + (effectiveFees?.other ?? 0);
     updates.amount_total = Math.round((itemsSubtotal + feesTotal) * 100);
   }
 

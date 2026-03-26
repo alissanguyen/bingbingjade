@@ -59,7 +59,7 @@ import {
 } from "@/lib/orders";
 import type { OrderStatus, OrderSource } from "@/types/orders";
 
-const VALID_SOURCES: OrderSource[] = ["whatsapp", "cash", "custom", "admin"];
+const VALID_SOURCES: OrderSource[] = ["whatsapp", "cash", "paypal", "wire", "custom", "admin"];
 const VALID_ORDER_STATUSES: OrderStatus[] = [
   "order_created", "order_confirmed", "in_production", "polishing",
   "quality_control", "certifying", "inbound_shipping", "outbound_shipping", "delivered",
@@ -110,6 +110,8 @@ export async function POST(req: NextRequest) {
       shipping?: number;
       tax?: number;
       paypal?: number;
+      insurance?: number;
+      discount?: number;
       other?: number;
       otherLabel?: string;
     };
@@ -199,7 +201,7 @@ export async function POST(req: NextRequest) {
   const orderStatus: OrderStatus =
     body.orderStatus ?? (paidStatus === "paid" ? "order_confirmed" : "order_created");
   const itemsTotal = body.items.reduce((sum, i) => sum + i.price * (i.quantity ?? 1), 0);
-  const feesTotal = (body.fees?.shipping ?? 0) + (body.fees?.tax ?? 0) + (body.fees?.paypal ?? 0) + (body.fees?.other ?? 0);
+  const feesTotal = (body.fees?.shipping ?? 0) + (body.fees?.tax ?? 0) + (body.fees?.paypal ?? 0) + (body.fees?.insurance ?? 0) - (body.fees?.discount ?? 0) + (body.fees?.other ?? 0);
   const amountTotalCents = Math.round((itemsTotal + feesTotal) * 100);
 
   // ── Insert order ──────────────────────────────────────────────────────────

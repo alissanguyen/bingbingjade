@@ -10,7 +10,7 @@ export type OrderStatus =
   | "delivered"
   | "order_cancelled";
 
-export type OrderSource = "stripe" | "whatsapp" | "cash" | "custom" | "admin";
+export type OrderSource = "stripe" | "whatsapp" | "cash" | "paypal" | "wire" | "custom" | "admin";
 
 export type PaidStatus = "paid" | "unpaid" | "refunded";
 

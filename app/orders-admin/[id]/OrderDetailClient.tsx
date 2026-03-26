@@ -48,6 +48,8 @@ interface Order {
     shipping?: number;
     tax?: number;
     paypal?: number;
+    insurance?: number;
+    discount?: number;
     other?: number;
     otherLabel?: string;
   } | null;
@@ -138,6 +140,8 @@ export function OrderDetailClient({
   const [editFeeShipping, setEditFeeShipping] = useState(String(order.fee_breakdown?.shipping ?? ""));
   const [editFeeTax, setEditFeeTax] = useState(String(order.fee_breakdown?.tax ?? ""));
   const [editFeePaypal, setEditFeePaypal] = useState(String(order.fee_breakdown?.paypal ?? ""));
+  const [editFeeInsurance, setEditFeeInsurance] = useState(String(order.fee_breakdown?.insurance ?? ""));
+  const [editFeeDiscount, setEditFeeDiscount] = useState(String(order.fee_breakdown?.discount ?? ""));
   const [editFeeOther, setEditFeeOther] = useState(String(order.fee_breakdown?.other ?? ""));
   const [editFeeOtherLabel, setEditFeeOtherLabel] = useState(order.fee_breakdown?.otherLabel ?? "");
   const [savingInfo, setSavingInfo] = useState(false);
@@ -189,6 +193,8 @@ export function OrderDetailClient({
       if (parseFloat(editFeeShipping) > 0) fees.shipping = parseFloat(editFeeShipping);
       if (parseFloat(editFeeTax) > 0) fees.tax = parseFloat(editFeeTax);
       if (parseFloat(editFeePaypal) > 0) fees.paypal = parseFloat(editFeePaypal);
+      if (parseFloat(editFeeInsurance) > 0) fees.insurance = parseFloat(editFeeInsurance);
+      if (parseFloat(editFeeDiscount) > 0) fees.discount = parseFloat(editFeeDiscount);
       if (parseFloat(editFeeOther) > 0) {
         fees.other = parseFloat(editFeeOther);
         if (editFeeOtherLabel.trim()) fees.otherLabel = editFeeOtherLabel.trim();
@@ -494,6 +500,8 @@ export function OrderDetailClient({
                   setEditFeeShipping(String(order.fee_breakdown?.shipping ?? ""));
                   setEditFeeTax(String(order.fee_breakdown?.tax ?? ""));
                   setEditFeePaypal(String(order.fee_breakdown?.paypal ?? ""));
+                  setEditFeeInsurance(String(order.fee_breakdown?.insurance ?? ""));
+                  setEditFeeDiscount(String(order.fee_breakdown?.discount ?? ""));
                   setEditFeeOther(String(order.fee_breakdown?.other ?? ""));
                   setEditFeeOtherLabel(order.fee_breakdown?.otherLabel ?? "");
                   setEditShip({
@@ -654,6 +662,16 @@ export function OrderDetailClient({
                 {(order.fee_breakdown?.paypal ?? 0) > 0 && (
                   <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                     <span>PayPal Fee</span><span>+${order.fee_breakdown!.paypal!.toFixed(2)}</span>
+                  </div>
+                )}
+                {(order.fee_breakdown?.insurance ?? 0) > 0 && (
+                  <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <span>Insurance</span><span>+${order.fee_breakdown!.insurance!.toFixed(2)}</span>
+                  </div>
+                )}
+                {(order.fee_breakdown?.discount ?? 0) > 0 && (
+                  <div className="flex justify-between text-xs text-emerald-600 dark:text-emerald-400">
+                    <span>Discount</span><span>−${order.fee_breakdown!.discount!.toFixed(2)}</span>
                   </div>
                 )}
                 {(order.fee_breakdown?.other ?? 0) > 0 && (
@@ -839,18 +857,20 @@ export function OrderDetailClient({
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Fees &amp; Adjustments</p>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: "Shipping", val: editFeeShipping, set: setEditFeeShipping },
-                  { label: "Tax", val: editFeeTax, set: setEditFeeTax },
-                  { label: "PayPal Fee", val: editFeePaypal, set: setEditFeePaypal },
-                  { label: "Other", val: editFeeOther, set: setEditFeeOther },
-                ].map(({ label, val, set }) => (
+                  { label: "Shipping", val: editFeeShipping, set: setEditFeeShipping, prefix: "$" },
+                  { label: "Tax", val: editFeeTax, set: setEditFeeTax, prefix: "$" },
+                  { label: "PayPal Fee", val: editFeePaypal, set: setEditFeePaypal, prefix: "$" },
+                  { label: "Insurance", val: editFeeInsurance, set: setEditFeeInsurance, prefix: "$" },
+                  { label: "Discount", val: editFeeDiscount, set: setEditFeeDiscount, prefix: "−$" },
+                  { label: "Other", val: editFeeOther, set: setEditFeeOther, prefix: "$" },
+                ].map(({ label, val, set, prefix }) => (
                   <div key={label}>
                     <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">{label}</label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">{prefix}</span>
                       <input type="number" inputMode="decimal" min="0" step="0.01" value={val}
                         onChange={(e) => set(e.target.value)} placeholder="0.00"
-                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm pl-7 pr-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                        className={`w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm pr-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${prefix === "−$" ? "pl-9" : "pl-7"}`} />
                     </div>
                   </div>
                 ))}

@@ -52,6 +52,8 @@ const SOURCE_LABELS: Record<OrderSource, string> = {
   stripe: "Stripe",
   whatsapp: "WhatsApp",
   cash: "Cash/Zelle",
+  paypal: "PayPal",
+  wire: "Wire Transfer",
   custom: "Custom",
   admin: "Admin",
 };
@@ -60,6 +62,8 @@ const SOURCE_COLORS: Record<OrderSource, string> = {
   stripe: "bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400",
   whatsapp: "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400",
   cash: "bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400",
+  paypal: "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400",
+  wire: "bg-cyan-50 text-cyan-600 dark:bg-cyan-900/20 dark:text-cyan-400",
   custom: "bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400",
   admin: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
 };
@@ -162,6 +166,8 @@ const EMPTY_FORM = {
   feeShipping: "",
   feeTax: "",
   feePaypal: "",
+  feeInsurance: "",
+  feeDiscount: "",
   feeOther: "",
   feeOtherLabel: "",
 };
@@ -334,6 +340,8 @@ export function OrdersAdminClient() {
     if (parseFloat(form.feeShipping) > 0) fees.shipping = parseFloat(form.feeShipping);
     if (parseFloat(form.feeTax) > 0) fees.tax = parseFloat(form.feeTax);
     if (parseFloat(form.feePaypal) > 0) fees.paypal = parseFloat(form.feePaypal);
+    if (parseFloat(form.feeInsurance) > 0) fees.insurance = parseFloat(form.feeInsurance);
+    if (parseFloat(form.feeDiscount) > 0) fees.discount = parseFloat(form.feeDiscount);
     if (parseFloat(form.feeOther) > 0) {
       fees.other = parseFloat(form.feeOther);
       if (form.feeOtherLabel.trim()) fees.otherLabel = form.feeOtherLabel.trim();
@@ -685,6 +693,9 @@ export function OrdersAdminClient() {
                     <select value={form.source} onChange={(e) => setField("source", e.target.value as OrderSource)} required
                       className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
                       <option value="cash">Cash/Zelle</option>
+                      <option value="paypal">PayPal</option>
+                      <option value="stripe">Stripe</option>
+                      <option value="wire">Wire Transfer</option>
                       <option value="whatsapp">WhatsApp</option>
                       <option value="custom">Custom</option>
                       <option value="admin">Admin</option>
@@ -916,6 +927,24 @@ export function OrdersAdminClient() {
                     </div>
                   </div>
                   <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Insurance</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                      <input type="number" inputMode="decimal" min="0" step="0.01" value={form.feeInsurance}
+                        onChange={(e) => setField("feeInsurance", e.target.value)} placeholder="0.00"
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm pl-7 pr-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Discount</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">−$</span>
+                      <input type="number" inputMode="decimal" min="0" step="0.01" value={form.feeDiscount ?? ""}
+                        onChange={(e) => setField("feeDiscount", e.target.value)} placeholder="0.00"
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm pl-9 pr-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                  </div>
+                  <div>
                     <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Other Fee</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
@@ -937,7 +966,7 @@ export function OrdersAdminClient() {
                 {/* Live total preview */}
                 {(() => {
                   const itemsTotal = items.reduce((s, i) => s + (parseFloat(i.price) || 0) * (parseInt(i.quantity) || 1), 0);
-                  const feesTotal = (parseFloat(form.feeShipping) || 0) + (parseFloat(form.feeTax) || 0) + (parseFloat(form.feePaypal) || 0) + (parseFloat(form.feeOther) || 0);
+                  const feesTotal = (parseFloat(form.feeShipping) || 0) + (parseFloat(form.feeTax) || 0) + (parseFloat(form.feePaypal) || 0) + (parseFloat(form.feeInsurance) || 0) - (parseFloat(form.feeDiscount) || 0) + (parseFloat(form.feeOther) || 0);
                   const grand = itemsTotal + feesTotal;
                   if (grand === 0) return null;
                   return (
@@ -948,6 +977,8 @@ export function OrdersAdminClient() {
                       {(parseFloat(form.feeShipping) || 0) > 0 && <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400"><span>Shipping</span><span>+${parseFloat(form.feeShipping).toFixed(2)}</span></div>}
                       {(parseFloat(form.feeTax) || 0) > 0 && <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400"><span>Tax</span><span>+${parseFloat(form.feeTax).toFixed(2)}</span></div>}
                       {(parseFloat(form.feePaypal) || 0) > 0 && <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400"><span>PayPal Fee</span><span>+${parseFloat(form.feePaypal).toFixed(2)}</span></div>}
+                      {(parseFloat(form.feeInsurance) || 0) > 0 && <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400"><span>Insurance</span><span>+${parseFloat(form.feeInsurance).toFixed(2)}</span></div>}
+                      {(parseFloat(form.feeDiscount) || 0) > 0 && <div className="flex justify-between text-xs text-emerald-600 dark:text-emerald-400"><span>Discount</span><span>−${parseFloat(form.feeDiscount).toFixed(2)}</span></div>}
                       {(parseFloat(form.feeOther) || 0) > 0 && <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400"><span>{form.feeOtherLabel.trim() || "Other"}</span><span>+${parseFloat(form.feeOther).toFixed(2)}</span></div>}
                       <div className="flex justify-between text-sm font-semibold text-gray-900 dark:text-gray-100 pt-1 border-t border-gray-200 dark:border-gray-700">
                         <span>Order Total</span><span>${grand.toFixed(2)} {form.currency.toUpperCase()}</span>
