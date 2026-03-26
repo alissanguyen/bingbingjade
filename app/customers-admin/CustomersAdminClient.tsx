@@ -219,6 +219,7 @@ export function CustomersAdminClient() {
                     <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Orders</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 w-72">Notes</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Since</th>
+                    <th className="px-4 py-3" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
@@ -317,6 +318,16 @@ export function CustomersAdminClient() {
                         {/* Date */}
                         <td className="px-4 py-3 text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
                           {fmtDate(c.created_at)}
+                        </td>
+
+                        {/* Edit */}
+                        <td className="px-4 py-3 text-right">
+                          <a
+                            href={`/customers-admin/${c.id}`}
+                            className="text-xs text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                          >
+                            Edit →
+                          </a>
                         </td>
                       </tr>
                     );
