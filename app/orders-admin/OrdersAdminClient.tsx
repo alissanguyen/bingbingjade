@@ -116,6 +116,7 @@ interface ProductChoice {
   name: string;
   status: string;
   price_display_usd: number | null;
+  images: string[] | null;
   product_options: ProductOption[];
 }
 
@@ -129,6 +130,14 @@ interface NewItem {
 }
 
 const EMPTY_ITEM: NewItem = { productId: "", productName: "", optionId: "", optionLabel: "", price: "", quantity: "1" };
+
+function productThumb(images: string[] | null): string {
+  const first = images?.[0];
+  if (!first) return "";
+  if (first.startsWith("http")) return first;
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  return `${base}/storage/v1/object/public/jade-images/${first}`;
+}
 
 const EMPTY_FORM = {
   customerName: "",
@@ -780,9 +789,18 @@ export function OrdersAdminClient() {
                                       }));
                                       setActiveCombobox(null);
                                     }}
-                                    className="w-full text-left px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 flex items-center justify-between gap-2"
+                                    className="w-full text-left px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 flex items-center gap-2.5"
                                   >
-                                    <span>{p.name}</span>
+                                    {/* Thumbnail */}
+                                    <div className="w-9 h-9 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-700 shrink-0">
+                                      {productThumb(p.images) ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={productThumb(p.images)} alt="" className="w-full h-full object-cover" />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600 text-base">🪨</div>
+                                      )}
+                                    </div>
+                                    <span className="flex-1 truncate">{p.name}</span>
                                     {p.product_options.length > 0 && (
                                       <span className="text-xs text-gray-400 shrink-0">
                                         {p.product_options.length} option{p.product_options.length !== 1 ? "s" : ""}
