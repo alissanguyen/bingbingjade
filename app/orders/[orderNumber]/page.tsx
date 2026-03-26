@@ -132,6 +132,7 @@ async function getOrder(orderNumber: string) {
       order_type,
       estimated_delivery_date,
       customer_name,
+      fee_breakdown,
       order_items (
         product_id,
         product_name,
@@ -417,9 +418,45 @@ export default async function TrackOrderPage({
                 </div>
               );
             })}
-            <div className="flex justify-between items-center px-5 py-3.5 bg-gray-50 dark:bg-gray-900">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total paid</p>
-              <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{totalFormatted}</p>
+            <div className="bg-gray-50 dark:bg-gray-900 px-5 py-3.5 space-y-1.5">
+              {(() => {
+                const fb = order.fee_breakdown as { shipping?: number; tax?: number; paypal?: number; other?: number; otherLabel?: string } | null;
+                const itemsSubtotal = items.reduce((s, i) => s + (i.line_total ?? (i.price_usd ?? 0) * i.quantity), 0);
+                const hasFees = fb && ((fb.shipping ?? 0) + (fb.tax ?? 0) + (fb.paypal ?? 0) + (fb.other ?? 0)) > 0;
+                return (
+                  <>
+                    {hasFees && (
+                      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                        <span>Subtotal</span><span>${itemsSubtotal.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {(fb?.shipping ?? 0) > 0 && (
+                      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                        <span>Shipping</span><span>+${fb!.shipping!.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {(fb?.tax ?? 0) > 0 && (
+                      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                        <span>Tax</span><span>+${fb!.tax!.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {(fb?.paypal ?? 0) > 0 && (
+                      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                        <span>PayPal Fee</span><span>+${fb!.paypal!.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {(fb?.other ?? 0) > 0 && (
+                      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                        <span>{fb!.otherLabel ?? "Other"}</span><span>+${fb!.other!.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className={`flex justify-between items-center ${hasFees ? "pt-1 border-t border-gray-200 dark:border-gray-700" : ""}`}>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total paid</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{totalFormatted}</p>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>

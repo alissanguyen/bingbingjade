@@ -220,6 +220,9 @@ export async function POST(req: NextRequest) {
       notes: body.notes ?? null,
       estimated_delivery_date: body.estimatedDeliveryDate ?? null,
       shipping_address_id: shippingAddressId,
+      fee_breakdown: body.fees && Object.keys(body.fees).filter((k) => k !== "otherLabel" && (body.fees as Record<string, unknown>)[k]).length > 0
+        ? body.fees
+        : null,
       // No stripe fields — this is a manual order
     })
     .select("id")

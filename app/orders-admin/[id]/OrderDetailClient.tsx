@@ -44,6 +44,13 @@ interface Order {
   estimated_delivery_date: string | null;
   notes: string | null;
   created_at: string;
+  fee_breakdown: {
+    shipping?: number;
+    tax?: number;
+    paypal?: number;
+    other?: number;
+    otherLabel?: string;
+  } | null;
   order_items: OrderItem[];
   shipping_address: ShippingAddress | null;
 }
@@ -519,11 +526,38 @@ export function OrderDetailClient({
                   );
                 })}
               </div>
-              <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-900/60">
-                <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">Total</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                  ${displayTotal} {order.currency.toUpperCase()}
-                </span>
+              <div className="border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/60 px-4 py-3 space-y-1.5">
+                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                  <span>Items subtotal</span>
+                  <span>${total.toFixed(2)}</span>
+                </div>
+                {(order.fee_breakdown?.shipping ?? 0) > 0 && (
+                  <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <span>Shipping</span><span>+${order.fee_breakdown!.shipping!.toFixed(2)}</span>
+                  </div>
+                )}
+                {(order.fee_breakdown?.tax ?? 0) > 0 && (
+                  <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <span>Tax</span><span>+${order.fee_breakdown!.tax!.toFixed(2)}</span>
+                  </div>
+                )}
+                {(order.fee_breakdown?.paypal ?? 0) > 0 && (
+                  <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <span>PayPal Fee</span><span>+${order.fee_breakdown!.paypal!.toFixed(2)}</span>
+                  </div>
+                )}
+                {(order.fee_breakdown?.other ?? 0) > 0 && (
+                  <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <span>{order.fee_breakdown!.otherLabel ?? "Other"}</span>
+                    <span>+${order.fee_breakdown!.other!.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center pt-1 border-t border-gray-200 dark:border-gray-700">
+                  <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">Total</span>
+                  <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                    ${displayTotal} {order.currency.toUpperCase()}
+                  </span>
+                </div>
               </div>
             </div>
 
