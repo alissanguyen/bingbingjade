@@ -317,6 +317,7 @@ export function ProductsAdminClient({ products: initial }: { products: AdminProd
                       {/* Thumbnail */}
                       <div className="w-12 h-12 shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
                         {p.thumbnailUrl ? (
+                          <a href={p.slug} target="_blank">
                           <Image
                             src={p.thumbnailUrl}
                             alt={p.name}
@@ -325,6 +326,7 @@ export function ProductsAdminClient({ products: initial }: { products: AdminProd
                             className="w-full h-full object-cover"
                             unoptimized
                           />
+                          </a>
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

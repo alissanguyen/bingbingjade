@@ -27,7 +27,8 @@
       "Bash(grep:*)",
       "Bash(sed -i '' 's/const CATEGORIES: ProductCategory\\\\[\\\\] = \\\\[\"\"bracelet\"\", \"\"bangle\"\", \"\"ring\"\", \"\"pendant\"\", \"\"necklace\"\", \"\"other\"\"\\\\]/const CATEGORIES: ProductCategory[] = [\"\"bracelet\"\", \"\"bangle\"\", \"\"ring\"\", \"\"pendant\"\", \"\"necklace\"\", \"\"other\"\", \"\"custom_order\"\"]/' /Users/nouveau/Documents/workspaces/jade-shop/app/add/ProductForm.tsx)",
       "Bash(__NEW_LINE_6d4e501374a36002__ sed:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)"
     ]
   }
 }

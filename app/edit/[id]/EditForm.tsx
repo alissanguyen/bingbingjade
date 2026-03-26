@@ -945,7 +945,7 @@ export function EditForm({ product, vendors, initialOptions = [] }: Props) {
       )}
 
       <div className="flex gap-3">
-        <button type="button" onClick={() => router.push("/edit")}
+        <button type="button" onClick={() => router.push("/products-admin")}
           className="flex-1 rounded-full border border-gray-300 dark:border-gray-700 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
           Back
         </button>
