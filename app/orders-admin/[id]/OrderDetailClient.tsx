@@ -135,7 +135,18 @@ export function OrderDetailClient({
     postal: order.shipping_address?.postal_code ?? "",
     country: order.shipping_address?.country ?? "US",
   });
+  const [editFeeShipping, setEditFeeShipping] = useState(String(order.fee_breakdown?.shipping ?? ""));
+  const [editFeeTax, setEditFeeTax] = useState(String(order.fee_breakdown?.tax ?? ""));
+  const [editFeePaypal, setEditFeePaypal] = useState(String(order.fee_breakdown?.paypal ?? ""));
+  const [editFeeOther, setEditFeeOther] = useState(String(order.fee_breakdown?.other ?? ""));
+  const [editFeeOtherLabel, setEditFeeOtherLabel] = useState(order.fee_breakdown?.otherLabel ?? "");
   const [savingInfo, setSavingInfo] = useState(false);
+
+  // Inline item editing state
+  const [editingItems, setEditingItems] = useState(false);
+  interface DraftItem { id: string; price: string; quantity: string; }
+  const [draftItems, setDraftItems] = useState<DraftItem[]>([]);
+  const [savingItems, setSavingItems] = useState(false);
 
   // Cancel modal state
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -174,12 +185,22 @@ export function OrderDetailClient({
   async function handleSaveInfo() {
     setSavingInfo(true);
     try {
+      const fees: Record<string, unknown> = {};
+      if (parseFloat(editFeeShipping) > 0) fees.shipping = parseFloat(editFeeShipping);
+      if (parseFloat(editFeeTax) > 0) fees.tax = parseFloat(editFeeTax);
+      if (parseFloat(editFeePaypal) > 0) fees.paypal = parseFloat(editFeePaypal);
+      if (parseFloat(editFeeOther) > 0) {
+        fees.other = parseFloat(editFeeOther);
+        if (editFeeOtherLabel.trim()) fees.otherLabel = editFeeOtherLabel.trim();
+      }
+
       const body: Record<string, unknown> = {
         customerName: editName,
         customerEmail: editEmail,
         customerPhone: editPhone || null,
         orderNumber: editOrderNum,
         createdAt: editCreatedAt || null,
+        feeBreakdown: Object.keys(fees).length > 0 ? fees : null,
       };
       if (editShip.line1.trim()) {
         body.shippingAddress = {
@@ -199,6 +220,7 @@ export function OrderDetailClient({
       });
       const data = await res.json();
       if (!res.ok) { showToast("err", data.error ?? "Save failed"); return; }
+      const newFees = Object.keys(fees).length > 0 ? fees as typeof order.fee_breakdown : null;
       setOrder((prev) => ({
         ...prev,
         customer_name: editName || null,
@@ -206,6 +228,8 @@ export function OrderDetailClient({
         customer_phone_snapshot: editPhone || null,
         order_number: editOrderNum || null,
         created_at: editCreatedAt ? `${editCreatedAt}T00:00:00.000Z` : prev.created_at,
+        fee_breakdown: newFees,
+        ...(data.order?.amount_total !== undefined ? { amount_total: data.order.amount_total } : {}),
         shipping_address: editShip.line1.trim() ? {
           recipient_name: editShip.recipientName || null,
           address_line1: editShip.line1,
@@ -220,6 +244,39 @@ export function OrderDetailClient({
       showToast("ok", "Order info updated");
     } finally {
       setSavingInfo(false);
+    }
+  }
+
+  async function handleSaveItems() {
+    setSavingItems(true);
+    try {
+      const parsedItems = draftItems.map((d) => ({
+        id: d.id,
+        price_usd: parseFloat(d.price) || 0,
+        quantity: parseInt(d.quantity) || 1,
+      }));
+      const res = await fetch(`/api/admin/orders/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderItems: parsedItems }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast("err", data.error ?? "Save failed"); return; }
+      setOrder((prev) => ({
+        ...prev,
+        amount_total: data.order?.amount_total ?? prev.amount_total,
+        order_items: prev.order_items.map((item) => {
+          const draft = draftItems.find((d) => d.id === item.id);
+          if (!draft) return item;
+          const price = parseFloat(draft.price) || 0;
+          const qty = parseInt(draft.quantity) || 1;
+          return { ...item, price_usd: price, quantity: qty, line_total: parseFloat((price * qty).toFixed(2)) };
+        }),
+      }));
+      setEditingItems(false);
+      showToast("ok", "Items updated");
+    } finally {
+      setSavingItems(false);
     }
   }
 
@@ -434,6 +491,11 @@ export function OrderDetailClient({
                   setEditPhone(order.customer_phone_snapshot ?? "");
                   setEditOrderNum(order.order_number ?? "");
                   setEditCreatedAt(order.created_at.slice(0, 10));
+                  setEditFeeShipping(String(order.fee_breakdown?.shipping ?? ""));
+                  setEditFeeTax(String(order.fee_breakdown?.tax ?? ""));
+                  setEditFeePaypal(String(order.fee_breakdown?.paypal ?? ""));
+                  setEditFeeOther(String(order.fee_breakdown?.other ?? ""));
+                  setEditFeeOtherLabel(order.fee_breakdown?.otherLabel ?? "");
                   setEditShip({
                     recipientName: order.shipping_address?.recipient_name ?? "",
                     line1: order.shipping_address?.address_line1 ?? "",
@@ -485,14 +547,37 @@ export function OrderDetailClient({
 
             {/* Items */}
             <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+              <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                   Items ({order.order_items.length})
                 </h2>
+                {!editingItems ? (
+                  <button
+                    onClick={() => {
+                      setDraftItems(order.order_items.map((i) => ({
+                        id: i.id,
+                        price: String(i.price_usd ?? ""),
+                        quantity: String(i.quantity),
+                      })));
+                      setEditingItems(true);
+                    }}
+                    className="text-xs text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                  >
+                    Edit prices
+                  </button>
+                ) : (
+                  <div className="flex gap-3">
+                    <button onClick={() => setEditingItems(false)} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">Cancel</button>
+                    <button onClick={handleSaveItems} disabled={savingItems} className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline disabled:opacity-50 transition-colors">
+                      {savingItems ? "Saving…" : "Save"}
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="divide-y divide-gray-50 dark:divide-gray-800">
-                {order.order_items.map((item) => {
+                {order.order_items.map((item, idx) => {
                   const imgSrc = item.product_id ? productImages[item.product_id] : "";
+                  const draft = draftItems[idx];
                   const lineTotal = (item.line_total ?? (item.price_usd ?? 0) * item.quantity).toFixed(2);
                   return (
                     <div key={item.id} className="flex gap-3 px-4 py-3 items-center">
@@ -517,10 +602,35 @@ export function OrderDetailClient({
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-snug line-clamp-2">{item.product_name}</p>
                         {item.option_label && <p className="text-xs text-gray-400 mt-0.5">{item.option_label}</p>}
-                        {item.quantity > 1 && <p className="text-xs text-gray-400">×{item.quantity}</p>}
+                        {!editingItems && item.quantity > 1 && <p className="text-xs text-gray-400">×{item.quantity}</p>}
+                        {editingItems && draft && (
+                          <div className="flex gap-2 mt-1.5">
+                            <div className="relative w-24">
+                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                              <input
+                                type="number" inputMode="decimal" min="0" step="0.01"
+                                value={draft.price}
+                                onChange={(e) => setDraftItems((prev) => prev.map((d, i) => i === idx ? { ...d, price: e.target.value } : d))}
+                                className="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs pl-5 pr-2 py-1 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-gray-400">×</span>
+                              <input
+                                type="number" inputMode="numeric" min="1"
+                                value={draft.quantity}
+                                onChange={(e) => setDraftItems((prev) => prev.map((d, i) => i === idx ? { ...d, quantity: e.target.value } : d))}
+                                className="w-12 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs px-2 py-1 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 shrink-0 ml-2">
-                        ${lineTotal}
+                        {editingItems && draft
+                          ? `$${((parseFloat(draft.price) || 0) * (parseInt(draft.quantity) || 1)).toFixed(2)}`
+                          : `$${lineTotal}`
+                        }
                       </p>
                     </div>
                   );
@@ -719,6 +829,39 @@ export function OrderDetailClient({
                   <input value={editShip.country} onChange={(e) => setEditShip((s) => ({ ...s, country: e.target.value }))}
                     className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                 </div>
+              </div>
+            </div>
+
+            <hr className="border-gray-100 dark:border-gray-800" />
+
+            {/* Fees */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Fees &amp; Adjustments</p>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: "Shipping", val: editFeeShipping, set: setEditFeeShipping },
+                  { label: "Tax", val: editFeeTax, set: setEditFeeTax },
+                  { label: "PayPal Fee", val: editFeePaypal, set: setEditFeePaypal },
+                  { label: "Other", val: editFeeOther, set: setEditFeeOther },
+                ].map(({ label, val, set }) => (
+                  <div key={label}>
+                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">{label}</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                      <input type="number" inputMode="decimal" min="0" step="0.01" value={val}
+                        onChange={(e) => set(e.target.value)} placeholder="0.00"
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm pl-7 pr-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                  </div>
+                ))}
+                {parseFloat(editFeeOther) > 0 && (
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Other Fee Label</label>
+                    <input value={editFeeOtherLabel} onChange={(e) => setEditFeeOtherLabel(e.target.value)}
+                      placeholder="e.g. Insurance, Handling…"
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  </div>
+                )}
               </div>
             </div>
           </div>

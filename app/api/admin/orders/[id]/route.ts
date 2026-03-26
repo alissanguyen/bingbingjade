@@ -66,7 +66,8 @@ export async function PATCH(
 
   const {
     orderStatus, estimatedDeliveryDate, notes, sendEmail, orderType,
-    customerName, customerEmail, customerPhone, orderNumber, createdAt, shippingAddress,
+    customerName, customerEmail, customerPhone, orderNumber, createdAt,
+    shippingAddress, feeBreakdown, orderItems,
   } = body as {
     orderStatus?: string;
     estimatedDeliveryDate?: string | null;
@@ -87,10 +88,24 @@ export async function PATCH(
       postal: string;
       country?: string;
     };
+    feeBreakdown?: { shipping?: number; tax?: number; paypal?: number; other?: number; otherLabel?: string } | null;
+    orderItems?: { id: string; price_usd: number; quantity: number }[];
   };
 
   if (orderStatus && !VALID_STATUSES.includes(orderStatus as OrderStatus)) {
     return NextResponse.json({ error: "Invalid order status" }, { status: 400 });
+  }
+
+  // Update individual order items first (before recalculating total)
+  if (orderItems && orderItems.length > 0) {
+    for (const item of orderItems) {
+      const lineTotal = parseFloat((item.price_usd * item.quantity).toFixed(2));
+      await supabaseAdmin
+        .from("order_items")
+        .update({ price_usd: item.price_usd, quantity: item.quantity, line_total: lineTotal })
+        .eq("id", item.id)
+        .eq("order_id", id);
+    }
   }
 
   const updates: Record<string, unknown> = {};
@@ -103,6 +118,27 @@ export async function PATCH(
   if (customerPhone !== undefined) updates.customer_phone_snapshot = customerPhone?.trim() || null;
   if (orderNumber !== undefined) updates.order_number = orderNumber.trim().toUpperCase() || null;
   if (createdAt !== undefined && createdAt) updates.created_at = new Date(createdAt).toISOString();
+  if (feeBreakdown !== undefined) updates.fee_breakdown = feeBreakdown;
+
+  // Recalculate amount_total whenever items or fees change
+  if (orderItems || feeBreakdown !== undefined) {
+    const { data: currentItems } = await supabaseAdmin
+      .from("order_items")
+      .select("price_usd, quantity, line_total")
+      .eq("order_id", id);
+    const itemsSubtotal = (currentItems ?? []).reduce(
+      (s, i) => s + (i.line_total != null ? Number(i.line_total) : (i.price_usd ?? 0) * i.quantity), 0
+    );
+    // Use the incoming feeBreakdown if provided; otherwise fetch the existing one
+    let effectiveFees = feeBreakdown;
+    if (feeBreakdown === undefined) {
+      const { data: existing } = await supabaseAdmin.from("orders").select("fee_breakdown").eq("id", id).single();
+      effectiveFees = (existing?.fee_breakdown as typeof feeBreakdown) ?? null;
+    }
+    const feesTotal = (effectiveFees?.shipping ?? 0) + (effectiveFees?.tax ?? 0)
+      + (effectiveFees?.paypal ?? 0) + (effectiveFees?.other ?? 0);
+    updates.amount_total = Math.round((itemsSubtotal + feesTotal) * 100);
+  }
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });
