@@ -72,10 +72,22 @@ export async function applyWatermark(input: Buffer, category = ""): Promise<Buff
 
   const wmarkW = Math.max(60, Math.round(width * WATERMARK.sizePercent));
 
-  // Rasterize SVG to PNG at the target width.
-  // Sharp uses librsvg for SVG → the SVG's own opacity/blur styling is preserved.
-  const wmarkPng = await sharp(getSvgBuffer())
+  // Rasterize SVG to PNG at the target width, then scale alpha channel to 70%.
+  // Sharp's composite has no built-in opacity param, so we manipulate raw pixels.
+  const { data: rawWmark, info: wmarkInfo } = await sharp(getSvgBuffer())
     .resize(wmarkW, null, { fit: "inside", withoutEnlargement: false })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const wmarkBuf = Buffer.from(rawWmark);
+  for (let i = 3; i < wmarkBuf.length; i += 4) {
+    wmarkBuf[i] = Math.round(wmarkBuf[i] * 0.7);
+  }
+
+  const wmarkPng = await sharp(wmarkBuf, {
+    raw: { width: wmarkInfo.width, height: wmarkInfo.height, channels: 4 },
+  })
     .png()
     .toBuffer();
 
