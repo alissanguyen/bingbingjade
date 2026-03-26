@@ -262,7 +262,9 @@ const STATUS_META: Record<
   OrderStatus,
   { subject: string; headline: string; badge: string; body: string } | null
 > = {
-  order_created: null, // no customer-facing email for this internal state
+  order_created: null,
+  in_production: null,
+  polishing: null,
   order_confirmed: {
     subject: "Your BingBing Jade Order is Confirmed",
     headline: "Order Confirmed",
