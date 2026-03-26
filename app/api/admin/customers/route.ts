@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       status,
       notes,
       created_at,
-      orders ( order_number )
+      orders ( id, order_number )
     `)
     .order("created_at", { ascending: false });
 
@@ -47,13 +47,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Flatten order_numbers array
   const customers = (data ?? []).map((c) => ({
     ...c,
-    order_numbers: (c.orders ?? [])
-      .map((o: { order_number: string | null }) => o.order_number)
-      .filter(Boolean) as string[],
-    orders: undefined,
+    orders: (c.orders ?? [])
+      .filter((o: { id: string; order_number: string | null }) => o.order_number)
+      .map((o: { id: string; order_number: string | null }) => ({ id: o.id, order_number: o.order_number as string })),
   }));
 
   return NextResponse.json({ customers });

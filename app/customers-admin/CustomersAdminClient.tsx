@@ -4,6 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 type CustomerStatus = "good_standing" | "frequent_client" | "high_risk";
 
+interface CustomerOrder {
+  id: string;
+  order_number: string;
+}
+
 interface Customer {
   id: string;
   customer_name: string;
@@ -13,7 +18,7 @@ interface Customer {
   status: CustomerStatus;
   notes: string | null;
   created_at: string;
-  order_numbers: string[];
+  orders: CustomerOrder[];
 }
 
 const STATUS_LABELS: Record<CustomerStatus, string> = {
@@ -248,19 +253,19 @@ export function CustomersAdminClient() {
                           <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
                             {c.number_of_orders} order{c.number_of_orders !== 1 ? "s" : ""}
                           </p>
-                          {c.order_numbers.length > 0 && (
+                          {c.orders.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1">
-                              {c.order_numbers.slice(0, 5).map((n) => (
+                              {c.orders.slice(0, 5).map((o) => (
                                 <a
-                                  key={n}
-                                  href={`/orders-admin?search=${n}`}
+                                  key={o.id}
+                                  href={`/orders-admin/${o.id}`}
                                   className="inline-block font-mono text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded px-1.5 py-0.5 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                                 >
-                                  {n}
+                                  {o.order_number}
                                 </a>
                               ))}
-                              {c.order_numbers.length > 5 && (
-                                <span className="text-[10px] text-gray-400">+{c.order_numbers.length - 5} more</span>
+                              {c.orders.length > 5 && (
+                                <span className="text-[10px] text-gray-400">+{c.orders.length - 5} more</span>
                               )}
                             </div>
                           )}
