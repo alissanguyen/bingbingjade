@@ -16,6 +16,7 @@ interface CustomerAddress {
   state_or_region: string;
   postal_code: string;
   country: string;
+  is_default: boolean;
   created_at: string;
 }
 
@@ -439,10 +440,30 @@ export function CustomerDetailClient() {
                     <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-full px-2 py-0.5">Primary</span>
                   </div>
                 )}
-                {emails.map((e) => (
-                  <div key={e.id} className="flex items-center justify-between px-4 py-2.5">
-                    <p className="text-sm text-gray-800 dark:text-gray-200">{e.email}</p>
-                    <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-full px-2 py-0.5">{e.label}</span>
+                {emails.filter((e) => e.email !== customer.customer_email).map((e) => (
+                  <div key={e.id} className="flex items-center justify-between px-4 py-2.5 gap-2">
+                    <p className="text-sm text-gray-800 dark:text-gray-200 flex-1 truncate">{e.email}</p>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-full px-2 py-0.5">{e.label}</span>
+                      <button
+                        onClick={async () => {
+                          const res = await fetch(`/api/admin/customers/${id}`, {
+                            method: "PATCH", headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ customer_email: e.email }),
+                          });
+                          if (res.ok) {
+                            setCustomer((prev) => prev ? { ...prev, customer_email: e.email } : prev);
+                            setEmail(e.email);
+                            showToast("ok", "Primary email updated");
+                          } else {
+                            showToast("err", "Failed to update primary email");
+                          }
+                        }}
+                        className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline whitespace-nowrap"
+                      >
+                        Set primary
+                      </button>
+                    </div>
                   </div>
                 ))}
                 {!customer.customer_email && emails.length === 0 && (
@@ -477,18 +498,43 @@ export function CustomerDetailClient() {
                   {showAddPhone ? "Cancel" : "+ Add"}
                 </button>
               </div>
-              {phones.length === 0 ? (
-                <p className="text-xs text-gray-400 px-4 py-3 italic">No phone history recorded.</p>
-              ) : (
-                <div className="divide-y divide-gray-50 dark:divide-gray-800">
-                  {phones.map((p) => (
-                    <div key={p.id} className="flex items-center justify-between px-4 py-2.5">
-                      <p className="text-sm text-gray-800 dark:text-gray-200">{p.phone}</p>
+              <div className="divide-y divide-gray-50 dark:divide-gray-800">
+                {customer.customer_phone && (
+                  <div className="flex items-center justify-between px-4 py-2.5">
+                    <p className="text-sm text-gray-800 dark:text-gray-200">{customer.customer_phone}</p>
+                    <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-full px-2 py-0.5">Primary</span>
+                  </div>
+                )}
+                {phones.filter((p) => p.phone !== customer.customer_phone).map((p) => (
+                  <div key={p.id} className="flex items-center justify-between px-4 py-2.5 gap-2">
+                    <p className="text-sm text-gray-800 dark:text-gray-200 flex-1 truncate">{p.phone}</p>
+                    <div className="flex items-center gap-2 shrink-0">
                       <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-full px-2 py-0.5">{p.label}</span>
+                      <button
+                        onClick={async () => {
+                          const res = await fetch(`/api/admin/customers/${id}`, {
+                            method: "PATCH", headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ customer_phone: p.phone }),
+                          });
+                          if (res.ok) {
+                            setCustomer((prev) => prev ? { ...prev, customer_phone: p.phone } : prev);
+                            setPhone(p.phone);
+                            showToast("ok", "Primary phone updated");
+                          } else {
+                            showToast("err", "Failed to update primary phone");
+                          }
+                        }}
+                        className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline whitespace-nowrap"
+                      >
+                        Set primary
+                      </button>
                     </div>
-                  ))}
-                </div>
-              )}
+                  </div>
+                ))}
+                {!customer.customer_phone && phones.length === 0 && (
+                  <p className="text-xs text-gray-400 px-4 py-3 italic">No phone history recorded.</p>
+                )}
+              </div>
               {showAddPhone && (
                 <form onSubmit={handleAddPhone} className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
                   <div className="flex gap-2">
@@ -522,7 +568,32 @@ export function CustomerDetailClient() {
                 <div className="divide-y divide-gray-50 dark:divide-gray-800">
                   {addresses.map((a) => (
                     <div key={a.id} className="px-4 py-3">
-                      {a.recipient_name && <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{a.recipient_name}</p>}
+                      <div className="flex items-start justify-between gap-2 mb-0.5">
+                        <div className="min-w-0">
+                          {a.recipient_name && <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{a.recipient_name}</p>}
+                        </div>
+                        {a.is_default ? (
+                          <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-full px-2 py-0.5 shrink-0">Primary</span>
+                        ) : (
+                          <button
+                            onClick={async () => {
+                              const res = await fetch(`/api/admin/customers/${id}`, {
+                                method: "PATCH", headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ primaryAddressId: a.id }),
+                              });
+                              if (res.ok) {
+                                setAddresses((prev) => prev.map((addr) => ({ ...addr, is_default: addr.id === a.id })));
+                                showToast("ok", "Primary address updated");
+                              } else {
+                                showToast("err", "Failed to update primary address");
+                              }
+                            }}
+                            className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline shrink-0"
+                          >
+                            Set primary
+                          </button>
+                        )}
+                      </div>
                       <p className="text-sm text-gray-800 dark:text-gray-200">
                         {a.address_line1}{a.address_line2 ? `, ${a.address_line2}` : ""}
                       </p>

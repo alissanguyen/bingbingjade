@@ -50,7 +50,7 @@ export async function GET(
       .order("created_at"),
     supabaseAdmin
       .from("customer_addresses")
-      .select("id, recipient_name, address_line1, address_line2, city, state_or_region, postal_code, country, created_at")
+      .select("id, recipient_name, address_line1, address_line2, city, state_or_region, postal_code, country, is_default, created_at")
       .eq("customer_id", id)
       .order("created_at"),
   ]);
@@ -82,7 +82,22 @@ export async function PATCH(
     customer_name?: string;
     customer_email?: string;
     customer_phone?: string;
+    primaryAddressId?: string;
   };
+
+  // Handle primary address change separately (no customers row update needed)
+  if (body.primaryAddressId !== undefined) {
+    await supabaseAdmin
+      .from("customer_addresses")
+      .update({ is_default: false })
+      .eq("customer_id", id);
+    await supabaseAdmin
+      .from("customer_addresses")
+      .update({ is_default: true })
+      .eq("id", body.primaryAddressId)
+      .eq("customer_id", id);
+    return NextResponse.json({ ok: true });
+  }
 
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
