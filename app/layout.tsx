@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { Navbar } from "./components/Navbar";
-import { CategoryBar } from "./components/CategoryBar";
+import { ConditionalCategoryBar } from "./components/ConditionalCategoryBar";
 import { CartProvider } from "./components/CartContext";
 import { CartDrawer } from "./components/CartDrawer";
 import "./globals.css";
@@ -74,7 +74,7 @@ export default function RootLayout({
             <div className="border-b border-gray-200 dark:border-gray-800">
               <Navbar />
             </div>
-            <CategoryBar />
+            <ConditionalCategoryBar />
           </header>
 
           {/* CartDrawer must be outside the header so it sits in the root stacking context,
