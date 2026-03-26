@@ -47,7 +47,7 @@ export default async function CheckoutSuccessPage({
         />
         <div className="absolute inset-0 bg-linear-to-b from-black/30 via-black/25 to-black/65" />
 
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 mt-6 xs:mt-0">
           {/* Checkmark */}
           <div className="mb-6 w-16 h-16 rounded-full bg-white/10 border border-white/30 backdrop-blur-sm flex items-center justify-center">
             <svg
