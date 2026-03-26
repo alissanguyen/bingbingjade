@@ -23,21 +23,7 @@ export async function GET(
 
   const { data, error } = await supabaseAdmin
     .from("customers")
-    .select(`
-      id,
-      customer_name,
-      customer_email,
-      customer_phone,
-      number_of_orders,
-      status,
-      notes,
-      created_at,
-      updated_at,
-      orders ( id, order_number, order_status, amount_total, currency, created_at ),
-      customer_emails ( id, email, label, created_at ),
-      customer_phones ( id, phone, label, created_at ),
-      customer_addresses ( id, recipient_name, address_line1, address_line2, city, state_or_region, postal_code, country, created_at )
-    `)
+    .select("id, customer_name, customer_email, customer_phone, number_of_orders, status, notes, created_at, updated_at")
     .eq("id", id)
     .single();
 
@@ -45,7 +31,39 @@ export async function GET(
     return NextResponse.json({ error: error?.message ?? "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ customer: data });
+  // Fetch all related data separately to avoid FK relationship dependencies
+  const [{ data: orders }, { data: emails }, { data: phones }, { data: addresses }] = await Promise.all([
+    supabaseAdmin
+      .from("orders")
+      .select("id, order_number, order_status, amount_total, currency, created_at")
+      .eq("customer_id", id)
+      .order("created_at", { ascending: false }),
+    supabaseAdmin
+      .from("customer_emails")
+      .select("id, email, label, created_at")
+      .eq("customer_id", id)
+      .order("created_at"),
+    supabaseAdmin
+      .from("customer_phones")
+      .select("id, phone, label, created_at")
+      .eq("customer_id", id)
+      .order("created_at"),
+    supabaseAdmin
+      .from("customer_addresses")
+      .select("id, recipient_name, address_line1, address_line2, city, state_or_region, postal_code, country, created_at")
+      .eq("customer_id", id)
+      .order("created_at"),
+  ]);
+
+  return NextResponse.json({
+    customer: {
+      ...data,
+      orders: orders ?? [],
+      customer_emails: emails ?? [],
+      customer_phones: phones ?? [],
+      customer_addresses: addresses ?? [],
+    },
+  });
 }
 
 // PATCH /api/admin/customers/[id] — update any customer fields
