@@ -93,6 +93,7 @@ export async function POST(req: NextRequest) {
       productId?: string;
       optionId?: string;
     }[];
+    existingShippingAddressId?: string;
     shippingAddress?: {
       recipientName?: string;
       line1: string;
@@ -153,7 +154,9 @@ export async function POST(req: NextRequest) {
 
   // ── Save shipping address ─────────────────────────────────────────────────
   let shippingAddressId: string | null = null;
-  if (customerId && body.shippingAddress) {
+  if (body.existingShippingAddressId) {
+    shippingAddressId = body.existingShippingAddressId;
+  } else if (customerId && body.shippingAddress) {
     const sa = body.shippingAddress;
     if (sa.line1 && sa.city && sa.state && sa.postal) {
       try {

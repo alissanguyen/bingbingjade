@@ -87,6 +87,23 @@ function fmtDate(iso: string) {
 
 // ── Create-order modal types ──────────────────────────────────────────────────
 
+interface CustomerEmail  { id: string; email: string;  label: string; created_at: string; }
+interface CustomerPhone  { id: string; phone: string;  label: string; created_at: string; }
+interface CustomerAddress {
+  id: string; recipient_name: string | null;
+  address_line1: string; address_line2: string | null;
+  city: string; state_or_region: string; postal_code: string; country: string;
+}
+interface ExistingCustomer {
+  id: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string | null;
+  customer_emails:    CustomerEmail[];
+  customer_phones:    CustomerPhone[];
+  customer_addresses: CustomerAddress[];
+}
+
 interface ProductOption {
   id: string;
   label: string | null;
@@ -156,6 +173,19 @@ export function OrdersAdminClient() {
   const [allProducts, setAllProducts] = useState<ProductChoice[]>([]);
   const [activeCombobox, setActiveCombobox] = useState<number | null>(null);
 
+  // Existing customer selection
+  const [customerMode, setCustomerMode] = useState<"new" | "existing">("new");
+  const [custSearch, setCustSearch] = useState("");
+  const [custResults, setCustResults] = useState<ExistingCustomer[]>([]);
+  const [showCustDropdown, setShowCustDropdown] = useState(false);
+  const [selCustomer, setSelCustomer] = useState<ExistingCustomer | null>(null);
+  const [selEmail, setSelEmail] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [selPhone, setSelPhone] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [selAddressId, setSelAddressId] = useState(""); // existing address id or "new"
+  const custSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const LIMIT = 50;
 
@@ -195,6 +225,44 @@ export function OrdersAdminClient() {
       .catch(() => {});
   }, [showCreate]); // eslint-disable-line
 
+  // ── Customer search (debounced) ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!custSearch.trim()) { setCustResults([]); return; }
+    if (custSearchRef.current) clearTimeout(custSearchRef.current);
+    custSearchRef.current = setTimeout(() => {
+      fetch(`/api/admin/customers?search=${encodeURIComponent(custSearch)}&limit=10`)
+        .then((r) => r.json())
+        .then((d) => setCustResults(d.customers ?? []))
+        .catch(() => {});
+    }, 250);
+  }, [custSearch]);
+
+  function resetCustomerMode() {
+    setCustomerMode("new");
+    setCustSearch(""); setCustResults([]); setSelCustomer(null);
+    setSelEmail(""); setNewEmail(""); setSelPhone(""); setNewPhone("");
+    setSelAddressId("");
+  }
+
+  async function selectExistingCustomer(c: ExistingCustomer) {
+    // Fetch full profile (includes emails, phones, addresses)
+    const res = await fetch(`/api/admin/customers/${c.id}`);
+    const data = await res.json();
+    const full: ExistingCustomer = data.customer ?? c;
+    setSelCustomer(full);
+    setCustSearch(full.customer_name);
+    setCustResults([]);
+    setShowCustDropdown(false);
+    // Pre-select primary email/phone
+    setSelEmail(full.customer_emails[0]?.email ?? full.customer_email ?? "");
+    setNewEmail("");
+    setSelPhone(full.customer_phones[0]?.phone ?? full.customer_phone ?? "");
+    setNewPhone("");
+    setSelAddressId(full.customer_addresses[0]?.id ?? "new");
+    // Pre-fill form name
+    setForm((f) => ({ ...f, customerName: full.customer_name }));
+  }
+
   // ── Create order ────────────────────────────────────────────────────────────
   function setField<K extends keyof typeof EMPTY_FORM>(k: K, v: (typeof EMPTY_FORM)[K]) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -218,6 +286,30 @@ export function OrdersAdminClient() {
       ...(i.optionId ? { optionId: i.optionId } : {}),
     }));
 
+    // Resolve customer email/phone — existing customer vs new
+    const resolvedEmail = customerMode === "existing"
+      ? (newEmail.trim() || selEmail)
+      : form.customerEmail.trim();
+    const resolvedPhone = customerMode === "existing"
+      ? (newPhone.trim() || selPhone)
+      : form.customerPhone.trim();
+
+    // If existing customer added a new email/phone, save to their record first
+    if (customerMode === "existing" && selCustomer) {
+      if (newEmail.trim()) {
+        await fetch(`/api/admin/customers/${selCustomer.id}/emails`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: newEmail.trim(), label: "Additional" }),
+        });
+      }
+      if (newPhone.trim()) {
+        await fetch(`/api/admin/customers/${selCustomer.id}/phones`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: newPhone.trim(), label: "Additional" }),
+        });
+      }
+    }
+
     const body: Record<string, unknown> = {
       source: form.source,
       paidStatus: form.paidStatus,
@@ -225,14 +317,22 @@ export function OrdersAdminClient() {
       orderType: form.orderType,
       items: parsedItems,
       ...(form.customerName.trim() ? { customerName: form.customerName.trim() } : {}),
-      ...(form.customerEmail.trim() ? { customerEmail: form.customerEmail.trim() } : {}),
-      ...(form.customerPhone.trim() ? { customerPhone: form.customerPhone.trim() } : {}),
+      ...(resolvedEmail ? { customerEmail: resolvedEmail } : {}),
+      ...(resolvedPhone ? { customerPhone: resolvedPhone } : {}),
       ...(form.notes.trim() ? { notes: form.notes.trim() } : {}),
       ...(form.estimatedDeliveryDate ? { estimatedDeliveryDate: form.estimatedDeliveryDate } : {}),
       orderStatus: form.orderStatus,
+      ...(customerMode === "existing" && selCustomer ? { customerId: selCustomer.id } : {}),
     };
 
-    if (form.hasShipping && form.shipLine1.trim()) {
+    // Shipping: existing saved address OR new address form
+    const useExistingAddr = customerMode === "existing" && selCustomer && selAddressId && selAddressId !== "new" && selAddressId !== "";
+    const submitNewAddress =
+      (form.hasShipping || (customerMode === "existing" && selCustomer && selAddressId === "new"))
+      && form.shipLine1.trim();
+    if (useExistingAddr) {
+      body.existingShippingAddressId = selAddressId;
+    } else if (submitNewAddress) {
       body.shippingAddress = {
         recipientName: form.shipRecipient.trim() || undefined,
         line1: form.shipLine1.trim(),
@@ -270,7 +370,7 @@ export function OrdersAdminClient() {
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{total} total</p>
           </div>
           <button
-            onClick={() => { setForm(EMPTY_FORM); setItems([{ ...EMPTY_ITEM }]); setCreateError(null); setShowCreate(true); }}
+            onClick={() => { setForm(EMPTY_FORM); setItems([{ ...EMPTY_ITEM }]); setCreateError(null); resetCustomerMode(); setShowCreate(true); }}
             className="rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 text-sm font-medium transition-colors"
           >
             + New Order
@@ -428,25 +528,122 @@ export function OrdersAdminClient() {
               {/* Customer */}
               <section>
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Customer</h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Name</label>
-                    <input value={form.customerName} onChange={(e) => setField("customerName", e.target.value)}
-                      placeholder="Full name" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Email</label>
-                      <input type="email" inputMode="email" value={form.customerEmail} onChange={(e) => setField("customerEmail", e.target.value)}
-                        placeholder="email@example.com" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Phone</label>
-                      <input type="tel" inputMode="tel" value={form.customerPhone} onChange={(e) => setField("customerPhone", e.target.value)}
-                        placeholder="+1 555 000 0000" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                    </div>
-                  </div>
+
+                {/* Mode toggle */}
+                <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden mb-3 text-xs font-medium">
+                  {(["new", "existing"] as const).map((m) => (
+                    <button key={m} type="button"
+                      onClick={() => { setCustomerMode(m); if (m === "new") resetCustomerMode(); }}
+                      className={`flex-1 py-2 transition-colors ${customerMode === m ? "bg-emerald-700 text-white" : "bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"}`}
+                    >
+                      {m === "new" ? "New Customer" : "Existing Customer"}
+                    </button>
+                  ))}
                 </div>
+
+                {customerMode === "new" ? (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Name</label>
+                      <input value={form.customerName} onChange={(e) => setField("customerName", e.target.value)}
+                        placeholder="Full name" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Email</label>
+                        <input type="email" inputMode="email" value={form.customerEmail} onChange={(e) => setField("customerEmail", e.target.value)}
+                          placeholder="email@example.com" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Phone</label>
+                        <input type="tel" inputMode="tel" value={form.customerPhone} onChange={(e) => setField("customerPhone", e.target.value)}
+                          placeholder="+1 555 000 0000" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Customer search combobox */}
+                    <div className="relative">
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Search customer <span className="text-red-500">*</span></label>
+                      <input
+                        value={custSearch}
+                        onChange={(e) => { setCustSearch(e.target.value); setSelCustomer(null); setShowCustDropdown(true); }}
+                        onFocus={() => setShowCustDropdown(true)}
+                        onBlur={() => setTimeout(() => setShowCustDropdown(false), 150)}
+                        placeholder="Name or email…"
+                        autoComplete="off"
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                      {showCustDropdown && custResults.length > 0 && (
+                        <ul className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg max-h-48 overflow-y-auto">
+                          {custResults.map((c) => (
+                            <li key={c.id}>
+                              <button type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => selectExistingCustomer(c)}
+                                className="w-full text-left px-3 py-2.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                              >
+                                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{c.customer_name || "(no name)"}</p>
+                                <p className="text-xs text-gray-400">{c.customer_email}</p>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    {selCustomer && (
+                      <>
+                        {/* Selected customer summary */}
+                        <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400">
+                          ✓ {selCustomer.customer_name} · {selCustomer.customer_emails.length} email{selCustomer.customer_emails.length !== 1 ? "s" : ""} · {selCustomer.customer_addresses.length} address{selCustomer.customer_addresses.length !== 1 ? "es" : ""} on file
+                        </div>
+
+                        {/* Email picker */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Email for this order</label>
+                          <select value={selEmail} onChange={(e) => { setSelEmail(e.target.value); setNewEmail(""); }}
+                            className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            {selCustomer.customer_emails.map((e) => (
+                              <option key={e.id} value={e.email}>{e.email} ({e.label})</option>
+                            ))}
+                            {selCustomer.customer_emails.length === 0 && selCustomer.customer_email && (
+                              <option value={selCustomer.customer_email}>{selCustomer.customer_email}</option>
+                            )}
+                            <option value="__new__">+ Add new email…</option>
+                          </select>
+                          {selEmail === "__new__" && (
+                            <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)}
+                              placeholder="new@example.com" autoFocus
+                              className="mt-1.5 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                          )}
+                        </div>
+
+                        {/* Phone picker */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Phone for this order</label>
+                          <select value={selPhone} onChange={(e) => { setSelPhone(e.target.value); setNewPhone(""); }}
+                            className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            {selCustomer.customer_phones.map((p) => (
+                              <option key={p.id} value={p.phone}>{p.phone} ({p.label})</option>
+                            ))}
+                            {selCustomer.customer_phones.length === 0 && selCustomer.customer_phone && (
+                              <option value={selCustomer.customer_phone}>{selCustomer.customer_phone}</option>
+                            )}
+                            <option value="">— none —</option>
+                            <option value="__new__">+ Add new phone…</option>
+                          </select>
+                          {selPhone === "__new__" && (
+                            <input type="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)}
+                              placeholder="+1 555 000 0000" autoFocus
+                              className="mt-1.5 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </section>
 
               {/* Order details */}
@@ -650,51 +847,113 @@ export function OrdersAdminClient() {
 
               {/* Shipping */}
               <section>
-                <label className="flex items-center gap-2 cursor-pointer mb-3">
-                  <input type="checkbox" checked={form.hasShipping} onChange={(e) => setField("hasShipping", e.target.checked)}
-                    className="rounded text-emerald-600 focus:ring-emerald-500" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Add Shipping Address</span>
-                </label>
-                {form.hasShipping && (
-                  <div className="space-y-3 mt-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Recipient Name</label>
-                      <input value={form.shipRecipient} onChange={(e) => setField("shipRecipient", e.target.value)}
-                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                {customerMode === "existing" && selCustomer ? (
+                  <>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Shipping Address</h3>
+                    <div className="space-y-3">
+                      <select value={selAddressId} onChange={(e) => setSelAddressId(e.target.value)}
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        {selCustomer.customer_addresses.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {[a.recipient_name, a.address_line1, a.address_line2, `${a.city}, ${a.state_or_region} ${a.postal_code}`, a.country].filter(Boolean).join(" · ")}
+                          </option>
+                        ))}
+                        <option value="new">+ Enter new address…</option>
+                        <option value="">— No shipping —</option>
+                      </select>
+                      {selAddressId === "new" && (
+                        <div className="space-y-3 pt-1">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Recipient Name</label>
+                            <input value={form.shipRecipient} onChange={(e) => setField("shipRecipient", e.target.value)}
+                              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Address Line 1 <span className="text-red-500">*</span></label>
+                            <input value={form.shipLine1} onChange={(e) => setField("shipLine1", e.target.value)}
+                              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Address Line 2</label>
+                            <input value={form.shipLine2} onChange={(e) => setField("shipLine2", e.target.value)}
+                              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">City</label>
+                              <input value={form.shipCity} onChange={(e) => setField("shipCity", e.target.value)}
+                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">State / Region</label>
+                              <input value={form.shipState} onChange={(e) => setField("shipState", e.target.value)}
+                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Postal Code</label>
+                              <input value={form.shipPostal} onChange={(e) => setField("shipPostal", e.target.value)}
+                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Country</label>
+                              <input value={form.shipCountry} onChange={(e) => setField("shipCountry", e.target.value)}
+                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-400">This address will be saved to the customer record.</p>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Address Line 1</label>
-                      <input value={form.shipLine1} onChange={(e) => setField("shipLine1", e.target.value)}
-                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Address Line 2</label>
-                      <input value={form.shipLine2} onChange={(e) => setField("shipLine2", e.target.value)}
-                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">City</label>
-                        <input value={form.shipCity} onChange={(e) => setField("shipCity", e.target.value)}
-                          className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  </>
+                ) : (
+                  <>
+                    <label className="flex items-center gap-2 cursor-pointer mb-3">
+                      <input type="checkbox" checked={form.hasShipping} onChange={(e) => setField("hasShipping", e.target.checked)}
+                        className="rounded text-emerald-600 focus:ring-emerald-500" />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Add Shipping Address</span>
+                    </label>
+                    {form.hasShipping && (
+                      <div className="space-y-3 mt-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Recipient Name</label>
+                          <input value={form.shipRecipient} onChange={(e) => setField("shipRecipient", e.target.value)}
+                            className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Address Line 1</label>
+                          <input value={form.shipLine1} onChange={(e) => setField("shipLine1", e.target.value)}
+                            className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Address Line 2</label>
+                          <input value={form.shipLine2} onChange={(e) => setField("shipLine2", e.target.value)}
+                            className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">City</label>
+                            <input value={form.shipCity} onChange={(e) => setField("shipCity", e.target.value)}
+                              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">State / Region</label>
+                            <input value={form.shipState} onChange={(e) => setField("shipState", e.target.value)}
+                              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Postal Code</label>
+                            <input value={form.shipPostal} onChange={(e) => setField("shipPostal", e.target.value)}
+                              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Country</label>
+                            <input value={form.shipCountry} onChange={(e) => setField("shipCountry", e.target.value)}
+                              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">State / Region</label>
-                        <input value={form.shipState} onChange={(e) => setField("shipState", e.target.value)}
-                          className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Postal Code</label>
-                        <input value={form.shipPostal} onChange={(e) => setField("shipPostal", e.target.value)}
-                          className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Country</label>
-                        <input value={form.shipCountry} onChange={(e) => setField("shipCountry", e.target.value)}
-                          className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                      </div>
-                    </div>
-                  </div>
+                    )}
+                  </>
                 )}
               </section>
 

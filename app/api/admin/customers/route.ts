@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const search = (searchParams.get("search") ?? "").trim();
   const status = searchParams.get("status") ?? "";
+  const limit = Math.min(100, parseInt(searchParams.get("limit") ?? "200"));
 
   let query = supabaseAdmin
     .from("customers")
@@ -41,7 +42,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const { data, error } = await query;
+  const { data, error } = await query.limit(limit);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

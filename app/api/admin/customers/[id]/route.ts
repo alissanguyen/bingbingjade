@@ -33,14 +33,10 @@ export async function GET(
       notes,
       created_at,
       updated_at,
-      orders (
-        id,
-        order_number,
-        order_status,
-        amount_total,
-        currency,
-        created_at
-      )
+      orders ( id, order_number, order_status, amount_total, currency, created_at ),
+      customer_emails ( id, email, label, created_at ),
+      customer_phones ( id, phone, label, created_at ),
+      customer_addresses ( id, recipient_name, address_line1, address_line2, city, state_or_region, postal_code, country, created_at )
     `)
     .eq("id", id)
     .single();
