@@ -424,25 +424,31 @@ export function CustomerDetailClient() {
             <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  Emails <span className="text-gray-400 font-normal">({emails.length})</span>
+                  Emails
                 </h2>
                 <button type="button" onClick={() => setShowAddEmail((v) => !v)}
                   className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline">
                   {showAddEmail ? "Cancel" : "+ Add"}
                 </button>
               </div>
-              {emails.length === 0 ? (
-                <p className="text-xs text-gray-400 px-4 py-3 italic">No email history recorded.</p>
-              ) : (
-                <div className="divide-y divide-gray-50 dark:divide-gray-800">
-                  {emails.map((e) => (
-                    <div key={e.id} className="flex items-center justify-between px-4 py-2.5">
-                      <p className="text-sm text-gray-800 dark:text-gray-200">{e.email}</p>
-                      <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-full px-2 py-0.5">{e.label}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="divide-y divide-gray-50 dark:divide-gray-800">
+                {/* Primary email always shown */}
+                {customer.customer_email && (
+                  <div className="flex items-center justify-between px-4 py-2.5">
+                    <p className="text-sm text-gray-800 dark:text-gray-200">{customer.customer_email}</p>
+                    <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-full px-2 py-0.5">Primary</span>
+                  </div>
+                )}
+                {emails.map((e) => (
+                  <div key={e.id} className="flex items-center justify-between px-4 py-2.5">
+                    <p className="text-sm text-gray-800 dark:text-gray-200">{e.email}</p>
+                    <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-full px-2 py-0.5">{e.label}</span>
+                  </div>
+                ))}
+                {!customer.customer_email && emails.length === 0 && (
+                  <p className="text-xs text-gray-400 px-4 py-3 italic">No emails recorded.</p>
+                )}
+              </div>
               {showAddEmail && (
                 <form onSubmit={handleAddEmail} className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
                   <div className="flex gap-2">

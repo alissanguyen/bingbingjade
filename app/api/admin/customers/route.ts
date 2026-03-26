@@ -21,17 +21,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabaseAdmin
     .from("customers")
-    .select(`
-      id,
-      customer_name,
-      customer_email,
-      customer_phone,
-      number_of_orders,
-      status,
-      notes,
-      created_at,
-      orders ( id, order_number )
-    `)
+    .select("id, customer_name, customer_email, customer_phone, number_of_orders, status, notes, created_at")
     .order("created_at", { ascending: false });
 
   if (status) query = query.eq("status", status);
@@ -48,12 +38,25 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const customers = (data ?? []).map((c) => ({
-    ...c,
-    orders: (c.orders ?? [])
-      .filter((o: { id: string; order_number: string | null }) => o.order_number)
-      .map((o: { id: string; order_number: string | null }) => ({ id: o.id, order_number: o.order_number as string })),
-  }));
+  const rows = data ?? [];
+
+  // Fetch orders for all customers in one query to avoid inline join FK dependency
+  const customerIds = rows.map((c) => c.id);
+  const { data: allOrders } = customerIds.length
+    ? await supabaseAdmin
+        .from("orders")
+        .select("id, order_number, customer_id")
+        .in("customer_id", customerIds)
+        .not("order_number", "is", null)
+    : { data: [] };
+
+  const ordersByCustomer: Record<string, { id: string; order_number: string }[]> = {};
+  for (const o of allOrders ?? []) {
+    if (!ordersByCustomer[o.customer_id]) ordersByCustomer[o.customer_id] = [];
+    ordersByCustomer[o.customer_id].push({ id: o.id, order_number: o.order_number });
+  }
+
+  const customers = rows.map((c) => ({ ...c, orders: ordersByCustomer[c.id] ?? [] }));
 
   return NextResponse.json({ customers });
 }
