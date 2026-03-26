@@ -248,7 +248,13 @@ export function OrdersAdminClient() {
     // Fetch full profile (includes emails, phones, addresses)
     const res = await fetch(`/api/admin/customers/${c.id}`);
     const data = await res.json();
-    const full: ExistingCustomer = data.customer ?? c;
+    const raw = data.customer ?? c;
+    const full: ExistingCustomer = {
+      ...raw,
+      customer_emails:    raw.customer_emails    ?? [],
+      customer_phones:    raw.customer_phones    ?? [],
+      customer_addresses: raw.customer_addresses ?? [],
+    };
     setSelCustomer(full);
     setCustSearch(full.customer_name);
     setCustResults([]);
@@ -597,7 +603,7 @@ export function OrdersAdminClient() {
                       <>
                         {/* Selected customer summary */}
                         <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400">
-                          ✓ {selCustomer.customer_name} · {selCustomer.customer_emails.length} email{selCustomer.customer_emails.length !== 1 ? "s" : ""} · {selCustomer.customer_addresses.length} address{selCustomer.customer_addresses.length !== 1 ? "es" : ""} on file
+                          ✓ {selCustomer.customer_name} · {(selCustomer.customer_emails ?? []).length} email{(selCustomer.customer_emails ?? []).length !== 1 ? "s" : ""} · {(selCustomer.customer_addresses ?? []).length} address{(selCustomer.customer_addresses ?? []).length !== 1 ? "es" : ""} on file
                         </div>
 
                         {/* Email picker */}
