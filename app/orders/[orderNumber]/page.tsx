@@ -244,47 +244,18 @@ export default async function TrackOrderPage({
         </p>
       </div>
 
-      {/* Current status badge */}
-      <div
-        className={`rounded-xl border px-5 py-4 mb-10 ${
-          isDelivered
-            ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40"
-            : "border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30"
-        }`}
-      >
-        <div className="flex items-start gap-3">
-          <div
-            className={`mt-0.5 w-2.5 h-2.5 rounded-full shrink-0 ${
-              isDelivered
-                ? "bg-emerald-500"
-                : "bg-amber-400 animate-pulse"
-            }`}
-          />
+      {/* Pre-confirmation notice (no timeline yet) */}
+      {isPreConfirm && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-5 py-4 mb-10 flex items-start gap-3">
+          <div className="mt-0.5 w-2.5 h-2.5 rounded-full shrink-0 bg-amber-400 animate-pulse" />
           <div>
-            <p
-              className={`text-sm font-semibold ${
-                isDelivered
-                  ? "text-emerald-700 dark:text-emerald-300"
-                  : "text-amber-700 dark:text-amber-300"
-              }`}
-            >
-              {isPreConfirm
-                ? "Awaiting Confirmation"
-                : (statusSteps.find((s) => s.key === currentStatus)?.label ?? currentStatus)}
-            </p>
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Awaiting Confirmation</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
-              {isPreConfirm
-                ? "Your order has been received and is awaiting confirmation from our team."
-                : (statusSteps.find((s) => s.key === currentStatus)?.description ?? "")}
+              Your order has been received and is awaiting confirmation from our team.
             </p>
-            {!isDelivered && !isPreConfirm && (
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 italic">
-                Jade sourcing, certification, and international shipping take time — we appreciate your patience.
-              </p>
-            )}
           </div>
         </div>
-      </div>
+      )}
 
       {/* Timeline */}
       {!isPreConfirm && (
@@ -322,20 +293,27 @@ export default async function TrackOrderPage({
                   </div>
 
                   {/* Content */}
-                  <div className="pb-1">
-                    <p
-                      className={`text-sm font-medium ${
-                        isCurrent
-                          ? "text-gray-900 dark:text-gray-100"
-                          : isCompleted
-                          ? "text-gray-600 dark:text-gray-400"
-                          : "text-gray-400 dark:text-gray-600"
-                      }`}
-                    >
-                      {step.label}
+                  <div className={`pb-1 flex-1 ${isCurrent ? "rounded-lg bg-amber-50 dark:bg-amber-950/25 border border-amber-200 dark:border-amber-800/60 px-3 py-2 -mt-0.5" : ""}`}>
+                    <div className="flex items-center gap-2">
+                      <p
+                        className={`text-sm font-medium ${
+                          isCurrent
+                            ? "text-amber-800 dark:text-amber-200"
+                            : isCompleted
+                            ? "text-gray-600 dark:text-gray-400"
+                            : "text-gray-400 dark:text-gray-600"
+                        }`}
+                      >
+                        {step.label}
+                      </p>
+                      {isCurrent && (
+                        <span className="text-xs font-semibold bg-amber-400/20 text-amber-700 dark:text-amber-300 rounded-full px-2 py-0.5 leading-none">
+                          Current
+                        </span>
+                      )}
                       {isCompleted && (
                         <svg
-                          className="inline ml-1.5 text-emerald-500"
+                          className="text-emerald-500 shrink-0"
                           xmlns="http://www.w3.org/2000/svg"
                           width="12"
                           height="12"
@@ -349,9 +327,9 @@ export default async function TrackOrderPage({
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
                       )}
-                    </p>
+                    </div>
                     {isCurrent && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
                         {step.description}
                       </p>
                     )}
