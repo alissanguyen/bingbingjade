@@ -3,7 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { Navbar } from "./components/Navbar";
-import { ConditionalCategoryBar } from "./components/ConditionalCategoryBar";
+import { headers } from "next/headers";
+import { CategoryBar } from "./components/CategoryBar";
 import { CartProvider } from "./components/CartContext";
 import { CartDrawer } from "./components/CartDrawer";
 import "./globals.css";
@@ -44,11 +45,17 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+const ADMIN_PREFIXES = ["/orders-admin", "/customers-admin", "/edit", "/add", "/admin", "/products-admin", "/vendors"];
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headersList = await headers();
+  const pathname = headersList.get("x-pathname") ?? "";
+  const isAdmin = ADMIN_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
+
   return (
     <html lang="en" suppressHydrationWarning style={{ scrollbarGutter: "stable" }}>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100`}>
@@ -74,7 +81,7 @@ export default function RootLayout({
             <div className="border-b border-gray-200 dark:border-gray-800">
               <Navbar />
             </div>
-            <ConditionalCategoryBar />
+            {!isAdmin && <CategoryBar />}
           </header>
 
           {/* CartDrawer must be outside the header so it sits in the root stacking context,

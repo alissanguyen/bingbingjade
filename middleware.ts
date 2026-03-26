@@ -9,7 +9,11 @@ export function middleware(request: NextRequest) {
     (p) => pathname === p || pathname.startsWith(p + "/")
   );
 
-  if (!isProtected) return NextResponse.next();
+  if (!isProtected) {
+    const res = NextResponse.next();
+    res.headers.set("x-pathname", pathname);
+    return res;
+  }
 
   const password = process.env.ADMIN_PASSWORD;
   const session = request.cookies.get("admin_session")?.value;
@@ -20,9 +24,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  const res = NextResponse.next();
+  res.headers.set("x-pathname", pathname);
+  return res;
 }
 
 export const config = {
-  matcher: ["/add", "/add/:path*", "/addvendor", "/edit", "/edit/:path*", "/editvendor", "/vendors", "/orders-admin", "/orders-admin/:path*", "/products-admin", "/products-admin/:path*", "/customers-admin", "/customers-admin/:path*"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
