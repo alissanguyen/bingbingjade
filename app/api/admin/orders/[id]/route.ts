@@ -66,7 +66,7 @@ export async function PATCH(
 
   const {
     orderStatus, estimatedDeliveryDate, notes, sendEmail, orderType,
-    customerName, customerEmail, customerPhone, orderNumber, shippingAddress,
+    customerName, customerEmail, customerPhone, orderNumber, createdAt, shippingAddress,
   } = body as {
     orderStatus?: string;
     estimatedDeliveryDate?: string | null;
@@ -77,6 +77,7 @@ export async function PATCH(
     customerEmail?: string;
     customerPhone?: string | null;
     orderNumber?: string;
+    createdAt?: string | null;
     shippingAddress?: {
       recipientName?: string;
       line1: string;
@@ -101,6 +102,7 @@ export async function PATCH(
   if (customerEmail !== undefined) updates.customer_email = customerEmail.trim().toLowerCase() || null;
   if (customerPhone !== undefined) updates.customer_phone_snapshot = customerPhone?.trim() || null;
   if (orderNumber !== undefined) updates.order_number = orderNumber.trim().toUpperCase() || null;
+  if (createdAt !== undefined && createdAt) updates.created_at = new Date(createdAt).toISOString();
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });
