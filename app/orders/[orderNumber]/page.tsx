@@ -93,13 +93,22 @@ const CUSTOM_STEPS: StatusStep[] = [
 // order_created is a pre-confirmation state (admin/manual orders not yet confirmed)
 const STANDARD_ORDER: OrderStatus[] = [
   "order_created", "order_confirmed", "quality_control",
-  "certifying", "inbound_shipping", "outbound_shipping", "delivered",
+  "certifying", "inbound_shipping", "outbound_shipping", "delivered", "order_cancelled",
 ];
 
 const CUSTOM_ORDER: OrderStatus[] = [
   "order_created", "order_confirmed", "in_production", "polishing",
-  "quality_control", "certifying", "inbound_shipping", "outbound_shipping", "delivered",
+  "quality_control", "certifying", "inbound_shipping", "outbound_shipping", "delivered", "order_cancelled",
 ];
+
+// Statuses that only exist in a custom order workflow
+const CUSTOM_ONLY_STATUSES: OrderStatus[] = ["in_production", "polishing"];
+
+function resolveIsCustom(orderType: string | null, currentStatus: OrderStatus): boolean {
+  // Trust the order_type field first; fall back to checking if the current
+  // status only exists in a custom workflow (guards against null/missing column)
+  return orderType === "custom" || CUSTOM_ONLY_STATUSES.includes(currentStatus);
+}
 
 function getSteps(isCustom: boolean) {
   return isCustom ? CUSTOM_STEPS : STANDARD_STEPS;
@@ -199,7 +208,7 @@ export default async function TrackOrderPage({
   if (!order) notFound();
 
   const currentStatus = order.order_status as OrderStatus;
-  const isCustom = order.order_type === "custom";
+  const isCustom = resolveIsCustom(order.order_type as string | null, currentStatus);
   const currentIdx = statusIndex(currentStatus, isCustom);
   const isDelivered = currentStatus === "delivered";
   const isPreConfirm = currentStatus === "order_created";
