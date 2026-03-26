@@ -159,6 +159,11 @@ const EMPTY_FORM = {
   shipState: "",
   shipPostal: "",
   shipCountry: "US",
+  feeShipping: "",
+  feeTax: "",
+  feePaypal: "",
+  feeOther: "",
+  feeOtherLabel: "",
 };
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -325,12 +330,22 @@ export function OrdersAdminClient() {
       }
     }
 
+    const fees: Record<string, number | string> = {};
+    if (parseFloat(form.feeShipping) > 0) fees.shipping = parseFloat(form.feeShipping);
+    if (parseFloat(form.feeTax) > 0) fees.tax = parseFloat(form.feeTax);
+    if (parseFloat(form.feePaypal) > 0) fees.paypal = parseFloat(form.feePaypal);
+    if (parseFloat(form.feeOther) > 0) {
+      fees.other = parseFloat(form.feeOther);
+      if (form.feeOtherLabel.trim()) fees.otherLabel = form.feeOtherLabel.trim();
+    }
+
     const body: Record<string, unknown> = {
       source: form.source,
       paidStatus: form.paidStatus,
       currency: form.currency,
       orderType: form.orderType,
       items: parsedItems,
+      ...(Object.keys(fees).length > 0 ? { fees } : {}),
       ...(form.customerName.trim() ? { customerName: form.customerName.trim() } : {}),
       ...(resolvedEmail ? { customerEmail: resolvedEmail } : {}),
       ...(resolvedPhone ? { customerPhone: resolvedPhone } : {}),
@@ -867,6 +882,79 @@ export function OrdersAdminClient() {
                   className="mt-2 text-xs text-emerald-700 dark:text-emerald-400 hover:underline">
                   + Add another item
                 </button>
+              </section>
+
+              {/* Fees & Adjustments */}
+              <section>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Fees &amp; Adjustments <span className="font-normal normal-case tracking-normal text-gray-300 dark:text-gray-600">(optional)</span></h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Shipping</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                      <input type="number" inputMode="decimal" min="0" step="0.01" value={form.feeShipping}
+                        onChange={(e) => setField("feeShipping", e.target.value)} placeholder="0.00"
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm pl-7 pr-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Tax</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                      <input type="number" inputMode="decimal" min="0" step="0.01" value={form.feeTax}
+                        onChange={(e) => setField("feeTax", e.target.value)} placeholder="0.00"
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm pl-7 pr-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">PayPal Fee</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                      <input type="number" inputMode="decimal" min="0" step="0.01" value={form.feePaypal}
+                        onChange={(e) => setField("feePaypal", e.target.value)} placeholder="0.00"
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm pl-7 pr-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Other Fee</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                      <input type="number" inputMode="decimal" min="0" step="0.01" value={form.feeOther}
+                        onChange={(e) => setField("feeOther", e.target.value)} placeholder="0.00"
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm pl-7 pr-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                  </div>
+                  {parseFloat(form.feeOther) > 0 && (
+                    <div className="col-span-2">
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Other Fee Label</label>
+                      <input value={form.feeOtherLabel} onChange={(e) => setField("feeOtherLabel", e.target.value)}
+                        placeholder="e.g. Insurance, Handling…"
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Live total preview */}
+                {(() => {
+                  const itemsTotal = items.reduce((s, i) => s + (parseFloat(i.price) || 0) * (parseInt(i.quantity) || 1), 0);
+                  const feesTotal = (parseFloat(form.feeShipping) || 0) + (parseFloat(form.feeTax) || 0) + (parseFloat(form.feePaypal) || 0) + (parseFloat(form.feeOther) || 0);
+                  const grand = itemsTotal + feesTotal;
+                  if (grand === 0) return null;
+                  return (
+                    <div className="mt-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 px-3 py-2.5 space-y-1">
+                      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                        <span>Items</span><span>${itemsTotal.toFixed(2)}</span>
+                      </div>
+                      {(parseFloat(form.feeShipping) || 0) > 0 && <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400"><span>Shipping</span><span>+${parseFloat(form.feeShipping).toFixed(2)}</span></div>}
+                      {(parseFloat(form.feeTax) || 0) > 0 && <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400"><span>Tax</span><span>+${parseFloat(form.feeTax).toFixed(2)}</span></div>}
+                      {(parseFloat(form.feePaypal) || 0) > 0 && <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400"><span>PayPal Fee</span><span>+${parseFloat(form.feePaypal).toFixed(2)}</span></div>}
+                      {(parseFloat(form.feeOther) || 0) > 0 && <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400"><span>{form.feeOtherLabel.trim() || "Other"}</span><span>+${parseFloat(form.feeOther).toFixed(2)}</span></div>}
+                      <div className="flex justify-between text-sm font-semibold text-gray-900 dark:text-gray-100 pt-1 border-t border-gray-200 dark:border-gray-700">
+                        <span>Order Total</span><span>${grand.toFixed(2)} {form.currency.toUpperCase()}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </section>
 
               {/* Shipping */}

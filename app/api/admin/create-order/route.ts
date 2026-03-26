@@ -42,6 +42,9 @@
  *     country?        string  default 'US'
  *   }
  *
+ *   // Optional fees (added to order total)
+ *   fees?: { shipping?, tax?, paypal?, other?, otherLabel? }
+ *
  * Response: { order: { id, order_number, customer_id } }
  */
 
@@ -102,6 +105,13 @@ export async function POST(req: NextRequest) {
       state: string;
       postal: string;
       country?: string;
+    };
+    fees?: {
+      shipping?: number;
+      tax?: number;
+      paypal?: number;
+      other?: number;
+      otherLabel?: string;
     };
   };
 
@@ -188,9 +198,9 @@ export async function POST(req: NextRequest) {
   const paidStatus = body.paidStatus ?? "paid";
   const orderStatus: OrderStatus =
     body.orderStatus ?? (paidStatus === "paid" ? "order_confirmed" : "order_created");
-  const amountTotalCents = Math.round(
-    body.items.reduce((sum, i) => sum + i.price * (i.quantity ?? 1), 0) * 100
-  );
+  const itemsTotal = body.items.reduce((sum, i) => sum + i.price * (i.quantity ?? 1), 0);
+  const feesTotal = (body.fees?.shipping ?? 0) + (body.fees?.tax ?? 0) + (body.fees?.paypal ?? 0) + (body.fees?.other ?? 0);
+  const amountTotalCents = Math.round((itemsTotal + feesTotal) * 100);
 
   // ── Insert order ──────────────────────────────────────────────────────────
   const { data: order, error: orderErr } = await supabaseAdmin
