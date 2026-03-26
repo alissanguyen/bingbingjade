@@ -317,7 +317,7 @@ export function ProductsAdminClient({ products: initial }: { products: AdminProd
                       {/* Thumbnail */}
                       <div className="w-12 h-12 shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
                         {p.thumbnailUrl ? (
-                          <a href={p.slug} target="_blank">
+                          <a href={"products/" + p.slug + "-" + p.public_id} target="_blank">
                           <Image
                             src={p.thumbnailUrl}
                             alt={p.name}
