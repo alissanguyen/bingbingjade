@@ -18,32 +18,32 @@ const STANDARD_STEPS: StatusStep[] = [
   {
     key: "order_confirmed",
     label: "Order Confirmed",
-    description: "Payment received. Your order is in our system.",
+    description: "Your order has been successfully placed and payment received. We’re preparing your piece with care.",
   },
   {
     key: "quality_control",
-    label: "Quality Control",
-    description: "Our team is carefully inspecting your piece.",
+    label: "Quality Inspection",
+    description: "Each piece is carefully inspected to ensure it meets our quality standards before moving forward.",
   },
   {
     key: "certifying",
     label: "Certification",
-    description: "Your jade is being authenticated and certified.",
+    description: "Your jade is undergoing authentication and certification for assurance and authenticity.",
   },
   {
     key: "inbound_shipping",
-    label: "Shipping to Our Location",
-    description: "The piece is on its way to our main location.",
+    label: "Arriving at Our Studio",
+    description: "Your piece is currently in transit to our studio for final handling and preparation. ♡",
   },
   {
     key: "outbound_shipping",
     label: "On the Way to You",
-    description: "Your order has been dispatched and is heading your way.",
+    description: "Your order has been carefully packaged and is now on its way to you.",
   },
   {
     key: "delivered",
     label: "Delivered",
-    description: "Your order has arrived. Enjoy your piece.",
+    description: "Your piece has arrived. We hope it brings you lasting beauty and meaning. ♡ ♡ ♡",
   },
 ];
 
@@ -51,42 +51,42 @@ const CUSTOM_STEPS: StatusStep[] = [
   {
     key: "order_confirmed",
     label: "Order Confirmed",
-    description: "Your commission has been received and confirmed.",
+    description: "Your custom commission has been received and confirmed. We’re excited to begin crafting your piece.",
   },
   {
     key: "in_production",
     label: "In Production",
-    description: "Your piece is being hand-crafted in the factory.",
+    description: "Your piece is being carefully handcrafted, with attention to every detail.",
   },
   {
     key: "polishing",
     label: "Finishing & Polishing",
-    description: "The piece is receiving its final surface refinement and polish.",
+    description: "The piece is undergoing final refinement to achieve its intended clarity, shape, and finish.",
   },
   {
     key: "quality_control",
-    label: "Quality Control",
-    description: "Our team is carefully inspecting your finished piece.",
+    label: "Quality Inspection",
+    description: "We are carefully reviewing your finished piece to ensure it meets our standards.",
   },
   {
     key: "certifying",
     label: "Certification",
-    description: "Your jade is being authenticated and certified.",
+    description: "Your jade is being authenticated and certified for complete peace of mind.",
   },
   {
     key: "inbound_shipping",
-    label: "Shipping to Our Location",
-    description: "The piece is on its way to our main location.",
+    label: "Arriving at Our Studio",
+    description: "Your piece is on its way to our studio for final preparation before dispatch.",
   },
   {
     key: "outbound_shipping",
     label: "On the Way to You",
-    description: "Your order has been dispatched and is heading your way.",
+    description: "Your order has been securely packaged and is now on its way to you.",
   },
   {
     key: "delivered",
     label: "Delivered",
-    description: "Your order has arrived. Enjoy your piece.",
+    description: "Your custom piece has arrived. Thank you for trusting us with something so personal. ♥ ♥ ♥",
   },
 ];
 
