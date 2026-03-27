@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe, webhookSecret } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { decodeCheckoutItems } from "@/lib/stripe-metadata";
+import { decodeCheckoutItems, decodeDiscountMeta } from "@/lib/stripe-metadata";
 import {
   upsertCustomer,
   saveShippingAddress,
@@ -9,11 +9,10 @@ import {
   sendOrderConfirmationEmail,
   fetchEmailItems,
 } from "@/lib/orders";
+import { commitDiscount, normalizeEmail } from "@/lib/discount";
 import type Stripe from "stripe";
 
 export const runtime = "nodejs";
-
-// Disable body parsing — we need the raw body for signature verification
 export const dynamic = "force-dynamic";
 
 import type { MetaItem } from "@/lib/stripe-metadata";
@@ -43,7 +42,7 @@ export async function POST(req: NextRequest) {
   const session = event.data.object as Stripe.Checkout.Session;
   const supabase = supabaseAdmin;
 
-  // ── Idempotency: check if this session was already processed ──────────────
+  // ── Idempotency: check if this session was already processed ──────────────────
   const { data: existing } = await supabase
     .from("orders")
     .select("id")
@@ -54,7 +53,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true });
   }
 
-  // ── Parse items from metadata ─────────────────────────────────────────────
+  // ── Parse items from metadata ─────────────────────────────────────────────────
   let metaItems: MetaItem[] = [];
   try {
     metaItems = decodeCheckoutItems(session.metadata);
@@ -68,7 +67,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No items in metadata." }, { status: 400 });
   }
 
-  // ── Fetch product/option names for order_items snapshot ───────────────────
+  // ── Parse discount metadata ───────────────────────────────────────────────────
+  const discountMeta = decodeDiscountMeta(session.metadata);
+
+  // ── Fetch product/option names for order_items snapshot ──────────────────────
   const productIds = [...new Set(metaItems.map((i) => i.productId))];
   const optionIds = metaItems.map((i) => i.optionId).filter(Boolean) as string[];
 
@@ -79,14 +81,23 @@ export async function POST(req: NextRequest) {
       : Promise.resolve({ data: [], error: null }),
   ]);
 
-  const productNameMap = new Map((productsResult.data ?? []).map((p) => [p.id, p.name as string]));
-  const optionLabelMap = new Map((optionsResult.data ?? []).map((o) => [o.id, o.label as string | null]));
+  const productNameMap = new Map(
+    (productsResult.data ?? []).map((p) => [p.id, p.name as string])
+  );
+  const optionLabelMap = new Map(
+    (optionsResult.data ?? []).map((o) => [o.id, o.label as string | null])
+  );
 
-  // ── Customer & address (non-critical — failures do not block order creation) ─
-  const customerEmail = session.customer_details?.email ?? null;
+  // ── Customer & address ────────────────────────────────────────────────────────
+  // Prefer the email we stored in metadata (normalized, from our cart UI),
+  // falling back to whatever Stripe collected.
+  const metadataEmail = session.metadata?.cust_email ?? null;
+  const stripeEmail = session.customer_details?.email ?? null;
+  const customerEmail = metadataEmail ?? (stripeEmail ? normalizeEmail(stripeEmail) : null);
   const customerName = session.customer_details?.name ?? null;
   const customerPhone = session.customer_details?.phone ?? null;
-  const stripeCustomerId = typeof session.customer === "string" ? session.customer : null;
+  const stripeCustomerId =
+    typeof session.customer === "string" ? session.customer : null;
 
   let customerId: string | null = null;
   if (customerEmail && customerName) {
@@ -102,9 +113,58 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Update customer marketing opt-in if email is in subscribers list
+  if (customerId && customerEmail) {
+    try {
+      const { data: subscriber } = await supabase
+        .from("email_subscribers")
+        .select("id")
+        .eq("email", customerEmail)
+        .maybeSingle();
+
+      if (subscriber) {
+        await supabase
+          .from("customers")
+          .update({
+            marketing_opt_in: true,
+            marketing_opt_in_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", customerId)
+          .eq("marketing_opt_in", false);
+      }
+    } catch (err) {
+      console.error("[webhook] Marketing opt-in sync failed (non-fatal):", err);
+    }
+  }
+
+  // Update paid order tracking on the customer record
+  if (customerId && customerEmail) {
+    try {
+      const { data: customer } = await supabase
+        .from("customers")
+        .select("paid_order_count, first_paid_order_at")
+        .eq("id", customerId)
+        .single();
+
+      if (customer) {
+        const newCount = (customer.paid_order_count ?? 0) + 1;
+        await supabase
+          .from("customers")
+          .update({
+            paid_order_count: newCount,
+            first_paid_order_at: customer.first_paid_order_at ?? new Date().toISOString(),
+            is_frequent_customer: newCount >= 3,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", customerId);
+      }
+    } catch (err) {
+      console.error("[webhook] Customer paid_order_count update failed (non-fatal):", err);
+    }
+  }
+
   let shippingAddressId: string | null = null;
-  // In Stripe API 2026-02-25.clover, shipping address collected during Checkout
-  // is available at session.collected_information.shipping_details.
   const shippingDetails = session.collected_information?.shipping_details ?? null;
 
   if (customerId && shippingDetails?.address) {
@@ -127,7 +187,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Generate order number (non-critical — order is still created with NULL) ─
+  // ── Generate order number ─────────────────────────────────────────────────────
   let orderNumber: string | null = null;
   try {
     orderNumber = await generateOrderNumber();
@@ -135,16 +195,12 @@ export async function POST(req: NextRequest) {
     console.error("[webhook] Order number generation failed (non-fatal):", err);
   }
 
-  // ── Retrieve payment_intent_id if needed (session may expand it already) ──
-  // session.payment_intent is string | Stripe.PaymentIntent | null
   const paymentIntentId =
     typeof session.payment_intent === "string"
       ? session.payment_intent
       : (session.payment_intent as Stripe.PaymentIntent | null)?.id ?? null;
 
-  // ── Create order record ────────────────────────────────────────────────────
-  // The UNIQUE constraint on stripe_session_id guards against duplicate-delivery
-  // race conditions (23505 = unique_violation). This is the same as before.
+  // ── Create order record ───────────────────────────────────────────────────────
   const { data: order, error: orderErr } = await supabase
     .from("orders")
     .insert({
@@ -162,12 +218,15 @@ export async function POST(req: NextRequest) {
       order_status: "order_confirmed",
       source: "stripe",
       shipping_address_id: shippingAddressId,
+      // Discount fields
+      discount_source: discountMeta?.source ?? null,
+      discount_amount_cents: discountMeta?.amountCents ?? 0,
+      subtotal_before_discount_cents: discountMeta?.subtotalBeforeCents ?? null,
     })
     .select("id")
     .single();
 
   if (orderErr || !order) {
-    // 23505 = unique_violation: a concurrent webhook delivery already inserted this order
     if ((orderErr as { code?: string })?.code === "23505") {
       console.info("[webhook] Duplicate delivery ignored for session", session.id);
       return NextResponse.json({ received: true });
@@ -176,7 +235,42 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to create order." }, { status: 500 });
   }
 
-  // ── Create order items ────────────────────────────────────────────────────
+  // ── Commit discount ───────────────────────────────────────────────────────────
+  let couponRedemptionId: string | undefined;
+  let referralId: string | undefined;
+
+  if (discountMeta && customerEmail) {
+    try {
+      const committed = await commitDiscount({
+        source: discountMeta.source as "welcome" | "referral" | "campaign" | "store_credit",
+        customerEmail,
+        customerId,
+        orderId: order.id,
+        discountAmountCents: discountMeta.amountCents,
+        campaignId: discountMeta.campaignId,
+        referrerCustomerId: discountMeta.referrerCustomerId,
+        referralCode: discountMeta.code,
+      });
+
+      couponRedemptionId = committed.couponRedemptionId;
+      referralId = committed.referralId;
+
+      // Link discount records back to the order
+      if (couponRedemptionId || referralId) {
+        await supabase
+          .from("orders")
+          .update({
+            coupon_redemption_id: couponRedemptionId ?? null,
+            referral_id: referralId ?? null,
+          })
+          .eq("id", order.id);
+      }
+    } catch (err) {
+      console.error("[webhook] Discount commit failed (non-fatal):", err);
+    }
+  }
+
+  // ── Create order items ────────────────────────────────────────────────────────
   await supabase.from("order_items").insert(
     metaItems.map((item) => {
       const productName = productNameMap.get(item.productId) ?? item.productId;
@@ -194,7 +288,7 @@ export async function POST(req: NextRequest) {
     })
   );
 
-  // ── Mark options and products as sold ─────────────────────────────────────
+  // ── Mark options and products as sold ─────────────────────────────────────────
   const affectedProductIds = new Set<string>(metaItems.map((i) => i.productId));
 
   await Promise.all(
@@ -205,7 +299,6 @@ export async function POST(req: NextRequest) {
     )
   );
 
-  // Auto-mark product sold if all its options are now sold
   await Promise.all(
     [...affectedProductIds].map(async (productId) => {
       const { data: allOptions } = await supabase
@@ -229,10 +322,11 @@ export async function POST(req: NextRequest) {
     "for session",
     session.id,
     "— items:",
-    metaItems.length
+    metaItems.length,
+    discountMeta ? `— discount: ${discountMeta.source} $${(discountMeta.amountCents / 100).toFixed(2)}` : ""
   );
 
-  // ── Send branded confirmation email ───────────────────────────────────────
+  // ── Send branded confirmation email ───────────────────────────────────────────
   if (orderNumber && customerName && customerEmail) {
     const emailItems = await fetchEmailItems(order.id);
     await sendOrderConfirmationEmail({
@@ -244,13 +338,11 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // ── Trigger ISR revalidation ──────────────────────────────────────────────
+  // ── Trigger ISR revalidation ──────────────────────────────────────────────────
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
   const secret = process.env.REVALIDATE_SECRET;
   if (secret) {
-    await fetch(`${siteUrl}/api/revalidate?secret=${secret}`, {
-      method: "POST",
-    }).catch(() => {});
+    await fetch(`${siteUrl}/api/revalidate?secret=${secret}`, { method: "POST" }).catch(() => {});
   }
 
   return NextResponse.json({ received: true });

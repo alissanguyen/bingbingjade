@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { sendOrderStatusEmail, sendDeliveryDateEmail, fetchEmailItems } from "@/lib/orders";
+import { processReferralRewardOnDelivery, ensureReferralCode } from "@/lib/discount";
+import { sendReferralInviteEmail, sendReferralRewardEmail } from "@/lib/discount-emails";
 import type { OrderStatus } from "@/types/orders";
 
 async function isAdmin(): Promise<boolean> {
@@ -223,6 +225,80 @@ export async function PATCH(
       estimatedDelivery: estimatedDeliveryDate!,
       items: emailItems,
     });
+  }
+
+  // ── Post-delivery flows (non-fatal) ────────────────────────────────────────
+  if (orderStatus === "delivered" && order.customer_id && order.customer_email) {
+    try {
+      const customerId = order.customer_id as string;
+      const customerEmail = order.customer_email as string;
+      const customerName = order.customer_name as string | null;
+
+      // 1. Record first_delivered_order_at on customer
+      const { data: customer } = await supabaseAdmin
+        .from("customers")
+        .select("first_delivered_order_at, referral_code, customer_name, store_credit_balance")
+        .eq("id", customerId)
+        .single();
+
+      const isFirstDelivered = !customer?.first_delivered_order_at;
+
+      if (isFirstDelivered) {
+        await supabaseAdmin
+          .from("customers")
+          .update({
+            first_delivered_order_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", customerId);
+      }
+
+      // 2. Issue referral reward if this order was placed via a referral code
+      const orderRecord = order as Record<string, unknown>;
+      const orderReferralId = orderRecord.referral_id as string | null;
+
+      if (orderReferralId) {
+        const referrerCustomerId = await processReferralRewardOnDelivery(id, orderReferralId);
+        if (referrerCustomerId) {
+          // Fetch referrer details and send reward email
+          const { data: referrer } = await supabaseAdmin
+            .from("customers")
+            .select("customer_name, customer_email, store_credit_balance")
+            .eq("id", referrerCustomerId)
+            .single();
+
+          if (referrer?.customer_email) {
+            sendReferralRewardEmail({
+              referrerName: referrer.customer_name,
+              referrerEmail: referrer.customer_email,
+              creditAmountDollars: 10,
+              newCreditBalance: referrer.store_credit_balance ?? 10,
+            }).catch((err) =>
+              console.error("[admin-orders] Referral reward email failed (non-fatal):", err)
+            );
+          }
+        }
+      }
+
+      // 3. On first delivery: generate referral code + send referral invite email
+      if (isFirstDelivered && customerName) {
+        try {
+          const referralCode = await ensureReferralCode(customerId);
+          sendReferralInviteEmail({
+            customerName,
+            customerEmail,
+            referralCode,
+            orderNumber: order.order_number ?? "",
+          }).catch((err) =>
+            console.error("[admin-orders] Referral invite email failed (non-fatal):", err)
+          );
+        } catch (err) {
+          console.error("[admin-orders] Referral code assignment failed (non-fatal):", err);
+        }
+      }
+    } catch (err) {
+      console.error("[admin-orders] Post-delivery flows failed (non-fatal):", err);
+    }
   }
 
   return NextResponse.json({ order });

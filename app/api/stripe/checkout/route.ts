@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { encodeCheckoutItems } from "@/lib/stripe-metadata";
+import { encodeCheckoutItems, encodeDiscountMeta } from "@/lib/stripe-metadata";
+import { validateDiscount, normalizeEmail } from "@/lib/discount";
 import type { CartItem } from "@/types/cart";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
@@ -15,7 +16,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  let body: { items: CartItem[]; expedited?: boolean };
+  let body: {
+    items: CartItem[];
+    expedited?: boolean;
+    customerEmail?: string;
+    discountCode?: string;
+  };
   try {
     body = await req.json();
   } catch {
@@ -37,8 +43,15 @@ export async function POST(req: NextRequest) {
 
   const supabase = supabaseAdmin;
 
-  // Validate each item server-side
-  const lineItems: { price_data: { currency: string; product_data: { name: string; images?: string[] }; unit_amount: number }; quantity: number }[] = [];
+  // ── Validate each item server-side ───────────────────────────────────────────
+  const lineItems: {
+    price_data: {
+      currency: string;
+      product_data: { name: string; images?: string[] };
+      unit_amount: number;
+    };
+    quantity: number;
+  }[] = [];
   const validatedItems: CartItem[] = [];
 
   for (const item of items) {
@@ -46,7 +59,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid cart item." }, { status: 400 });
     }
 
-    // Fetch fresh product + option data from DB
     const { data: product, error: pErr } = await supabase
       .from("products")
       .select("id, name, status, price_display_usd, sale_price_usd, public_id, slug")
@@ -73,11 +85,15 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (oErr || !option) {
-        return NextResponse.json({ error: `Your cart item "${product.name}" is outdated — please remove it and re-add it from the product page.` }, { status: 400 });
+        return NextResponse.json({
+          error: `Your cart item "${product.name}" is outdated — please remove it and re-add it from the product page.`,
+        }, { status: 400 });
       }
 
       if (option.status === "sold") {
-        return NextResponse.json({ error: `The selected option for "${product.name}" is sold out.` }, { status: 409 });
+        return NextResponse.json({
+          error: `The selected option for "${product.name}" is sold out.`,
+        }, { status: 409 });
       }
 
       if (option.label) displayLabel = `${product.name} — ${option.label}`;
@@ -86,7 +102,6 @@ export async function POST(req: NextRequest) {
       serverPrice = product.sale_price_usd ?? product.price_display_usd;
     }
 
-    // Apply sale price at product level
     if (product.status === "on_sale" && product.sale_price_usd != null) {
       serverPrice = product.sale_price_usd;
     }
@@ -98,8 +113,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const unitAmount = Math.round(serverPrice * 100); // cents
-
+    const unitAmount = Math.round(serverPrice * 100);
     const images: string[] = [];
     if (item.thumbnail) images.push(item.thumbnail);
 
@@ -115,13 +129,50 @@ export async function POST(req: NextRequest) {
     validatedItems.push({ ...item, price: serverPrice });
   }
 
-  // Add shipping fee: $20 standard / $100 expedited base + $10 each additional
+  // ── Server-side discount validation ──────────────────────────────────────────
+  const itemsSubtotalCents = Math.round(
+    validatedItems.reduce((sum, i) => sum + (i.price ?? 0), 0) * 100
+  );
+
+  let discountAmountCents = 0;
+  let discountMetadata: Record<string, string> = {};
+
+  if (body.customerEmail) {
+    const email = normalizeEmail(body.customerEmail);
+    const discountResult = await validateDiscount({
+      customerEmail: email,
+      discountCode: body.discountCode ?? null,
+      subtotalCents: itemsSubtotalCents,
+    });
+
+    if (discountResult.valid) {
+      discountAmountCents = discountResult.discountAmountCents;
+      discountMetadata = encodeDiscountMeta({
+        source: discountResult.source,
+        amountCents: discountResult.discountAmountCents,
+        subtotalBeforeCents: itemsSubtotalCents,
+        ...(discountResult.referralCode ? { code: discountResult.referralCode } : {}),
+        ...(body.discountCode && discountResult.source === "campaign"
+          ? { code: body.discountCode.trim().toUpperCase() }
+          : {}),
+        ...(discountResult.referrerCustomerId
+          ? { referrerCustomerId: discountResult.referrerCustomerId }
+          : {}),
+        ...(discountResult.campaignId ? { campaignId: discountResult.campaignId } : {}),
+      });
+    }
+    // Discount validation failure is non-fatal — checkout proceeds without it
+  }
+
+  // ── Build shipping + fee line items ──────────────────────────────────────────
   const shippingBase = body.expedited ? 100 : 20;
   const shippingFee = shippingBase + (validatedItems.length - 1) * 10;
   const shippingType = body.expedited ? "Expedited Shipping" : "Shipping";
-  const shippingLabel = validatedItems.length > 1
-    ? `${shippingType} (${validatedItems.length} pieces)`
-    : shippingType;
+  const shippingLabel =
+    validatedItems.length > 1
+      ? `${shippingType} (${validatedItems.length} pieces)`
+      : shippingType;
+
   lineItems.push({
     price_data: {
       currency: "usd",
@@ -131,9 +182,11 @@ export async function POST(req: NextRequest) {
     quantity: 1,
   });
 
-  // Add 3.5% transaction fee (applied to items + shipping)
-  const itemsTotal = validatedItems.reduce((sum, i) => sum + (i.price ?? 0), 0);
-  const transactionFeeAmount = Math.round((itemsTotal + shippingFee) * 0.035 * 100); // cents
+  // Transaction fee applied to (items - discount + shipping)
+  const discountedItemsCents = Math.max(0, itemsSubtotalCents - discountAmountCents);
+  const transactionFeeAmount = Math.round(
+    (discountedItemsCents / 100 + shippingFee) * 0.035 * 100
+  );
   lineItems.push({
     price_data: {
       currency: "usd",
@@ -143,16 +196,37 @@ export async function POST(req: NextRequest) {
     quantity: 1,
   });
 
-  const metadata = encodeCheckoutItems(
-    validatedItems.map((i) => ({ productId: i.productId, optionId: i.optionId ?? null, price: i.price! }))
+  // Discount as a negative line item (last, after fee)
+  if (discountAmountCents > 0) {
+    lineItems.push({
+      price_data: {
+        currency: "usd",
+        product_data: { name: "Discount" },
+        unit_amount: -discountAmountCents,
+      },
+      quantity: 1,
+    });
+  }
+
+  // ── Build metadata ────────────────────────────────────────────────────────────
+  const itemMetadata = encodeCheckoutItems(
+    validatedItems.map((i) => ({
+      productId: i.productId,
+      optionId: i.optionId ?? null,
+      price: i.price!,
+    }))
   );
+
+  // Also encode the customer email for webhook use
+  const emailMetadata: Record<string, string> = {};
+  if (body.customerEmail) {
+    emailMetadata.cust_email = normalizeEmail(body.customerEmail);
+  }
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
     line_items: lineItems,
-    // Omitting payment_method_types lets Stripe enable all applicable methods automatically
     shipping_address_collection: {
-      // Extend this list as needed — covers the most common customer countries for jade buyers
       allowed_countries: [
         "US", "CA", "GB", "AU", "NZ",
         "SG", "MY", "HK", "TW", "JP", "KR", "TH", "VN", "PH", "ID", "IN",
@@ -165,10 +239,11 @@ export async function POST(req: NextRequest) {
     consent_collection: { terms_of_service: "required" },
     custom_text: {
       terms_of_service_acceptance: {
-        message: "I agree to the [Store Policy](https://www.bingbingjade.com/policy) and [FAQ](https://www.bingbingjade.com/faq).",
+        message:
+          "I agree to the [Store Policy](https://www.bingbingjade.com/policy) and [FAQ](https://www.bingbingjade.com/faq).",
       },
     },
-    metadata,
+    metadata: { ...itemMetadata, ...discountMetadata, ...emailMetadata },
   });
 
   return NextResponse.json({ url: session.url });

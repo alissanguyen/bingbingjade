@@ -25,7 +25,20 @@ export function CartDrawer() {
   const [soldKeys, setSoldKeys] = useState<Set<string>>(new Set());
   const [staleKeys, setStaleKeys] = useState<Set<string>>(new Set());
   const [expedited, setExpedited] = useState(false);
+  // Discount state
+  const [discountEmail, setDiscountEmail] = useState("");
+  const [discountCode, setDiscountCode] = useState("");
+  const [appliedDiscount, setAppliedDiscount] = useState<{
+    source: string;
+    amountCents: number;
+    message: string;
+  } | null>(null);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  const [discountLoading, setDiscountLoading] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
+
+  // Reset discount state when drawer closes or cart changes
+  const cartKey = items.map((i) => `${i.productId}-${i.optionId}`).join(",");
 
   // Check live availability when drawer opens
   useEffect(() => {
@@ -118,6 +131,45 @@ export function CartDrawer() {
     }
   }
 
+  async function applyDiscount() {
+    const email = discountEmail.trim();
+    if (!email) {
+      setDiscountError("Enter your email to apply a discount.");
+      return;
+    }
+    setDiscountLoading(true);
+    setDiscountError(null);
+    setAppliedDiscount(null);
+    try {
+      const subtotalCents = Math.round(
+        availableItems.reduce((s, i) => s + (i.price ?? 0), 0) * 100
+      );
+      const res = await fetch("/api/validate-discount", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerEmail: email,
+          discountCode: discountCode.trim() || undefined,
+          subtotalCents,
+        }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setAppliedDiscount({
+          source: data.source,
+          amountCents: data.discountAmountCents,
+          message: data.displayMessage,
+        });
+      } else {
+        setDiscountError(data.error ?? "No discount available.");
+      }
+    } catch {
+      setDiscountError("Could not verify discount. Please try again.");
+    } finally {
+      setDiscountLoading(false);
+    }
+  }
+
   async function handleCheckout() {
     setLoading(true);
     setError(null);
@@ -128,7 +180,12 @@ export function CartDrawer() {
           "Content-Type": "application/json",
           ...(adminUnlocked ? { "x-admin-password": adminPassword } : {}),
         },
-        body: JSON.stringify({ items: availableItems, expedited }),
+        body: JSON.stringify({
+          items: availableItems,
+          expedited,
+          customerEmail: discountEmail.trim() || undefined,
+          discountCode: discountCode.trim() || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -388,11 +445,60 @@ export function CartDrawer() {
                 <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${expedited ? "translate-x-4" : "translate-x-0"}`} />
               </button>
             </div>
+            {/* Discount / referral code section */}
+            <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-2.5 space-y-1.5">
+              <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                Discount / Referral Code
+              </p>
+              <input
+                type="email"
+                value={discountEmail}
+                onChange={(e) => {
+                  setDiscountEmail(e.target.value);
+                  setAppliedDiscount(null);
+                  setDiscountError(null);
+                }}
+                placeholder="Your email address"
+                className="w-full rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 text-[11px] text-gray-900 dark:text-gray-100 placeholder-gray-400 outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+              <div className="flex gap-1.5">
+                <input
+                  type="text"
+                  value={discountCode}
+                  onChange={(e) => {
+                    setDiscountCode(e.target.value.toUpperCase());
+                    setAppliedDiscount(null);
+                    setDiscountError(null);
+                  }}
+                  placeholder="Code (optional)"
+                  className="flex-1 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 text-[11px] text-gray-900 dark:text-gray-100 placeholder-gray-400 outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={applyDiscount}
+                  disabled={discountLoading || !discountEmail.trim()}
+                  className="rounded-md bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white px-3 py-1.5 text-[11px] font-medium transition-colors shrink-0"
+                >
+                  {discountLoading ? "…" : "Apply"}
+                </button>
+              </div>
+              {appliedDiscount && (
+                <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">
+                  ✓ {appliedDiscount.message}
+                </p>
+              )}
+              {discountError && (
+                <p className="text-[10px] text-red-500 dark:text-red-400">{discountError}</p>
+              )}
+            </div>
+
             {(() => {
               const shippingBase = expedited ? 100 : 20;
               const shipping = availableItems.length > 0 ? shippingBase + (availableItems.length - 1) * 10 : 0;
-              const txFee = Math.round((total + shipping) * 0.035 * 100) / 100;
-              const grandTotal = Math.round((total + shipping + txFee) * 100) / 100;
+              const discountDollars = appliedDiscount ? appliedDiscount.amountCents / 100 : 0;
+              const discountedTotal = Math.max(0, total - discountDollars);
+              const txFee = Math.round((discountedTotal + shipping) * 0.035 * 100) / 100;
+              const grandTotal = Math.round((discountedTotal + shipping + txFee) * 100) / 100;
               const shippingLabel = expedited ? "Expedited Shipping" : "Shipping";
               return (
                 <>
@@ -402,6 +508,12 @@ export function CartDrawer() {
                     </span>
                     <span className="font-semibold text-gray-900 dark:text-gray-100">{fmtPrice(shipping)}</span>
                   </div>
+                  {discountDollars > 0 && (
+                    <div className="flex items-center justify-between text-[12px] sm:text-[17px]">
+                      <span className="text-emerald-600 dark:text-emerald-400">Discount</span>
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">−{fmtPrice(discountDollars)}</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between text-[12px] sm:text-[17px]">
                     <span className="text-gray-500 dark:text-gray-400">Transaction Fee <span className="text-[12px] sm:text-[17px]">(3.5%)</span></span>
                     <span className="font-semibold text-gray-900 dark:text-gray-100">{fmtPrice(txFee)}</span>

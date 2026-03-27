@@ -18,6 +18,32 @@ export interface MetaItem {
   price: number;
 }
 
+// Discount fields stored alongside item chunks in Stripe session metadata.
+export interface DiscountMeta {
+  source: string;           // 'welcome' | 'referral' | 'campaign' | 'store_credit'
+  amountCents: number;
+  subtotalBeforeCents: number;
+  code?: string;            // referral or campaign code used
+  referrerCustomerId?: string;
+  campaignId?: string;
+}
+
+export function encodeDiscountMeta(d: DiscountMeta): Record<string, string> {
+  // All values are short and will fit in one 500-char metadata slot.
+  return { disc: JSON.stringify(d) };
+}
+
+export function decodeDiscountMeta(
+  metadata: Record<string, string> | null | undefined
+): DiscountMeta | null {
+  if (!metadata?.disc) return null;
+  try {
+    return JSON.parse(metadata.disc) as DiscountMeta;
+  } catch {
+    return null;
+  }
+}
+
 interface CompactItem {
   p: string;
   o?: string | null;
