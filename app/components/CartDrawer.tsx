@@ -365,12 +365,16 @@ export function CartDrawer() {
               </div>
             </div>
             <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500 dark:text-gray-400">Shipping</span>
+              <span className="font-semibold text-gray-900 dark:text-gray-100">$20.00</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
               <span className="text-gray-500 dark:text-gray-400">Transaction Fee <span className="text-xs">(3.5%)</span></span>
               <span className="font-semibold text-gray-900 dark:text-gray-100">{fmtPrice(Math.round(total * 0.035 * 100) / 100)}</span>
             </div>
             <div className="flex items-center justify-between text-sm border-t border-gray-100 dark:border-gray-800 pt-2">
               <span className="font-semibold text-gray-700 dark:text-gray-300">Total</span>
-              <span className="font-bold text-gray-900 dark:text-gray-100">{fmtPrice(Math.round(total * 1.035 * 100) / 100)}</span>
+              <span className="font-bold text-gray-900 dark:text-gray-100">{fmtPrice(Math.round((total + 20) * 1.035 * 100) / 100)}</span>
             </div>
             {totalSavings > 0 && (
               <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
@@ -378,7 +382,7 @@ export function CartDrawer() {
               </p>
             )}
             <p className="text-xs text-gray-400 dark:text-gray-500">
-              Shipping and taxes calculated at checkout.
+              Taxes calculated at checkout.
             </p>
             <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2.5 space-y-1.5">
               <p className="text-xs text-amber-800 dark:text-amber-300">

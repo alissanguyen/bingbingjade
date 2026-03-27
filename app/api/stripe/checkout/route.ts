@@ -115,9 +115,20 @@ export async function POST(req: NextRequest) {
     validatedItems.push({ ...item, price: serverPrice });
   }
 
-  // Add 3.5% transaction fee
+  // Add $20 shipping fee
+  const SHIPPING_FEE = 20;
+  lineItems.push({
+    price_data: {
+      currency: "usd",
+      product_data: { name: "Shipping" },
+      unit_amount: SHIPPING_FEE * 100,
+    },
+    quantity: 1,
+  });
+
+  // Add 3.5% transaction fee (applied to items + shipping)
   const itemsTotal = validatedItems.reduce((sum, i) => sum + (i.price ?? 0), 0);
-  const transactionFeeAmount = Math.round(itemsTotal * 0.035 * 100); // cents
+  const transactionFeeAmount = Math.round((itemsTotal + SHIPPING_FEE) * 0.035 * 100); // cents
   lineItems.push({
     price_data: {
       currency: "usd",
