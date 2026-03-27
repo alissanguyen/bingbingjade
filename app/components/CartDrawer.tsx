@@ -364,6 +364,14 @@ export function CartDrawer() {
                 </span>
               </div>
             </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500 dark:text-gray-400">Transaction Fee <span className="text-xs">(3.5%)</span></span>
+              <span className="font-semibold text-gray-900 dark:text-gray-100">{fmtPrice(Math.round(total * 0.035 * 100) / 100)}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm border-t border-gray-100 dark:border-gray-800 pt-2">
+              <span className="font-semibold text-gray-700 dark:text-gray-300">Total</span>
+              <span className="font-bold text-gray-900 dark:text-gray-100">{fmtPrice(Math.round(total * 1.035 * 100) / 100)}</span>
+            </div>
             {totalSavings > 0 && (
               <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
                 You save {fmtPrice(totalSavings)} with current sale prices.
@@ -377,7 +385,7 @@ export function CartDrawer() {
                 Items might sell while in cart — availability is confirmed only upon completed checkout.
               </p>
               <p className="text-xs text-amber-800 dark:text-amber-300">
-                💳 Paying via <span className="font-semibold">Zelle</span> or <span className="font-semibold">Wire Transfer</span>? You&apos;ll receive a <span className="font-semibold">3% discount</span> — reach out before checking out.
+                💳 Paying via <span className="font-semibold">Zelle</span> or <span className="font-semibold">Wire Transfer</span>? The transaction fee is waived — reach out before checking out.
               </p>
             </div>
 

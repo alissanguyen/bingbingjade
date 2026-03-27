@@ -115,6 +115,18 @@ export async function POST(req: NextRequest) {
     validatedItems.push({ ...item, price: serverPrice });
   }
 
+  // Add 3.5% transaction fee
+  const itemsTotal = validatedItems.reduce((sum, i) => sum + (i.price ?? 0), 0);
+  const transactionFeeAmount = Math.round(itemsTotal * 0.035 * 100); // cents
+  lineItems.push({
+    price_data: {
+      currency: "usd",
+      product_data: { name: "Transaction Fee (3.5%)" },
+      unit_amount: transactionFeeAmount,
+    },
+    quantity: 1,
+  });
+
   const metadata = encodeCheckoutItems(
     validatedItems.map((i) => ({ productId: i.productId, optionId: i.optionId ?? null, price: i.price! }))
   );
