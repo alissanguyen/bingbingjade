@@ -86,6 +86,8 @@ export async function POST(req: NextRequest) {
     orderStatus?: OrderStatus;
     notes?: string;
     estimatedDeliveryDate?: string;
+    orderNumber?: string;
+    orderDate?: string;
     currency?: string;
     orderType?: "standard" | "custom";
     items: {
@@ -188,12 +190,14 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Generate order number ─────────────────────────────────────────────────
-  let orderNumber: string | null = null;
-  try {
-    orderNumber = await generateOrderNumber();
-  } catch (err) {
-    console.error("[create-order] Order number generation failed (non-fatal):", err);
+  // ── Generate order number (use provided value or auto-generate) ──────────
+  let orderNumber: string | null = body.orderNumber?.trim().toUpperCase() || null;
+  if (!orderNumber) {
+    try {
+      orderNumber = await generateOrderNumber();
+    } catch (err) {
+      console.error("[create-order] Order number generation failed (non-fatal):", err);
+    }
   }
 
   // ── Compute totals ────────────────────────────────────────────────────────
@@ -209,6 +213,7 @@ export async function POST(req: NextRequest) {
     .from("orders")
     .insert({
       order_number: orderNumber,
+      ...(body.orderDate ? { created_at: new Date(body.orderDate).toISOString() } : {}),
       customer_id: customerId,
       customer_email: body.customerEmail?.trim().toLowerCase() ?? null,
       customer_name: body.customerName?.trim() ?? null,

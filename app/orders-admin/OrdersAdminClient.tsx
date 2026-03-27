@@ -154,6 +154,8 @@ const EMPTY_FORM = {
   orderType: "standard" as "standard" | "custom",
   notes: "",
   estimatedDeliveryDate: "",
+  orderNumber: "BBJ-",
+  orderDate: "",
   sendConfirmation: true,
   hasShipping: false,
   shipRecipient: "",
@@ -359,6 +361,8 @@ export function OrdersAdminClient() {
       ...(resolvedPhone ? { customerPhone: resolvedPhone } : {}),
       ...(form.notes.trim() ? { notes: form.notes.trim() } : {}),
       ...(form.estimatedDeliveryDate ? { estimatedDeliveryDate: form.estimatedDeliveryDate } : {}),
+      ...(form.orderNumber.trim() && form.orderNumber.trim() !== "BBJ-" ? { orderNumber: form.orderNumber.trim().toUpperCase() } : {}),
+      ...(form.orderDate ? { orderDate: form.orderDate } : {}),
       orderStatus: form.orderStatus,
       ...(customerMode === "existing" && selCustomer ? { customerId: selCustomer.id } : {}),
     };
@@ -726,6 +730,17 @@ export function OrdersAdminClient() {
                       <option value="gbp">GBP</option>
                       <option value="sgd">SGD</option>
                     </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Order Number</label>
+                    <input value={form.orderNumber} onChange={(e) => setField("orderNumber", e.target.value.toUpperCase())}
+                      placeholder="BBJ-1232"
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Order Date</label>
+                    <input type="date" value={form.orderDate} onChange={(e) => setField("orderDate", e.target.value)}
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                   </div>
                   <div className="col-span-2">
                     <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Est. Delivery Date</label>
