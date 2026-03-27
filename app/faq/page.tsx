@@ -53,7 +53,7 @@ const faqs = [
     id: "expedited-shipping",
     question: "Do you offer expedited shipping?",
     answer:
-      "Yes. Expedited shipping is available for $100 and prioritizes your piece for immediate processing and dispatch. This option is recommended for time-sensitive orders or special occasions.",
+      "Yes. Expedited shipping is available for $100 (plus $10 per additional item) and prioritizes your piece for immediate processing and dispatch. This option is recommended for time-sensitive orders or special occasions.",
   },
   {
     id: "shipping-insurance",

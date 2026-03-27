@@ -64,7 +64,7 @@ const sections = [
   {
     id: "expedited-shipping",
     title: "Expedited Shipping",
-    body: "Expedited shipping is available for an additional $100. With this option, your piece is prioritized and dispatched without delay. This is recommended for time-sensitive orders, high-value pieces, or special occasions.",
+    body: "Expedited shipping is available for $100 (plus $10 per additional item). With this option, your piece is prioritized and dispatched without delay. This is recommended for time-sensitive orders, high-value pieces, or special occasions.",
   },
   {
     id: "shipping-insurance",
