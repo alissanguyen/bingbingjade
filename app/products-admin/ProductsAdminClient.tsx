@@ -5,6 +5,7 @@ import Image from "next/image";
 import {
   bulkUpdateStatus,
   bulkUpdatePublished,
+  bulkUpdateQuickShip,
   bulkDelete,
 } from "@/app/edit/bulk-actions";
 import type { AdminProduct } from "./page";
@@ -112,6 +113,19 @@ export function ProductsAdminClient({ products: initial }: { products: AdminProd
       );
       setSelected(new Set());
       showToast(`${is_published ? "Published" : "Drafted"} ${res.count} product${res.count !== 1 ? "s" : ""}`);
+    });
+  }
+
+  function handleBulkQuickShip(quick_ship: boolean) {
+    if (!selectedIds.length) return;
+    startTransition(async () => {
+      const res = await bulkUpdateQuickShip(selectedIds, quick_ship);
+      if (res.error) { showToast(`Error: ${res.error}`); return; }
+      setProducts((prev) =>
+        prev.map((p) => selectedIds.includes(p.id) ? { ...p, quick_ship } : p)
+      );
+      setSelected(new Set());
+      showToast(`${quick_ship ? "Marked Quick Ship" : "Set to Standard"} — ${res.count} product${res.count !== 1 ? "s" : ""}`);
     });
   }
 
@@ -252,6 +266,26 @@ export function ProductsAdminClient({ products: initial }: { products: AdminProd
               Draft
             </button>
 
+            <div className="w-px bg-gray-200 dark:bg-gray-700 self-stretch" />
+
+            {/* Quick Ship */}
+            <button
+              type="button"
+              onClick={() => handleBulkQuickShip(true)}
+              disabled={isPending}
+              className="rounded-full px-3 py-1 text-xs font-medium bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-400 hover:bg-sky-200 dark:hover:bg-sky-900/60 disabled:opacity-50 transition-colors"
+            >
+              Quick Ship
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkQuickShip(false)}
+              disabled={isPending}
+              className="rounded-full px-3 py-1 text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+            >
+              Standard
+            </button>
+
             <div className="flex-1" />
 
             {/* Delete */}
@@ -350,6 +384,11 @@ export function ProductsAdminClient({ products: initial }: { products: AdminProd
                           {!p.is_published && (
                             <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                               Draft
+                            </span>
+                          )}
+                          {p.quick_ship && (
+                            <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-sky-100 text-sky-600 dark:bg-sky-900/40 dark:text-sky-400">
+                              Quick Ship
                             </span>
                           )}
                           {p.price_display_usd != null && (

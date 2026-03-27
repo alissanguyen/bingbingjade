@@ -170,6 +170,7 @@ interface ProductData {
   vendor_id: string;
   is_featured: boolean;
   is_published: boolean;
+  quick_ship: boolean;
   status: "available" | "sold";
 }
 
@@ -249,6 +250,7 @@ export function EditForm({ product, vendors, initialOptions = [] }: Props) {
   const [selectedTiers, setSelectedTiers] = useState<string[]>(product.tier ?? []);
   const [isFeatured, setIsFeatured] = useState(product.is_featured);
   const [isPublished, setIsPublished] = useState(product.is_published);
+  const [isQuickShip, setIsQuickShip] = useState(product.quick_ship ?? false);
   const [status, setStatus] = useState<"available" | "sold" | "on_sale">(product.status ?? "available");
 
   const [form, setForm] = useState({
@@ -396,6 +398,7 @@ export function EditForm({ product, vendors, initialOptions = [] }: Props) {
       fd.append("vendor_id", vendorId);
       fd.append("is_featured", String(isFeatured));
       fd.append("is_published", String(isPublished));
+      fd.append("quick_ship", String(isQuickShip));
       fd.append("status", status);
       sizeDetailed.forEach((v, i) => fd.append(`size_detailed_${i}`, v));
       selectedColors.forEach((c) => fd.append("color", c));
@@ -929,6 +932,16 @@ export function EditForm({ product, vendors, initialOptions = [] }: Props) {
               <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${isFeatured ? "translate-x-4" : ""}`} />
             </div>
             <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">Feature this product on the homepage</span>
+          </button>
+
+          {/* Quick Ship */}
+          <button type="button" onClick={() => setIsQuickShip((v) => !v)} className="flex items-center gap-3 group">
+            <div className={`relative w-10 h-6 rounded-full transition-colors ${isQuickShip ? "bg-sky-500" : "bg-gray-200 dark:bg-gray-700"}`}>
+              <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${isQuickShip ? "translate-x-4" : ""}`} />
+            </div>
+            <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+              {isQuickShip ? "Quick Ship — eligible for expedited shipping" : "Standard shipping timeline"}
+            </span>
           </button>
         </div>
       </section>

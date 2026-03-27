@@ -11,6 +11,7 @@ export interface AdminProduct {
   category: string;
   status: "available" | "on_sale" | "sold";
   is_published: boolean;
+  quick_ship: boolean;
   price_display_usd: number | null;
   public_id: string;
   slug: string;
@@ -20,7 +21,7 @@ export interface AdminProduct {
 export default async function ProductsAdminPage() {
   const { data: rows } = await supabaseAdmin
     .from("products")
-    .select("id, name, category, status, is_published, price_display_usd, public_id, slug, images")
+    .select("id, name, category, status, is_published, quick_ship, price_display_usd, public_id, slug, images")
     .order("created_at", { ascending: false });
 
   const products: AdminProduct[] = await Promise.all(
@@ -30,6 +31,7 @@ export default async function ProductsAdminPage() {
       category: p.category,
       status: p.status,
       is_published: p.is_published,
+      quick_ship: p.quick_ship ?? false,
       price_display_usd: p.price_display_usd,
       public_id: p.public_id,
       slug: p.slug,

@@ -41,6 +41,25 @@ export async function bulkUpdatePublished(
   return { count: count ?? ids.length };
 }
 
+export async function bulkUpdateQuickShip(
+  ids: string[],
+  quick_ship: boolean
+): Promise<{ error?: string; count?: number }> {
+  if (ids.length === 0) return { count: 0 };
+
+  const { error, count } = await supabaseAdmin
+    .from("products")
+    .update({ quick_ship })
+    .in("id", ids);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/edit");
+  revalidatePath("/products");
+  revalidatePath("/products-admin");
+  return { count: count ?? ids.length };
+}
+
 export async function bulkDelete(
   ids: string[]
 ): Promise<{ error?: string; count?: number }> {

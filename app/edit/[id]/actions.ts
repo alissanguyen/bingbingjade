@@ -49,6 +49,7 @@ export async function updateProduct(
       vendor_id: formData.get("vendor_id") as string,
       is_featured: formData.get("is_featured") === "true",
       is_published: formData.get("is_published") === "true",
+      quick_ship: formData.get("quick_ship") === "true",
       status: productStatus,
       images: imageUrls,
       videos: videoUrls,
