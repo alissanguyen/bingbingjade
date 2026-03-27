@@ -6,6 +6,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { resolveFirstImageUrl } from "@/lib/storage";
 import type { OrderStatus } from "@/types/orders";
 import ReviewForm from "./ReviewForm";
+import OrderTimeline from "./OrderTimeline";
 
 // Revalidate every 5 minutes so status updates surface quickly
 export const revalidate = 300;
@@ -273,81 +274,12 @@ export default async function TrackOrderPage({
           <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-5">
             Progress
           </h2>
-          <ol className="relative">
-            {statusSteps.map((step, idx) => {
-              const stepIdx = statusIndex(step.key, isCustom);
-              const isCompleted = stepIdx < currentIdx;
-              const isCurrent = step.key === currentStatus;
-              const isPending = stepIdx > currentIdx;
-
-              return (
-                <li key={step.key} className="flex gap-4 pb-7 last:pb-0">
-                  {/* Line + dot */}
-                  <div className="flex flex-col items-center">
-                    <div
-                      className={`w-3 h-3 rounded-full border-2 shrink-0 z-10 ${
-                        isCompleted
-                          ? "bg-emerald-500 border-emerald-500"
-                          : isCurrent
-                          ? "bg-amber-400 border-amber-400"
-                          : "bg-white dark:bg-gray-950 border-gray-300 dark:border-gray-700"
-                      }`}
-                    />
-                    {idx < statusSteps.length - 1 && (
-                      <div
-                        className={`w-px flex-1 mt-1 ${
-                          isCompleted ? "bg-emerald-400 dark:bg-emerald-700" : "bg-gray-200 dark:bg-gray-800"
-                        }`}
-                      />
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className={`pb-1 flex-1 ${isCurrent ? "rounded-lg bg-amber-50 dark:bg-amber-950/25 border border-amber-200 dark:border-amber-800/60 px-3 py-2 -mt-0.5" : ""}`}>
-                    <div className="flex items-center gap-2">
-                      <p
-                        className={`text-sm font-medium ${
-                          isCurrent
-                            ? "text-amber-800 dark:text-amber-200"
-                            : isCompleted
-                            ? "text-gray-600 dark:text-gray-400"
-                            : "text-gray-400 dark:text-gray-600"
-                        }`}
-                      >
-                        {step.label}
-                      </p>
-                      {isCurrent && (
-                        <span className="text-xs font-semibold bg-amber-400/20 text-amber-700 dark:text-amber-300 rounded-full px-2 py-0.5 leading-none">
-                          Current
-                        </span>
-                      )}
-                      {isCompleted && (
-                        <svg
-                          className="text-emerald-500 shrink-0"
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="3"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      )}
-                    </div>
-                    {isCurrent && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                        {step.description}
-                      </p>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
+          <OrderTimeline
+            steps={statusSteps}
+            currentStatus={currentStatus}
+            isCustom={isCustom}
+            statusOrder={isCustom ? CUSTOM_ORDER : STANDARD_ORDER}
+          />
         </div>
       )}
 
