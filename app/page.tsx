@@ -115,10 +115,10 @@ export default async function Home() {
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 mb-4">
               Our Philosophy
             </p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 leading-snug mb-6">
+            <h2 className="text-2xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 leading-snug mb-6">
               Natural Jadeite,<br />Carefully Selected
             </h2>
-            <div className="space-y-4 text-gray-600 dark:text-gray-400 leading-relaxed text-[18px]">
+            <div className="space-y-4 text-gray-600 dark:text-gray-400 leading-relaxed text-[17px] xs:text-[18px]">
               <p>
                 Each piece in our collection is individually sourced and selected for its color, texture, and character. From raw materials to a completed bangle, we specialize in natural Type A jadeite, focusing primarily on jade from Myanmar (Burmese) and select pieces from Guatemala.
               </p>

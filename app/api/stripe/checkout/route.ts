@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  let body: { items: CartItem[] };
+  let body: { items: CartItem[]; expedited?: boolean };
   try {
     body = await req.json();
   } catch {
@@ -115,11 +115,13 @@ export async function POST(req: NextRequest) {
     validatedItems.push({ ...item, price: serverPrice });
   }
 
-  // Add shipping fee: $20 first piece + $10 each additional
-  const shippingFee = 20 + (validatedItems.length - 1) * 10;
+  // Add shipping fee: $20 standard / $100 expedited base + $10 each additional
+  const shippingBase = body.expedited ? 100 : 20;
+  const shippingFee = shippingBase + (validatedItems.length - 1) * 10;
+  const shippingType = body.expedited ? "Expedited Shipping" : "Shipping";
   const shippingLabel = validatedItems.length > 1
-    ? `Shipping (${validatedItems.length} pieces)`
-    : "Shipping";
+    ? `${shippingType} (${validatedItems.length} pieces)`
+    : shippingType;
   lineItems.push({
     price_data: {
       currency: "usd",

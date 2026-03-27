@@ -24,6 +24,7 @@ export function CartDrawer() {
   const [adminError, setAdminError] = useState(false);
   const [soldKeys, setSoldKeys] = useState<Set<string>>(new Set());
   const [staleKeys, setStaleKeys] = useState<Set<string>>(new Set());
+  const [expedited, setExpedited] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
 
   // Check live availability when drawer opens
@@ -127,7 +128,7 @@ export function CartDrawer() {
           "Content-Type": "application/json",
           ...(adminUnlocked ? { "x-admin-password": adminPassword } : {}),
         },
-        body: JSON.stringify({ items: availableItems }),
+        body: JSON.stringify({ items: availableItems, expedited }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -164,8 +165,8 @@ export function CartDrawer() {
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800">
-          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+        <div className="flex items-center justify-between px-4 py-1 sm:py-3 border-b border-gray-200 dark:border-gray-800">
+          <h2 className="text-[13px] sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
             Cart ({items.length})
           </h2>
           <button
@@ -181,14 +182,14 @@ export function CartDrawer() {
         </div>
 
         {/* Items */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
           {items.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center gap-3 py-16">
               <span className="text-5xl">🛍️</span>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Your cart is empty.</p>
+              <p className="text-[13px] sm:text-[18px] text-gray-500 dark:text-gray-400">Your cart is empty.</p>
               <button
                 onClick={closeDrawer}
-                className="mt-2 text-sm text-emerald-700 dark:text-emerald-400 hover:underline"
+                className="mt-2 text-[12px] sm:text-[17px] text-emerald-700 dark:text-emerald-400 hover:underline"
               >
                 Continue browsing
               </button>
@@ -226,19 +227,19 @@ export function CartDrawer() {
                       <Link
                         href={productPath}
                         onClick={closeDrawer}
-                        className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-emerald-700 dark:hover:text-emerald-400 line-clamp-2 leading-snug"
+                        className="text-[12px] sm:text-[17px] font-medium text-gray-900 dark:text-gray-100 hover:text-emerald-700 dark:hover:text-emerald-400 line-clamp-2 leading-snug"
                       >
                         {item.productName}
                       </Link>
                       {item.optionLabel && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.optionLabel}</p>
+                        <p className="text-[12px] sm:text-[17px] sm:text-[16px] text-gray-500 dark:text-gray-400 mt-0.5">{item.optionLabel}</p>
                       )}
                       <div className="flex items-center gap-1.5 mt-1">
-                        <span className={`text-sm font-semibold ${item.originalPrice != null ? "text-amber-600 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}`}>
+                        <span className={`text-[12px] sm:text-[17px] font-semibold ${item.originalPrice != null ? "text-amber-600 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}`}>
                           {fmtPrice(item.price)}
                         </span>
                         {item.originalPrice != null && (
-                          <span className="text-xs text-gray-400 line-through">
+                          <span className="text-[12px] sm:text-[17px] text-gray-400 line-through">
                             {fmtPrice(item.originalPrice)}
                           </span>
                         )}
@@ -281,16 +282,16 @@ export function CartDrawer() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 line-clamp-1 leading-snug">{item.productName}</p>
+                    <p className="text-[12px] sm:text-[17px] font-medium text-gray-500 dark:text-gray-400 line-clamp-1 leading-snug">{item.productName}</p>
                     {item.optionLabel && (
-                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{item.optionLabel}</p>
+                      <p className="text-[12px] sm:text-[17px] text-gray-400 dark:text-gray-500 mt-0.5">{item.optionLabel}</p>
                     )}
-                    <p className="text-xs text-red-600 dark:text-red-400 font-medium mt-1">This product is no longer available.</p>
+                    <p className="text-[12px] sm:text-[17px] text-red-600 dark:text-red-400 font-medium mt-1">This product is no longer available.</p>
                   </div>
                   <button
                     onClick={() => removeFromCart(item.productId, item.optionId)}
                     aria-label="Remove item"
-                    className="text-xs text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors shrink-0 self-center font-medium px-1"
+                    className="text-[12px] sm:text-[17px] text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors shrink-0 self-center font-medium px-1"
                   >
                     Remove
                   </button>
@@ -322,11 +323,11 @@ export function CartDrawer() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 line-clamp-1 leading-snug">{item.productName}</p>
+                      <p className="text-[12px] sm:text-[17px] font-medium text-gray-500 dark:text-gray-400 line-clamp-1 leading-snug">{item.productName}</p>
                       {item.optionLabel && (
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{item.optionLabel}</p>
+                        <p className="text-[12px] sm:text-[17px] text-gray-400 dark:text-gray-500 mt-0.5">{item.optionLabel}</p>
                       )}
-                      <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mt-1">
+                      <p className="text-[12px] sm:text-[17px] text-amber-700 dark:text-amber-400 font-medium mt-1">
                         This item was updated —{" "}
                         <Link href={productPath} onClick={closeDrawer} className="underline">re-add it from the product page</Link>.
                       </p>
@@ -334,7 +335,7 @@ export function CartDrawer() {
                     <button
                       onClick={() => removeFromCart(item.productId, item.optionId)}
                       aria-label="Remove item"
-                      className="text-xs text-amber-500 hover:text-amber-700 dark:hover:text-amber-300 transition-colors shrink-0 self-center font-medium px-1"
+                      className="text-[12px] sm:text-[17px] text-amber-500 hover:text-amber-700 dark:hover:text-amber-300 transition-colors shrink-0 self-center font-medium px-1"
                     >
                       Remove
                     </button>
@@ -347,40 +348,65 @@ export function CartDrawer() {
 
         {/* Footer */}
         {availableItems.length > 0 && (
-          <div className="border-t border-gray-200 dark:border-gray-800 px-5 py-4 space-y-3">
+          <div className="border-t border-gray-200 dark:border-gray-800 px-4 py-3 space-y-2">
             {error && (
-              <p className="text-sm text-red-600 dark:text-red-400 rounded-lg bg-red-50 dark:bg-red-950/30 px-3 py-2">
+              <p className="text-[12px] sm:text-[17px] text-red-600 dark:text-red-400 rounded-lg bg-red-50 dark:bg-red-950/30 px-3 py-1.5">
                 {error}
               </p>
             )}
-            <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center justify-between text-[12px] sm:text-[17px]">
               <span className="text-gray-500 dark:text-gray-400">Subtotal</span>
               <div className="flex items-center gap-2">
                 {totalSavings > 0 && (
-                  <span className="text-xs text-gray-400 line-through">{fmtPrice(originalTotal)}</span>
+                  <span className="text-[12px] sm:text-[17px] text-gray-400 line-through">{fmtPrice(originalTotal)}</span>
                 )}
                 <span className={`font-semibold ${totalSavings > 0 ? "text-amber-600 dark:text-amber-400" : "text-gray-900 dark:text-gray-100"}`}>
                   {fmtPrice(total)}
                 </span>
               </div>
             </div>
+            {/* Expedited shipping toggle */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[12px] sm:text-[17px] text-gray-700 dark:text-gray-300">Expedited Shipping</span>
+                <a
+                  href="/faq#expedited-shipping"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[9px] sm:text-[13px] mb-2 text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline underline-offset-2 transition-colors"
+                >
+                  *Learn more
+                </a>
+              </div>
+              <button
+                type="button"
+                onClick={() => setExpedited((v) => !v)}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${expedited ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"}`}
+                role="switch"
+                aria-checked={expedited}
+              >
+                <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${expedited ? "translate-x-4" : "translate-x-0"}`} />
+              </button>
+            </div>
             {(() => {
-              const shipping = availableItems.length > 0 ? 20 + (availableItems.length - 1) * 10 : 0;
+              const shippingBase = expedited ? 100 : 20;
+              const shipping = availableItems.length > 0 ? shippingBase + (availableItems.length - 1) * 10 : 0;
               const txFee = Math.round((total + shipping) * 0.035 * 100) / 100;
               const grandTotal = Math.round((total + shipping + txFee) * 100) / 100;
+              const shippingLabel = expedited ? "Expedited Shipping" : "Shipping";
               return (
                 <>
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between text-[12px] sm:text-[17px]">
                     <span className="text-gray-500 dark:text-gray-400">
-                      Shipping{availableItems.length > 1 ? ` (${availableItems.length} pieces)` : ""}
+                      {shippingLabel}{availableItems.length > 1 ? ` (${availableItems.length} pieces)` : ""}
                     </span>
                     <span className="font-semibold text-gray-900 dark:text-gray-100">{fmtPrice(shipping)}</span>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500 dark:text-gray-400">Transaction Fee <span className="text-xs">(3.5%)</span></span>
+                  <div className="flex items-center justify-between text-[12px] sm:text-[17px]">
+                    <span className="text-gray-500 dark:text-gray-400">Transaction Fee <span className="text-[12px] sm:text-[17px]">(3.5%)</span></span>
                     <span className="font-semibold text-gray-900 dark:text-gray-100">{fmtPrice(txFee)}</span>
                   </div>
-                  <div className="flex items-center justify-between text-sm border-t border-gray-100 dark:border-gray-800 pt-2">
+                  <div className="flex items-center justify-between text-[12px] sm:text-[17px] border-t border-gray-100 dark:border-gray-800 pt-1.5">
                     <span className="font-semibold text-gray-700 dark:text-gray-300">Total</span>
                     <span className="font-bold text-gray-900 dark:text-gray-100">{fmtPrice(grandTotal)}</span>
                   </div>
@@ -388,19 +414,16 @@ export function CartDrawer() {
               );
             })()}
             {totalSavings > 0 && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+              <p className="text-[12px] sm:text-[17px] text-emerald-600 dark:text-emerald-400 font-medium">
                 You save {fmtPrice(totalSavings)} with current sale prices.
               </p>
             )}
-            <p className="text-xs text-gray-400 dark:text-gray-500">
-              Taxes calculated at checkout.
-            </p>
-            <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2.5 space-y-1.5">
-              <p className="text-xs text-amber-800 dark:text-amber-300">
-                Items might sell while in cart — availability is confirmed only upon completed checkout.
+            <div className="text-[10px] sm:text-[15px] rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2 space-y-1">
+              <p className="text-amber-800 dark:text-amber-300">
+                Items might sell while in cart — availability confirmed only at checkout.
               </p>
-              <p className="text-xs text-amber-800 dark:text-amber-300">
-                💳 Paying via <span className="font-semibold">Zelle</span> or <span className="font-semibold">Wire Transfer</span>? The transaction fee is waived — reach out before checking out.
+              <p className="text-amber-800 dark:text-amber-300">
+                💳 <span className="font-semibold">Zelle / Wire Transfer</span>? Transaction fee waived — reach out before checking out.
               </p>
             </div>
 
@@ -408,23 +431,23 @@ export function CartDrawer() {
               <button
                 onClick={handleCheckout}
                 disabled={loading}
-                className="w-full rounded-full bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed text-white py-3 text-sm font-medium transition-colors"
+                className="w-full rounded-full bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed text-white py-2.5 text-[12px] sm:text-[17px] font-medium transition-colors"
               >
                 {loading ? "Redirecting to checkout…" : "Checkout"}
               </button>
             ) : (
-              <div className="w-full rounded-full bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-500 py-3 text-sm font-medium text-center cursor-not-allowed">
+              <div className="w-full rounded-full bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-500 py-2.5 text-[12px] sm:text-[17px] font-medium text-center cursor-not-allowed">
                 Checkout unavailable
               </div>
             )}
 
             {/* Admin unlock — only shown in beta mode */}
             {!isLiveMode && !adminUnlocked && (
-              <div className="pt-1">
+              <div className="pt-0">
                 {!showAdminInput ? (
                   <button
                     onClick={() => setShowAdminInput(true)}
-                    className="w-full text-xs text-gray-300 dark:text-gray-700 hover:text-gray-400 dark:hover:text-gray-500 transition-colors py-1"
+                    className="w-full text-[12px] sm:text-[17px] text-gray-300 dark:text-gray-700 hover:text-gray-400 dark:hover:text-gray-500 transition-colors py-1"
                   >
                     Admin access
                   </button>
@@ -436,11 +459,11 @@ export function CartDrawer() {
                       onChange={(e) => { setAdminPassword(e.target.value); setAdminError(false); }}
                       onKeyDown={(e) => { if (e.key === "Enter") handleAdminUnlock(); }}
                       placeholder="Admin password"
-                      className={`flex-1 rounded-lg border px-3 py-1.5 text-xs bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 outline-none focus:ring-1 focus:ring-emerald-500 ${adminError ? "border-red-400" : "border-gray-300 dark:border-gray-700"}`}
+                      className={`flex-1 rounded-lg border px-3 py-1.5 text-[12px] sm:text-[17px] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 outline-none focus:ring-1 focus:ring-emerald-500 ${adminError ? "border-red-400" : "border-gray-300 dark:border-gray-700"}`}
                     />
                     <button
                       onClick={handleAdminUnlock}
-                      className="rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 text-xs font-medium transition-colors"
+                      className="rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 text-[12px] sm:text-[17px] font-medium transition-colors"
                     >
                       Unlock
                     </button>
@@ -451,7 +474,7 @@ export function CartDrawer() {
 
             <button
               onClick={() => { clearCart(); closeDrawer(); }}
-              className="w-full text-xs text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors py-1"
+              className="w-full text-[12px] sm:text-[17px] text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors py-1"
             >
               Clear cart
             </button>

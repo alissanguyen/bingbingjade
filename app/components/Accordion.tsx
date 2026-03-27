@@ -38,7 +38,7 @@ function AccordionRow({ heading, content, id }: AccordionItem) {
         onClick={handleToggle}
         className="w-full flex items-center justify-between gap-4 py-5 text-left"
       >
-        <span className="text-base font-semibold text-gray-900 dark:text-gray-100">{heading}</span>
+        <span className="text-sm xs:text-base font-semibold text-gray-900 dark:text-gray-100">{heading}</span>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="18"
@@ -55,7 +55,7 @@ function AccordionRow({ heading, content, id }: AccordionItem) {
         </svg>
       </button>
       {open && (
-        <div className="pb-5 text-[17px] text-gray-500 dark:text-gray-400 leading-relaxed">
+        <div className="pb-5 text-[16px] xs:text-[17px] text-gray-500 dark:text-gray-400 leading-relaxed">
           {content}
         </div>
       )}

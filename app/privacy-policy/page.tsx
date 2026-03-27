@@ -59,8 +59,8 @@ const SECTIONS = [
 export default function PrivacyPolicy() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Privacy Policy</h1>
-      <p className="mt-2 text-gray-500 dark:text-gray-400">
+      <h1 className="text-2xl xs:text-3xl font-bold text-gray-900 dark:text-gray-100">Privacy Policy</h1>
+      <p className="mt-2 text-gray-500 dark:text-gray-400 text-xs xs:text-sm italic leading-relaxed">
         Effective date: March 2025. This policy describes how BingBing Jade collects, uses, and protects your personal information.
       </p>
 

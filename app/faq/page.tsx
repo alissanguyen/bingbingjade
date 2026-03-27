@@ -13,7 +13,7 @@ const faqs = [
     answer: (
       <>
         Yes. All jade sold on this website is
-        <strong className="text-black dark:text-white"> natural, untreated Jadeite (Type A)</strong> and <strong className="text-black dark:text-white">guaranteed authentic</strong>. No dye, bleaching, polymer infusion, or chemical treatment is used in the production process.
+        <strong className="text-emerald-600 dark:text-emerald-500"> natural, untreated Jadeite (Type A)</strong> and <strong className="text-emerald-600 dark:text-emerald-500">guaranteed authentic</strong>. No dye, bleaching, polymer infusion, or chemical treatment is used in the production process.
       </>
     )
   },
@@ -128,8 +128,8 @@ const faqs = [
 export default function FAQ() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Frequently Asked Questions</h1>
-      <p className="mt-2 text-gray-500 dark:text-gray-400">Everything you need to know about BingBing Jadeite.</p>
+      <h1 className="text-2xl xs:text-3xl font-bold text-gray-900 dark:text-gray-100">Frequently Asked Questions</h1>
+      <p className="mt-2 text-gray-500 dark:text-gray-400 text-md">Everything you need to know about BingBing Jadeite.</p>
       <div className="mt-10">
         <Accordion items={faqs.map((f) => ({ id: f.id, heading: f.question, content: f.answer }))} />
       </div>

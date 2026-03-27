@@ -91,9 +91,9 @@ export default async function RootLayout({
           <main className="flex-1">{children}</main>
 
           <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 py-8">
-            <div className="mx-auto max-w-5xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-400 dark:text-gray-500">
+            <div className="mx-auto max-w-5xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs xs:text-sm text-gray-400 dark:text-gray-500">
               <span>© {new Date().getFullYear()} BingBing Jade. All rights reserved.</span>
-              <div className="flex gap-6">
+              <div className="flex gap-6 text-xs xs:text-sm">
                 <Link href="/faq" className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
                   FAQ
                 </Link>
