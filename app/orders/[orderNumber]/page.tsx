@@ -477,7 +477,7 @@ export default async function TrackOrderPage({
         <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">About your order timeline</p>
         <p>
           Authentic jadeite requires careful sourcing, independent certification, and international
-          shipping — each step takes time. This page will reflect your order's progress. If you have
+          shipping — each step takes time. This page will reflect your order&apos;s progress. If you have
           questions at any point, please reach out via{" "}
           <Link
             href="/contact"
@@ -485,7 +485,7 @@ export default async function TrackOrderPage({
           >
             our contact form
           </Link>{" "}
-          or WhatsApp. We're always happy to provide a personal update.
+          or WhatsApp. We&apos;re always happy to provide a personal update.
         </p>
       </div>
 

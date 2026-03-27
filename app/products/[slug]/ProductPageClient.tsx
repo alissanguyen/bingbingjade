@@ -469,10 +469,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
               <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Authenticity Guarantee</p>
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-              All jade offered is natural Jadeite (Type A), untreated and unenhanced, and we stand behind the authenticity of our jade for life.
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-500 leading-relaxed mt-2">
-              Pieces priced above $200 include certification. For items under $200, certification is available upon request for $20.
+            Every piece is natural Jadeite (Type A), untreated and unenhanced. Each is backed by our lifetime authenticity guarantee and accompanied by certification for complete confidence.
             </p>
           </div>
         </div>

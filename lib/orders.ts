@@ -270,25 +270,27 @@ const STATUS_META: Record<
     subject: "Your BingBing Jade Order is Confirmed ✨",
     headline: "Your Order is Confirmed",
     badge: "Confirmed",
-    body: "Thank you for your order! We have reviewed everything on our end and your piece is now officially confirmed. Our team will be in touch within 24–48 hours to walk you through the next steps. We are so excited to work on this for you.",
+    body: "Thank you for your order — everything has been successfully received and confirmed on our end. Your piece is now being prepared with care. Our team will reach out within 24–48 hours to guide you through the next steps. We’re truly excited to begin this process with you.",
   },
+
   quality_control: {
     subject: "Your Piece is Undergoing Quality Inspection",
     headline: "Quality Inspection in Progress",
     badge: "Quality Control",
-    body: "Your piece has entered our quality control stage. Our team is carefully examining it by hand to ensure it meets the standards we hold every BingBing Jade piece to — no exceptions. This process typically takes a few days, and we appreciate your patience while we make sure everything is perfect for you.",
+    body: "Your piece has entered our quality inspection stage. Each item is carefully examined by hand to ensure it meets the standards we hold for every BingBing Jade piece — no compromises. This step might take up to a few days, and we appreciate your patience as we ensure everything is exactly as it should be.",
   },
+
   certifying: {
     subject: "We Are Certifying Your Piece",
     headline: "Certification in Progress",
     badge: "Certifying",
-    body: "Great news — your piece has passed quality control and is now being certified. This step verifies that your jade is 100% genuine Type A jadeite, untreated and natural. Certification may take a few days, but it is one of the most important things we do to give you complete confidence and peace of mind in your purchase.",
+    body: "Your piece has successfully passed inspection and is now undergoing certification. This process confirms that your jade is 100% natural Type A jadeite — untreated and authentic. While certification may take a bit, it is one of the most important steps we take to give you complete confidence in your piece.",
   },
   inbound_shipping: {
-    subject: "Your Piece is Arriving at Our Location",
+    subject: "Your Piece is Arriving at Our Studio",
     headline: "On Its Way to Us",
     badge: "Inbound Shipping",
-    body: "Your piece is currently in transit to our main location. Once it arrives and clears our final in-person inspection, we will move straight to shipping it out to you. We will keep you updated every step of the way!",
+    body: "Your piece is currently on its way to our studio. Once it arrives, we will perform a final in-person check before preparing it for shipment. Everything is moving exactly as planned, and we’ll continue to keep you updated along the way.",
   },
   outbound_shipping: {
     subject: "Your Order is On Its Way to You! 🎉",

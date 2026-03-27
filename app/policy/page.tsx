@@ -3,7 +3,7 @@ import { Accordion } from "@/app/components/Accordion";
 const sections = [
   {
     title: "Purchasing",
-    body: "All sales are final unless otherwise stated. By completing a purchase, you confirm that you have read, understood, and agreed to our shop terms prior to payment.",
+    body: "Due to the nature of our pieces, all sales are considered final unless otherwise stated. By completing a purchase, you confirm that you have read, understood, and agreed to our shop terms prior to payment.",
   },
   {
     title: "Authenticity Guarantee",
@@ -11,7 +11,7 @@ const sections = [
   },
   {
     title: "Certification",
-    body: "Items priced above $200 include certification. For items priced under $200, certification is available upon request for an additional $20. Certificates may be issued by Vietnamese or Chinese gemological centers and will clearly state that the jade is Type A.",
+    body: "Every piece includes certification, verifying that your jade is natural Type A jadeite — untreated and genuine. Certificates are issued by recognized Vietnamese or Chinese gemological centers, providing full transparency and confidence in your purchase.",
   },
   {
     title: "Sizing Responsibility",
@@ -27,7 +27,7 @@ const sections = [
   },
   {
     title: "Returns & Exchanges",
-    body: "For non-custom, non-altered pieces only, a return or exchange request may be considered if notice is provided within 24–48 hours of confirmed delivery. All such requests remain subject to approval. Approved returns or exchanges are subject to a 10% restocking fee, original shipping charges, and return shipping costs. Shipping charges in both directions are non-refundable. Returned items must be received in original condition, with no signs of wear, use, damage, resizing, or alteration.",
+    body: "Returns or exchanges may be considered for eligible pieces if requested within 24–48 hours of confirmed delivery. All requests are subject to review. Approved returns may be subject to a 10% restocking fee, along with original and return shipping costs. Items must be returned in original, unworn condition.",
   },
   {
     title: "Claims",
@@ -39,7 +39,7 @@ const sections = [
   },
   {
     title: "Refund Processing",
-    body: "Refunds are issued only after the returned item has been received, re-verified, and inspected. Returned items may be reviewed for certification again to confirm authenticity and ensure the same piece has been returned. This process may take approximately 3–4 weeks. For approved non-custom returns or exchanges, a 10% restocking fee, original shipping charges, and return shipping costs apply. Shipping charges in both directions are non-refundable.",
+    body: "Refunds are issued only after the returned item has been received, re-verified, and inspected. Returned items may be reviewed for certification again to confirm authenticity and ensure the same piece has been returned. This process may take approximately 2–4 weeks. For approved non-custom returns or exchanges, a 10% restocking fee, original shipping charges, and return shipping costs apply. Shipping charges in both directions are non-refundable.",
   },
   {
     title: "Lifetime Type A Guarantee",
@@ -47,11 +47,11 @@ const sections = [
   },
   {
     title: "Shipping & Delivery",
-    body: "Standard shipping is available for a flat rate of $20. Overseas shipments follow a monthly schedule. Orders paid on or before the 15th of the month are included in the shipment on the 20th, arrive in the U.S. around the 22nd, and typically require an additional 2–4 days for final delivery. Orders paid after the 15th will be included in the following month's shipment and are expected to arrive in the U.S. on or around the 20th of the next month. This schedule helps maintain lower shipping costs while allowing time for customs clearance and certification.",
+    body: "Orders are carefully prepared, processed, and shipped within an estimated timeframe of 2–4 weeks. This includes quality inspection, certification, and international handling when applicable. Once dispatched, your order will continue to its final destination. We prioritize care and accuracy at every step to ensure your piece arrives safely.",
   },
   {
     title: "Expedited Shipping",
-    body: "Expedited shipping is available for an additional $100. With this option, your jade is sent to the U.S. immediately rather than waiting for the monthly shipment schedule. This is recommended for high-value pieces, urgent orders, or special occasions.",
+    body: "Expedited shipping is available for an additional $100. With this option, your piece is prioritized and dispatched without delay. This is recommended for time-sensitive orders, high-value pieces, or special occasions.",
   },
   {
     title: "Shipping Insurance",
@@ -59,7 +59,7 @@ const sections = [
   },
   {
     title: "Payment & Tax",
-    body: "We accept PayPal Goods & Services (subject to a 3% fee), PayPal Friends & Family, Zelle, and wire transfer. Sales tax, if applicable, will be charged based on the delivery destination and in accordance with applicable law.",
+    body: "We accept payment via our website or PayPal Goods & Services (a 3% processing fee applies), as well as PayPal Friends & Family, Zelle, Venmo, and wire transfer. Sales tax, if applicable, will be charged based on the delivery destination and in accordance with applicable law.",
   },
   {
     title: "Buyer Acknowledgment",

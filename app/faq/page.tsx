@@ -4,7 +4,7 @@ const faqs = [
   {
     question: "What type of jade do you sell?",
     answer:
-      "All products listed on this website are natural Jadeite. We specialize in Type A Jadeite from Myanmar (Burmese) and Guatemala. If a product name does not specifically indicate Guatemala, it is understood to be Myanmar jadeite.",
+      "All jade offered on this website is natural Jadeite. We specialize in Type A jadeite sourced from Myanmar (Burmese) and Guatemala. Every piece comes with certification of authenticity to give you confidence when purchasing with us. Unless otherwise specified, pieces are Myanmar jadeite.",
   },
   {
     question: "Is your jade authentic and untreated?",
@@ -18,34 +18,34 @@ const faqs = [
   {
     question: "Does every piece come with certification?",
     answer:
-      "Items priced above $200 include certification. For items priced under $200, certification is available upon request for an additional $20. Certificates may be issued by Vietnamese or Chinese gemological centers and will clearly state that the jade is Type A.",
+      "Yes — every piece includes certification. Each item is authenticated and verified as natural Type A jadeite, untreated and genuine. Certificates may be issued by recognized Vietnamese or Chinese gemological centers, ensuring full transparency and confidence in your purchase.",
   },
   {
     question: "Do you guarantee your jade is Type A?",
     answer: (
-      <>Yes. All pieces are backed by a <strong className="text-emerald-700 dark:text-emerald-500 italic">lifetime Type A Jadeite guarantee</strong>. If a piece is professionally tested at any time and believed to be Type B, it may be returned to us for re-certification and verification. If the returned certification confirms it is Type B, a refund will be issued. This process may take approximately 3–4 weeks.
+      <>Yes. All pieces are backed by a <strong className="text-emerald-700 dark:text-emerald-500 italic">lifetime Type A Jadeite guarantee</strong>. If a piece is professionally tested at any time and believed to be Type B, it may be returned to us for re-certification and verification. If the returned certification confirms it is Type B, a refund will be issued. This is the only circumstance in which shipping charges are refundable in full.
       </>
     )
   },
   {
     question: "Why doesn't my jade look exactly the same in person?",
     answer:
-      "Jade can appear different depending on lighting, camera settings, environment, and skin tone. We do our best to show each piece accurately through multiple photos, videos, and lighting conditions, but some variation in appearance is natural and expected with untreated jade.",
+      "Jade naturally appears different depending on lighting, environment, and skin tone. We present each piece through multiple photos, videos, and lighting conditions; however, slight variations in color, glow, and translucency are inherent to untreated jade and part of its unique character.",
   },
   {
     question: "What payment methods do you accept?",
     answer:
-      "We accept PayPal Goods & Services (subject to a 3% fee), PayPal Friends & Family, Zelle, and wire transfer. Applicable sales tax may also apply based on the delivery destination.",
+     "We accept PayPal Goods & Services (a 3% processing fee applies), PayPal Friends & Family, Zelle, and wire transfer. Applicable sales tax may apply based on the delivery destination.",
   },
   {
     question: "How does standard shipping work?",
     answer:
-      "Standard shipping is available for a flat rate of $20. Orders paid on or before the 15th of the month are included in the overseas shipment on the 20th, arrive in the U.S. around the 22nd, and typically take an additional 2–4 days for final delivery. Orders paid after the 15th will be included in the following month's shipment and are expected to arrive in the U.S. on or around the 20th of the next month.",
+      "Orders are carefully prepared and shipped within an estimated timeframe of 2–4 weeks. This allows for quality inspection, certification, and international handling where applicable. Once dispatched, your order will continue to its final destination.",
   },
   {
     question: "Do you offer expedited shipping?",
     answer:
-      "Yes. Expedited shipping is available for an additional $100 and allows your jade to be sent to the U.S. immediately rather than waiting for the monthly shipment schedule.",
+      "Yes. Expedited shipping is available and prioritizes your piece for immediate processing and dispatch. This option is recommended for time-sensitive orders or special occasions.",
   },
   {
     question: "Do you offer shipping insurance?",
@@ -55,7 +55,7 @@ const faqs = [
   {
     question: "Can I return or exchange an item if I change my mind?",
     answer:
-      "For non-custom, non-altered pieces only, a return or exchange request may be considered if you notify us within 24–48 hours of confirmed delivery. All such requests remain subject to approval. Approved returns or exchanges are subject to a 10% restocking fee, original shipping charges, and return shipping costs. Shipping charges in both directions are non-refundable.",
+      "Returns or exchanges may be considered for eligible pieces if requested within 24–48 hours of confirmed delivery. All requests are subject to review. Approved returns may be subject to a 10% restocking fee, along with original and return shipping costs.",
   },
   {
     question: "Can customized or resized items be returned?",
@@ -65,12 +65,12 @@ const faqs = [
   {
     question: "What if my item arrives damaged or seems different from what was shown?",
     answer:
-      "Please notify us within 24 hours of confirmed delivery and provide a full, clear, uncut unboxing video showing the unopened package, shipping label, and complete unboxing in one continuous recording. This documentation is required for us to review shipping-related or condition-related claims.",
+      "Please notify us within 24 hours of confirmed delivery and provide a full, clear, uncut unboxing video showing the unopened package, shipping label, and complete unboxing in one continuous recording. This documentation allows us to properly review and assess any shipping or condition-related concerns.",
   },
   {
     question: "How long do refunds take?",
     answer:
-      "Refunds are not issued immediately. Returned items must first be received, re-verified, and inspected. In some cases, the piece may also be reviewed for certification again to confirm authenticity and ensure the same item has been returned. This process typically takes approximately 3–4 weeks.",
+      "Refunds are processed after the returned item has been received, re-verified, and inspected. In some cases, re-certification may be required to confirm authenticity. This process typically takes approximately 2–4 weeks.",
   },
   {
     question: "Is shipping refundable?",
@@ -81,7 +81,12 @@ const faqs = [
     question: "How do I buy a piece?",
     answer: (
       <>
-        To purchase, please visit the{" "}
+        You can purchase directly through our website for a seamless checkout experience (a 3% processing fee applies).{" "}
+        Alternatively, you may reach out to us for payment via{" "}
+        <strong className="text-green-500">Zelle</strong> or{" "}
+        <strong className="text-blue-500">Wire Transfer</strong>.{" "}
+        <br /><br />
+        To proceed, please visit the{" "}
         <a
           href="/contact"
           target="_blank"
@@ -90,7 +95,7 @@ const faqs = [
         >
           Contact
         </a>{" "}
-        page and reach out through one of the available methods:{" "}
+        page and message us via{" "}
         <strong className="text-green-500">WhatsApp</strong>,{" "}
         <strong className="text-purple-500">Instagram</strong>, or email at{" "}
         <strong className="text-blue-500">bingbing.jade2@gmail.com</strong>.
@@ -100,7 +105,7 @@ const faqs = [
   {
     question: "Can I ask you to source a specific piece for me?",
     answer:
-      "Yes. We do accept sourcing requests for specific pieces and may also help source other types of jade or stones upon request. Please contact us with details about what you are looking for.",
+      "Yes. We accept sourcing requests for specific pieces and may assist in sourcing other jade or stones upon request. Please contact us with details of what you are looking for.",
   },
 ];
 
