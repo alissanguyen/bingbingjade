@@ -41,7 +41,7 @@ const faqs = [
     id: "payment-methods",
     question: "What payment methods do you accept?",
     answer:
-     "We accept PayPal Goods & Services (a 3% processing fee applies), PayPal Friends & Family, Zelle, and wire transfer. Applicable sales tax may apply based on the delivery destination.",
+     "We accept PayPal Goods & Services (a 3.5% processing fee applies), PayPal Friends & Family, Zelle, and wire transfer. Applicable sales tax may apply based on the delivery destination.",
   },
   {
     id: "standard-shipping",
@@ -96,7 +96,7 @@ const faqs = [
     question: "How do I buy a piece?",
     answer: (
       <>
-        You can purchase directly through our website for a seamless checkout experience (a 3% processing fee applies).{" "}
+        You can purchase directly through our website for a seamless checkout experience (a 3.5% processing fee applies).{" "}
         Alternatively, you may reach out to us for payment via{" "}
         <strong className="text-green-500">Zelle</strong> or{" "}
         <strong className="text-blue-500">Wire Transfer</strong>.{" "}

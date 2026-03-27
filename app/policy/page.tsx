@@ -74,7 +74,7 @@ const sections = [
   {
     id: "payment-tax",
     title: "Payment & Tax",
-    body: "We accept payment via our website or PayPal Goods & Services (a 3% processing fee applies), as well as PayPal Friends & Family, Zelle, Venmo, and wire transfer. Sales tax, if applicable, will be charged based on the delivery destination and in accordance with applicable law.",
+    body: "We accept payment via our website or PayPal Goods & Services (a 3.5% processing fee applies), as well as PayPal Friends & Family, Zelle, Venmo, and wire transfer. Sales tax, if applicable, will be charged based on the delivery destination and in accordance with applicable law.",
   },
   {
     id: "buyer-acknowledgment",
