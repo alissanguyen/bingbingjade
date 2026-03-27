@@ -1,20 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface AccordionItem {
   heading: string;
   content: React.ReactNode;
+  id?: string;
 }
 
-function AccordionRow({ heading, content }: AccordionItem) {
+function AccordionRow({ heading, content, id }: AccordionItem) {
   const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // On mount: open and scroll if the URL hash matches this item
+  useEffect(() => {
+    if (!id) return;
+    if (window.location.hash.slice(1) === id) {
+      setOpen(true);
+      setTimeout(() => {
+        ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }, [id]);
+
+  const handleToggle = () => {
+    const next = !open;
+    setOpen(next);
+    if (id) {
+      history.replaceState(null, "", next ? `#${id}` : window.location.pathname);
+    }
+  };
 
   return (
-    <div className="border-b border-gray-200 dark:border-gray-800 last:border-0">
+    <div id={id} ref={ref} className="border-b border-gray-200 dark:border-gray-800 last:border-0">
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={handleToggle}
         className="w-full flex items-center justify-between gap-4 py-5 text-left"
       >
         <span className="text-base font-semibold text-gray-900 dark:text-gray-100">{heading}</span>
@@ -46,7 +67,7 @@ export function Accordion({ items }: { items: AccordionItem[] }) {
   return (
     <div className="divide-y divide-gray-200 dark:divide-gray-800">
       {items.map((item, i) => (
-        <AccordionRow key={i} heading={item.heading} content={item.content} />
+        <AccordionRow key={i} heading={item.heading} content={item.content} id={item.id} />
       ))}
     </div>
   );
