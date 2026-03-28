@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { resolveImageUrls, isStoragePath } from "@/lib/storage";
 import { FeaturedCarousel } from "@/app/components/FeaturedCarousel";
 import { ReviewsCarousel } from "@/app/components/ReviewsCarousel";
+import { SubscribePopup } from "@/app/components/SubscribePopup";
 
 export const metadata: Metadata = {
   keywords: [
@@ -59,6 +60,7 @@ export default async function Home() {
 
   return (
     <div className="bg-white dark:bg-gray-950">
+      <SubscribePopup />
 
       {/* ── Hero Banner ── */}
       <div className="relative w-full h-[72vh] min-h-120 overflow-hidden">

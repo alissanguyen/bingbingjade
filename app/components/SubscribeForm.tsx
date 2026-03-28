@@ -5,9 +5,11 @@ import { useState } from "react";
 interface Props {
   /** Compact variant for use in footers etc. */
   compact?: boolean;
+  /** Called after a successful subscription (e.g. to close a popup). */
+  onSuccess?: () => void;
 }
 
-export function SubscribeForm({ compact = false }: Props) {
+export function SubscribeForm({ compact = false, onSuccess }: Props) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
@@ -32,6 +34,7 @@ export function SubscribeForm({ compact = false }: Props) {
             : "You're subscribed! Check your email for your welcome discount."
         );
         setEmail("");
+        if (onSuccess) setTimeout(onSuccess, 1800);
       } else {
         setStatus("error");
         setMessage(data.error ?? "Something went wrong. Please try again.");
