@@ -244,7 +244,7 @@ export async function sendOrderConfirmationEmail(params: {
       from,
       to: params.customerEmail,
       bcc: "bingbing.jade2@gmail.com",
-      subject: `Your BingBing Jade Order ${params.orderNumber} is Confirmed`,
+      subject: `[Order Placed] Your BingBing Jade Order ${params.orderNumber} is Confirmed`,
       html,
     });
     if (error) {
@@ -521,7 +521,7 @@ export async function sendOrderStatusEmail(params: {
       from,
       to: params.customerEmail,
       bcc: "bingbing.jade2@gmail.com",
-      subject: `${meta.subject} — ${params.orderNumber}`,
+      subject: `[Order Update] ${meta.subject} — ${params.orderNumber}`,
       html,
     });
     if (error) console.error("[orders] Resend status email error:", error);
@@ -627,7 +627,7 @@ export async function sendDeliveryDateEmail(params: {
       from,
       to: params.customerEmail,
       bcc: "bingbing.jade2@gmail.com",
-      subject: `Delivery Update for Your Order ${params.orderNumber}`,
+      subject: `[Order Update] Delivery Update for Your Order ${params.orderNumber}`,
       html,
     });
     if (error) console.error("[orders] Resend delivery email error:", error);

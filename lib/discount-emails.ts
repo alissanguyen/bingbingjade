@@ -26,6 +26,7 @@ export async function sendWelcomeSubscriberEmail(email: string): Promise<void> {
 
   const siteUrl = getSiteUrl();
   const from = process.env.RESEND_FROM_EMAIL ?? "BingBing Jade <orders@bingbingjade.com>";
+  const unsubscribeUrl = `${siteUrl}/api/unsubscribe?e=${Buffer.from(email).toString("base64")}`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -92,6 +93,9 @@ export async function sendWelcomeSubscriberEmail(email: string): Promise<void> {
               &copy; ${new Date().getFullYear()} BingBing Jade &middot;
               <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
             </p>
+            <p style="margin:6px 0 0;font-size:10px;color:#e5e7eb;">
+              <a href="${unsubscribeUrl}" style="color:#e5e7eb;text-decoration:none;">unsubscribe</a>
+            </p>
           </td>
         </tr>
 
@@ -106,7 +110,7 @@ export async function sendWelcomeSubscriberEmail(email: string): Promise<void> {
       from,
       to: email,
       bcc: "bingbing.jade2@gmail.com",
-      subject: "Welcome to BingBing Jade — Here's your first-order discount",
+      subject: "[Subscriber] Welcome to BingBing Jade — Here's your first-order discount",
       html,
     });
   } catch (err) {
@@ -231,7 +235,7 @@ export async function sendReferralInviteEmail(params: {
       from,
       to: params.customerEmail,
       bcc: "bingbing.jade2@gmail.com",
-      subject: `Your BingBing Jade referral code — share and earn $10`,
+      subject: `[Order Update] Your BingBing Jade referral code — share and earn $10`,
       html,
     });
   } catch (err) {
@@ -336,7 +340,7 @@ export async function sendReferralRewardEmail(params: {
       from,
       to: params.referrerEmail,
       bcc: "bingbing.jade2@gmail.com",
-      subject: `You earned $${params.creditAmountDollars.toFixed(2)} store credit — BingBing Jade`,
+      subject: `[Order Update] You earned $${params.creditAmountDollars.toFixed(2)} store credit — BingBing Jade`,
       html,
     });
   } catch (err) {
