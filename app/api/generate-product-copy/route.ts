@@ -20,7 +20,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/approved-auth";
+import { getSessionUser, isApproved } from "@/lib/approved-auth";
 import { anthropic } from "@/lib/claude";
 
 export const dynamic = "force-dynamic";
@@ -185,7 +185,8 @@ export async function POST(req: NextRequest) {
       width: toNum(parsed.width),
       thickness: toNum(parsed.thickness),
       origin: ["Myanmar", "Guatemala", "Hetian"].includes(parsed.origin) ? parsed.origin : "Myanmar",
-      imported_price_vnd: toNum(parsed.imported_price_vnd),
+      // Never return profit margin data to approved users
+      imported_price_vnd: isApproved(session) ? null : toNum(parsed.imported_price_vnd),
     });
   } catch (err) {
     // Surface the real error message so it's visible in the UI during debugging

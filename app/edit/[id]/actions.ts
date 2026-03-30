@@ -2,6 +2,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { toStoragePath } from "@/lib/storage";
+import { getSessionUser, isApproved } from "@/lib/approved-auth";
 import type { ProductCategory } from "@/types/product";
 
 interface OptionInput {
@@ -22,6 +23,8 @@ export async function updateProduct(
   id: string,
   formData: FormData
 ): Promise<{ error?: string; success?: boolean }> {
+  const session = await getSessionUser();
+  const approvedUser = isApproved(session);
   const imageUrls = (formData.getAll("imageUrls") as string[]).map(toStoragePath);
   const videoUrls = (formData.getAll("videoUrls") as string[]).map(toStoragePath);
   const productStatus = (formData.get("status") as string) || "available";
@@ -45,7 +48,7 @@ export async function updateProduct(
       blemishes: (formData.get("blemishes") as string) || null,
       price_display_usd: formData.get("price_display_usd") ? Number(formData.get("price_display_usd")) : null,
       sale_price_usd: formData.get("sale_price_usd") ? Number(formData.get("sale_price_usd")) : null,
-      ...(formData.has("imported_price_vnd") ? { imported_price_vnd: Number(formData.get("imported_price_vnd")) } : {}),
+      ...(!approvedUser && formData.has("imported_price_vnd") ? { imported_price_vnd: Number(formData.get("imported_price_vnd")) } : {}),
       vendor_id: formData.get("vendor_id") as string,
       is_featured: formData.get("is_featured") === "true",
       is_published: formData.get("is_published") === "true",

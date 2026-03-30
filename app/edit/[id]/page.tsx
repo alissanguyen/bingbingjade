@@ -55,6 +55,8 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     ...product,
     images: resolvedImages,
     videos: resolvedVideos,
+    // Strip profit margin data from approved user sessions — never serialized to client props
+    ...(isApproved(session) ? { imported_price_vnd: 0 } : {}),
   };
 
   return (

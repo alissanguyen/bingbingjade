@@ -2,6 +2,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { slugify, generatePublicId } from "@/lib/slug";
+import { getSessionUser, isApproved } from "@/lib/approved-auth";
 import type { ProductCategory } from "@/types/product";
 
 interface OptionInput {
@@ -13,6 +14,9 @@ interface OptionInput {
 }
 
 export async function createProduct(formData: FormData): Promise<{ error?: string; success?: boolean }> {
+  const session = await getSessionUser();
+  const approvedUser = isApproved(session);
+
   const imageUrls = formData.getAll("imageUrls") as string[];
   const videoUrls = formData.getAll("videoUrls") as string[];
 
@@ -43,7 +47,7 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
       blemishes: (formData.get("blemishes") as string) || null,
       price_display_usd: formData.get("price_display_usd") ? Number(formData.get("price_display_usd")) : null,
       sale_price_usd: formData.get("sale_price_usd") ? Number(formData.get("sale_price_usd")) : null,
-      imported_price_vnd: Number(formData.get("imported_price_vnd")),
+      imported_price_vnd: approvedUser ? 0 : Number(formData.get("imported_price_vnd")),
       vendor_id,
       is_featured: formData.get("is_featured") === "true",
       is_published: formData.get("is_published") === "true",
