@@ -16,19 +16,17 @@ function getResend() {
 
 // ── Welcome subscriber email ─────────────────────────────────────────────────
 
-/**
- * Sent immediately when someone subscribes to the newsletter.
- * Explains the tiered first-order discount.
- */
-export async function sendWelcomeSubscriberEmail(email: string): Promise<void> {
-  const resend = getResend();
-  if (!resend) return;
-
-  const siteUrl = getSiteUrl();
-  const from = process.env.RESEND_FROM_EMAIL_GENERIC ?? "BingBing Jade <hello@bingbingjade.com>";
+function buildWelcomeCouponHtml(params: {
+  email: string;
+  couponCode: string;
+  expiresAt: Date;
+  siteUrl: string;
+}): string {
+  const { email, couponCode, expiresAt, siteUrl } = params;
   const unsubscribeUrl = `${siteUrl}/api/unsubscribe?e=${Buffer.from(email).toString("base64")}`;
+  const expiryStr = expiresAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 
-  const html = `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
@@ -47,14 +45,16 @@ export async function sendWelcomeSubscriberEmail(email: string): Promise<void> {
           <td style="padding:36px 40px;">
             <p style="margin:0 0 20px;font-size:16px;color:#111827;">Welcome to the BingBing Jade family!</p>
             <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
-              Thank you for subscribing. As a welcome gift, your first order comes with a special discount — automatically applied when you check out with this email address.
+              Thank you for subscribing. Here is your personal welcome coupon — enter it at checkout for a discount on your first order.
             </p>
 
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:28px;">
               <tr>
-                <td style="padding:20px 24px;">
-                  <p style="margin:0 0 12px;font-size:13px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#059669;">Your Welcome Discount</p>
-                  <table cellpadding="0" cellspacing="0" width="100%">
+                <td style="padding:24px;text-align:center;">
+                  <p style="margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:#059669;">Your Welcome Coupon</p>
+                  <p style="margin:0;font-size:36px;font-weight:800;color:#065f46;letter-spacing:0.18em;">${couponCode}</p>
+                  <p style="margin:12px 0 0;font-size:12px;color:#6b7280;">Valid until ${expiryStr} &middot; First order only</p>
+                  <table cellpadding="0" cellspacing="0" width="100%" style="margin-top:16px;">
                     <tr>
                       <td style="padding:6px 0;font-size:14px;color:#374151;">Order $150 or more</td>
                       <td style="padding:6px 0;font-size:14px;font-weight:700;color:#065f46;text-align:right;">$20 off</td>
@@ -64,9 +64,6 @@ export async function sendWelcomeSubscriberEmail(email: string): Promise<void> {
                       <td style="padding:6px 0;font-size:14px;font-weight:700;color:#065f46;text-align:right;">$10 off</td>
                     </tr>
                   </table>
-                  <p style="margin:14px 0 0;font-size:12px;color:#6b7280;">
-                    Just enter your email in the cart before checking out. No code needed — the discount is applied automatically.
-                  </p>
                 </td>
               </tr>
             </table>
@@ -82,7 +79,7 @@ export async function sendWelcomeSubscriberEmail(email: string): Promise<void> {
             </table>
 
             <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.6;">
-              Valid on your first order only. Cannot be combined with other offers. Discount is applied at checkout based on your order total.
+              Valid on your first order only. Enter code <strong>${couponCode}</strong> in the cart at checkout. Cannot be combined with other offers.
             </p>
           </td>
         </tr>
@@ -104,18 +101,143 @@ export async function sendWelcomeSubscriberEmail(email: string): Promise<void> {
   </table>
 </body>
 </html>`;
+}
+
+/**
+ * Sent immediately when someone subscribes to the newsletter.
+ * Shows their unique 6-digit welcome coupon code.
+ */
+export async function sendWelcomeSubscriberEmail(
+  email: string,
+  couponCode: string,
+  expiresAt: Date
+): Promise<void> {
+  const resend = getResend();
+  if (!resend) return;
+
+  const siteUrl = getSiteUrl();
+  const from = process.env.RESEND_FROM_EMAIL_GENERIC ?? "BingBing Jade <hello@bingbingjade.com>";
+  const html = buildWelcomeCouponHtml({ email, couponCode, expiresAt, siteUrl });
 
   try {
     await resend.emails.send({
       from,
       to: email,
       bcc: "bingbing.jade2@gmail.com",
-      subject: "[Subscriber] Welcome to BingBing Jade — Here's your first-order discount",
+      subject: `Your BingBing Jade welcome coupon: ${couponCode}`,
       html,
     });
   } catch (err) {
     console.error("[discount-emails] Failed to send welcome email:", err);
   }
+}
+
+/**
+ * Admin resend: re-send the welcome coupon email to a specific subscriber.
+ * Uses the same template as the initial welcome email.
+ */
+export async function resendSubscriberCouponEmail(
+  email: string,
+  couponCode: string,
+  expiresAt: Date
+): Promise<void> {
+  const resend = getResend();
+  if (!resend) return;
+
+  const siteUrl = getSiteUrl();
+  const from = process.env.RESEND_FROM_EMAIL_GENERIC ?? "BingBing Jade <hello@bingbingjade.com>";
+  const html = buildWelcomeCouponHtml({ email, couponCode, expiresAt, siteUrl });
+
+  try {
+    await resend.emails.send({
+      from,
+      to: email,
+      bcc: "bingbing.jade2@gmail.com",
+      subject: `Your BingBing Jade welcome coupon: ${couponCode}`,
+      html,
+    });
+  } catch (err) {
+    console.error("[discount-emails] Failed to resend coupon email:", err);
+    throw err;
+  }
+}
+
+/**
+ * Admin bulk broadcast: send a campaign/promo email to a list of subscribers.
+ * Accepts a custom subject and HTML body (pre-rendered by the caller).
+ * Batches in groups of 50 to stay within Resend limits.
+ */
+export async function sendBulkSubscriberEmail(params: {
+  emails: string[];
+  subject: string;
+  html: string;
+}): Promise<{ sent: number; failed: number }> {
+  const resend = getResend();
+  if (!resend) return { sent: 0, failed: params.emails.length };
+
+  const from = process.env.RESEND_FROM_EMAIL_GENERIC ?? "BingBing Jade <hello@bingbingjade.com>";
+  const BATCH_SIZE = 50;
+  let sent = 0;
+  let failed = 0;
+
+  for (let i = 0; i < params.emails.length; i += BATCH_SIZE) {
+    const chunk = params.emails.slice(i, i + BATCH_SIZE);
+    try {
+      await resend.batch.send(
+        chunk.map((email) => ({
+          from,
+          to: email,
+          subject: params.subject,
+          html: params.html,
+        }))
+      );
+      sent += chunk.length;
+    } catch (err) {
+      console.error(`[discount-emails] Bulk send batch ${i / BATCH_SIZE} failed:`, err);
+      failed += chunk.length;
+    }
+  }
+
+  return { sent, failed };
+}
+
+/** Build a branded HTML wrapper for admin broadcast emails. */
+export function buildBroadcastHtml(params: {
+  subject: string;
+  bodyHtml: string;
+  emails: string[]; // for per-email unsubscribe links we skip — use a generic one
+}): string {
+  const siteUrl = getSiteUrl();
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+        <tr>
+          <td style="background:#065f46;padding:32px 40px;text-align:center;">
+            <h1 style="margin:0;font-size:26px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">BingBing Jade</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 40px;">
+            ${params.bodyHtml}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 40px 28px;border-top:1px solid #f3f4f6;text-align:center;">
+            <p style="margin:0;font-size:12px;color:#9ca3af;">
+              &copy; ${new Date().getFullYear()} BingBing Jade &middot;
+              <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
 }
 
 // ── Referral invite email ─────────────────────────────────────────────────────

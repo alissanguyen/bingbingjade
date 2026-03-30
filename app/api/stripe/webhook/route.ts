@@ -9,7 +9,7 @@ import {
   sendOrderConfirmationEmail,
   fetchEmailItems,
 } from "@/lib/orders";
-import { commitDiscount, normalizeEmail } from "@/lib/discount";
+import { commitDiscount, normalizeEmail, buildShippingFingerprint } from "@/lib/discount";
 import type Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -241,6 +241,13 @@ export async function POST(req: NextRequest) {
 
   if (discountMeta && customerEmail) {
     try {
+      // Build shipping fingerprint for abuse detection on welcome coupons
+      const addr = shippingDetails?.address ?? null;
+      const shippingFingerprint =
+        discountMeta.source === "welcome"
+          ? buildShippingFingerprint(customerPhone, addr?.city, addr?.postal_code, addr?.country)
+          : null;
+
       const committed = await commitDiscount({
         source: discountMeta.source as "welcome" | "referral" | "campaign" | "store_credit",
         customerEmail,
@@ -250,6 +257,7 @@ export async function POST(req: NextRequest) {
         campaignId: discountMeta.campaignId,
         referrerCustomerId: discountMeta.referrerCustomerId,
         referralCode: discountMeta.code,
+        shippingFingerprint,
       });
 
       couponRedemptionId = committed.couponRedemptionId;

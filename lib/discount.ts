@@ -45,6 +45,7 @@ export interface DiscountResult {
   campaignId?: string;
   referrerCustomerId?: string;
   referralCode?: string;
+  subscriberCouponCode?: string; // welcome coupon code used
 }
 
 export interface DiscountInvalid {
@@ -60,6 +61,60 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+// ── Subscriber coupon code generation & assignment ────────────────────────────
+
+/** Generate a 6-digit numeric coupon code. */
+export function generateSubscriberCouponCode(): string {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { randomInt } = require("crypto") as typeof import("crypto");
+  return String(randomInt(100000, 1000000)); // 100000–999999
+}
+
+/**
+ * Assign a unique 6-digit coupon code to a new subscriber (by DB id).
+ * Retries on collision. Returns the code and expiry.
+ */
+export async function assignSubscriberCoupon(
+  subscriberId: string
+): Promise<{ code: string; expiresAt: Date }> {
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const code = generateSubscriberCouponCode();
+    const { error } = await supabaseAdmin
+      .from("email_subscribers")
+      .update({
+        welcome_coupon_code: code,
+        welcome_coupon_expires_at: expiresAt.toISOString(),
+      })
+      .eq("id", subscriberId)
+      .is("welcome_coupon_code", null); // only assign if not already set
+
+    if (!error) return { code, expiresAt };
+    // On unique-violation (collision), retry
+  }
+
+  throw new Error("Failed to assign subscriber coupon after retries.");
+}
+
+/** Build an abuse-detection fingerprint from order shipping data. */
+export function buildShippingFingerprint(
+  phone: string | null | undefined,
+  city: string | null | undefined,
+  postal: string | null | undefined,
+  country: string | null | undefined
+): string | null {
+  const parts = [
+    (phone ?? "").replace(/\D/g, "").slice(-10),
+    (city ?? "").trim().toLowerCase(),
+    (postal ?? "").trim().toLowerCase(),
+    (country ?? "").trim().toUpperCase(),
+  ];
+  // Require at least phone or city+postal to be meaningful
+  if (!parts[0] && !parts[1] && !parts[2]) return null;
+  return parts.join("|");
+}
+
 // ── Welcome discount ──────────────────────────────────────────────────────────
 
 async function validateWelcomeDiscount(
@@ -69,7 +124,7 @@ async function validateWelcomeDiscount(
   // 1. Check subscriber record exists and hasn't already been redeemed
   const { data: subscriber } = await supabaseAdmin
     .from("email_subscribers")
-    .select("id, welcome_discount_redeemed_at")
+    .select("id, welcome_discount_redeemed_at, welcome_coupon_code, welcome_coupon_expires_at")
     .eq("email", email)
     .maybeSingle();
 
@@ -78,6 +133,10 @@ async function validateWelcomeDiscount(
   }
   if (subscriber.welcome_discount_redeemed_at) {
     return { valid: false, error: "Welcome discount has already been used." };
+  }
+  // New subscribers have a coupon code — they must enter it explicitly
+  if (subscriber.welcome_coupon_code) {
+    return { valid: false, error: "Enter your welcome coupon code to apply your discount." };
   }
 
   // 2. Check customer record: must have no prior paid orders
@@ -166,6 +225,59 @@ async function validateReferralDiscount(
       : "Referral discount applied — $10 off",
     referrerCustomerId: referrer.id,
     referralCode,
+  };
+}
+
+// ── Subscriber welcome coupon ─────────────────────────────────────────────────
+
+async function validateSubscriberCoupon(
+  code: string,
+  customerEmail: string,
+  subtotalCents: number
+): Promise<DiscountValidation> {
+  const { data: subscriber } = await supabaseAdmin
+    .from("email_subscribers")
+    .select("id, email, welcome_coupon_code, welcome_coupon_expires_at, welcome_discount_redeemed_at")
+    .eq("welcome_coupon_code", code.trim())
+    .maybeSingle();
+
+  if (!subscriber) return { valid: false, error: "Invalid discount code." };
+
+  // Must be used by the subscriber email (prevents sharing)
+  if (normalizeEmail(subscriber.email) !== customerEmail) {
+    return { valid: false, error: "This coupon is registered to a different email." };
+  }
+
+  if (subscriber.welcome_discount_redeemed_at) {
+    return { valid: false, error: "This welcome coupon has already been used." };
+  }
+
+  if (subscriber.welcome_coupon_expires_at && new Date(subscriber.welcome_coupon_expires_at) < new Date()) {
+    return { valid: false, error: "This welcome coupon has expired." };
+  }
+
+  // Must be a first-time customer
+  const { data: customer } = await supabaseAdmin
+    .from("customers")
+    .select("id, paid_order_count")
+    .eq("customer_email", customerEmail)
+    .maybeSingle();
+
+  if (customer && customer.paid_order_count > 0) {
+    return { valid: false, error: "Welcome coupon is only available for first-time customers." };
+  }
+
+  const discountAmountCents = computeTieredDiscountCents(subtotalCents);
+  return {
+    valid: true,
+    source: "welcome",
+    discountAmountCents,
+    subtotalBeforeDiscountCents: subtotalCents,
+    displayMessage:
+      discountAmountCents === TIER_HIGH_DISCOUNT_CENTS
+        ? "Welcome coupon applied — $20 off your first order"
+        : "Welcome coupon applied — $10 off your first order",
+    subscriberCouponCode: code.trim(),
   };
 }
 
@@ -330,15 +442,19 @@ export async function validateDiscount(params: {
   }
 
   if (code) {
-    // Try referral code first (if it looks like one, i.e. in customers table)
+    // 1. Try referral code (8-char codes in customers.referral_code)
     const referralResult = await validateReferralDiscount(code, email, subtotalCents);
     if (referralResult.valid) return referralResult;
 
-    // Try campaign coupon
+    // 2. Try subscriber welcome coupon (6-digit code in email_subscribers)
+    const subscriberResult = await validateSubscriberCoupon(code, email, subtotalCents);
+    if (subscriberResult.valid) return subscriberResult;
+
+    // 3. Try campaign coupon
     const campaignResult = await validateCampaignDiscount(code, email, subtotalCents);
     if (campaignResult.valid) return campaignResult;
 
-    // Neither matched — return last error (campaign error is more descriptive)
+    // None matched — return campaign error (most descriptive)
     return campaignResult;
   }
 
@@ -367,14 +483,40 @@ export async function commitDiscount(params: {
   campaignId?: string;
   referrerCustomerId?: string;
   referralCode?: string;
-}): Promise<{ couponRedemptionId?: string; referralId?: string }> {
+  // For welcome coupon — shipping fingerprint for abuse detection
+  shippingFingerprint?: string | null;
+}): Promise<{ couponRedemptionId?: string; referralId?: string; potentialAbuse?: boolean }> {
   const email = normalizeEmail(params.customerEmail);
 
   if (params.source === "welcome") {
-    // Mark subscriber as redeemed (idempotent: only update if not already set)
+    const now = new Date().toISOString();
+    let potentialAbuse = false;
+
+    // Abuse check: if we have a fingerprint, see if it already exists on a redeemed coupon
+    if (params.shippingFingerprint) {
+      const { data: abuseMatch } = await supabaseAdmin
+        .from("email_subscribers")
+        .select("id, email")
+        .eq("used_fingerprint", params.shippingFingerprint)
+        .not("welcome_discount_redeemed_at", "is", null)
+        .neq("email", email)
+        .maybeSingle();
+
+      if (abuseMatch) {
+        potentialAbuse = true;
+        console.warn(
+          `[discount] Potential coupon abuse: ${email} shares fingerprint with ${abuseMatch.email}`
+        );
+      }
+    }
+
+    // Mark subscriber as redeemed; store fingerprint
     await supabaseAdmin
       .from("email_subscribers")
-      .update({ welcome_discount_redeemed_at: new Date().toISOString() })
+      .update({
+        welcome_discount_redeemed_at: now,
+        ...(params.shippingFingerprint ? { used_fingerprint: params.shippingFingerprint } : {}),
+      })
       .eq("email", email)
       .is("welcome_discount_redeemed_at", null);
 
@@ -382,11 +524,11 @@ export async function commitDiscount(params: {
     if (params.customerId) {
       await supabaseAdmin
         .from("customers")
-        .update({ welcome_discount_redeemed_at: new Date().toISOString() })
+        .update({ welcome_discount_redeemed_at: now })
         .eq("id", params.customerId)
         .is("welcome_discount_redeemed_at", null);
     }
-    return {};
+    return { potentialAbuse };
   }
 
   if (params.source === "campaign" && params.campaignId) {

@@ -45,7 +45,7 @@ export const metadata: Metadata = {
   },
 };
 
-const ADMIN_PREFIXES = ["/orders-admin", "/customers-admin", "/edit", "/add", "/admin", "/products-admin", "/vendors", "/profile", "/admin"];
+const ADMIN_PREFIXES = ["/orders-admin", "/customers-admin", "/edit", "/add", "/admin", "/products-admin", "/vendors", "/profile", "/coupons-admin", "/subscribers-admin"];
 
 export default async function RootLayout({
   children,

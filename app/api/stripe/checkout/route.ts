@@ -152,6 +152,7 @@ export async function POST(req: NextRequest) {
         amountCents: discountResult.discountAmountCents,
         subtotalBeforeCents: itemsSubtotalCents,
         ...(discountResult.referralCode ? { code: discountResult.referralCode } : {}),
+        ...(discountResult.subscriberCouponCode ? { code: discountResult.subscriberCouponCode } : {}),
         ...(body.discountCode && discountResult.source === "campaign"
           ? { code: body.discountCode.trim().toUpperCase() }
           : {}),

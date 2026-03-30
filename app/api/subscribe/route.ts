@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { normalizeEmail } from "@/lib/discount";
+import { normalizeEmail, assignSubscriberCoupon } from "@/lib/discount";
 import { sendWelcomeSubscriberEmail } from "@/lib/discount-emails";
 
 export async function POST(req: NextRequest) {
@@ -50,6 +50,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Subscription failed. Please try again." }, { status: 500 });
   }
 
+  // Fetch the new subscriber ID so we can assign their coupon
+  const { data: newSubscriber } = await supabaseAdmin
+    .from("email_subscribers")
+    .select("id")
+    .eq("email", email)
+    .single();
+
   // Also update customer record if they already exist (marketing_opt_in sync)
   await supabaseAdmin
     .from("customers")
@@ -61,10 +68,14 @@ export async function POST(req: NextRequest) {
     .eq("customer_email", email)
     .eq("marketing_opt_in", false);
 
-  // Send welcome email (non-blocking; don't fail the response if email fails)
-  sendWelcomeSubscriberEmail(email).catch((err) =>
-    console.error("[subscribe] Welcome email failed (non-fatal):", err)
-  );
+  // Assign a unique 6-digit welcome coupon, then send the welcome email
+  if (newSubscriber) {
+    assignSubscriberCoupon(newSubscriber.id)
+      .then(({ code, expiresAt }) =>
+        sendWelcomeSubscriberEmail(email, code, expiresAt)
+      )
+      .catch((err) => console.error("[subscribe] Coupon assign or welcome email failed (non-fatal):", err));
+  }
 
   return NextResponse.json({ success: true, alreadySubscribed: false });
 }
