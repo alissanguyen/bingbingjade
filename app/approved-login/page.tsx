@@ -44,6 +44,7 @@ export default function ApprovedLoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-8 space-y-5">
+
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
             <input
@@ -77,6 +78,13 @@ export default function ApprovedLoginPage() {
             {loading ? "Signing in…" : "Sign In"}
           </button>
         </form>
+
+        <p className="mt-4 text-center text-sm text-gray-400 dark:text-gray-500">
+          Admin?{" "}
+          <a href="/admin-login" className="text-emerald-600 dark:text-emerald-400 hover:underline">
+            Log in here
+          </a>
+        </p>
       </div>
     </div>
   );
