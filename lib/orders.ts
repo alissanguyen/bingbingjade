@@ -136,7 +136,7 @@ export async function sendOrderConfirmationEmail(params: {
   }
 
   const resend = new Resend(apiKey);
-  const from = process.env.RESEND_FROM_EMAIL ?? "BingBing Jade <orders@bingbingjade.com>";
+  const from = process.env.RESEND_FROM_EMAIL_ORDER_CONFIRMATION ?? "BingBing Jade <orders@bingbingjade.com>";
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
 
   const amountFormatted = `$${(params.amountTotalCents / 100).toFixed(2)}`;

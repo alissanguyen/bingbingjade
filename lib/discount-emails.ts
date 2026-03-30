@@ -25,7 +25,7 @@ export async function sendWelcomeSubscriberEmail(email: string): Promise<void> {
   if (!resend) return;
 
   const siteUrl = getSiteUrl();
-  const from = process.env.RESEND_FROM_EMAIL ?? "BingBing Jade <orders@bingbingjade.com>";
+  const from = process.env.RESEND_FROM_EMAIL_GENERIC ?? "BingBing Jade <hello@bingbingjade.com>";
   const unsubscribeUrl = `${siteUrl}/api/unsubscribe?e=${Buffer.from(email).toString("base64")}`;
 
   const html = `<!DOCTYPE html>
