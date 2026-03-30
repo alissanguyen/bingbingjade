@@ -3,10 +3,15 @@ import { AdminBar } from "./AdminBar";
 
 export async function AdminBarServer() {
   const session = await getSessionUser();
+  const profileHref = isAdmin(session)
+    ? "/admin-profile"
+    : isApproved(session)
+    ? "/profile"
+    : undefined;
   return (
     <AdminBar
       showUsersLink={isAdmin(session)}
-      isApprovedUser={isApproved(session)}
+      profileHref={profileHref}
     />
   );
 }

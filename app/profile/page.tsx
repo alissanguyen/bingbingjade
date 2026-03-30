@@ -3,6 +3,7 @@ import { getSessionUser, isApproved } from "@/lib/approved-auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { AdminBarServer } from "@/app/components/AdminBarServer";
 import Image from "next/image";
+import { TokenSection } from "./TokenSection";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -16,6 +17,16 @@ type Submission = {
   rejected_at: string | null;
   rejection_note: string | null;
   created_at: string;
+};
+
+type TokenRequest = {
+  id: string;
+  requested_amount: number;
+  status: "pending" | "approved" | "denied";
+  granted_amount: number | null;
+  admin_note: string | null;
+  created_at: string;
+  resolved_at: string | null;
 };
 
 const CAT_LABEL: Record<string, string> = {
@@ -45,16 +56,28 @@ export default async function ProfilePage() {
   const user = (session as Extract<typeof session, { type: "approved" }>)!.user;
   const createdBy = `approved:${user.id}`;
 
-  const { data: submissions } = await supabaseAdmin
-    .from("products")
-    .select("id, name, category, images, pending_approval, pending_data, rejected_at, rejection_note, created_at")
-    .eq("created_by", createdBy)
-    .order("created_at", { ascending: false });
+  const [{ data: submissions }, { data: userRow }, { data: tokenRequests }] = await Promise.all([
+    supabaseAdmin
+      .from("products")
+      .select("id, name, category, images, pending_approval, pending_data, rejected_at, rejection_note, created_at")
+      .eq("created_by", createdBy)
+      .order("created_at", { ascending: false }),
+    supabaseAdmin
+      .from("approved_users")
+      .select("generation_tokens")
+      .eq("id", user.id)
+      .single(),
+    supabaseAdmin
+      .from("token_requests")
+      .select("id, requested_amount, status, granted_amount, admin_note, created_at, resolved_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+  ]);
 
   const rows = (submissions ?? []) as Submission[];
-
   const pending = rows.filter((r) => r.pending_approval);
   const rejected = rows.filter((r) => !r.pending_approval && r.rejected_at !== null);
+  const generationTokens = userRow?.generation_tokens ?? 0;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -66,6 +89,12 @@ export default async function ProfilePage() {
           <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{user.full_name}</h1>
           <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
         </div>
+
+        {/* Tokens */}
+        <TokenSection
+          tokens={generationTokens}
+          requests={(tokenRequests ?? []) as TokenRequest[]}
+        />
 
         {/* Pending */}
         <section>

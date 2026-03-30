@@ -6,10 +6,10 @@ import { revalidateAll } from "@/app/admin-login/actions";
 
 export function AdminBar({
   showUsersLink = true,
-  isApprovedUser = false,
+  profileHref,
 }: {
   showUsersLink?: boolean;
-  isApprovedUser?: boolean;
+  profileHref?: string;
 }) {
   const [revalidating, setRevalidating] = useState(false);
   const [revalidateMsg, setRevalidateMsg] = useState<string | null>(null);
@@ -39,8 +39,8 @@ export function AdminBar({
           {showUsersLink && (
             <a href="/approved-users" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Users</a>
           )}
-          {isApprovedUser && (
-            <a href="/profile" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Profile</a>
+          {profileHref && (
+            <a href={profileHref} className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Profile</a>
           )}
           <button
             type="button"

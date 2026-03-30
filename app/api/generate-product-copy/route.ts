@@ -22,6 +22,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser, isApproved } from "@/lib/approved-auth";
 import { anthropic } from "@/lib/claude";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -107,6 +108,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Token gate for approved users
+  let approvedUserId: string | null = null;
+  let currentTokens: number | null = null;
+  if (isApproved(session)) {
+    approvedUserId = (session as Extract<typeof session, { type: "approved" }>).user.id;
+    const { data: tokenRow } = await supabaseAdmin
+      .from("approved_users")
+      .select("generation_tokens")
+      .eq("id", approvedUserId)
+      .single();
+    if (!tokenRow || tokenRow.generation_tokens <= 0) {
+      return NextResponse.json(
+        { error: "You have no generation tokens remaining. Request more from your Profile page." },
+        { status: 403 }
+      );
+    }
+    currentTokens = tokenRow.generation_tokens;
+  }
+
   let body: GenerateRequest;
   try {
     body = await req.json();
@@ -176,6 +196,15 @@ export async function POST(req: NextRequest) {
     }
 
     const toNum = (v: unknown) => (typeof v === "number" && isFinite(v) ? v : null);
+
+    // Decrement token for approved users after successful generation
+    if (approvedUserId && currentTokens !== null) {
+      await supabaseAdmin
+        .from("approved_users")
+        .update({ generation_tokens: currentTokens - 1 })
+        .eq("id", approvedUserId)
+        .gte("generation_tokens", 1); // safety: only update if still > 0
+    }
 
     return NextResponse.json({
       title: parsed.title.trim(),
