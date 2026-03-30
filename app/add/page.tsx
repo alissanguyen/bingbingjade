@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { ProductForm } from "./ProductForm";
-import { AdminBar } from "@/app/components/AdminBar";
+import { AdminBarServer } from "@/app/components/AdminBarServer";
 import { getSessionUser, isApproved } from "@/lib/approved-auth";
 
 export default async function AddProductPage() {
@@ -11,7 +11,7 @@ export default async function AddProductPage() {
 
   return (
     <>
-    <AdminBar />
+    <AdminBarServer />
     <div className="mx-auto max-w-2xl px-6 py-16">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Add Product</h1>

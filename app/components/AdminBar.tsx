@@ -4,7 +4,7 @@ import { useState } from "react";
 import { adminLogout } from "@/app/admin-login/actions";
 import { revalidateAll } from "@/app/admin-login/actions";
 
-export function AdminBar() {
+export function AdminBar({ showUsersLink = true }: { showUsersLink?: boolean }) {
   const [revalidating, setRevalidating] = useState(false);
   const [revalidateMsg, setRevalidateMsg] = useState<string | null>(null);
 
@@ -30,7 +30,9 @@ export function AdminBar() {
           <a href="/vendors" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Vendors</a>
           <a href="/orders-admin" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Orders</a>
           <a href="/customers-admin" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Customers</a>
-          <a href="/approved-users" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Users</a>
+          {showUsersLink && (
+            <a href="/approved-users" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Users</a>
+          )}
           <button
             type="button"
             onClick={handleRevalidate}

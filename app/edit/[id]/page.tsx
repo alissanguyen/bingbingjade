@@ -70,6 +70,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         vendors={vendors ?? []}
         initialOptions={initialOptions}
         isApprovedUser={isApproved(session)}
+        hasPendingApproval={product.pending_approval ?? false}
       />
     </div>
   );

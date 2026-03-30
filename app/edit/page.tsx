@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { resolveImageUrls, isStoragePath } from "@/lib/storage";
 import { ProductSearch } from "./ProductSearch";
-import { AdminBar } from "@/app/components/AdminBar";
+import { AdminBarServer } from "@/app/components/AdminBarServer";
 
 export default async function EditPage() {
   const { data: products } = await supabaseAdmin
@@ -25,7 +25,7 @@ export default async function EditPage() {
 
   return (
     <>
-      <AdminBar />
+      <AdminBarServer />
       <div className="mx-auto max-w-5xl px-6 py-16">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Edit Product</h1>

@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { AdminBar } from "@/app/components/AdminBar";
+import { AdminBarServer } from "@/app/components/AdminBarServer";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { resolveFirstImageUrl } from "@/lib/storage";
 import { OrderDetailClient } from "./OrderDetailClient";
@@ -54,7 +54,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   return (
     <>
-      <AdminBar />
+      <AdminBarServer />
       <OrderDetailClient order={order} productImages={productImages} />
     </>
   );

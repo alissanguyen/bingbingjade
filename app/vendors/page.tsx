@@ -1,4 +1,4 @@
-import { AdminBar } from "@/app/components/AdminBar";
+import { AdminBarServer } from "@/app/components/AdminBarServer";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { VendorsClient } from "./VendorsClient";
 
@@ -12,7 +12,7 @@ export default async function VendorsPage() {
 
   return (
     <>
-      <AdminBar />
+      <AdminBarServer />
       <VendorsClient vendors={vendors ?? []} />
     </>
   );

@@ -8,7 +8,7 @@ import {
   bulkUpdateQuickShip,
   bulkDelete,
 } from "@/app/edit/bulk-actions";
-import type { AdminProduct } from "./page";
+import type { AdminProduct, PendingProduct } from "./page";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -32,8 +32,15 @@ const CAT_LABEL: Record<string, string> = {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function ProductsAdminClient({ products: initial }: { products: AdminProduct[] }) {
+export function ProductsAdminClient({
+  products: initial,
+  pendingProducts: initialPending,
+}: {
+  products: AdminProduct[];
+  pendingProducts: PendingProduct[];
+}) {
   const [products, setProducts] = useState<AdminProduct[]>(initial);
+  const [pendingProducts, setPendingProducts] = useState<PendingProduct[]>(initialPending);
   const [query, setQuery] = useState("");
   const [catFilter, setCatFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -84,6 +91,23 @@ export function ProductsAdminClient({ products: initial }: { products: AdminProd
   function showToast(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
+  }
+
+  // ── Pending approval ──────────────────────────────────────────────────────
+
+  async function handleApproval(id: string, action: "approve" | "dismiss") {
+    const res = await fetch(`/api/admin/products/${id}/approve`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      showToast(`Error: ${data.error ?? "Something went wrong"}`);
+      return;
+    }
+    setPendingProducts((prev) => prev.filter((p) => p.id !== id));
+    showToast(action === "approve" ? "Listing approved." : "Listing dismissed.");
   }
 
   // ── Bulk actions ──────────────────────────────────────────────────────────
@@ -163,6 +187,74 @@ export function ProductsAdminClient({ products: initial }: { products: AdminProd
             Add Product
           </a>
         </div>
+
+        {/* Pending Approval Queue */}
+        {pendingProducts.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-sm font-semibold text-amber-700 dark:text-amber-400 mb-3 flex items-center gap-2">
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-xs font-bold">
+                {pendingProducts.length}
+              </span>
+              Pending Approval
+            </h2>
+            <div className="space-y-2">
+              {pendingProducts.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl"
+                >
+                  {/* Thumbnail */}
+                  <div className="w-10 h-10 shrink-0 rounded-lg overflow-hidden bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800">
+                    {p.thumbnailUrl ? (
+                      <Image src={p.thumbnailUrl} alt={p.name} width={40} height={40} className="w-full h-full object-cover" unoptimized />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-amber-300 dark:text-amber-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{p.name}</p>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                      {p.isEdit ? "Edit proposed" : "New listing"} · {CAT_LABEL[p.category] ?? p.category} · by {p.submitterName}
+                    </p>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <a
+                      href={`/edit/${p.id}`}
+                      className="rounded-lg border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 px-3 py-1.5 text-xs font-medium hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+                    >
+                      Review
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => handleApproval(p.id, "approve")}
+                      className="rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 text-xs font-medium transition-colors"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const label = p.isEdit ? "dismiss this edit?" : `delete "${p.name}"? This cannot be undone.`;
+                        if (confirm(`Are you sure you want to ${label}`)) handleApproval(p.id, "dismiss");
+                      }}
+                      className="rounded-lg border border-red-200 dark:border-red-900 text-red-500 px-3 py-1.5 text-xs font-medium hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Search */}
         <input

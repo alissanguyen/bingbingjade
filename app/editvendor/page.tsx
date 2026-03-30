@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { VendorList } from "./VendorList";
-import { AdminBar } from "@/app/components/AdminBar";
+import { AdminBarServer } from "@/app/components/AdminBarServer";
 
 export default async function EditVendorPage() {
   const { data: vendors } = await supabaseAdmin
@@ -10,7 +10,7 @@ export default async function EditVendorPage() {
 
   return (
     <>
-      <AdminBar />
+      <AdminBarServer />
       <div className="mx-auto max-w-3xl px-6 py-16">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Edit Vendors</h1>

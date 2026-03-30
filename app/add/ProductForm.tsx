@@ -320,7 +320,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
   const [imageDragging, setImageDragging] = useState(false);
   const [videoDragging, setVideoDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [result, setResult] = useState<{ success?: boolean; error?: string } | null>(null);
+  const [result, setResult] = useState<{ success?: boolean; error?: string; pendingApproval?: boolean } | null>(null);
   const [isFeatured, setIsFeatured] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
   const [isQuickShip, setIsQuickShip] = useState(false);
@@ -640,7 +640,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
       if (res.error) {
         setResult({ error: res.error });
       } else {
-        setResult({ success: true });
+        setResult({ success: true, pendingApproval: res.pendingApproval });
         setSelectedTiers([]);
         setForm({ name: "", category: "other", origin: "Myanmar", size: "", description: "", blemishes: "", price_display_usd: "", sale_price_usd: "", imported_price_vnd: "" });
         setVendorId("");
@@ -1236,7 +1236,9 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
       {/* Result */}
       {result?.success && (
         <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
-          Product added successfully.
+          {result.pendingApproval
+            ? "Listing submitted for admin approval. It will go live once reviewed."
+            : "Product added successfully."}
         </div>
       )}
       {result?.error && (

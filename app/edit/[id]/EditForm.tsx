@@ -188,9 +188,10 @@ interface Props {
   vendors: Vendor[];
   initialOptions?: InitialOption[];
   isApprovedUser?: boolean;
+  hasPendingApproval?: boolean;
 }
 
-export function EditForm({ product, vendors, initialOptions = [], isApprovedUser = false }: Props) {
+export function EditForm({ product, vendors, initialOptions = [], isApprovedUser = false, hasPendingApproval = false }: Props) {
   const router = useRouter();
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -244,7 +245,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [result, setResult] = useState<{ success?: boolean; error?: string } | null>(null);
+  const [result, setResult] = useState<{ success?: boolean; error?: string; pendingApproval?: boolean } | null>(null);
 
   const [vendorId, setVendorId] = useState(product.vendor_id);
   const [selectedColors, setSelectedColors] = useState<string[]>(product.color ?? []);
@@ -439,7 +440,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       if (res.error) {
         setResult({ error: res.error });
       } else {
-        setResult({ success: true });
+        setResult({ success: true, pendingApproval: res.pendingApproval });
         setNewImages([]);
         setNewVideos([]);
       }
@@ -467,6 +468,15 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+
+      {/* Pending approval notice */}
+      {hasPendingApproval && !result?.success && (
+        <div className="rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+          {isApprovedUser
+            ? "This listing is awaiting admin approval. You can update your submission below."
+            : "This listing has a pending edit from a partner awaiting your approval."}
+        </div>
+      )}
 
       {/* Basic Info */}
       <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
@@ -951,7 +961,9 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
 
       {result?.success && (
         <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
-          Product updated successfully.
+          {result.pendingApproval
+            ? "Changes submitted for admin approval. The live listing will update once reviewed."
+            : "Product updated successfully."}
         </div>
       )}
       {result?.error && (

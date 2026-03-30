@@ -2,7 +2,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { slugify, generatePublicId } from "@/lib/slug";
-import { getSessionUser, isApproved } from "@/lib/approved-auth";
+import { getSessionUser, isApproved, approvedCreatedBy, SessionUser } from "@/lib/approved-auth";
 import type { ProductCategory } from "@/types/product";
 
 interface OptionInput {
@@ -13,9 +13,12 @@ interface OptionInput {
   images?: string[];
 }
 
-export async function createProduct(formData: FormData): Promise<{ error?: string; success?: boolean }> {
+export async function createProduct(formData: FormData): Promise<{ error?: string; success?: boolean; pendingApproval?: boolean }> {
   const session = await getSessionUser();
   const approvedUser = isApproved(session);
+  const approvedUserId = approvedUser
+    ? (session as Extract<SessionUser, { type: "approved" }>).user.id
+    : null;
 
   const imageUrls = formData.getAll("imageUrls") as string[];
   const videoUrls = formData.getAll("videoUrls") as string[];
@@ -50,7 +53,9 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
       imported_price_vnd: approvedUser ? 0 : Number(formData.get("imported_price_vnd")),
       vendor_id,
       is_featured: formData.get("is_featured") === "true",
-      is_published: formData.get("is_published") === "true",
+      is_published: false, // always draft — admin publishes; approved users require approval first
+      pending_approval: approvedUser,
+      created_by: approvedUser ? approvedCreatedBy(approvedUserId!) : "admin",
       quick_ship: formData.get("quick_ship") === "true",
       status: productStatus,
       images: imageUrls,
@@ -84,5 +89,5 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
     }
   }
 
-  return { success: true };
+  return { success: true, ...(approvedUser ? { pendingApproval: true } : {}) };
 }

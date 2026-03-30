@@ -1,4 +1,4 @@
-import { AdminBar } from "@/app/components/AdminBar";
+import { AdminBarServer } from "@/app/components/AdminBarServer";
 import { CustomersAdminClient } from "./CustomersAdminClient";
 
 export const dynamic = "force-dynamic";
@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export default function CustomersAdminPage() {
   return (
     <>
-      <AdminBar />
+      <AdminBarServer />
       <CustomersAdminClient />
     </>
   );
