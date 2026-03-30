@@ -525,8 +525,8 @@ High-value jade pieces attract buyers who expect a personal relationship before 
 **Why subject-line prefixes for Gmail sorting instead of custom headers?**
 Custom email headers (`X-BBJ-Category: Order Update`) are not surfaced in Gmail's filter UI and cannot be used to create label rules without raw message parsing. Subject-line prefixes (`[Order Update]`, `[Order Placed]`, `[Subscriber]`) work with Gmail's built-in filter UI — create a filter for `Subject contains [Order Update]` and apply a label. Simple, reliable, no tooling required.
 
-**Why 6-digit numeric codes instead of alphanumeric for subscriber coupons?**
-Shorter codes reduce transcription errors for customers copying from email. A 6-digit numeric space (900,000 combinations) is sufficient for a boutique subscriber list with collision handled by retry loops. Campaign codes use freeform uppercase strings (e.g. `BLACKFRI25`) which are manually chosen, human-readable, and deliberately memorable — no collision risk there.
+**Why 6-character alphanumeric codes for subscriber coupons?**
+Six characters from a 32-character unambiguous alphabet (no 0/O/1/I/L) yields 32⁶ = ~1 billion combinations, making collision essentially impossible at any realistic subscriber count. The charset excludes visually similar characters to prevent transcription errors when customers type the code from an email. Campaign codes use freeform uppercase strings (e.g. `BLACKFRI25`) which are manually chosen, human-readable, and deliberately memorable.
 
 **Why is the subscriber coupon tied to the subscriber's email?**
 Without tying the code to an email, customers could share their coupon with anyone. Binding it means validation requires both the correct email and the correct code, maintaining first-time-customer intent. The tradeoff is that the code cannot be used as a "gift" code — that use case is served by campaign coupons.

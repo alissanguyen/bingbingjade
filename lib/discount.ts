@@ -63,11 +63,17 @@ export function normalizeEmail(email: string): string {
 
 // ── Subscriber coupon code generation & assignment ────────────────────────────
 
-/** Generate a 6-digit numeric coupon code. */
+/** Generate a 6-character alphanumeric coupon code (uppercase, no ambiguous chars). */
 export function generateSubscriberCouponCode(): string {
+  const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // 32 chars — no 0/O/1/I/L
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { randomInt } = require("crypto") as typeof import("crypto");
-  return String(randomInt(100000, 1000000)); // 100000–999999
+  const crypto = require("crypto") as typeof import("crypto");
+  const bytes: Buffer = crypto.randomBytes(6);
+  let code = "";
+  for (const byte of bytes) {
+    code += chars[byte % chars.length]; // 256 % 32 === 0, no modulo bias
+  }
+  return code;
 }
 
 /**
