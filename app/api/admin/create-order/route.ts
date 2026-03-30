@@ -49,7 +49,6 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import {
   upsertCustomer,
@@ -57,6 +56,7 @@ import {
   generateOrderNumber,
   sendOrderConfirmationEmail,
 } from "@/lib/orders";
+import { getSessionUser, isApproved, approvedCreatedBy, SessionUser } from "@/lib/approved-auth";
 import type { OrderStatus, OrderSource } from "@/types/orders";
 
 const VALID_SOURCES: OrderSource[] = ["whatsapp", "cash", "paypal", "wire", "custom", "admin"];
@@ -65,14 +65,9 @@ const VALID_ORDER_STATUSES: OrderStatus[] = [
   "quality_control", "certifying", "inbound_shipping", "outbound_shipping", "delivered",
 ];
 
-async function isAdmin(): Promise<boolean> {
-  const cookieStore = await cookies();
-  const session = cookieStore.get("admin_session")?.value;
-  return !!session && session === process.env.ADMIN_PASSWORD;
-}
-
 export async function POST(req: NextRequest) {
-  if (!(await isAdmin())) {
+  const session = await getSessionUser();
+  if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -230,6 +225,9 @@ export async function POST(req: NextRequest) {
       fee_breakdown: body.fees && Object.keys(body.fees).filter((k) => k !== "otherLabel" && (body.fees as Record<string, unknown>)[k]).length > 0
         ? body.fees
         : null,
+      created_by: isApproved(session)
+        ? approvedCreatedBy((session as Extract<SessionUser, { type: "approved" }>).user.id)
+        : "admin",
       // No stripe fields — this is a manual order
     })
     .select("id")

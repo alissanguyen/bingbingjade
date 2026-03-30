@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-
-async function isAdmin(): Promise<boolean> {
-  const cookieStore = await cookies();
-  const session = cookieStore.get("admin_session")?.value;
-  return !!session && session === process.env.ADMIN_PASSWORD;
-}
+import { getSessionUser, isApproved, approvedCreatedBy, SessionUser } from "@/lib/approved-auth";
 
 export async function GET(req: NextRequest) {
-  if (!(await isAdmin())) {
+  const session = await getSessionUser();
+  if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -30,6 +25,11 @@ export async function GET(req: NextRequest) {
     )
     .order("created_at", { ascending: false })
     .range(from, from + limit - 1);
+
+  // Approved users see only their own orders
+  if (isApproved(session)) {
+    query = query.eq("created_by", approvedCreatedBy((session as Extract<SessionUser, { type: "approved" }>).user.id));
+  }
 
   if (status) query = query.eq("order_status", status);
 

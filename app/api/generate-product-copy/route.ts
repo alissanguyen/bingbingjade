@@ -20,7 +20,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { getSessionUser } from "@/lib/approved-auth";
 import { anthropic } from "@/lib/claude";
 
 export const dynamic = "force-dynamic";
@@ -101,10 +101,9 @@ BLEMISHES RULES:
 }
 
 export async function POST(req: NextRequest) {
-  // Auth — same guard as upload-image and create-upload-url
-  const cookieStore = await cookies();
-  const session = cookieStore.get("admin_session")?.value;
-  if (!session || session !== process.env.ADMIN_PASSWORD) {
+  // Auth — admin or approved users can generate copy
+  const session = await getSessionUser();
+  if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

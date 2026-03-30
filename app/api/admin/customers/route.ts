@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-
-async function isAdmin(): Promise<boolean> {
-  const cookieStore = await cookies();
-  const session = cookieStore.get("admin_session")?.value;
-  return !!session && session === process.env.ADMIN_PASSWORD;
-}
+import { getSessionUser, isAdmin } from "@/lib/approved-auth";
 
 // GET /api/admin/customers — list all customers with their order numbers
 export async function GET(req: NextRequest) {
-  if (!(await isAdmin())) {
+  if (!(await getSessionUser())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -63,7 +57,7 @@ export async function GET(req: NextRequest) {
 
 // POST /api/admin/customers — manually add a customer record
 export async function POST(req: NextRequest) {
-  if (!(await isAdmin())) {
+  if (!isAdmin(await getSessionUser())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

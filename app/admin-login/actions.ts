@@ -34,6 +34,8 @@ export async function revalidateAll() {
 
 export async function adminLogout() {
   const cookieStore = await cookies();
+  const wasApproved = !!cookieStore.get("approved_session");
   cookieStore.delete("admin_session");
-  redirect("/admin-login");
+  cookieStore.delete("approved_session");
+  redirect(wasApproved ? "/approved-login" : "/admin-login");
 }

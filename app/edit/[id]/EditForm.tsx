@@ -187,9 +187,10 @@ interface Props {
   product: ProductData;
   vendors: Vendor[];
   initialOptions?: InitialOption[];
+  isApprovedUser?: boolean;
 }
 
-export function EditForm({ product, vendors, initialOptions = [] }: Props) {
+export function EditForm({ product, vendors, initialOptions = [], isApprovedUser = false }: Props) {
   const router = useRouter();
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -725,6 +726,7 @@ export function EditForm({ product, vendors, initialOptions = [] }: Props) {
             <p className="mt-1 text-xs text-gray-400">Shown as the discounted price</p>
           </div>
           )}
+          {!isApprovedUser && (
           <div>
             <label className={labelClass}>Imported Price (VND) <span className="text-red-400">*</span></label>
             <div className="relative">
@@ -732,6 +734,7 @@ export function EditForm({ product, vendors, initialOptions = [] }: Props) {
               <input required type="number" min="0" value={form.imported_price_vnd} onChange={set("imported_price_vnd")} className={`${inputClass} pl-7`} />
             </div>
           </div>
+          )}
         </div>
       </section>
 

@@ -15,15 +15,13 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { VIDEO_BUCKET } from "@/lib/storage";
+import { getSessionUser } from "@/lib/approved-auth";
 
 export async function POST(req: NextRequest) {
   // ── Auth ──────────────────────────────────────────────────────────────────
-  const cookieStore = await cookies();
-  const session = cookieStore.get("admin_session")?.value;
-  if (!session || session !== process.env.ADMIN_PASSWORD) {
+  if (!(await getSessionUser())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

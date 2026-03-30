@@ -17,20 +17,18 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { applyWatermark } from "@/lib/watermark";
 import { IMAGE_BUCKET } from "@/lib/storage";
+import { getSessionUser } from "@/lib/approved-auth";
 
 // Allow large raw image files (iPhone HEIC/RAW can be 15–20 MB)
 export const maxDuration = 60; // seconds — Sharp processing can be slow on large files
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  // ── Auth: must be logged-in admin ─────────────────────────────────────────
-  const cookieStore = await cookies();
-  const session = cookieStore.get("admin_session")?.value;
-  if (!session || session !== process.env.ADMIN_PASSWORD) {
+  // ── Auth: admin or approved user ──────────────────────────────────────────
+  if (!(await getSessionUser())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

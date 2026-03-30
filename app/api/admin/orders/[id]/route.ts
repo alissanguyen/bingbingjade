@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { sendOrderStatusEmail, sendDeliveryDateEmail, fetchEmailItems } from "@/lib/orders";
 import { processReferralRewardOnDelivery, ensureReferralCode } from "@/lib/discount";
 import { sendReferralInviteEmail, sendReferralRewardEmail } from "@/lib/discount-emails";
+import { getSessionUser, isAdmin, isApproved, approvedCreatedBy, SessionUser } from "@/lib/approved-auth";
 import type { OrderStatus } from "@/types/orders";
-
-async function isAdmin(): Promise<boolean> {
-  const cookieStore = await cookies();
-  const session = cookieStore.get("admin_session")?.value;
-  return !!session && session === process.env.ADMIN_PASSWORD;
-}
 
 const VALID_STATUSES: OrderStatus[] = [
   "order_created",
@@ -29,13 +23,12 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const session = await getSessionUser();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
 
-  const { data: order, error } = await supabaseAdmin
+  let query = supabaseAdmin
     .from("orders")
     .select(`
       *,
@@ -45,8 +38,14 @@ export async function GET(
         city, state_or_region, postal_code, country
       )
     `)
-    .eq("id", id)
-    .single();
+    .eq("id", id);
+
+  // Approved users can only fetch their own orders
+  if (isApproved(session)) {
+    query = query.eq("created_by", approvedCreatedBy((session as Extract<SessionUser, { type: "approved" }>).user.id));
+  }
+
+  const { data: order, error } = await query.single();
 
   if (error || !order) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
@@ -59,9 +58,10 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const session = await getSessionUser();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Only admin can update orders (approved users have read-only order access)
+  if (!isAdmin(session)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
   const body = await req.json();

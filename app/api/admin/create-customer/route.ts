@@ -16,17 +16,11 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { upsertCustomer } from "@/lib/orders";
-
-async function isAdmin(): Promise<boolean> {
-  const cookieStore = await cookies();
-  const session = cookieStore.get("admin_session")?.value;
-  return !!session && session === process.env.ADMIN_PASSWORD;
-}
+import { getSessionUser } from "@/lib/approved-auth";
 
 export async function POST(req: NextRequest) {
-  if (!(await isAdmin())) {
+  if (!(await getSessionUser())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

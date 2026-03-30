@@ -21,6 +21,7 @@ interface OptionRow {
 
 interface Props {
   vendors: Vendor[];
+  isApprovedUser?: boolean;
 }
 
 const CATEGORIES: ProductCategory[] = ["bracelet", "bangle", "ring", "pendant", "necklace", "other", "custom_order"];
@@ -310,7 +311,7 @@ function VendorSearch({ vendors: initialVendors, value, onChange }: { vendors: V
   );
 }
 
-export function ProductForm({ vendors }: Props) {
+export function ProductForm({ vendors, isApprovedUser = false }: Props) {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
@@ -409,7 +410,7 @@ export function ProductForm({ vendors }: Props) {
         blemishes: data.blemishes ?? f.blemishes,
         size: data.size != null ? String(data.size) : f.size,
         origin: data.origin ?? f.origin,
-        imported_price_vnd: data.imported_price_vnd != null ? String(data.imported_price_vnd) : f.imported_price_vnd,
+        imported_price_vnd: (!isApprovedUser && data.imported_price_vnd != null) ? String(data.imported_price_vnd) : f.imported_price_vnd,
       }));
       // Apply size_detailed if Claude returned width or thickness
       if (data.size != null || data.width != null || data.thickness != null) {
@@ -995,6 +996,7 @@ export function ProductForm({ vendors }: Props) {
             <p className="mt-1 text-xs text-gray-400">Shown as the discounted price</p>
           </div>
           )}
+          {!isApprovedUser && (
           <div>
             <label className={labelClass}>Imported Price (VND) <span className="text-red-400">*</span></label>
             <div className="relative">
@@ -1002,6 +1004,7 @@ export function ProductForm({ vendors }: Props) {
               <input required type="number" min="0" value={form.imported_price_vnd} onChange={set("imported_price_vnd")} placeholder="0" className={`${inputClass} pl-7`} />
             </div>
           </div>
+          )}
         </div>
       </section>
 

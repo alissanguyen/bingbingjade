@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { resolveImageUrls, resolveVideoUrls, isStoragePath } from "@/lib/storage";
 import { EditForm } from "./EditForm";
+import { getSessionUser, isApproved } from "@/lib/approved-auth";
 import type { OptionStatus } from "@/types/product";
 
 interface InitialOptionRaw {
@@ -19,7 +20,7 @@ interface InitialOption extends InitialOptionRaw {
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const [{ data: product }, { data: vendors }, { data: optionsData }] = await Promise.all([
+  const [{ data: product }, { data: vendors }, { data: optionsData }, session] = await Promise.all([
     supabaseAdmin.from("products").select("*").eq("id", id).single(),
     supabaseAdmin.from("vendors").select("*").order("name"),
     supabaseAdmin
@@ -28,6 +29,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
       .eq("product_id", id)
       .order("sort_order")
       .returns<InitialOptionRaw[]>(),
+    getSessionUser(),
   ]);
 
   if (!product) notFound();
@@ -65,6 +67,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         product={productWithUrls}
         vendors={vendors ?? []}
         initialOptions={initialOptions}
+        isApprovedUser={isApproved(session)}
       />
     </div>
   );

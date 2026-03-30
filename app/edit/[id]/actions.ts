@@ -45,7 +45,7 @@ export async function updateProduct(
       blemishes: (formData.get("blemishes") as string) || null,
       price_display_usd: formData.get("price_display_usd") ? Number(formData.get("price_display_usd")) : null,
       sale_price_usd: formData.get("sale_price_usd") ? Number(formData.get("sale_price_usd")) : null,
-      imported_price_vnd: Number(formData.get("imported_price_vnd")),
+      ...(formData.has("imported_price_vnd") ? { imported_price_vnd: Number(formData.get("imported_price_vnd")) } : {}),
       vendor_id: formData.get("vendor_id") as string,
       is_featured: formData.get("is_featured") === "true",
       is_published: formData.get("is_published") === "true",
