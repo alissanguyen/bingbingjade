@@ -4,7 +4,13 @@ import { useState } from "react";
 import { adminLogout } from "@/app/admin-login/actions";
 import { revalidateAll } from "@/app/admin-login/actions";
 
-export function AdminBar({ showUsersLink = true }: { showUsersLink?: boolean }) {
+export function AdminBar({
+  showUsersLink = true,
+  isApprovedUser = false,
+}: {
+  showUsersLink?: boolean;
+  isApprovedUser?: boolean;
+}) {
   const [revalidating, setRevalidating] = useState(false);
   const [revalidateMsg, setRevalidateMsg] = useState<string | null>(null);
 
@@ -32,6 +38,9 @@ export function AdminBar({ showUsersLink = true }: { showUsersLink?: boolean }) 
           <a href="/customers-admin" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Customers</a>
           {showUsersLink && (
             <a href="/approved-users" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Users</a>
+          )}
+          {isApprovedUser && (
+            <a href="/profile" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Profile</a>
           )}
           <button
             type="button"

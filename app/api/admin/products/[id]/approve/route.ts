@@ -13,7 +13,7 @@ export async function PATCH(
 
   const { id } = await params;
 
-  let body: { action?: "approve" | "dismiss" };
+  let body: { action?: "approve" | "dismiss"; rejection_note?: string };
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
@@ -75,17 +75,23 @@ export async function PATCH(
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     }
   } else {
-    // dismiss
+    // dismiss — mark as rejected so the partner can see it in their profile
+    const rejectedAt = new Date().toISOString();
+    const rejectionNote = body.rejection_note?.trim() || null;
+
     if (isEdit) {
       // Discard proposed changes — live data already untouched
       const { error } = await supabaseAdmin
         .from("products")
-        .update({ pending_approval: false, pending_data: null })
+        .update({ pending_approval: false, pending_data: null, rejected_at: rejectedAt, rejection_note: rejectionNote })
         .eq("id", id);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     } else {
-      // New listing — delete entirely
-      const { error } = await supabaseAdmin.from("products").delete().eq("id", id);
+      // New listing — keep the record but mark as rejected (partner can see it)
+      const { error } = await supabaseAdmin
+        .from("products")
+        .update({ pending_approval: false, rejected_at: rejectedAt, rejection_note: rejectionNote })
+        .eq("id", id);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     }
   }
