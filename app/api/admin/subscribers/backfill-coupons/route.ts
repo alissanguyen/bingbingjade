@@ -3,14 +3,17 @@ import { getSessionUser, isAdmin } from "@/lib/approved-auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { generateSubscriberCouponCode } from "@/lib/discount";
 
+const NUMERIC_ONLY = /^\d+$/;
+
 /**
  * POST /api/admin/subscribers/backfill-coupons
  *
- * Generates welcome coupon codes for all existing subscribers that:
- *  - have no code yet (welcome_coupon_code IS NULL)
- *  - have not already redeemed their welcome discount
+ * Assigns or regenerates welcome coupon codes for all unredeemed subscribers:
+ *  - Subscribers with no code (welcome_coupon_code IS NULL)
+ *  - Subscribers with a legacy numeric-only code (pre-alphanumeric migration)
  *
- * Does NOT send emails — admin can follow up with bulk email from /subscribers-admin.
+ * Always resets the 30-day expiry window from now.
+ * Does NOT send emails — use bulk email from /subscribers-admin to notify.
  * Returns { assigned, skipped } counts.
  */
 export async function POST(req: NextRequest) {
@@ -20,11 +23,19 @@ export async function POST(req: NextRequest) {
 
   const { data: eligible } = await supabaseAdmin
     .from("email_subscribers")
-    .select("id")
-    .is("welcome_coupon_code", null)
+    .select("id, welcome_coupon_code")
     .is("welcome_discount_redeemed_at", null);
 
   if (!eligible || eligible.length === 0) {
+    return NextResponse.json({ assigned: 0, skipped: 0 });
+  }
+
+  // Target: no code OR existing code that is purely numeric (legacy format)
+  const toAssign = eligible.filter(
+    (s) => !s.welcome_coupon_code || NUMERIC_ONLY.test(s.welcome_coupon_code)
+  );
+
+  if (toAssign.length === 0) {
     return NextResponse.json({ assigned: 0, skipped: 0 });
   }
 
@@ -32,19 +43,17 @@ export async function POST(req: NextRequest) {
   let assigned = 0;
   let skipped = 0;
 
-  // Assign codes one at a time to handle collision retries
-  for (const sub of eligible) {
+  for (const sub of toAssign) {
     let success = false;
     for (let attempt = 0; attempt < 10; attempt++) {
       const code = generateSubscriberCouponCode();
       const { error } = await supabaseAdmin
         .from("email_subscribers")
         .update({ welcome_coupon_code: code, welcome_coupon_expires_at: expiresAt })
-        .eq("id", sub.id)
-        .is("welcome_coupon_code", null);
+        .eq("id", sub.id);
 
       if (!error) { success = true; break; }
-      // unique violation → retry with a new code
+      // unique violation on the code → retry
     }
     if (success) assigned++; else skipped++;
   }
