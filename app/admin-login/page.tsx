@@ -17,6 +17,12 @@ export default async function AdminLoginPage({
         <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-8">
           <LoginForm redirectTo={from ?? "/add"} />
         </div>
+        <p className="mt-4 text-center text-sm text-gray-400 dark:text-gray-500">
+          Not an admin?{" "}
+          <a href="/approved-login" className="text-emerald-600 dark:text-emerald-400 hover:underline">
+            Partner portal login
+          </a>
+        </p>
       </div>
     </div>
   );
