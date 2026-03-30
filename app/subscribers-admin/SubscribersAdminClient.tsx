@@ -38,10 +38,28 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
   const [bulkForm, setBulkForm] = useState({ subject: "", message: "", target: "all" as "all" | "unused" });
   const [bulkSending, setBulkSending] = useState(false);
   const [bulkResult, setBulkResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
+  const [backfilling, setBackfilling] = useState(false);
 
   function showToast(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(null), 3500);
+  }
+
+  async function handleBackfill() {
+    if (!confirm("Generate coupon codes for all existing subscribers without one? This does not send any emails.")) return;
+    setBackfilling(true);
+    try {
+      const res = await fetch("/api/admin/subscribers/backfill-coupons", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(`Done — ${data.assigned} codes assigned, ${data.skipped} skipped.`);
+        await loadTab(tab); // refresh the list
+      } else {
+        showToast(data.error ?? "Backfill failed.");
+      }
+    } finally {
+      setBackfilling(false);
+    }
   }
 
   async function loadTab(t: (typeof TAB_VALUES)[number]) {
@@ -109,13 +127,23 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
           <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Subscribers</h1>
           <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{initial.length} total</p>
         </div>
-        <button
-          type="button"
-          onClick={() => { setShowBulkModal(true); setBulkResult(null); }}
-          className="text-sm font-medium px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
-        >
-          Bulk Email
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleBackfill}
+            disabled={backfilling}
+            className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
+          >
+            {backfilling ? "Backfilling…" : "Backfill Coupons"}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setShowBulkModal(true); setBulkResult(null); }}
+            className="text-sm font-medium px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+          >
+            Bulk Email
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}

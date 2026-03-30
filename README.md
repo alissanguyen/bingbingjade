@@ -85,7 +85,23 @@ The application is split into a **customer storefront** and a **password-protect
   - Notes field
 - **Custom order entry** — admin can create manual orders (Cash/Zelle/PayPal/Stripe/Wire Transfer source); order numbers prefixed `BBJ-` with a minimum value enforced; customer and address records created or linked automatically
 - **Vendor management** — CRUD for supplier records
+- **Coupon campaign management** (`/coupons-admin`) — create seasonal/promotional codes with configurable discount type (fixed, percent, or tiered $10/$20), active date window, minimum order amount, per-customer and global redemption caps, and new-customer restriction; toggle active/inactive; live redemption count per campaign
+- **Subscriber management** (`/subscribers-admin`) — view all email subscribers with their coupon code, expiry, and status (Active / Used / Expired / No code); filter tabs; resend welcome coupon email to individual subscriber; bulk email with custom subject and message body targeting all or unused-coupon subscribers; backfill coupon codes for pre-migration subscribers
+- **Admin profile** (`/admin`) — at-a-glance action items: pending product approvals and pending partner token requests with inline approve/deny and adjustable grant amount
 - **Beta checkout mode** — checkout locked to admin during soft-launch; toggle to public with `NEXT_PUBLIC_CHECKOUT_MODE=live`
+
+### Partner Portal (Approved Users)
+
+A separate authenticated portal for trusted vendor partners with a distinct `approved_session` cookie and HMAC-signed user ID.
+
+- **Scoped product creation** — partners can add new listings; products are saved as `pending_approval = true` and hidden from the storefront until admin approves
+- **Scoped product editing** — proposed edits are stored in a `pending_data` JSONB column; the live listing is untouched until admin approves; dismissed edits discard `pending_data`
+- **Pending approval queue** — admin sees a dedicated section in `/products-admin` with approve/dismiss actions; dismissed new listings record `rejected_at` so partners can see why
+- **Partner profile** (`/profile`) — shows pending submissions, rejected submissions with admin notes, token balance, token request history, and a Tasks placeholder
+- **AI copy generation with token budget** — partners share the same Claude generation feature as admin but consume from a personal token balance (default 10); requests are blocked at 0 tokens with a clear error message; each successful generation atomically decrements the balance
+- **Token request flow** — partner submits a request with an optional message; admin sees it in `/admin` profile with inline approve/deny, adjustable grant amount, and optional admin note; only one pending request allowed at a time
+- **Access levels** — `standard` and `senior` (reserved for future expansion); `imported_price_vnd` (profit margin) is always stripped from partner-facing responses
+- **Partner navbar** — full admin bar with links scoped to partner-accessible pages; logout redirects to `/approved-login`
 
 ### Image Processing Pipeline
 
@@ -112,16 +128,25 @@ Every uploaded product image goes through an automated server-side processing pi
 
 A production-hardened discount engine with no stacking (exactly one discount source per order) and full abuse prevention. All validation is server-side — the client is never trusted for discount amounts.
 
-**Sources (priority order when no explicit code):**
+**Sources (priority order):**
 
 | Priority | Source | Amount | Eligibility |
 |---|---|---|---|
 | 1 | Explicit code → referral | Tiered ($10/$20) | New customers only, no self-referral, no duplicate |
-| 2 | Explicit code → campaign | Configurable | Per campaign rules |
-| 3 | Store credit | Full balance (capped at subtotal) | Any customer |
-| 4 | Welcome (auto) | Tiered ($10/$20) | Subscriber, no prior paid orders |
+| 2 | Explicit code → subscriber welcome coupon | Tiered ($10/$20) | Code tied to subscriber email, 30-day expiry, first order only |
+| 3 | Explicit code → campaign | Configurable | Per campaign rules |
+| 4 | Store credit (auto) | Full balance (capped at subtotal) | Any customer |
+| 5 | Welcome (auto, legacy) | Tiered ($10/$20) | Pre-migration subscribers without a code |
 
 **Tiered discount:** subtotal ≥ $150 → $20 off; subtotal < $150 → $10 off. Computed server-side at checkout time so cart-size manipulation cannot lock in the higher tier.
+
+**Welcome coupon codes:**
+- Each new subscriber receives a unique 6-digit numeric code (100000–999999) via the welcome email
+- Code is cryptographically generated (`crypto.randomInt`), stored with a 30-day expiry in `email_subscribers`
+- Validated by matching code to subscriber email — prevents sharing between accounts
+- Collision-safe: up to 10 retry attempts on duplicate code generation
+- **Abuse prevention:** after redemption, a shipping fingerprint (`phone|city|postal|country`) is stored on the subscriber record; duplicate fingerprints on separate redeemed coupons emit a server-side warning log; order still completes (no silent blocking)
+- Backward compat: subscribers without a code (pre-migration) still receive auto-applied welcome discount; admin can generate codes for them via "Backfill Coupons" in `/subscribers-admin`
 
 **Referral program:**
 - After a customer's first delivered order, they receive a referral code and an invite email
@@ -129,17 +154,18 @@ A production-hardened discount engine with no stacking (exactly one discount sou
 - Referrer earns $10 store credit when the referred friend's order is delivered (idempotent — reward issued exactly once, checked by referral status field)
 - Self-referral and duplicate referral use are blocked server-side
 
-**Campaign coupons:** `coupon_campaigns` table supports fixed/percent/tiered discount types, active date windows, new-customer restrictions, per-customer and global redemption caps.
+**Campaign coupons:** `coupon_campaigns` table supports fixed/percent/tiered discount types, active date windows, new-customer restrictions, per-customer and global redemption caps. Created and managed from `/coupons-admin`.
 
 **Email subscribers (`/api/subscribe`):**
 - Upserts email into `email_subscribers`; returns `{ alreadySubscribed: true }` for duplicates (idempotent, handles `23505` race)
+- Generates and assigns a 6-digit coupon code with 30-day expiry (non-blocking; email failure does not fail subscription)
 - Syncs `marketing_opt_in` on matching customer record
-- Fires welcome email non-blocking (Resend)
 
 **Discount commit (`commitDiscount`):**
 - Called from Stripe webhook after payment confirmed — never before
 - Uses `.is("welcome_discount_redeemed_at", null)` guard for idempotency
 - Inserts `coupon_redemptions` or `referrals` record; links IDs back to order
+- On welcome source: stores shipping fingerprint for abuse detection
 
 **Post-delivery flows (non-fatal, in admin orders PATCH):**
 1. Set `first_delivered_order_at` on customer
@@ -328,13 +354,24 @@ Page renders (RSC) → resolveImageUrl("wm/abc123.jpg")
 | `/api/stripe/webhook` | POST | `Stripe-Signature` header | Handles `checkout.session.completed` |
 | `/api/admin/orders/[id]` | GET | `admin_session` cookie | Fetch order details |
 | `/api/admin/orders/[id]` | PATCH | `admin_session` cookie | Update order — status, delivery date, items, address, fees |
-| `/api/subscribe` | POST | — | Add email to subscribers list; fire welcome email |
+| `/api/subscribe` | POST | — | Add email to subscribers list; generate 6-digit coupon; fire welcome email |
 | `/api/validate-discount` | POST | — | Preview discount (read-only); returns amount + message |
 | `/api/unsubscribe` | GET | — | Remove email from subscribers (`?e=<base64-email>`) |
 | `/api/upload-image` | POST | `admin_session` cookie | Watermark + upload product image |
 | `/api/create-upload-url` | POST | `admin_session` cookie | Signed URL for direct video upload |
-| `/api/generate-product-copy` | POST | `admin_session` cookie | Claude vision → title, description, blemishes, facts |
+| `/api/generate-product-copy` | POST | session cookie | Claude vision → title, description, blemishes, facts; token-gated for partners |
 | `/api/revalidate` | POST | `?secret=` query param | Clear Next.js ISR cache for product pages |
+| `/api/admin/coupons` | GET / POST | `admin_session` cookie | List campaigns with redemption counts / create campaign |
+| `/api/admin/coupons/[id]` | PATCH | `admin_session` cookie | Update campaign (toggle active, edit fields) |
+| `/api/admin/subscribers` | GET | `admin_session` cookie | List subscribers filtered by status |
+| `/api/admin/subscribers/[id]/resend` | POST | `admin_session` cookie | Resend welcome coupon email to subscriber |
+| `/api/admin/subscribers/bulk-email` | POST | `admin_session` cookie | Send broadcast email to all or unused-coupon subscribers |
+| `/api/admin/subscribers/backfill-coupons` | POST | `admin_session` cookie | Generate codes for all pre-migration subscribers without one |
+| `/api/admin/token-requests/[id]` | PATCH | `admin_session` cookie | Approve or deny partner token request |
+| `/api/approved/login` | POST | — | Partner login → sets `approved_session` cookie |
+| `/api/approved/logout` | POST | — | Partner logout |
+| `/api/approved/token-request` | POST | `approved_session` cookie | Submit token request to admin |
+| `/api/admin/products/[id]/approve` | PATCH | `admin_session` cookie | Approve or dismiss a pending product submission |
 
 ---
 
@@ -409,6 +446,11 @@ All schema changes are tracked as numbered SQL files in `/supabase/`. Run them i
 | 028 | Admin order editable fields: `customer_phone_snapshot`, `created_at`, `order_type`, `fee_breakdown`, `order_items` inline editing |
 | 029 | `referral_id` column on orders; link manual orders to referral/coupon records |
 | 030 | Full discount & referral schema: `email_subscribers`, `coupon_campaigns`, `coupon_redemptions`, `referrals`, `store_credit_ledger`; customer columns: `marketing_opt_in`, `referral_code`, `store_credit_balance`, `paid_order_count`, `first_paid_order_at`, `first_delivered_order_at`, `welcome_discount_redeemed_at`; order columns: `discount_source`, `discount_amount_cents`, `subtotal_before_discount_cents`, `coupon_redemption_id`, `referral_id` |
+| 031 | Partner portal: `approved_users` table (email, full_name, access_level, password_hash, is_active); `orders.created_by` column |
+| 032 | Pending approval workflow: `products.pending_approval`, `products.pending_data`, `products.created_by` |
+| 033 | Rejection tracking: `products.rejected_at`, `products.rejection_note` |
+| 034 | Partner token system: `approved_users.generation_tokens` (default 10); `token_requests` table (user_id, message, requested_amount, status, granted_amount, admin_note, resolved_at) |
+| 035 | Subscriber coupon codes: `email_subscribers.welcome_coupon_code` (CHAR 6, unique), `welcome_coupon_expires_at`, `used_fingerprint`; `coupon_campaigns.created_by`, `coupon_campaigns.notes` |
 
 ---
 
@@ -482,3 +524,21 @@ High-value jade pieces attract buyers who expect a personal relationship before 
 
 **Why subject-line prefixes for Gmail sorting instead of custom headers?**
 Custom email headers (`X-BBJ-Category: Order Update`) are not surfaced in Gmail's filter UI and cannot be used to create label rules without raw message parsing. Subject-line prefixes (`[Order Update]`, `[Order Placed]`, `[Subscriber]`) work with Gmail's built-in filter UI — create a filter for `Subject contains [Order Update]` and apply a label. Simple, reliable, no tooling required.
+
+**Why 6-digit numeric codes instead of alphanumeric for subscriber coupons?**
+Shorter codes reduce transcription errors for customers copying from email. A 6-digit numeric space (900,000 combinations) is sufficient for a boutique subscriber list with collision handled by retry loops. Campaign codes use freeform uppercase strings (e.g. `BLACKFRI25`) which are manually chosen, human-readable, and deliberately memorable — no collision risk there.
+
+**Why is the subscriber coupon tied to the subscriber's email?**
+Without tying the code to an email, customers could share their coupon with anyone. Binding it means validation requires both the correct email and the correct code, maintaining first-time-customer intent. The tradeoff is that the code cannot be used as a "gift" code — that use case is served by campaign coupons.
+
+**Why does abuse fingerprinting warn rather than block?**
+Blocking an order post-payment would create a refund workflow and a hostile customer experience for false positives (e.g. two siblings in the same house who both subscribe). A log warning gives the admin visibility to investigate manually without taking irreversible automated action. Phone-number verification (future) will provide a more reliable signal to block on.
+
+**Why use HMAC-signed cookies for partner sessions instead of JWTs or DB sessions?**
+The HMAC approach (`userId.HMAC-SHA256(userId, ADMIN_PASSWORD)`) verifies authenticity without a DB lookup in middleware, reducing latency on every request. The cookie is still validated against the `approved_users` table (checking `is_active`) on each protected page — the HMAC just proves the cookie wasn't forged. JWTs would add serialization overhead; DB sessions would require a sessions table and GC logic.
+
+**Why store `pending_data` as JSONB instead of creating a separate edit-proposals table?**
+A separate table would require schema parity with `products` and a merge step that knows about every column. JSONB stores only the fields the partner changed — the approve handler iterates its keys and applies them to the live columns directly. New product fields added in future migrations automatically work without touching the approval flow.
+
+**Why gate AI generation by tokens rather than a flat rate limit?**
+Token budgets give admin fine-grained control per partner (a high-volume partner can be granted more; a low-trust partner stays at the default 10) without hard-coding rate limiting logic. It also makes the cost model transparent to partners — they know exactly how many generations they have left and can request more with justification.
