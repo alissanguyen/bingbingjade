@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AdminBarServer } from "@/app/components/AdminBarServer";
+import { AdminBar } from "@/app/components/AdminBar";
 
 type ApprovedUser = {
   id: string;
@@ -98,7 +98,7 @@ export default function ApprovedUsersPage() {
 
   return (
     <>
-      <AdminBarServer />
+      <AdminBar />
       <div className="mx-auto max-w-3xl px-6 py-12">
         <div className="flex items-center justify-between mb-8">
           <div>
