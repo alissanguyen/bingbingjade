@@ -50,18 +50,25 @@ function buildWelcomeCouponHtml(params: {
 
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:28px;">
               <tr>
-                <td style="padding:24px;text-align:center;">
-                  <p style="margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:#059669;">Your Welcome Coupon</p>
-                  <p style="margin:0;font-size:36px;font-weight:800;color:#065f46;letter-spacing:0.18em;">${couponCode}</p>
-                  <p style="margin:12px 0 0;font-size:12px;color:#6b7280;">Valid until ${expiryStr} &middot; First order only</p>
-                  <table cellpadding="0" cellspacing="0" width="100%" style="margin-top:16px;">
+                <td align="center" style="padding:0;">
+                  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:420px;">
                     <tr>
-                      <td style="padding:6px 0;font-size:14px;color:#374151;">Order $150 or more</td>
-                      <td style="padding:6px 0;font-size:14px;font-weight:700;color:#065f46;text-align:right;">$20 off</td>
-                    </tr>
-                    <tr>
-                      <td style="padding:6px 0;font-size:14px;color:#374151;">Order under $150</td>
-                      <td style="padding:6px 0;font-size:14px;font-weight:700;color:#065f46;text-align:right;">$10 off</td>
+                      <td style="padding:28px 24px 24px;text-align:center;">
+                        <p style="margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:#059669;">Your Welcome Coupon</p>
+                        <p style="margin:0;font-size:36px;font-weight:800;color:#065f46;letter-spacing:0.18em;">${couponCode}</p>
+                        <p style="margin:12px 0 18px;font-size:12px;color:#6b7280;">Valid until ${expiryStr} &middot; First order only</p>
+
+                        <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #bbf7d0;">
+                          <tr>
+                            <td style="padding:14px 0 6px;font-size:14px;color:#374151;" align="left">Order $150 or more</td>
+                            <td style="padding:14px 0 6px;font-size:14px;font-weight:700;color:#065f46;text-align:right;">$20 off</td>
+                          </tr>
+                          <tr>
+                            <td style="padding:6px 0 0;font-size:14px;color:#374151;" align="left">Order under $150</td>
+                            <td style="padding:6px 0 0;font-size:14px;font-weight:700;color:#065f46;text-align:right;">$10 off</td>
+                          </tr>
+                        </table>
+                      </td>
                     </tr>
                   </table>
                 </td>
