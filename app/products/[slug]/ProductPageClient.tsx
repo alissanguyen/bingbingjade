@@ -131,12 +131,12 @@ export function ProductPageClient({ product, productImages, productVideos, optio
         .reduce((a, b) => Math.min(a, b), Infinity)
     : null;
 
-  // Upper bound: the combo variant's sale_price_usd (discounted set price)
+  // Upper bound: only the combo variant's sale_price_usd (the discounted set price).
+  // Falls back to null so the range is hidden when no sale price is set.
   const rangeMax = hasSetLayout
     ? comboOpts
-        .filter((o) => o.status !== "sold" && !isComboBlocked(o))
-        .map((o) => o.sale_price_usd ?? o.price_usd)
-        .filter((p): p is number => p != null)
+        .filter((o) => o.status !== "sold" && !isComboBlocked(o) && o.sale_price_usd != null)
+        .map((o) => o.sale_price_usd!)
         .reduce((a, b) => Math.max(a, b), -Infinity)
     : null;
 
