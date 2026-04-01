@@ -23,7 +23,8 @@ export async function GET() {
       )
     `)
     .eq("is_published", true)
-    .order("name");
+    .order("name")
+    .limit(5000);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
