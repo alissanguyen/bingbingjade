@@ -137,8 +137,8 @@ export async function POST(req: NextRequest) {
   let discountAmountCents = 0;
   let discountMetadata: Record<string, string> = {};
 
-  if (body.customerEmail) {
-    const email = normalizeEmail(body.customerEmail);
+  if (body.customerEmail || body.discountCode) {
+    const email = body.customerEmail ? normalizeEmail(body.customerEmail) : null;
     const discountResult = await validateDiscount({
       customerEmail: email,
       discountCode: body.discountCode ?? null,

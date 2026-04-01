@@ -26,7 +26,6 @@ export function CartDrawer() {
   const [staleKeys, setStaleKeys] = useState<Set<string>>(new Set());
   const [expedited, setExpedited] = useState(false);
   // Discount state
-  const [discountEmail, setDiscountEmail] = useState("");
   const [discountCode, setDiscountCode] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState<{
     source: string;
@@ -132,9 +131,8 @@ export function CartDrawer() {
   }
 
   async function applyDiscount() {
-    const email = discountEmail.trim();
-    if (!email) {
-      setDiscountError("Enter your email to apply a discount.");
+    if (!discountCode.trim()) {
+      setDiscountError("Enter a discount code.");
       return;
     }
     setDiscountLoading(true);
@@ -148,8 +146,7 @@ export function CartDrawer() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          customerEmail: email,
-          discountCode: discountCode.trim() || undefined,
+          discountCode: discountCode.trim(),
           subtotalCents,
         }),
       });
@@ -183,7 +180,6 @@ export function CartDrawer() {
         body: JSON.stringify({
           items: availableItems,
           expedited,
-          customerEmail: discountEmail.trim() || undefined,
           discountCode: discountCode.trim() || undefined,
         }),
       });
@@ -446,51 +442,35 @@ export function CartDrawer() {
               </button>
             </div>
             {/* Discount / referral code section */}
-            <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-2.5 space-y-1.5">
-              <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                Discount / Referral Code
-              </p>
+            <div className="flex gap-1.5 items-center">
               <input
-                type="email"
-                value={discountEmail}
+                type="text"
+                value={discountCode}
                 onChange={(e) => {
-                  setDiscountEmail(e.target.value);
+                  setDiscountCode(e.target.value.toUpperCase());
                   setAppliedDiscount(null);
                   setDiscountError(null);
                 }}
-                placeholder="Your email address"
-                className="w-full rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 text-[11px] text-gray-900 dark:text-gray-100 placeholder-gray-400 outline-none focus:ring-1 focus:ring-emerald-500"
+                placeholder="Discount / referral code"
+                className="flex-1 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 text-[11px] sm:text-[15px] text-gray-900 dark:text-gray-100 placeholder-gray-400 outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
               />
-              <div className="flex gap-1.5">
-                <input
-                  type="text"
-                  value={discountCode}
-                  onChange={(e) => {
-                    setDiscountCode(e.target.value.toUpperCase());
-                    setAppliedDiscount(null);
-                    setDiscountError(null);
-                  }}
-                  placeholder="Code (optional)"
-                  className="flex-1 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 text-[11px] text-gray-900 dark:text-gray-100 placeholder-gray-400 outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
-                />
-                <button
-                  type="button"
-                  onClick={applyDiscount}
-                  disabled={discountLoading || !discountEmail.trim()}
-                  className="rounded-md bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white px-3 py-1.5 text-[11px] font-medium transition-colors shrink-0"
-                >
-                  {discountLoading ? "…" : "Apply"}
-                </button>
-              </div>
-              {appliedDiscount && (
-                <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">
-                  ✓ {appliedDiscount.message}
-                </p>
-              )}
-              {discountError && (
-                <p className="text-[10px] text-red-500 dark:text-red-400">{discountError}</p>
-              )}
+              <button
+                type="button"
+                onClick={applyDiscount}
+                disabled={discountLoading}
+                className="rounded-md bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white px-3 py-1.5 text-[11px] sm:text-[16px] font-medium transition-colors shrink-0"
+              >
+                {discountLoading ? "…" : "Apply"}
+              </button>
             </div>
+            {appliedDiscount && (
+              <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">
+                ✓ {appliedDiscount.message}
+              </p>
+            )}
+            {discountError && (
+              <p className="text-[10px] text-red-500 dark:text-red-400">{discountError}</p>
+            )}
 
             {(() => {
               const shippingBase = expedited ? 100 : 20;

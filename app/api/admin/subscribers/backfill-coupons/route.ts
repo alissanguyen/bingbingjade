@@ -21,10 +21,11 @@ export async function POST(req: NextRequest) {
   const session = await getSessionUser();
   if (!isAdmin(session)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // Fetch all subscribers — include already-redeemed ones so every row
+  // gets a code for record-keeping. Validation still blocks double-use.
   const { data: eligible } = await supabaseAdmin
     .from("email_subscribers")
-    .select("id, welcome_coupon_code")
-    .is("welcome_discount_redeemed_at", null);
+    .select("id, welcome_coupon_code");
 
   if (!eligible || eligible.length === 0) {
     return NextResponse.json({ assigned: 0, skipped: 0 });

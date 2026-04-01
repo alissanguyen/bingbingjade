@@ -177,7 +177,7 @@ async function validateWelcomeDiscount(
 
 async function validateReferralDiscount(
   referralCode: string,
-  referredEmail: string,
+  referredEmail: string | null,
   subtotalCents: number
 ): Promise<DiscountValidation> {
   // 1. Look up the owner of this referral code
@@ -191,33 +191,35 @@ async function validateReferralDiscount(
     return { valid: false, error: "Invalid referral code." };
   }
 
-  // 2. No self-referrals
-  if (normalizeEmail(referrer.customer_email) === referredEmail) {
-    return { valid: false, error: "You cannot use your own referral code." };
-  }
+  if (referredEmail) {
+    // 2. No self-referrals
+    if (normalizeEmail(referrer.customer_email) === referredEmail) {
+      return { valid: false, error: "You cannot use your own referral code." };
+    }
 
-  // 3. Referred email must have no prior paid orders
-  const { data: referredCustomer } = await supabaseAdmin
-    .from("customers")
-    .select("id, paid_order_count")
-    .eq("customer_email", referredEmail)
-    .maybeSingle();
+    // 3. Referred email must have no prior paid orders
+    const { data: referredCustomer } = await supabaseAdmin
+      .from("customers")
+      .select("id, paid_order_count")
+      .eq("customer_email", referredEmail)
+      .maybeSingle();
 
-  if (referredCustomer && referredCustomer.paid_order_count > 0) {
-    return { valid: false, error: "Referral discount is only available for first-time customers." };
-  }
+    if (referredCustomer && referredCustomer.paid_order_count > 0) {
+      return { valid: false, error: "Referral discount is only available for first-time customers." };
+    }
 
-  // 4. No existing active referral for this code + referred email
-  const { data: existingReferral } = await supabaseAdmin
-    .from("referrals")
-    .select("id, status")
-    .eq("referral_code", referralCode)
-    .eq("referred_customer_email", referredEmail)
-    .neq("status", "cancelled")
-    .maybeSingle();
+    // 4. No existing active referral for this code + referred email
+    const { data: existingReferral } = await supabaseAdmin
+      .from("referrals")
+      .select("id, status")
+      .eq("referral_code", referralCode)
+      .eq("referred_customer_email", referredEmail)
+      .neq("status", "cancelled")
+      .maybeSingle();
 
-  if (existingReferral) {
-    return { valid: false, error: "This referral code has already been used for your email." };
+    if (existingReferral) {
+      return { valid: false, error: "This referral code has already been used for your email." };
+    }
   }
 
   const discountAmountCents = computeTieredDiscountCents(subtotalCents);
@@ -238,7 +240,7 @@ async function validateReferralDiscount(
 
 async function validateSubscriberCoupon(
   code: string,
-  customerEmail: string,
+  customerEmail: string | null,
   subtotalCents: number
 ): Promise<DiscountValidation> {
   const { data: subscriber } = await supabaseAdmin
@@ -249,8 +251,8 @@ async function validateSubscriberCoupon(
 
   if (!subscriber) return { valid: false, error: "Invalid discount code." };
 
-  // Must be used by the subscriber email (prevents sharing)
-  if (normalizeEmail(subscriber.email) !== customerEmail) {
+  // If email is provided, verify the coupon belongs to that subscriber (prevents sharing)
+  if (customerEmail && normalizeEmail(subscriber.email) !== customerEmail) {
     return { valid: false, error: "This coupon is registered to a different email." };
   }
 
@@ -262,15 +264,17 @@ async function validateSubscriberCoupon(
     return { valid: false, error: "This welcome coupon has expired." };
   }
 
-  // Must be a first-time customer
-  const { data: customer } = await supabaseAdmin
-    .from("customers")
-    .select("id, paid_order_count")
-    .eq("customer_email", customerEmail)
-    .maybeSingle();
+  // If email is provided, check first-time customer status
+  if (customerEmail) {
+    const { data: customer } = await supabaseAdmin
+      .from("customers")
+      .select("id, paid_order_count")
+      .eq("customer_email", customerEmail)
+      .maybeSingle();
 
-  if (customer && customer.paid_order_count > 0) {
-    return { valid: false, error: "Welcome coupon is only available for first-time customers." };
+    if (customer && customer.paid_order_count > 0) {
+      return { valid: false, error: "Welcome coupon is only available for first-time customers." };
+    }
   }
 
   const discountAmountCents = computeTieredDiscountCents(subtotalCents);
@@ -291,7 +295,7 @@ async function validateSubscriberCoupon(
 
 async function validateCampaignDiscount(
   code: string,
-  customerEmail: string,
+  customerEmail: string | null,
   subtotalCents: number
 ): Promise<DiscountValidation> {
   const upperCode = code.trim().toUpperCase();
@@ -319,8 +323,8 @@ async function validateCampaignDiscount(
     return { valid: false, error: "This discount code has expired." };
   }
 
-  // 3. New customers only check
-  if (campaign.new_customers_only) {
+  // 3. New customers only check (skip when email unknown)
+  if (campaign.new_customers_only && customerEmail) {
     const { data: customer } = await supabaseAdmin
       .from("customers")
       .select("id, paid_order_count")
@@ -342,16 +346,18 @@ async function validateCampaignDiscount(
     }
   }
 
-  // 5. Per-customer redemption count
-  const { count: perCustomerCount } = await supabaseAdmin
-    .from("coupon_redemptions")
-    .select("id", { count: "exact", head: true })
-    .eq("campaign_id", campaign.id)
-    .eq("customer_email", customerEmail)
-    .neq("status", "cancelled");
+  // 5. Per-customer redemption count (skip when email unknown)
+  if (customerEmail) {
+    const { count: perCustomerCount } = await supabaseAdmin
+      .from("coupon_redemptions")
+      .select("id", { count: "exact", head: true })
+      .eq("campaign_id", campaign.id)
+      .eq("customer_email", customerEmail)
+      .neq("status", "cancelled");
 
-  if ((perCustomerCount ?? 0) >= campaign.max_redemptions_per_customer) {
-    return { valid: false, error: "You have already used this discount code." };
+    if ((perCustomerCount ?? 0) >= campaign.max_redemptions_per_customer) {
+      return { valid: false, error: "You have already used this discount code." };
+    }
   }
 
   // 6. Global cap check
@@ -435,11 +441,11 @@ async function validateStoreCreditDiscount(
  * It does NOT write any redemption records — that happens in the Stripe webhook.
  */
 export async function validateDiscount(params: {
-  customerEmail: string;
+  customerEmail: string | null;
   discountCode?: string | null;
   subtotalCents: number;
 }): Promise<DiscountValidation> {
-  const email = normalizeEmail(params.customerEmail);
+  const email = params.customerEmail ? normalizeEmail(params.customerEmail) : null;
   const code = params.discountCode?.trim();
   const { subtotalCents } = params;
 
@@ -452,7 +458,7 @@ export async function validateDiscount(params: {
     const referralResult = await validateReferralDiscount(code, email, subtotalCents);
     if (referralResult.valid) return referralResult;
 
-    // 2. Try subscriber welcome coupon (6-digit code in email_subscribers)
+    // 2. Try subscriber welcome coupon (6-char code in email_subscribers)
     const subscriberResult = await validateSubscriberCoupon(code, email, subtotalCents);
     if (subscriberResult.valid) return subscriberResult;
 
@@ -462,6 +468,10 @@ export async function validateDiscount(params: {
 
     // None matched — return campaign error (most descriptive)
     return campaignResult;
+  }
+
+  if (!email) {
+    return { valid: false, error: "A discount code is required." };
   }
 
   // No explicit code — try store credit then welcome discount

@@ -29,17 +29,20 @@ export async function POST(req: NextRequest) {
 
   const { customerEmail, discountCode, subtotalCents } = body;
 
-  if (!customerEmail || typeof customerEmail !== "string") {
-    return NextResponse.json({ error: "Email is required." }, { status: 400 });
-  }
-
   if (typeof subtotalCents !== "number" || subtotalCents <= 0) {
     return NextResponse.json({ error: "Invalid cart total." }, { status: 400 });
   }
 
-  const email = normalizeEmail(customerEmail);
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return NextResponse.json({ error: "Invalid email address." }, { status: 400 });
+  let email: string | null = null;
+  if (customerEmail) {
+    email = normalizeEmail(customerEmail);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: "Invalid email address." }, { status: 400 });
+    }
+  }
+
+  if (!email && !discountCode) {
+    return NextResponse.json({ error: "A discount code is required." }, { status: 400 });
   }
 
   const result = await validateDiscount({
