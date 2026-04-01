@@ -133,6 +133,15 @@ interface NewItem {
   quantity: string;
 }
 
+interface AvailableCoupon {
+  code: string;
+  type: "subscriber_welcome" | "campaign";
+  label: string;
+  discountType?: string;
+  discountValue?: number | null;
+  expiresAt?: string | null;
+}
+
 const EMPTY_ITEM: NewItem = { productId: "", productName: "", optionId: "", optionLabel: "", price: "", quantity: "1" };
 
 function productThumb(images: string[] | null): string {
@@ -194,6 +203,12 @@ export function OrdersAdminClient() {
 
   const [allProducts, setAllProducts] = useState<ProductChoice[]>([]);
   const [activeCombobox, setActiveCombobox] = useState<number | null>(null);
+
+  // Coupon selection
+  const [availableCoupons, setAvailableCoupons] = useState<AvailableCoupon[]>([]);
+  const [selectedCouponCode, setSelectedCouponCode] = useState("");
+  const [couponsLoading, setCouponsLoading] = useState(false);
+  const couponFetchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Existing customer selection
   const [customerMode, setCustomerMode] = useState<"new" | "existing">("new");
@@ -259,11 +274,31 @@ export function OrdersAdminClient() {
     }, 250);
   }, [custSearch]);
 
+  // Derive the effective email to look up coupons for
+  const effectiveEmail =
+    customerMode === "existing"
+      ? newEmail.trim() || (selEmail && selEmail !== "__new__" ? selEmail : "")
+      : form.customerEmail.trim();
+
+  useEffect(() => {
+    if (!effectiveEmail) { setAvailableCoupons([]); setSelectedCouponCode(""); return; }
+    if (couponFetchRef.current) clearTimeout(couponFetchRef.current);
+    couponFetchRef.current = setTimeout(() => {
+      setCouponsLoading(true);
+      fetch(`/api/admin/coupons/available?email=${encodeURIComponent(effectiveEmail)}`)
+        .then((r) => r.json())
+        .then((d) => setAvailableCoupons(d.coupons ?? []))
+        .catch(() => {})
+        .finally(() => setCouponsLoading(false));
+    }, 400);
+  }, [effectiveEmail]); // eslint-disable-line
+
   function resetCustomerMode() {
     setCustomerMode("new");
     setCustSearch(""); setCustResults([]); setSelCustomer(null);
     setSelEmail(""); setNewEmail(""); setSelPhone(""); setNewPhone("");
     setSelAddressId("");
+    setSelectedCouponCode(""); setAvailableCoupons([]);
   }
 
   async function selectExistingCustomer(c: ExistingCustomer) {
@@ -394,6 +429,20 @@ export function OrdersAdminClient() {
       });
       const data = await res.json();
       if (!res.ok) { setCreateError(data.error ?? "Failed to create order"); return; }
+
+      // Mark coupon as used if one was selected
+      if (selectedCouponCode && resolvedEmail) {
+        await fetch("/api/admin/coupons/redeem", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code: selectedCouponCode,
+            customerEmail: resolvedEmail,
+            orderRef: data.order.order_number,
+          }),
+        }).catch(() => {});
+      }
+
       setShowCreate(false);
       router.push(`/orders-admin/${data.order.id}`);
     } finally {
@@ -412,7 +461,7 @@ export function OrdersAdminClient() {
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{total} total</p>
           </div>
           <button
-            onClick={() => { setForm(EMPTY_FORM); setItems([{ ...EMPTY_ITEM }]); setCreateError(null); resetCustomerMode(); setShowCreate(true); }}
+            onClick={() => { setForm(EMPTY_FORM); setItems([{ ...EMPTY_ITEM }]); setCreateError(null); resetCustomerMode(); setSelectedCouponCode(""); setAvailableCoupons([]); setShowCreate(true); }}
             className="rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 text-sm font-medium transition-colors self-start sm:self-auto shrink-0"
           >
             + New Order
@@ -913,6 +962,57 @@ export function OrdersAdminClient() {
               {/* Fees & Adjustments */}
               <section>
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Fees &amp; Adjustments <span className="font-normal normal-case tracking-normal text-gray-300 dark:text-gray-600">(optional)</span></h3>
+
+                {/* Coupon picker */}
+                <div className="mb-3">
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                    Coupon
+                    {couponsLoading && <span className="ml-1.5 text-gray-400 font-normal">loading…</span>}
+                  </label>
+                  {!effectiveEmail ? (
+                    <p className="text-xs text-gray-400 italic">Enter customer email above to see available coupons</p>
+                  ) : !couponsLoading && availableCoupons.length === 0 ? (
+                    <p className="text-xs text-gray-400 italic">No available coupons for this email</p>
+                  ) : (
+                    <select
+                      value={selectedCouponCode}
+                      onChange={(e) => {
+                        const code = e.target.value;
+                        setSelectedCouponCode(code);
+                        if (code) {
+                          const coupon = availableCoupons.find((c) => c.code === code);
+                          // Auto-fill discount amount for fixed campaign coupons
+                          if (coupon?.discountType === "fixed" && coupon.discountValue != null && !form.feeDiscount) {
+                            setField("feeDiscount", String(coupon.discountValue));
+                          }
+                        } else {
+                          // Clear discount if it was auto-filled
+                          const prev = availableCoupons.find((c) => c.code === selectedCouponCode);
+                          if (prev?.discountType === "fixed" && prev.discountValue != null && form.feeDiscount === String(prev.discountValue)) {
+                            setField("feeDiscount", "");
+                          }
+                        }
+                      }}
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="">— No coupon —</option>
+                      {availableCoupons.map((c) => (
+                        <option key={c.code} value={c.code}>{c.label}</option>
+                      ))}
+                    </select>
+                  )}
+                  {selectedCouponCode && (() => {
+                    const coupon = availableCoupons.find((c) => c.code === selectedCouponCode);
+                    if (!coupon) return null;
+                    const notes: string[] = [];
+                    if (coupon.discountType === "tiered") notes.push("$10 off orders under $150, $20 off $150+");
+                    if (coupon.discountType === "percent" && coupon.discountValue != null) notes.push(`Set discount to ${coupon.discountValue}% of items total`);
+                    if (coupon.expiresAt) notes.push(`Expires ${new Date(coupon.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`);
+                    if (notes.length === 0) return null;
+                    return <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">{notes.join(" · ")}</p>;
+                  })()}
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Shipping</label>
