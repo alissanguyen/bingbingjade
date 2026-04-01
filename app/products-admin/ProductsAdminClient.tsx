@@ -12,7 +12,7 @@ import type { AdminProduct, PendingProduct } from "./page";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const CATEGORIES = ["bracelet", "bangle", "ring", "pendant", "necklace", "other", "custom_order"] as const;
+const CATEGORIES = ["bracelet", "bangle", "ring", "pendant", "necklace", "set", "other", "custom_order"] as const;
 
 const STATUS_META: Record<string, { label: string; badge: string }> = {
   available: { label: "Available",  badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" },

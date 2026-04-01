@@ -1,4 +1,4 @@
-export type ProductCategory = "bracelet" | "bangle" | "ring" | "pendant" | "necklace" | "other" | "custom_order";
+export type ProductCategory = "bracelet" | "bangle" | "ring" | "pendant" | "necklace" | "set" | "other" | "custom_order";
 
 export type OptionStatus = "available" | "sold";
 

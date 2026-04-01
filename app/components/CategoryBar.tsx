@@ -11,6 +11,7 @@ const CATEGORIES = [
   { value: "ring",      label: "Rings" },
   { value: "pendant",   label: "Pendants" },
   { value: "necklace",  label: "Necklaces" },
+  { value: "set",       label: "Sets" },
   { value: "custom_order",     label: "Custom Orders" },
   { value: "other",     label: "Other" }
 ];

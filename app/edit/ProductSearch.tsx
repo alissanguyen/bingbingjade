@@ -28,7 +28,7 @@ const STATUS_LABELS: Record<string, string> = {
   sold:      "Sold",
 };
 
-const CATEGORIES = ["bracelet", "bangle", "ring", "pendant", "necklace", "other"] as const;
+const CATEGORIES = ["bracelet", "bangle", "ring", "pendant", "necklace", "set", "other"] as const;
 
 export function ProductSearch({ products }: { products: ProductStub[] }) {
   const router = useRouter();
