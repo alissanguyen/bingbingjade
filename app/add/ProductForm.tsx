@@ -1131,6 +1131,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
                     />
                   </div>
               </div>
+              </div>{/* end inner flex: photo + inputs */}
               <div className="flex items-center gap-1.5 shrink-0 sm:pb-0.5">
                 <button
                   type="button"
