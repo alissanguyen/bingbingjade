@@ -45,6 +45,8 @@ const EMPTY_FORM = {
   notes: "",
 };
 
+const EMPTY_REDEEM = { code: "", customerEmail: "", orderRef: "" };
+
 export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign[] }) {
   const [campaigns, setCampaigns] = useState(initial);
   const [showForm, setShowForm] = useState(false);
@@ -52,6 +54,10 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showRedeem, setShowRedeem] = useState(false);
+  const [redeemForm, setRedeemForm] = useState(EMPTY_REDEEM);
+  const [redeemSubmitting, setRedeemSubmitting] = useState(false);
+  const [redeemResult, setRedeemResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -68,6 +74,32 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
       setCampaigns((prev) =>
         prev.map((c) => (c.id === campaign.id ? { ...c, active: !c.active } : c))
       );
+    }
+  }
+
+  async function handleRedeem(e: React.FormEvent) {
+    e.preventDefault();
+    setRedeemSubmitting(true);
+    setRedeemResult(null);
+    try {
+      const res = await fetch("/api/admin/coupons/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: redeemForm.code,
+          customerEmail: redeemForm.customerEmail,
+          orderRef: redeemForm.orderRef || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setRedeemResult({ ok: true, message: data.detail });
+        setRedeemForm(EMPTY_REDEEM);
+      } else {
+        setRedeemResult({ ok: false, message: data.error ?? "Something went wrong." });
+      }
+    } finally {
+      setRedeemSubmitting(false);
     }
   }
 
@@ -122,14 +154,70 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
           <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Coupon Campaigns</h1>
           <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">Seasonal and promotional discount codes</p>
         </div>
-        <button
-          type="button"
-          onClick={() => { setShowForm((v) => !v); setError(null); }}
-          className="text-sm font-medium px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
-        >
-          {showForm ? "Cancel" : "New Campaign"}
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => { setShowRedeem((v) => !v); setRedeemResult(null); }}
+            className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            {showRedeem ? "Cancel" : "Manual Redemption"}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setShowForm((v) => !v); setError(null); }}
+            className="text-sm font-medium px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+          >
+            {showForm ? "Cancel" : "New Campaign"}
+          </button>
+        </div>
       </div>
+
+      {/* Manual redemption form */}
+      {showRedeem && (
+        <form onSubmit={handleRedeem} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Manual Redemption</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Mark a subscriber coupon, campaign code, or referral code as used for Zelle / wire-transfer orders.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Coupon / referral code">
+              <input
+                value={redeemForm.code}
+                onChange={(e) => setRedeemForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
+                placeholder="e.g. ABC123 or BLACKFRI25"
+                required
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Customer email">
+              <input
+                type="email"
+                value={redeemForm.customerEmail}
+                onChange={(e) => setRedeemForm((f) => ({ ...f, customerEmail: e.target.value }))}
+                placeholder="customer@example.com"
+                required
+                className={inputCls}
+              />
+            </Field>
+          </div>
+          <Field label="Order reference (optional)">
+            <input
+              value={redeemForm.orderRef}
+              onChange={(e) => setRedeemForm((f) => ({ ...f, orderRef: e.target.value }))}
+              placeholder="e.g. Zelle order Jan 15"
+              className={inputCls}
+            />
+          </Field>
+          {redeemResult && (
+            <p className={`text-sm rounded-lg px-3 py-2 ${redeemResult.ok ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400" : "bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400"}`}>
+              {redeemResult.message}
+            </p>
+          )}
+          <button type="submit" disabled={redeemSubmitting} className="text-sm font-medium px-5 py-2 rounded-lg bg-gray-800 hover:bg-gray-900 dark:bg-gray-100 dark:hover:bg-gray-200 text-white dark:text-gray-900 disabled:opacity-50 transition-colors">
+            {redeemSubmitting ? "Marking…" : "Mark as Used"}
+          </button>
+        </form>
+      )}
 
       {/* Create form */}
       {showForm && (
