@@ -26,6 +26,7 @@ const CAT_LABEL: Record<string, string> = {
   ring:     "Ring",
   pendant:  "Pendant",
   necklace: "Necklace",
+  set:          "Set",
   other:        "Other",
   custom_order: "Custom Order",
 };
