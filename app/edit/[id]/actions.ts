@@ -9,6 +9,8 @@ interface OptionInput {
   label: string;
   size: string;
   price: string;
+  salePrice?: string;
+  comboOf?: number[]; // sort_order indices; resolved to UUIDs after insert
   status: string;
   images?: string[];
 }
@@ -29,13 +31,35 @@ async function applyOptions(productId: string, optionsJson: string, productStatu
     label: o.label || null,
     size: o.size ? Number(o.size) : null,
     price_usd: o.price ? Number(o.price) : null,
+    sale_price_usd: o.salePrice ? Number(o.salePrice) : null,
     images: o.images ?? [],
     status: isSingleNoLabel
       ? (productStatus === "sold" ? "sold" : "available")
       : (o.status || "available"),
     sort_order: i,
   }));
-  await supabaseAdmin.from("product_options").insert(optionsToInsert);
+
+  const { data: inserted } = await supabaseAdmin
+    .from("product_options")
+    .insert(optionsToInsert)
+    .select("id");
+
+  // Resolve comboOf sort_order indices → inserted UUIDs
+  if (inserted) {
+    for (let i = 0; i < parsedOptions.length; i++) {
+      const indices = parsedOptions[i].comboOf;
+      if (!indices?.length) continue;
+      const resolvedIds = indices
+        .filter((idx) => idx >= 0 && idx < inserted.length && idx !== i)
+        .map((idx) => inserted[idx].id);
+      if (resolvedIds.length > 0) {
+        await supabaseAdmin
+          .from("product_options")
+          .update({ combo_of: resolvedIds })
+          .eq("id", inserted[i].id);
+      }
+    }
+  }
 
   const allSold = optionsToInsert.length > 0 && optionsToInsert.every((o) => o.status === "sold");
   if (allSold && productStatus !== "sold") {

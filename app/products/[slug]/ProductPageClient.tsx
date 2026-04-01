@@ -14,6 +14,8 @@ interface ProductOptionClient {
   label: string | null;
   size: number | null;
   price_usd: number | null;
+  sale_price_usd: number | null;
+  combo_of: string[] | null;
   images: string[]; // already resolved
   status: "available" | "sold";
   sort_order: number;
@@ -68,10 +70,16 @@ export function ProductPageClient({ product, productImages, productVideos, optio
   const { addToCart, items: cartItems } = useCart();
   const [addedToCart, setAddedToCart] = useState(false);
 
+  // Returns true if this combo variant is blocked because a dependency is sold
+  function isComboBlocked(opt: ProductOptionClient): boolean {
+    if (!opt.combo_of?.length) return false;
+    return opt.combo_of.some((id) => options.find((o) => o.id === id)?.status === "sold");
+  }
+
   // Show selector if there are multiple options or any option has a label
   const hasSelector = options.length > 1 || (options.length === 1 && options[0].label !== null);
-  // Default to the first non-sold option
-  const firstAvailableIdx = options.findIndex((o) => o.status !== "sold");
+  // Default to the first non-sold, non-blocked option
+  const firstAvailableIdx = options.findIndex((o) => o.status !== "sold" && !isComboBlocked(o));
   const [selectedIdx, setSelectedIdx] = useState(firstAvailableIdx >= 0 ? firstAvailableIdx : 0);
   const selectedOption = hasSelector ? (options[selectedIdx] ?? null) : null;
 
@@ -80,42 +88,35 @@ export function ProductPageClient({ product, productImages, productVideos, optio
     (selectedOption?.images?.length ?? 0) > 0 ? selectedOption!.images : productImages;
   const effectiveSize = selectedOption?.size ?? product.size;
   const effectiveDisplayPrice = selectedOption?.price_usd ?? product.price_display_usd;
-  const isOptionSold = selectedOption?.status === "sold";
+
+  const isOptionSold = selectedOption?.status === "sold" || (selectedOption ? isComboBlocked(selectedOption) : false);
   const isProductSold = product.status === "sold";
   const isEffectivelySold = isProductSold || isOptionSold;
 
-  // "Highest price of the lot" — the reference used for discount % calculations.
-  // = max of product.price_display_usd and all variant price overrides.
-  const allOptionPrices = options
-    .map((o) => o.price_usd ?? product.price_display_usd)
-    .filter((p): p is number => p != null);
-  const highestInLot = allOptionPrices.length > 0
-    ? Math.max(...allOptionPrices, product.price_display_usd ?? 0)
-    : (product.price_display_usd ?? 0);
+  // Per-option sale_price_usd takes priority over product-level sale_price_usd.
+  // Product-level sale only applies when product.status === "on_sale".
+  const activeSalePrice =
+    selectedOption?.sale_price_usd != null
+      ? selectedOption.sale_price_usd
+      : product.status === "on_sale" && product.sale_price_usd != null
+        ? product.sale_price_usd
+        : null;
 
-  // Compute the discount % for the currently selected option (for the image badge)
-  const selectedEffectivePrice =
-    product.status === "on_sale" && product.sale_price_usd != null
-      ? product.sale_price_usd
-      : effectiveDisplayPrice;
+  const isOnSale = activeSalePrice != null;
+
+  // Discount % for the image badge (based on selected option)
   const imageBadgePct =
-    highestInLot > 0 && selectedEffectivePrice != null && selectedEffectivePrice < highestInLot
-      ? Math.round((1 - selectedEffectivePrice / highestInLot) * 100)
+    isOnSale && activeSalePrice != null && effectiveDisplayPrice != null && effectiveDisplayPrice > 0
+      ? Math.round((1 - activeSalePrice / effectiveDisplayPrice) * 100)
       : null;
 
-  // Show the sale image badge if the product is on_sale OR any available variant is discounted
-  const hasDiscountedVariant = options.some(
-    (o) => o.status !== "sold" &&
-      (o.price_usd ?? product.price_display_usd) != null &&
-      (o.price_usd ?? product.price_display_usd)! < highestInLot
-  );
-  const showImageSaleBadge = product.status === "on_sale" || hasDiscountedVariant;
+  // Show the sale image badge if product-level or any available variant has a sale price
+  const showImageSaleBadge =
+    product.status === "on_sale" ||
+    options.some((o) => o.sale_price_usd != null && o.status !== "sold" && !isComboBlocked(o));
 
   // Effective checkout price for the currently selected option
-  const checkoutPrice =
-    product.status === "on_sale" && product.sale_price_usd != null
-      ? product.sale_price_usd
-      : effectiveDisplayPrice;
+  const checkoutPrice = activeSalePrice ?? effectiveDisplayPrice;
 
   // High-value items ($20k+) show an obfuscated price and skip direct checkout
   const needsInquiry = requiresInquiry(checkoutPrice);
@@ -204,41 +205,41 @@ export function ProductPageClient({ product, productImages, productVideos, optio
             </p>
             <div className="flex flex-wrap gap-2">
               {options.map((opt, i) => {
-                // Effective price for this option
-                const optPrice = opt.price_usd ?? product.price_display_usd;
-                // On_sale: discount = variant price → sale_price_usd
-                // Variant discount: variant price → highest price in the lot
-                const effectiveOptPrice =
-                  product.status === "on_sale" && product.sale_price_usd != null
-                    ? product.sale_price_usd
-                    : optPrice;
+                const blocked = isComboBlocked(opt);
+                const unavailable = opt.status === "sold" || blocked;
+                // Discount badge: only from explicit sale_price_usd, or product-level on_sale
+                const optBasePrice = opt.price_usd ?? product.price_display_usd;
+                const optSalePrice =
+                  opt.sale_price_usd != null
+                    ? opt.sale_price_usd
+                    : product.status === "on_sale" && product.sale_price_usd != null
+                      ? product.sale_price_usd
+                      : null;
                 const discountPct =
-                  effectiveOptPrice != null &&
-                    highestInLot > 0 &&
-                    effectiveOptPrice < highestInLot
-                    ? Math.round((1 - effectiveOptPrice / highestInLot) * 100)
+                  optSalePrice != null && optBasePrice != null && optSalePrice < optBasePrice
+                    ? Math.round((1 - optSalePrice / optBasePrice) * 100)
                     : null;
                 return (
                   <button
                     key={opt.id}
                     type="button"
-                    onClick={() => { if (opt.status !== "sold") setSelectedIdx(i); }}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm border transition-all ${i === selectedIdx
-                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-medium"
-                      : opt.status === "sold"
-                        ? "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 line-through cursor-not-allowed opacity-60"
-                        : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-400 dark:hover:border-emerald-600 cursor-pointer"
-                      }`}
+                    onClick={() => { if (!unavailable) setSelectedIdx(i); }}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm border transition-all ${
+                      i === selectedIdx
+                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-medium"
+                        : unavailable
+                          ? "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 line-through cursor-not-allowed opacity-60"
+                          : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-400 dark:hover:border-emerald-600 cursor-pointer"
+                    }`}
                   >
                     {opt.label}
-                    {discountPct != null && opt.status !== "sold" && (
+                    {discountPct != null && !unavailable && (
                       <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-semibold text-white leading-none">
                         −{discountPct}%
                       </span>
                     )}
-                    {opt.status === "sold" && (
-                      <span className="text-xs not-italic">(Sold)</span>
-                    )}
+                    {opt.status === "sold" && <span className="text-xs not-italic">(Sold)</span>}
+                    {blocked && <span className="text-xs not-italic">(Unavailable)</span>}
                   </button>
                 );
               })}
@@ -248,12 +249,12 @@ export function ProductPageClient({ product, productImages, productVideos, optio
 
         {/* Price */}
         <div className="IndividualProduct_PriceRow mt-3 flex items-baseline gap-3 flex-wrap">
-          {product.status === "on_sale" && product.sale_price_usd != null ? (
+          {isOnSale && activeSalePrice != null ? (
             <>
-              <span className="text-xl sm:text-2xl font-semibold text-amber-600 dark:text-amber-400">
-                {requiresInquiry(product.sale_price_usd)
-                  ? obfuscatedPrice(product.sale_price_usd)
-                  : `$${Number(product.sale_price_usd).toFixed(2)}`}
+              <span className={`text-xl sm:text-2xl font-semibold ${isProductSold ? "text-gray-400 dark:text-gray-600" : "text-amber-600 dark:text-amber-400"}`}>
+                {requiresInquiry(activeSalePrice)
+                  ? obfuscatedPrice(activeSalePrice)
+                  : `$${Number(activeSalePrice).toFixed(2)}`}
               </span>
               {effectiveDisplayPrice != null && (
                 <>
@@ -262,8 +263,8 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                       ? obfuscatedPrice(effectiveDisplayPrice)
                       : `$${Number(effectiveDisplayPrice).toFixed(2)}`}
                   </span>
-                  <span className="rounded-full bg-red-500/80 px-2.5 py-0.5 text-xs sm:text-sm font-semibold text-white shadow-sm">
-                    −{Math.round((1 - product.sale_price_usd / effectiveDisplayPrice) * 100)}%
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs sm:text-sm font-semibold text-white shadow-sm ${isProductSold ? "bg-gray-400 dark:bg-gray-600" : "bg-red-500/80"}`}>
+                    −{Math.round((1 - activeSalePrice / effectiveDisplayPrice) * 100)}%
                   </span>
                 </>
               )}
@@ -271,28 +272,12 @@ export function ProductPageClient({ product, productImages, productVideos, optio
           ) : isProductSold ? (
             <>
               <span className="text-2xl font-semibold text-gray-400 dark:text-gray-600">
-                {product.sale_price_usd != null
-                  ? requiresInquiry(product.sale_price_usd)
-                    ? obfuscatedPrice(product.sale_price_usd)
-                    : `$${Number(product.sale_price_usd).toFixed(2)}`
-                  : effectiveDisplayPrice != null
-                    ? requiresInquiry(effectiveDisplayPrice)
-                      ? obfuscatedPrice(effectiveDisplayPrice)
-                      : `$${Number(effectiveDisplayPrice).toFixed(2)}`
-                    : "—"}
+                {effectiveDisplayPrice != null
+                  ? requiresInquiry(effectiveDisplayPrice)
+                    ? obfuscatedPrice(effectiveDisplayPrice)
+                    : `$${Number(effectiveDisplayPrice).toFixed(2)}`
+                  : "—"}
               </span>
-              {product.sale_price_usd != null && effectiveDisplayPrice != null && (
-                <>
-                  <span className="text-lg text-gray-400 line-through">
-                    {requiresInquiry(effectiveDisplayPrice)
-                      ? obfuscatedPrice(effectiveDisplayPrice)
-                      : `$${Number(effectiveDisplayPrice).toFixed(2)}`}
-                  </span>
-                  <span className="rounded-full bg-gray-400 dark:bg-gray-600 px-2.5 py-0.5 text-xs sm:text-sm font-semibold text-white shadow-sm">
-                    −{Math.round((1 - product.sale_price_usd / effectiveDisplayPrice) * 100)}%
-                  </span>
-                </>
-              )}
             </>
           ) : (
             <>
@@ -379,7 +364,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                 <span className="w-2 h-2 rounded-full bg-red-500" />
                 Sold
               </span>
-            ) : product.status === "on_sale" ? (
+            ) : isOnSale ? (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 px-3 py-1 text-sm font-semibold text-amber-700 dark:text-amber-400">
                 <span className="w-2 h-2 rounded-full bg-amber-400" />
                 On Sale

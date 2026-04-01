@@ -12,6 +12,8 @@ interface OptionRow {
   label: string;
   size: string;
   price: string;
+  salePrice: string;
+  comboOf: number[];
   status: OptionStatus;
   imageFile: File | null;
   imagePreview: string | null;
@@ -473,7 +475,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
   const [selectedTiers, setSelectedTiers] = useState<string[]>([]);
   const [sizeDetailed, setSizeDetailed] = useState<[string, string, string]>(["", "", ""]);
 
-  const blankRow = (): OptionRow => ({ label: "", size: "", price: "", status: "available", imageFile: null, imagePreview: null, existingImagePath: "", existingImageUrl: "" });
+  const blankRow = (): OptionRow => ({ label: "", size: "", price: "", salePrice: "", comboOf: [], status: "available", imageFile: null, imagePreview: null, existingImagePath: "", existingImageUrl: "" });
 
   const [hasVariants, setHasVariants] = useState(false);
   const [optionRows, setOptionRows] = useState<OptionRow[]>([blankRow()]);
@@ -507,7 +509,14 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
   const removeOptionRow = (i: number) =>
     setOptionRows((prev) => {
       if (prev[i].imagePreview) URL.revokeObjectURL(prev[i].imagePreview!);
-      return prev.filter((_, idx) => idx !== i);
+      return prev
+        .filter((_, idx) => idx !== i)
+        .map((row) => ({
+          ...row,
+          comboOf: row.comboOf
+            .filter((idx) => idx !== i)
+            .map((idx) => (idx > i ? idx - 1 : idx)),
+        }));
     });
 
   const toggleColor = (color: string) =>
@@ -631,6 +640,8 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
         label: row.label,
         size: row.size,
         price: row.price,
+        salePrice: row.salePrice,
+        comboOf: row.comboOf,
         status: row.status,
         images: optionImagePaths[i] ? [optionImagePaths[i]] : [],
       }));
@@ -1074,39 +1085,84 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
                   )}
                 </div>
               </div>
-              <div className="flex-1 w-full sm:grid sm:grid-cols-3 gap-1.5 sm:gap-2">
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Label</label>
-                  <input
-                    type="text"
-                    value={row.label}
-                    onChange={(e) => updateOptionRow(i, "label", e.target.value)}
-                    placeholder="e.g. Ring A, 51–52mm"
-                    className={`${inputClass} text-xs py-2`}
-                  />
+              <div className="flex-1 w-full space-y-1.5">
+                <div className="sm:grid sm:grid-cols-4 gap-1.5 sm:gap-2">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Label</label>
+                    <input
+                      type="text"
+                      value={row.label}
+                      onChange={(e) => updateOptionRow(i, "label", e.target.value)}
+                      placeholder="e.g. Ring A, 51–52mm"
+                      className={`${inputClass} text-xs py-2`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Size (mm)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={row.size}
+                      onChange={(e) => updateOptionRow(i, "size", e.target.value)}
+                      placeholder="inherit"
+                      className={`${inputClass} text-xs py-2`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Price ($)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={row.price}
+                      onChange={(e) => updateOptionRow(i, "price", e.target.value)}
+                      placeholder="inherit"
+                      className={`${inputClass} text-xs py-2`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-amber-500 mb-1">Sale ($)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={row.salePrice}
+                      onChange={(e) => updateOptionRow(i, "salePrice", e.target.value)}
+                      placeholder="none"
+                      className={`${inputClass} text-xs py-2 border-amber-200 dark:border-amber-800 focus:border-amber-500 focus:ring-amber-500`}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Size (mm)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={row.size}
-                    onChange={(e) => updateOptionRow(i, "size", e.target.value)}
-                    placeholder="inherit"
-                    className={`${inputClass} text-xs py-2`}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Price ($)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={row.price}
-                    onChange={(e) => updateOptionRow(i, "price", e.target.value)}
-                    placeholder="inherit"
-                    className={`${inputClass} text-xs py-2`}
-                  />
-                </div>
+                {optionRows.length > 1 && (
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Combo of</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {optionRows.map((other, j) => {
+                        if (j === i) return null;
+                        const checked = row.comboOf.includes(j);
+                        return (
+                          <button
+                            key={j}
+                            type="button"
+                            onClick={() =>
+                              setOptionRows((prev) => {
+                                const next = [...prev];
+                                const cur = next[i].comboOf;
+                                next[i] = { ...next[i], comboOf: checked ? cur.filter((x) => x !== j) : [...cur, j] };
+                                return next;
+                              })
+                            }
+                            className={`px-2 py-0.5 rounded-full text-xs border transition-all ${
+                              checked
+                                ? "border-violet-400 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400"
+                                : "border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300"
+                            }`}
+                          >
+                            {other.label || `Variant ${j + 1}`}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
               </div>{/* end top row */}
               <div className="flex items-center gap-1.5 shrink-0 sm:pb-0.5">

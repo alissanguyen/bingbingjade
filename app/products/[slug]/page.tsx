@@ -33,6 +33,8 @@ interface ProductOptionRaw {
   label: string | null;
   size: number | null;
   price_usd: number | null;
+  sale_price_usd: number | null;
+  combo_of: string[] | null;
   images: string[];
   status: "available" | "sold";
   sort_order: number;
@@ -143,7 +145,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // Fetch product options
   const { data: rawOptions } = await supabase
     .from("product_options")
-    .select("id, label, size, price_usd, images, status, sort_order")
+    .select("id, label, size, price_usd, sale_price_usd, combo_of, images, status, sort_order")
     .eq("product_id", product.id)
     .order("sort_order")
     .returns<ProductOptionRaw[]>();

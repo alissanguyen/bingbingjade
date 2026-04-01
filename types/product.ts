@@ -8,6 +8,8 @@ export interface ProductOption {
   label: string | null;
   size: number | null;
   price_usd: number | null;
+  sale_price_usd: number | null;
+  combo_of: string[] | null;
   images: string[];
   status: OptionStatus;
   sort_order: number;

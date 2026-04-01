@@ -9,19 +9,19 @@ interface AccordionItem {
 }
 
 function AccordionRow({ heading, content, id }: AccordionItem) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(() =>
+    typeof window !== "undefined" && !!id && window.location.hash.slice(1) === id
+  );
   const ref = useRef<HTMLDivElement>(null);
 
-  // On mount: open and scroll if the URL hash matches this item
+  // On mount: scroll into view if opened via hash
   useEffect(() => {
-    if (!id) return;
-    if (window.location.hash.slice(1) === id) {
-      setOpen(true);
-      setTimeout(() => {
-        ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 100);
-    }
-  }, [id]);
+    if (!open || !id || window.location.hash.slice(1) !== id) return;
+    const timer = setTimeout(() => {
+      ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleToggle = () => {
     const next = !open;
