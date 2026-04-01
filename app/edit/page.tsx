@@ -28,7 +28,7 @@ export default async function EditPage() {
       <AdminBarServer />
       <div className="mx-auto max-w-5xl px-6 py-16">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Edit Product</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Edit Product</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Search and select a product to edit.</p>
         </div>
         <ProductSearch products={productsWithDisplayImages} />

@@ -48,7 +48,7 @@ export function AdminBar({
 
         {/* Desktop nav */}
         <div className="hidden sm:flex items-center justify-between py-2">
-          <div className="flex items-center gap-4 text-xs font-medium text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-4 text-sm font-medium text-gray-500 dark:text-gray-400">
             {links.map((l) => (
               <a key={l.href} href={l.href} className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
                 {l.label}
@@ -64,18 +64,18 @@ export function AdminBar({
             </button>
           </div>
           <form action={adminLogout}>
-            <button type="submit" className="text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors">
+            <button type="submit" className="text-sm text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors">
               Log out
             </button>
           </form>
         </div>
 
         {/* Mobile nav */}
-        <div className="sm:hidden flex items-center justify-between py-2">
+        <div className="sm:hidden flex items-center justify-between px-2 py-2">
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
-            className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5"
+            className="text-[12px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5"
             aria-label="Toggle menu"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -87,7 +87,7 @@ export function AdminBar({
             Admin
           </button>
           <form action={adminLogout}>
-            <button type="submit" className="text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors">
+            <button type="submit" className="text-[12px] sm:text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors">
               Log out
             </button>
           </form>
@@ -101,7 +101,7 @@ export function AdminBar({
                 key={l.href}
                 href={l.href}
                 onClick={() => setMenuOpen(false)}
-                className="block px-1 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                className="block px-2 py-2 text-[12px] sm:text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
               >
                 {l.label}
               </a>
@@ -110,7 +110,7 @@ export function AdminBar({
               type="button"
               onClick={() => { handleRevalidate(); setMenuOpen(false); }}
               disabled={revalidating}
-              className="block w-full text-left px-1 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors disabled:opacity-50"
+              className="block w-full text-left px-2 py-2 text-[12px] sm:text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors disabled:opacity-50"
             >
               {revalidating ? "Clearing…" : revalidateMsg ?? "Clear Cache"}
             </button>

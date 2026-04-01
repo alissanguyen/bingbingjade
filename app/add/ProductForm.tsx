@@ -160,7 +160,7 @@ function VendorSearch({ vendors: initialVendors, value, onChange }: { vendors: V
     setAddForm({ name: "", platform: "zalo", contact: "" });
   };
 
-  const inputClass = "w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors";
+  const inputClass = "w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors text-[12px] sm:text-sm";
 
   return (
     <>
@@ -658,21 +658,21 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
     }
   };
 
-  const inputClass = "w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors";
-  const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
+  const inputClass = "w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2.5 text-[12px] sm:text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors";
+  const labelClass = "block text-[12px] sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
 
       {/* Basic Info */}
-      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 sm:px-6 sm:py-6">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Basic Info</h2>
         <div className="space-y-4">
           <div>
             <label className={labelClass}>Product Name <span className="text-red-400">*</span></label>
             <input required value={form.name} onChange={set("name")} placeholder="e.g. Imperial Green Bangle" className={inputClass} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Category <span className="text-red-400">*</span></label>
               <select required value={form.category} onChange={set("category")} className={inputClass}>
@@ -715,7 +715,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
                     key={c.value}
                     type="button"
                     onClick={() => toggleColor(c.value)}
-                    className={`flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm border transition-all ${
+                    className={`flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm border transition-all text-[12px] sm:text-sm ${
                       active
                         ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-medium"
                         : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
@@ -746,7 +746,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
                     key={t}
                     type="button"
                     onClick={() => setSelectedTiers((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t])}
-                    className={`px-3.5 py-1.5 rounded-full text-sm border transition-all ${
+                    className={`px-3.5 py-1.5 rounded-full text-sm border transition-all text-[12px] sm:text-sm ${
                       active
                         ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-medium"
                         : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
@@ -787,7 +787,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
       </section>
 
       {/* Media */}
-      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 sm:px-6 py-6">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Media</h2>
 
         {/* Image Upload */}
@@ -805,8 +805,8 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
             }`}
           >
             <UploadIcon />
-            <p className="text-sm text-gray-500 dark:text-gray-400">Drop images here or <span className="text-emerald-600 dark:text-emerald-400 font-medium">browse</span></p>
-            <p className="text-xs text-gray-400 dark:text-gray-600">.heic · .jpg · .jpeg · .png · .pdf</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-[12px] sm:text-sm">Drop images here or <span className="text-emerald-600 dark:text-emerald-400 font-medium">browse</span></p>
+            <p className="text-xs text-gray-400 dark:text-gray-60 text-[12px] sm:text-sm0">.heic · .jpg · .jpeg · .png · .pdf</p>
             <input ref={imageInputRef} type="file" multiple accept=".heic,.jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf" className="hidden" onChange={(e) => addImages(e.target.files)} />
           </div>
 
@@ -866,8 +866,8 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
             }`}
           >
             <VideoIcon />
-            <p className="text-sm text-gray-500 dark:text-gray-400">Drop videos here or <span className="text-emerald-600 dark:text-emerald-400 font-medium">browse</span></p>
-            <p className="text-xs text-gray-400 dark:text-gray-600">.mov · .mp4</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-[12px] sm:text-sm">Drop videos here or <span className="text-emerald-600 dark:text-emerald-400 font-medium">browse</span></p>
+            <p className="text-xs text-gray-400 dark:text-gray-600 text-[12px] sm:text-sm">.mov · .mp4</p>
             <input ref={videoInputRef} type="file" multiple accept=".mov,.mp4,video/quicktime,video/mp4" className="hidden" onChange={(e) => setVideos(prev => [...prev, ...Array.from(e.target.files ?? [])])} />
           </div>
 
@@ -901,13 +901,13 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
       </section>
 
       {/* Details */}
-      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 sm:px-6 py-6">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Details</h2>
         <div className="space-y-4">
 
           {/* AI Copy Generation */}
           <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40 p-4 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col items-start gap-2 sm:flex-row sm:gap-0 sm:items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
                 AI Copy Generation
               </p>
@@ -915,7 +915,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
                 type="button"
                 onClick={generateCopy}
                 disabled={isGenerating}
-                className="flex items-center gap-1.5 rounded-full bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-1.5 text-xs font-medium text-white transition-colors"
+                className="flex items-center gap-1.5 rounded-full bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-1.5 text-[12px] sm:text-xs font-medium text-white transition-colors"
               >
                 {isGenerating ? (
                   <>
@@ -975,16 +975,16 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
       </section>
 
       {/* Pricing */}
-      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 sm:px-6 py-6">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Pricing</h2>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Display Price (USD)</label>
             <div className="relative">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
               <input type="number" step="0.01" min="0" value={form.price_display_usd} onChange={set("price_display_usd")} placeholder="0.00" className={`${inputClass} pl-7`} />
             </div>
-            <p className="mt-1 text-xs text-gray-400">Leave blank to show &quot;Contact for price&quot;</p>
+            <p className="mt-1 text-[12px] sm:text-xs text-gray-400">Leave blank to show &quot;Contact for price&quot;</p>
           </div>
           {status === "on_sale" && (
           <div>
@@ -1009,8 +1009,8 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
       </section>
 
       {/* Variants */}
-      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
-        <div className="flex items-center justify-between mb-1">
+      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 sm:px-6 py-6">
+        <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center justify-between mb-1">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Variants</h2>
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <span className="text-xs text-gray-400 dark:text-gray-500">This product has variants</span>
@@ -1029,9 +1029,11 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
         {hasVariants && (<>
         <div className="space-y-2">
           {optionRows.map((row, i) => (
-            <div key={i} className="flex gap-2 items-end rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-3">
+            <div key={i} className="flex flex-col sm:flex-row sm:items-end gap-2 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-3">
+              {/* Top row on mobile: photo + inputs */}
+              <div className="flex flex-col sm:flex-row gap-2 items-end flex-1">
               {/* Variant image thumbnail */}
-              <div className="shrink-0">
+              <div className="shrink-0 self-start">
                 <label className="block text-xs text-gray-400 mb-1">Photo</label>
                 <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 cursor-pointer group">
                   <input
@@ -1072,7 +1074,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
                   )}
                 </div>
               </div>
-              <div className="flex-1 grid grid-cols-3 gap-2">
+              <div className="flex-1 w-full sm:grid sm:grid-cols-3 gap-1.5 sm:gap-2">
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Label</label>
                   <input
@@ -1106,7 +1108,8 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
                   />
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0 pb-0.5">
+              </div>{/* end top row */}
+              <div className="flex items-center gap-1.5 shrink-0 sm:pb-0.5">
                 <button
                   type="button"
                   onClick={() => updateOptionRow(i, "status", "available")}
@@ -1156,19 +1159,19 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
       </section>
 
       {/* Options */}
-      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 sm:px-6 py-6">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Options</h2>
         <div className="space-y-4">
           {/* Status */}
           <div>
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</p>
+            <p className="text-[14px] sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</p>
             <div className="flex gap-2">
               {(["available", "on_sale", "sold"] as const).map((s) => (
                 <button
                   key={s}
                   type="button"
                   onClick={() => setStatus(s)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                  className={`text-[12px] sm: px-4 py-2 rounded-full text-sm font-medium border transition-all ${
                     status === s
                       ? s === "available"
                         ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
@@ -1198,7 +1201,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
             <div className={`relative w-10 h-6 rounded-full transition-colors ${isPublished ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"}`}>
               <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${isPublished ? "translate-x-4" : ""}`} />
             </div>
-            <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+            <span className="text-[12px] sm:text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
               {isPublished ? "Published — visible on storefront" : "Draft — hidden from storefront"}
             </span>
           </button>
@@ -1212,7 +1215,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
             <div className={`relative w-10 h-6 rounded-full transition-colors ${isFeatured ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"}`}>
               <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${isFeatured ? "translate-x-4" : ""}`} />
             </div>
-            <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+            <span className="text-[12px] sm:text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
               Feature this product on the homepage
             </span>
           </button>
@@ -1226,7 +1229,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
             <div className={`relative w-10 h-6 rounded-full transition-colors ${isQuickShip ? "bg-sky-500" : "bg-gray-200 dark:bg-gray-700"}`}>
               <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${isQuickShip ? "translate-x-4" : ""}`} />
             </div>
-            <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+            <span className="text-[12px] sm:text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
               {isQuickShip ? "Quick Ship — eligible for expedited shipping" : "Standard shipping timeline"}
             </span>
           </button>

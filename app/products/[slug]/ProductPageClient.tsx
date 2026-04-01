@@ -172,7 +172,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
       <div className="IndividualProduct_Details flex flex-col">
         {/* Category + tier + featured */}
         <div className="IndividualProduct_CategoryRow flex items-center gap-2 flex-wrap mb-3">
-          <span className="IndividualProduct_Category text-sm xs:text-md font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+          <span className="IndividualProduct_Category text-sm sm:text-md font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
             {getCategoryLabel(product.category)}
           </span>
           {product.tier?.length > 0 && (
@@ -188,7 +188,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
         </div>
 
         <div className="flex items-start gap-2.5 flex-wrap">
-          <h1 className="IndividualProduct_Title text-xl xs:text-2xl font-bold text-gray-900 dark:text-gray-100 leading-snug">
+          <h1 className="IndividualProduct_Title text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 leading-snug">
             {product.name}
           </h1>
           <span className={`IndividualProduct_Origin mt-1 shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium ${ORIGIN_BADGE[product.origin] ?? "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}>
@@ -250,7 +250,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
         <div className="IndividualProduct_PriceRow mt-3 flex items-baseline gap-3 flex-wrap">
           {product.status === "on_sale" && product.sale_price_usd != null ? (
             <>
-              <span className="text-xl xs:text-2xl font-semibold text-amber-600 dark:text-amber-400">
+              <span className="text-xl sm:text-2xl font-semibold text-amber-600 dark:text-amber-400">
                 {requiresInquiry(product.sale_price_usd)
                   ? obfuscatedPrice(product.sale_price_usd)
                   : `$${Number(product.sale_price_usd).toFixed(2)}`}
@@ -262,7 +262,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                       ? obfuscatedPrice(effectiveDisplayPrice)
                       : `$${Number(effectiveDisplayPrice).toFixed(2)}`}
                   </span>
-                  <span className="rounded-full bg-red-500/80 px-2.5 py-0.5 text-xs xs:text-sm font-semibold text-white shadow-sm">
+                  <span className="rounded-full bg-red-500/80 px-2.5 py-0.5 text-xs sm:text-sm font-semibold text-white shadow-sm">
                     −{Math.round((1 - product.sale_price_usd / effectiveDisplayPrice) * 100)}%
                   </span>
                 </>
@@ -288,7 +288,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                       ? obfuscatedPrice(effectiveDisplayPrice)
                       : `$${Number(effectiveDisplayPrice).toFixed(2)}`}
                   </span>
-                  <span className="rounded-full bg-gray-400 dark:bg-gray-600 px-2.5 py-0.5 text-xs xs:text-sm font-semibold text-white shadow-sm">
+                  <span className="rounded-full bg-gray-400 dark:bg-gray-600 px-2.5 py-0.5 text-xs sm:text-sm font-semibold text-white shadow-sm">
                     −{Math.round((1 - product.sale_price_usd / effectiveDisplayPrice) * 100)}%
                   </span>
                 </>
@@ -452,7 +452,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
               </a>
             )}
           </div>
-          <p className="italic text-xs xs:text-sm text-emerald-600 font-semibold mt-4">** We can provide more pictures and videos of different lighting upon request.</p>
+          <p className="italic text-xs sm:text-sm text-emerald-600 font-semibold mt-4">** We can provide more pictures and videos of different lighting upon request.</p>
             {product.category === 'bangle' || product.category === 'custom_order' ? (<div className="text-sm">
             
             <p className="text-gray-400 dark:text-gray-500 mt-2"><span className="mr-2 text-emerald-600">Not your styles?</span>Some pieces can be <span className="font-semibold text-gray-500">reshaped</span> or <span className="font-semibold text-gray-500">widened</span>, contact us for more details.</p>

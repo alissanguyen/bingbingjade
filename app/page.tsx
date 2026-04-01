@@ -75,14 +75,14 @@ export default async function Home() {
         <div className="absolute inset-0 bg-linear-to-b from-black/30 via-black/20 to-black/60" />
 
         {/* Hero text */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 mt-6 xs:mt-0">
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 mt-6 sm:mt-0">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-300 mb-4">
             Natural Jadeite
           </p>
-          <h1 className="text-3xl xs:text-4xl sm:text-6xl font-bold text-white leading-tight tracking-tight drop-shadow-lg max-w-3xl">
+          <h1 className="text-3xl sm:text-6xl font-bold text-white leading-tight tracking-tight drop-shadow-lg max-w-3xl">
             Carefully Selected,<br />Each Piece Unique
           </h1>
-          <p className="mt-5 text-sm xs:text-lg text-white/80 max-w-xl leading-relaxed">
+          <p className="mt-5 text-sm sm:text-lg text-white/80 max-w-xl leading-relaxed">
             Type A jadeite from Myanmar and Guatemala — carefully sourced and manufactured for color, texture, and character.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
@@ -120,7 +120,7 @@ export default async function Home() {
             <h2 className="text-2xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 leading-snug mb-6">
               Natural Jadeite,<br />Carefully Selected
             </h2>
-            <div className="space-y-4 text-gray-600 dark:text-gray-400 leading-relaxed text-[17px] xs:text-[18px]">
+            <div className="space-y-4 text-gray-600 dark:text-gray-400 leading-relaxed text-[17px] sm:text-[18px]">
               <p>
                 Each piece in our collection is individually sourced and selected for its color, texture, and character. From raw materials to a completed bangle, we specialize in natural Type A jadeite, focusing primarily on jade from Myanmar (Burmese) and select pieces from Guatemala.
               </p>

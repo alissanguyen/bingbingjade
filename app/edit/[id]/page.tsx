@@ -63,7 +63,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     <div className="mx-auto max-w-2xl px-6 py-16">
       <div className="mb-8">
         <p className="text-sm text-gray-400 dark:text-gray-500 mb-1">Editing</p>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{product.name}</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">{product.name}</h1>
       </div>
       <EditForm
         product={productWithUrls}

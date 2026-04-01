@@ -244,7 +244,7 @@ export default async function TrackOrderPage({
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 mb-2">
           Order Tracking
         </p>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
           {order.order_number}
         </h1>
         <p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400">

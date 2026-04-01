@@ -128,7 +128,7 @@ const faqs = [
 export default function FAQ() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
-      <h1 className="text-2xl xs:text-3xl font-bold text-gray-900 dark:text-gray-100">Frequently Asked Questions</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Frequently Asked Questions</h1>
       <p className="mt-2 text-gray-500 dark:text-gray-400 text-md">Everything you need to know about BingBing Jadeite.</p>
       <div className="mt-10">
         <Accordion items={faqs.map((f) => ({ id: f.id, heading: f.question, content: f.answer }))} />

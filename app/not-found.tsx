@@ -9,7 +9,7 @@ export default function NotFound() {
         <span className="absolute -bottom-1 -right-2 text-4xl leading-none">404</span>
       </div>
 
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-3">
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-3">
         This piece is gone
       </h1>
       <p className="text-gray-500 dark:text-gray-400 max-w-sm mb-8">

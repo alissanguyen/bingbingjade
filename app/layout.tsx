@@ -64,7 +64,7 @@ export default async function RootLayout({
           <header className="sticky top-0 z-40 bg-white dark:bg-gray-950">
             {/* Beta banner — only shown in beta mode */}
             {process.env.NEXT_PUBLIC_CHECKOUT_MODE !== "live" && (
-              <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800 px-4 py-2 text-center text-xs text-amber-800 dark:text-amber-300">
+              <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800 px-4 py-2 text-center text-[12px] sm:text-xs text-amber-800 dark:text-amber-300">
                 <span className="font-semibold">Site under beta testing.</span>
                 {" "}Online checkout is temporarily disabled — to purchase, please inquire directly via{" "}
                 <a
@@ -91,9 +91,9 @@ export default async function RootLayout({
           <main className="flex-1">{children}</main>
 
           <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 py-8">
-            <div className="mx-auto max-w-5xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs xs:text-sm text-gray-400 dark:text-gray-500">
+            <div className="mx-auto max-w-5xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs sm:text-sm text-gray-400 dark:text-gray-500">
               <span>© {new Date().getFullYear()} BingBing Jade. All rights reserved.</span>
-              <div className="flex gap-6 text-xs xs:text-sm">
+              <div className="flex gap-6 text-xs sm:text-sm">
                 <Link href="/faq" className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
                   FAQ
                 </Link>
