@@ -51,9 +51,10 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
 const SOURCE_LABELS: Record<OrderSource, string> = {
   stripe: "Stripe",
   whatsapp: "WhatsApp",
-  cash: "Cash/Zelle",
+  cash: "Venmo/Cash",
   paypal: "PayPal",
   wire: "Wire Transfer",
+  zelle: "Zelle",
   custom: "Custom",
   admin: "Admin",
 };
@@ -64,6 +65,7 @@ const SOURCE_COLORS: Record<OrderSource, string> = {
   cash: "bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400",
   paypal: "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400",
   wire: "bg-cyan-50 text-cyan-600 dark:bg-cyan-900/20 dark:text-cyan-400",
+  zelle: "bg-violet-50 text-violet-600 dark:bg-violet-900/20 dark:text-violet-400",
   custom: "bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400",
   admin: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
 };
@@ -156,7 +158,7 @@ const EMPTY_FORM = {
   customerName: "",
   customerEmail: "",
   customerPhone: "",
-  source: "cash" as OrderSource,
+  source: "zelle" as OrderSource,
   paidStatus: "paid" as "paid" | "unpaid",
   orderStatus: "order_confirmed" as OrderStatus,
   currency: "usd",
@@ -745,11 +747,10 @@ export function OrdersAdminClient() {
                     <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Source <span className="text-red-500">*</span></label>
                     <select value={form.source} onChange={(e) => setField("source", e.target.value as OrderSource)} required
                       className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                      <option value="cash">Cash/Zelle</option>
-                      <option value="paypal">PayPal</option>
                       <option value="stripe">Stripe</option>
-                      <option value="wire">Wire Transfer</option>
-                      <option value="whatsapp">WhatsApp</option>
+                      <option value="paypal">PayPal</option>
+                      <option value="zelle">Zelle</option>
+                      <option value="cash">Venmo/Cash</option>
                       <option value="custom">Custom</option>
                       <option value="admin">Admin</option>
                     </select>
@@ -1033,7 +1034,7 @@ export function OrdersAdminClient() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">PayPal Fee</label>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Transaction Fee</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
                       <input type="number" inputMode="decimal" min="0" step="0.01" value={form.feePaypal}
@@ -1091,7 +1092,7 @@ export function OrdersAdminClient() {
                       </div>
                       {(parseFloat(form.feeShipping) || 0) > 0 && <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400"><span>Shipping</span><span>+${parseFloat(form.feeShipping).toFixed(2)}</span></div>}
                       {(parseFloat(form.feeTax) || 0) > 0 && <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400"><span>Tax</span><span>+${parseFloat(form.feeTax).toFixed(2)}</span></div>}
-                      {(parseFloat(form.feePaypal) || 0) > 0 && <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400"><span>PayPal Fee</span><span>+${parseFloat(form.feePaypal).toFixed(2)}</span></div>}
+                      {(parseFloat(form.feePaypal) || 0) > 0 && <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400"><span>Transaction Fee</span><span>+${parseFloat(form.feePaypal).toFixed(2)}</span></div>}
                       {(parseFloat(form.feeInsurance) || 0) > 0 && <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400"><span>Insurance</span><span>+${parseFloat(form.feeInsurance).toFixed(2)}</span></div>}
                       {(parseFloat(form.feeDiscount) || 0) > 0 && <div className="flex justify-between text-xs text-emerald-600 dark:text-emerald-400"><span>Discount</span><span>−${parseFloat(form.feeDiscount).toFixed(2)}</span></div>}
                       {(parseFloat(form.feeOther) || 0) > 0 && <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400"><span>{form.feeOtherLabel.trim() || "Other"}</span><span>+${parseFloat(form.feeOther).toFixed(2)}</span></div>}

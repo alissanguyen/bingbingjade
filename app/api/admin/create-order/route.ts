@@ -59,7 +59,7 @@ import {
 import { getSessionUser, isApproved, approvedCreatedBy, SessionUser } from "@/lib/approved-auth";
 import type { OrderStatus, OrderSource } from "@/types/orders";
 
-const VALID_SOURCES: OrderSource[] = ["whatsapp", "cash", "paypal", "wire", "custom", "admin"];
+const VALID_SOURCES: OrderSource[] = ["stripe", "paypal", "zelle", "cash", "custom", "admin"];
 const VALID_ORDER_STATUSES: OrderStatus[] = [
   "order_created", "order_confirmed", "in_production", "polishing",
   "quality_control", "certifying", "inbound_shipping", "outbound_shipping", "delivered",
