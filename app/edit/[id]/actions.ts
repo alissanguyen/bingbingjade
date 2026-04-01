@@ -123,7 +123,9 @@ export async function updateProduct(
       if (error) return { error: error.message };
       const optionsJson = formData.get("options_json") as string | null;
       if (optionsJson) {
-        try { await applyOptions(id, optionsJson, productStatus); } catch { /* non-fatal */ }
+        try { await applyOptions(id, optionsJson, productStatus); } catch (err) {
+          return { error: `Variants save failed: ${err instanceof Error ? err.message : String(err)}` };
+        }
       }
     } else {
       // Editing an existing (live) product — store proposed changes in pending_data
@@ -198,7 +200,9 @@ export async function updateProduct(
 
   const optionsJson = formData.get("options_json") as string | null;
   if (optionsJson) {
-    try { await applyOptions(id, optionsJson, productStatus); } catch { /* non-fatal */ }
+    try { await applyOptions(id, optionsJson, productStatus); } catch (err) {
+      return { error: `Variants save failed: ${err instanceof Error ? err.message : String(err)}` };
+    }
   }
 
   return { success: true };
