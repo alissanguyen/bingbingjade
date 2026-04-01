@@ -1040,11 +1040,12 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
         {hasVariants && (<>
         <div className="space-y-2">
           {optionRows.map((row, i) => (
-            <div key={i} className="flex flex-col sm:flex-row sm:items-end gap-2 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-3">
-              {/* Top row on mobile: photo + inputs */}
-              <div className="flex flex-col sm:flex-row gap-2 items-end flex-1">
+            <div key={i} className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-3 space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+              {/* Top row: photo + inputs + status */}
+              <div className="flex gap-2 items-end flex-1">
               {/* Variant image thumbnail */}
-              <div className="shrink-0 self-start">
+              <div className="shrink-0">
                 <label className="block text-xs text-gray-400 mb-1">Photo</label>
                 <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 cursor-pointer group">
                   <input
@@ -1085,8 +1086,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
                   )}
                 </div>
               </div>
-              <div className="flex-1 w-full space-y-1.5">
-                <div className="sm:grid sm:grid-cols-4 gap-1.5 sm:gap-2">
+              <div className="flex-1 grid sm:grid-cols-4 gap-1.5 sm:gap-2">
                   <div>
                     <label className="block text-xs text-gray-400 mb-1">Label</label>
                     <input
@@ -1130,41 +1130,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
                       className={`${inputClass} text-xs py-2 border-amber-200 dark:border-amber-800 focus:border-amber-500 focus:ring-amber-500`}
                     />
                   </div>
-                </div>
-                {optionRows.length > 1 && (
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Combo of</label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {optionRows.map((other, j) => {
-                        if (j === i) return null;
-                        const checked = row.comboOf.includes(j);
-                        return (
-                          <button
-                            key={j}
-                            type="button"
-                            onClick={() =>
-                              setOptionRows((prev) => {
-                                const next = [...prev];
-                                const cur = next[i].comboOf;
-                                next[i] = { ...next[i], comboOf: checked ? cur.filter((x) => x !== j) : [...cur, j] };
-                                return next;
-                              })
-                            }
-                            className={`px-2 py-0.5 rounded-full text-xs border transition-all ${
-                              checked
-                                ? "border-violet-400 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400"
-                                : "border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300"
-                            }`}
-                          >
-                            {other.label || `Variant ${j + 1}`}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
               </div>
-              </div>{/* end top row */}
               <div className="flex items-center gap-1.5 shrink-0 sm:pb-0.5">
                 <button
                   type="button"
@@ -1198,6 +1164,39 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
                   </button>
                 )}
               </div>
+              </div>{/* end top flex row */}
+              {optionRows.length > 1 && (
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Combo of — blocked when any selected variant is sold</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {optionRows.map((other, j) => {
+                      if (j === i) return null;
+                      const checked = row.comboOf.includes(j);
+                      return (
+                        <button
+                          key={j}
+                          type="button"
+                          onClick={() =>
+                            setOptionRows((prev) => {
+                              const next = [...prev];
+                              const cur = next[i].comboOf;
+                              next[i] = { ...next[i], comboOf: checked ? cur.filter((x) => x !== j) : [...cur, j] };
+                              return next;
+                            })
+                          }
+                          className={`px-2 py-0.5 rounded-full text-xs border transition-all ${
+                            checked
+                              ? "border-violet-400 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400"
+                              : "border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300"
+                          }`}
+                        >
+                          {other.label || `Variant ${j + 1}`}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

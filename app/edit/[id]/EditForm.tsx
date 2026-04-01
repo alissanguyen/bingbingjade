@@ -785,7 +785,8 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
         {hasVariants && (<>
         <div className="space-y-2">
           {optionRows.map((row, i) => (
-            <div key={i} className="flex gap-2 items-end rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-3">
+            <div key={i} className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-3 space-y-2">
+              <div className="flex gap-2 items-end">
               {/* Variant image thumbnail */}
               <div className="shrink-0">
                 <label className="block text-xs text-gray-400 mb-1">Photo</label>
@@ -828,8 +829,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
                   )}
                 </div>
               </div>
-              <div className="flex-1 space-y-2">
-                <div className="grid grid-cols-4 gap-2">
+              <div className="flex-1 grid grid-cols-4 gap-2">
                   <div>
                     <label className="block text-xs text-gray-400 mb-1">Label</label>
                     <input
@@ -873,39 +873,6 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
                       className={`${inputClass} text-xs py-2 border-amber-200 dark:border-amber-800 focus:border-amber-500 focus:ring-amber-500`}
                     />
                   </div>
-                </div>
-                {optionRows.length > 1 && (
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Combo of (mark as unavailable if any selected variant is sold)</label>
-                    <div className="flex flex-wrap gap-2">
-                      {optionRows.map((other, j) => {
-                        if (j === i) return null;
-                        const checked = row.comboOf.includes(j);
-                        return (
-                          <button
-                            key={j}
-                            type="button"
-                            onClick={() =>
-                              setOptionRows((prev) => {
-                                const next = [...prev];
-                                const cur = next[i].comboOf;
-                                next[i] = { ...next[i], comboOf: checked ? cur.filter((x) => x !== j) : [...cur, j] };
-                                return next;
-                              })
-                            }
-                            className={`px-2 py-0.5 rounded-full text-xs border transition-all ${
-                              checked
-                                ? "border-violet-400 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400"
-                                : "border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300"
-                            }`}
-                          >
-                            {other.label || `Variant ${j + 1}`}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
               </div>
               <div className="flex items-center gap-1.5 shrink-0 pb-0.5">
                 <button
@@ -940,6 +907,39 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
                   </button>
                 )}
               </div>
+              </div>{/* end top flex row */}
+              {optionRows.length > 1 && (
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Combo of — blocked when any selected variant is sold</label>
+                  <div className="flex flex-wrap gap-2">
+                    {optionRows.map((other, j) => {
+                      if (j === i) return null;
+                      const checked = row.comboOf.includes(j);
+                      return (
+                        <button
+                          key={j}
+                          type="button"
+                          onClick={() =>
+                            setOptionRows((prev) => {
+                              const next = [...prev];
+                              const cur = next[i].comboOf;
+                              next[i] = { ...next[i], comboOf: checked ? cur.filter((x) => x !== j) : [...cur, j] };
+                              return next;
+                            })
+                          }
+                          className={`px-2 py-0.5 rounded-full text-xs border transition-all ${
+                            checked
+                              ? "border-violet-400 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400"
+                              : "border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300"
+                          }`}
+                        >
+                          {other.label || `Variant ${j + 1}`}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
