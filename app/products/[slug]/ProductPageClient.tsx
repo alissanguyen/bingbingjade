@@ -70,10 +70,13 @@ export function ProductPageClient({ product, productImages, productVideos, optio
   const { addToCart, items: cartItems } = useCart();
   const [addedToCart, setAddedToCart] = useState(false);
 
-  // Returns true if this combo variant is blocked because a dependency is sold
+  // Returns true if this variant should be blocked:
+  // 1. It is a combo and any of its components is sold (e.g. Set blocked when Bangle sells)
+  // 2. It is a component and any combo that references it is sold (e.g. Bangle blocked when Set sells)
   function isComboBlocked(opt: ProductOptionClient): boolean {
-    if (!opt.combo_of?.length) return false;
-    return opt.combo_of.some((id) => options.find((o) => o.id === id)?.status === "sold");
+    if (opt.combo_of?.some((id) => options.find((o) => o.id === id)?.status === "sold")) return true;
+    if (options.some((o) => o.combo_of?.includes(opt.id) && o.status === "sold")) return true;
+    return false;
   }
 
   // Show selector if there are multiple options or any option has a label
