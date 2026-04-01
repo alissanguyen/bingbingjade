@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { toStoragePath } from "@/lib/storage";
 import { getSessionUser, isApproved } from "@/lib/approved-auth";
@@ -204,6 +205,10 @@ export async function updateProduct(
       return { error: `Variants save failed: ${err instanceof Error ? err.message : String(err)}` };
     }
   }
+
+  // Bust the product page ISR cache so changes appear immediately
+  const { data: saved } = await supabaseAdmin.from("products").select("slug").eq("id", id).single();
+  if (saved?.slug) revalidatePath(`/products/${saved.slug}`);
 
   return { success: true };
 }
