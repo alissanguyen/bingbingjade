@@ -118,6 +118,33 @@ export function ProductPageClient({ product, productImages, productVideos, optio
     product.status === "on_sale" ||
     options.some((o) => o.sale_price_usd != null && o.status !== "sold" && !isComboBlocked(o));
 
+  // Price range for set-like products: min individual price → combo's sale price
+  const comboOpts = options.filter((o) => (o.combo_of?.length ?? 0) > 0);
+  const individualOpts = options.filter((o) => !(o.combo_of?.length));
+  const hasSetLayout = comboOpts.length > 0 && individualOpts.length > 0;
+
+  const rangeMin = hasSetLayout
+    ? individualOpts
+        .filter((o) => o.status !== "sold")
+        .map((o) => o.price_usd)
+        .filter((p): p is number => p != null)
+        .reduce((a, b) => Math.min(a, b), Infinity)
+    : null;
+
+  // Upper bound: the combo variant's sale_price_usd (discounted set price)
+  const rangeMax = hasSetLayout
+    ? comboOpts
+        .filter((o) => o.status !== "sold" && !isComboBlocked(o))
+        .map((o) => o.sale_price_usd ?? o.price_usd)
+        .filter((p): p is number => p != null)
+        .reduce((a, b) => Math.max(a, b), -Infinity)
+    : null;
+
+  const showPriceRange =
+    rangeMin != null && isFinite(rangeMin) &&
+    rangeMax != null && isFinite(rangeMax) &&
+    rangeMin < rangeMax;
+
   // Effective checkout price for the currently selected option
   const checkoutPrice = activeSalePrice ?? effectiveDisplayPrice;
 
@@ -247,6 +274,17 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* Price range hint for set products */}
+        {showPriceRange && (
+          <div className="mt-2 flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+            <span>From</span>
+            <span className="font-semibold text-gray-800 dark:text-gray-200">${rangeMin!.toFixed(2)}</span>
+            <span className="text-gray-300 dark:text-gray-600">·</span>
+            <span>Full set</span>
+            <span className="font-semibold text-amber-600 dark:text-amber-400">${rangeMax!.toFixed(2)}</span>
           </div>
         )}
 
