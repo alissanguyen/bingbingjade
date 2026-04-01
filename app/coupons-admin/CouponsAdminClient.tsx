@@ -149,12 +149,12 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Coupon Campaigns</h1>
           <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">Seasonal and promotional discount codes</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 self-start sm:self-auto">
           <button
             type="button"
             onClick={() => { setShowRedeem((v) => !v); setRedeemResult(null); }}
@@ -179,7 +179,7 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Manual Redemption</h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Mark a subscriber coupon, campaign code, or referral code as used for Zelle / wire-transfer orders.</p>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Coupon / referral code">
               <input
                 value={redeemForm.code}
@@ -224,7 +224,7 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
         <form onSubmit={handleCreate} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-5">
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">New Campaign</h2>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Campaign name">
               <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Black Friday 2025" required className={inputCls} />
             </Field>
@@ -233,7 +233,7 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
             </Field>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Discount type">
               <select value={form.discount_type} onChange={(e) => setForm((f) => ({ ...f, discount_type: e.target.value as "fixed" | "percent" | "tiered" }))} className={inputCls}>
                 <option value="fixed">Fixed ($)</option>
@@ -248,7 +248,7 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Start date (optional)">
               <input type="datetime-local" value={form.starts_at} onChange={(e) => setForm((f) => ({ ...f, starts_at: e.target.value }))} className={inputCls} />
             </Field>
@@ -257,7 +257,7 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
             </Field>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Field label="Min order amount ($)">
               <input type="number" min={0} value={form.minimum_order_amount} onChange={(e) => setForm((f) => ({ ...f, minimum_order_amount: e.target.value }))} placeholder="None" className={inputCls} />
             </Field>
@@ -297,7 +297,8 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
         <p className="text-sm text-gray-400 dark:text-gray-500">No campaigns yet.</p>
       ) : (
         <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
             <thead>
               <tr className="border-b border-gray-100 dark:border-gray-800 text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500">
                 <th className="text-left px-5 py-3 font-medium">Code / Name</th>
@@ -345,6 +346,7 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

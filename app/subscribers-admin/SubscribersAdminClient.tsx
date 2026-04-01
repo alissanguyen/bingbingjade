@@ -122,12 +122,12 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Subscribers</h1>
           <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{initial.length} total</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 self-start sm:self-auto">
           <button
             type="button"
             onClick={handleBackfill}
@@ -169,7 +169,8 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
         <p className="text-sm text-gray-400 dark:text-gray-500">No subscribers in this view.</p>
       ) : (
         <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[600px]">
             <thead>
               <tr className="border-b border-gray-100 dark:border-gray-800 text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500">
                 <th className="text-left px-5 py-3 font-medium">Email</th>
@@ -223,6 +224,7 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

@@ -100,7 +100,7 @@ export default function ApprovedUsersPage() {
     <>
       <AdminBar />
       <div className="mx-auto max-w-3xl px-6 py-12">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Approved Users</h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -109,7 +109,7 @@ export default function ApprovedUsersPage() {
           </div>
           <button
             onClick={() => { setShowAdd(true); setFormError(""); }}
-            className="rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 text-sm font-medium transition-colors"
+            className="rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 text-sm font-medium transition-colors self-start sm:self-auto shrink-0"
           >
             + Add User
           </button>
@@ -120,7 +120,7 @@ export default function ApprovedUsersPage() {
           <div className="mb-8 rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 p-6">
             <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">New Approved User</h2>
             <form onSubmit={handleCreate} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Full Name</label>
                   <input required value={form.fullName} onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))} className={inputCls} />
@@ -130,7 +130,7 @@ export default function ApprovedUsersPage() {
                   <input required type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className={inputCls} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Password (min 8 chars)</label>
                   <input required type="password" minLength={8} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} className={inputCls} />
@@ -168,7 +168,7 @@ export default function ApprovedUsersPage() {
               <div key={user.id} className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
                 {editing === user.id ? (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Full Name</label>
                         <input value={editForm.fullName} onChange={e => setEditForm(f => ({ ...f, fullName: e.target.value }))} className={inputCls} />
@@ -178,7 +178,7 @@ export default function ApprovedUsersPage() {
                         <input type="password" minLength={8} value={editForm.password} onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" className={inputCls} />
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Access Level</label>
                         <select value={editForm.accessLevel} onChange={e => setEditForm(f => ({ ...f, accessLevel: e.target.value }))} className={inputCls}>
@@ -200,9 +200,9 @@ export default function ApprovedUsersPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="font-medium text-gray-900 dark:text-gray-100">{user.full_name}</span>
                         <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${user.is_active ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400" : "bg-gray-100 dark:bg-gray-800 text-gray-400"}`}>
                           {user.is_active ? "Active" : "Inactive"}
