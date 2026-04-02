@@ -67,9 +67,8 @@ interface Props {
 }
 
 export function ProductPageClient({ product, productImages, productVideos, options }: Props) {
-  const { addToCart, removeFromCart, items: cartItems } = useCart();
+  const { addToCart, removeFromCart, items: cartItems, setUpgradeNotice } = useCart();
   const [addedToCart, setAddedToCart] = useState(false);
-  const [upgradedComboLabel, setUpgradedComboLabel] = useState<string | null>(null);
 
   // Returns true if this variant should be blocked:
   // 1. It is a combo and any of its components is sold (e.g. Set blocked when Bangle sells)
@@ -219,9 +218,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
             originalPrice: comboOpt.price_usd != null && comboOpt.price_usd !== comboPrice ? comboOpt.price_usd : null,
             thumbnail: comboThumb,
           });
-          const label = comboOpt.label ?? product.name;
-          setUpgradedComboLabel(label);
-          setTimeout(() => setUpgradedComboLabel(null), 4000);
+          setUpgradeNotice(comboOpt.label ?? product.name);
           return;
         }
       }
@@ -524,12 +521,6 @@ export function ProductPageClient({ product, productImages, productVideos, optio
             >
               {isEffectivelySold ? "This item has been sold" : "Contact for price"}
             </div>
-          )}
-
-          {upgradedComboLabel && (
-            <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400 text-center font-medium">
-              Your cart was upgraded to the <span className="font-semibold">{upgradedComboLabel}</span> set price.
-            </p>
           )}
 
           <div className="flex flex-col sm:flex-row sm:gap-4">

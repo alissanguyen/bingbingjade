@@ -14,7 +14,7 @@ function fmtPrice(price: number): string {
 const isLiveMode = process.env.NEXT_PUBLIC_CHECKOUT_MODE === "live";
 
 export function CartDrawer() {
-  const { items, drawerOpen, closeDrawer, removeFromCart, clearCart } = useCart();
+  const { items, drawerOpen, closeDrawer, removeFromCart, clearCart, upgradeNotice, setUpgradeNotice } = useCart();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [headerHeight, setHeaderHeight] = useState(0);
@@ -109,6 +109,17 @@ export function CartDrawer() {
     document.body.style.overflow = drawerOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [drawerOpen]);
+
+  // Auto-clear upgrade notice after 5 s, or when drawer closes
+  useEffect(() => {
+    if (!upgradeNotice) return;
+    const t = setTimeout(() => setUpgradeNotice(null), 5000);
+    return () => clearTimeout(t);
+  }, [upgradeNotice, setUpgradeNotice]);
+
+  useEffect(() => {
+    if (!drawerOpen) setUpgradeNotice(null);
+  }, [drawerOpen, setUpgradeNotice]);
 
   const availableItems = items.filter((i) => !soldKeys.has(`${i.productId}-${i.optionId}`) && !staleKeys.has(`${i.productId}-${i.optionId}`));
   const total = availableItems.reduce((sum, i) => sum + i.price, 0);
@@ -233,6 +244,14 @@ export function CartDrawer() {
             </svg>
           </button>
         </div>
+
+        {/* Combo upgrade notice */}
+        {upgradeNotice && (
+          <div className="mx-4 mt-2 flex items-start gap-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-3 py-2.5 text-xs text-emerald-700 dark:text-emerald-400">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Your cart was upgraded to the <span className="font-semibold">{upgradeNotice}</span> set price.</span>
+          </div>
+        )}
 
         {/* Items */}
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
