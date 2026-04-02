@@ -67,8 +67,9 @@ interface Props {
 }
 
 export function ProductPageClient({ product, productImages, productVideos, options }: Props) {
-  const { addToCart, items: cartItems } = useCart();
+  const { addToCart, removeFromCart, items: cartItems } = useCart();
   const [addedToCart, setAddedToCart] = useState(false);
+  const [upgradedComboLabel, setUpgradedComboLabel] = useState<string | null>(null);
 
   // Returns true if this variant should be blocked:
   // 1. It is a combo and any of its components is sold (e.g. Set blocked when Bangle sells)
@@ -184,8 +185,50 @@ export function ProductPageClient({ product, productImages, productVideos, optio
 
   function handleAddToCart() {
     if (checkoutPrice == null) return;
-    const thumbnail = effectiveImages[0] ?? null;
     const activeOption = hasSelector ? options[selectedIdx] : null;
+
+    // If adding a component option, check whether it completes any combo.
+    // If so, silently swap the individual pieces for the combo variant.
+    if (activeOption && !activeOption.combo_of?.length) {
+      for (const comboOpt of options) {
+        if (!comboOpt.combo_of?.length) continue;
+        const componentIds = comboOpt.combo_of;
+        // Does every other component already sit in the cart?
+        const othersInCart = componentIds
+          .filter((id) => id !== activeOption.id)
+          .every((id) => cartItems.some((c) => c.productId === product.id && c.optionId === id));
+        if (othersInCart) {
+          // Remove existing individual components
+          for (const id of componentIds) {
+            if (cartItems.some((c) => c.productId === product.id && c.optionId === id)) {
+              removeFromCart(product.id, id);
+            }
+          }
+          // Add the combo variant
+          const comboPrice = comboOpt.sale_price_usd ?? comboOpt.price_usd ?? product.price_display_usd;
+          if (comboPrice == null) break;
+          const comboThumb = (comboOpt.images?.length ?? 0) > 0 ? comboOpt.images[0] : (productImages[0] ?? null);
+          addToCart({
+            productId: product.id,
+            productPublicId: product.public_id,
+            productName: product.name,
+            productSlug: product.slug,
+            optionId: comboOpt.id,
+            optionLabel: comboOpt.label,
+            price: comboPrice,
+            originalPrice: comboOpt.price_usd != null && comboOpt.price_usd !== comboPrice ? comboOpt.price_usd : null,
+            thumbnail: comboThumb,
+          });
+          const label = comboOpt.label ?? product.name;
+          setUpgradedComboLabel(label);
+          setTimeout(() => setUpgradedComboLabel(null), 4000);
+          return;
+        }
+      }
+    }
+
+    // Normal add
+    const thumbnail = effectiveImages[0] ?? null;
     const cartItem: CartItem = {
       productId: product.id,
       productPublicId: product.public_id,
@@ -481,6 +524,12 @@ export function ProductPageClient({ product, productImages, productVideos, optio
             >
               {isEffectivelySold ? "This item has been sold" : "Contact for price"}
             </div>
+          )}
+
+          {upgradedComboLabel && (
+            <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400 text-center font-medium">
+              Your cart was upgraded to the <span className="font-semibold">{upgradedComboLabel}</span> set price.
+            </p>
           )}
 
           <div className="flex flex-col sm:flex-row sm:gap-4">
