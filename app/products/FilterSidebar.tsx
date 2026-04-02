@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, Suspense } from "react";
 
 const ALL_COLORS = [
   { value: "white",    label: "White",    swatch: "bg-white border border-gray-300" },
@@ -66,27 +66,65 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** Syncs filter state to URL after mount — wrapped in its own Suspense so it never blocks hydration. */
+function FilterSidebarSync({
+  onSync,
+}: {
+  onSync: (params: URLSearchParams) => void;
+}) {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    onSync(searchParams);
+  }, [searchParams, onSync]);
+  return null;
+}
+
 export function FilterSidebar({
   statusCounts = {},
   originCounts = {},
   colorCounts = {},
+  initialColors = [],
+  initialStatuses = [],
+  initialOrigins = [],
+  initialMinSize = "",
+  initialMaxSize = "",
+  initialMinPrice = "",
+  initialMaxPrice = "",
 }: {
   statusCounts?: Record<string, number>;
   originCounts?: Record<string, number>;
   colorCounts?: Record<string, number>;
+  initialColors?: string[];
+  initialStatuses?: string[];
+  initialOrigins?: string[];
+  initialMinSize?: string;
+  initialMaxSize?: string;
+  initialMinPrice?: string;
+  initialMaxPrice?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const selectedColors   = searchParams.get("colors")?.split(",").filter(Boolean) ?? [];
-  const selectedStatuses = searchParams.get("status")?.split(",").filter(Boolean) ?? [];
-  const selectedOrigins  = searchParams.get("origins")?.split(",").filter(Boolean) ?? [];
-  const minSize  = searchParams.get("minSize")  ?? "";
-  const maxSize  = searchParams.get("maxSize")  ?? "";
-  const minPrice = searchParams.get("minPrice") ?? "";
-  const maxPrice = searchParams.get("maxPrice") ?? "";
+  // Initialized from server-passed props — no useSearchParams() in render body.
+  const [selectedColors,   setSelectedColors]   = useState<string[]>(initialColors);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(initialStatuses);
+  const [selectedOrigins,  setSelectedOrigins]  = useState<string[]>(initialOrigins);
+  const [minSize,  setMinSize]  = useState(initialMinSize);
+  const [maxSize,  setMaxSize]  = useState(initialMaxSize);
+  const [minPrice, setMinPrice] = useState(initialMinPrice);
+  const [maxPrice, setMaxPrice] = useState(initialMaxPrice);
+
+  // Sync with URL after mount (handles back/forward navigation and CategoryBar clicks).
+  const handleSync = useCallback((params: URLSearchParams) => {
+    setSelectedColors(params.get("colors")?.split(",").filter(Boolean) ?? []);
+    setSelectedStatuses(params.get("status")?.split(",").filter(Boolean) ?? []);
+    setSelectedOrigins(params.get("origins")?.split(",").filter(Boolean) ?? []);
+    setMinSize(params.get("minSize")  ?? "");
+    setMaxSize(params.get("maxSize")  ?? "");
+    setMinPrice(params.get("minPrice") ?? "");
+    setMaxPrice(params.get("maxPrice") ?? "");
+  }, []);
 
   const activeCount =
     selectedColors.length +
@@ -103,16 +141,22 @@ export function FilterSidebar({
     return () => { document.body.style.overflow = ""; };
   }, [drawerOpen]);
 
+  // Build URLs preserving all current params (including sort, page, etc.)
   const push = useCallback(
     (updates: Record<string, string | null>) => {
-      const params = new URLSearchParams(searchParams.toString());
+      // Read from window.location so we always have the latest params without
+      // needing useSearchParams() in the render body.
+      const params = new URLSearchParams(
+        typeof window !== "undefined" ? window.location.search : ""
+      );
       for (const [key, val] of Object.entries(updates)) {
         if (val === null || val === "") params.delete(key);
         else params.set(key, val);
       }
-      router.push(`${pathname}?${params.toString()}`);
+      const qs = params.toString();
+      router.push(qs ? `${pathname}?${qs}` : pathname);
     },
-    [router, pathname, searchParams]
+    [router, pathname]
   );
 
   function toggleColor(color: string) {
@@ -236,6 +280,11 @@ export function FilterSidebar({
 
   return (
     <>
+      {/* URL sync — never blocks hydration */}
+      <Suspense>
+        <FilterSidebarSync onSync={handleSync} />
+      </Suspense>
+
       {/* ── Desktop sidebar ── */}
       <aside className="hidden lg:block w-40 shrink-0">
         <div className="sticky top-8 space-y-4">

@@ -40,6 +40,7 @@ interface ProductCard {
 interface OptionPriceRow {
   product_id: string;
   price_usd: number | null;
+  sale_price_usd: number | null;
   status: string;
 }
 
@@ -97,7 +98,7 @@ export default async function Products({
     productsQuery,
     supabase
       .from("product_options")
-      .select("product_id, price_usd, status")
+      .select("product_id, price_usd, sale_price_usd, status")
       .returns<OptionPriceRow[]>(),
   ]);
 
@@ -113,14 +114,14 @@ export default async function Products({
     optionMap.set(opt.product_id, arr);
   }
 
-  // Get effective available-option prices for a product (non-sold options with price overrides,
-  // falling back to product.price_display_usd when an option has no price of its own).
+  // Get effective available-option prices for a product.
+  // Uses sale_price_usd when set, otherwise price_usd, falling back to product.price_display_usd.
   function getVariantPrices(p: ProductCard): number[] {
     const opts = optionMap.get(p.id) ?? [];
     const available = opts.filter((o) => o.status !== "sold");
     const pool = available.length > 0 ? available : opts; // if all sold, still compute range
     return pool
-      .map((o) => o.price_usd ?? p.price_display_usd)
+      .map((o) => o.sale_price_usd ?? o.price_usd ?? p.price_display_usd)
       .filter((v): v is number => v != null);
   }
 
@@ -231,10 +232,19 @@ export default async function Products({
       <p className="mt-2 text-gray-500 dark:text-gray-400">Browse our collection of authentic jade pieces.</p>
 
       <div className="mt-10 flex gap-6">
-        {/* Filter sidebar — desktop only */}
-        <Suspense>
-          <FilterSidebar statusCounts={statusCounts} originCounts={originCounts} colorCounts={colorCounts} />
-        </Suspense>
+        {/* Filter sidebar — manages its own internal Suspense for URL sync */}
+        <FilterSidebar
+          statusCounts={statusCounts}
+          originCounts={originCounts}
+          colorCounts={colorCounts}
+          initialColors={selectedColors}
+          initialStatuses={selectedStatuses}
+          initialOrigins={selectedOrigins}
+          initialMinSize={params.minSize ?? ""}
+          initialMaxSize={params.maxSize ?? ""}
+          initialMinPrice={params.minPrice ?? ""}
+          initialMaxPrice={params.maxPrice ?? ""}
+        />
 
         {/* Product grid */}
         <div className="flex-1 min-w-0">
@@ -243,9 +253,7 @@ export default async function Products({
               {totalCount} {totalCount === 1 ? "item" : "items"}
               {totalPages > 1 && <span className="ml-1">· page {safePage} of {totalPages}</span>}
             </p>
-            <Suspense>
-              <SortSelect />
-            </Suspense>
+            <SortSelect initialSort={sort} />
           </div>
           {products.length === 0 ? (
             <p className="text-gray-400 dark:text-gray-600">
