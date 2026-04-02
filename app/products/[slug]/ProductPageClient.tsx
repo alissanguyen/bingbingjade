@@ -79,18 +79,28 @@ export function ProductPageClient({ product, productImages, productVideos, optio
     return false;
   }
 
-  // Returns true if this variant conflicts with items already in the cart:
+  // Returns the label of the conflicting cart item, or null if no conflict.
   // 1. It is a combo and any of its component options is already in the cart
   // 2. It is a component option and any combo that contains it is already in the cart
+  function cartConflictLabel(opt: ProductOptionClient): string | null {
+    if (opt.combo_of) {
+      for (const id of opt.combo_of) {
+        if (cartItems.some((c) => c.productId === product.id && c.optionId === id)) {
+          return options.find((o) => o.id === id)?.label ?? product.name;
+        }
+      }
+    }
+    for (const o of options) {
+      if (o.combo_of?.includes(opt.id) &&
+        cartItems.some((c) => c.productId === product.id && c.optionId === o.id)) {
+        return o.label ?? product.name;
+      }
+    }
+    return null;
+  }
+
   function isCartConflict(opt: ProductOptionClient): boolean {
-    if (opt.combo_of?.some((id) =>
-      cartItems.some((c) => c.productId === product.id && c.optionId === id)
-    )) return true;
-    if (options.some((o) =>
-      o.combo_of?.includes(opt.id) &&
-      cartItems.some((c) => c.productId === product.id && c.optionId === o.id)
-    )) return true;
-    return false;
+    return cartConflictLabel(opt) !== null;
   }
 
   // Show selector if there are multiple options or any option has a label
@@ -269,15 +279,13 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                   <button
                     key={opt.id}
                     type="button"
-                    onClick={() => { if (!unavailable) setSelectedIdx(i); }}
+                    onClick={() => { if (!unavailable && !cartConflict) setSelectedIdx(i); }}
                     className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm border transition-all ${
                       i === selectedIdx
                         ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-medium"
-                        : unavailable
-                          ? "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 line-through cursor-not-allowed opacity-60"
-                          : cartConflict
-                            ? "border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-500 cursor-pointer opacity-70"
-                            : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-400 dark:hover:border-emerald-600 cursor-pointer"
+                        : unavailable || cartConflict
+                          ? "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-60"
+                          : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-400 dark:hover:border-emerald-600 cursor-pointer"
                     }`}
                   >
                     {opt.label}
@@ -288,7 +296,6 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                     )}
                     {opt.status === "sold" && <span className="text-xs not-italic">(Sold)</span>}
                     {blocked && <span className="text-xs not-italic">(Unavailable)</span>}
-                    {!unavailable && cartConflict && <span className="text-xs not-italic">(In cart conflict)</span>}
                   </button>
                 );
               })}
@@ -450,16 +457,9 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                 Inquire to Purchase
               </Link>
             ) : isCartConflicted ? (
-              <>
-                <div className="block w-full rounded-full py-3 text-center text-sm font-medium text-white bg-amber-400 dark:bg-amber-600 cursor-not-allowed">
-                  Cannot add — conflicts with cart
-                </div>
-                <p className="mt-2 text-xs text-amber-600 dark:text-amber-400 text-center">
-                  {selectedOption?.combo_of?.length
-                    ? "A piece of this set is already in your cart."
-                    : "A set containing this piece is already in your cart."}
-                </p>
-              </>
+              <div className="block w-full rounded-full py-3 text-center text-sm font-medium text-white bg-gray-400 dark:bg-gray-600 cursor-not-allowed">
+                Unable to add since you already have the {selectedOption ? cartConflictLabel(selectedOption) : ""} in cart
+              </div>
             ) : (
               <button
                 type="button"
