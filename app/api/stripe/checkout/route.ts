@@ -4,6 +4,8 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { encodeCheckoutItems, encodeDiscountMeta } from "@/lib/stripe-metadata";
 import { validateDiscount, normalizeEmail } from "@/lib/discount";
 import type { CartItem } from "@/types/cart";
+import { applyBundlePricing } from "@/lib/bundle";
+import type { BundleRule } from "@/types/bundle";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
 
@@ -129,6 +131,36 @@ export async function POST(req: NextRequest) {
     validatedItems.push({ ...item, price: serverPrice });
   }
 
+  // ── Server-side bundle discount ───────────────────────────────────────────────
+  const productIdsForBundles = [...new Set(validatedItems.map((i) => i.productId))];
+  const { data: bundleRulesRaw } = await supabase
+    .from("bundle_rules")
+    .select("id, product_id, name, required_variant_ids, bundle_price")
+    .in("product_id", productIdsForBundles);
+
+  const bundleRules: BundleRule[] = (bundleRulesRaw ?? []).map((r: { id: string; product_id: string; name: string; required_variant_ids: string[]; bundle_price: number }) => ({
+    id: r.id,
+    productId: r.product_id,
+    name: r.name,
+    requiredVariantIds: r.required_variant_ids,
+    bundlePrice: r.bundle_price,
+  }));
+
+  const { appliedBundles, totalDiscount: bundleDiscountTotal } = applyBundlePricing(validatedItems, bundleRules);
+  const bundleDiscountCents = Math.round(bundleDiscountTotal * 100);
+
+  // Add bundle discount line items (one per applied bundle)
+  for (const bundle of appliedBundles) {
+    lineItems.push({
+      price_data: {
+        currency: "usd",
+        product_data: { name: `${bundle.rule.name} — Bundle Discount` },
+        unit_amount: -Math.round(bundle.discount * 100),
+      },
+      quantity: 1,
+    });
+  }
+
   // ── Server-side discount validation ──────────────────────────────────────────
   const itemsSubtotalCents = Math.round(
     validatedItems.reduce((sum, i) => sum + (i.price ?? 0), 0) * 100
@@ -183,8 +215,8 @@ export async function POST(req: NextRequest) {
     quantity: 1,
   });
 
-  // Transaction fee applied to (items - discount + shipping)
-  const discountedItemsCents = Math.max(0, itemsSubtotalCents - discountAmountCents);
+  // Transaction fee applied to (items - bundle discount - coupon discount + shipping)
+  const discountedItemsCents = Math.max(0, itemsSubtotalCents - discountAmountCents - bundleDiscountCents);
   const transactionFeeAmount = Math.round(
     (discountedItemsCents / 100 + shippingFee) * 0.035 * 100
   );

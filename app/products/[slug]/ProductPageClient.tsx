@@ -7,6 +7,7 @@ import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { useCart } from "@/app/components/CartContext";
 import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
 import type { CartItem } from "@/types/cart";
+import type { BundleRule } from "@/types/bundle";
 import { getCategoryLabel } from "../categories";
 
 interface ProductOptionClient {
@@ -15,7 +16,6 @@ interface ProductOptionClient {
   size: number | null;
   price_usd: number | null;
   sale_price_usd: number | null;
-  combo_of: string[] | null;
   images: string[]; // already resolved
   status: "available" | "sold";
   sort_order: number;
@@ -64,49 +64,17 @@ interface Props {
   productImages: string[];
   productVideos: string[];
   options: ProductOptionClient[];
+  bundleRules: BundleRule[];
 }
 
-export function ProductPageClient({ product, productImages, productVideos, options }: Props) {
-  const { addToCart, removeFromCart, items: cartItems, setUpgradeNotice } = useCart();
+export function ProductPageClient({ product, productImages, productVideos, options, bundleRules }: Props) {
+  const { addToCart, items: cartItems } = useCart();
   const [addedToCart, setAddedToCart] = useState(false);
-
-  // Returns true if this variant should be blocked:
-  // 1. It is a combo and any of its components is sold (e.g. Set blocked when Bangle sells)
-  // 2. It is a component and any combo that references it is sold (e.g. Bangle blocked when Set sells)
-  function isComboBlocked(opt: ProductOptionClient): boolean {
-    if (opt.combo_of?.some((id) => options.find((o) => o.id === id)?.status === "sold")) return true;
-    if (options.some((o) => o.combo_of?.includes(opt.id) && o.status === "sold")) return true;
-    return false;
-  }
-
-  // Returns the label of the conflicting cart item, or null if no conflict.
-  // 1. It is a combo and any of its component options is already in the cart
-  // 2. It is a component option and any combo that contains it is already in the cart
-  function cartConflictLabel(opt: ProductOptionClient): string | null {
-    if (opt.combo_of) {
-      for (const id of opt.combo_of) {
-        if (cartItems.some((c) => c.productId === product.id && c.optionId === id)) {
-          return options.find((o) => o.id === id)?.label ?? product.name;
-        }
-      }
-    }
-    for (const o of options) {
-      if (o.combo_of?.includes(opt.id) &&
-        cartItems.some((c) => c.productId === product.id && c.optionId === o.id)) {
-        return o.label ?? product.name;
-      }
-    }
-    return null;
-  }
-
-  function isCartConflict(opt: ProductOptionClient): boolean {
-    return cartConflictLabel(opt) !== null;
-  }
 
   // Show selector if there are multiple options or any option has a label
   const hasSelector = options.length > 1 || (options.length === 1 && options[0].label !== null);
-  // Default to the first non-sold, non-blocked option
-  const firstAvailableIdx = options.findIndex((o) => o.status !== "sold" && !isComboBlocked(o));
+  // Default to the first non-sold option
+  const firstAvailableIdx = options.findIndex((o) => o.status !== "sold");
   const [selectedIdx, setSelectedIdx] = useState(firstAvailableIdx >= 0 ? firstAvailableIdx : 0);
   const selectedOption = hasSelector ? (options[selectedIdx] ?? null) : null;
 
@@ -116,10 +84,9 @@ export function ProductPageClient({ product, productImages, productVideos, optio
   const effectiveSize = selectedOption?.size ?? product.size;
   const effectiveDisplayPrice = selectedOption?.price_usd ?? product.price_display_usd;
 
-  const isOptionSold = selectedOption?.status === "sold" || (selectedOption ? isComboBlocked(selectedOption) : false);
+  const isOptionSold = selectedOption?.status === "sold";
   const isProductSold = product.status === "sold";
   const isEffectivelySold = isProductSold || isOptionSold;
-  const isCartConflicted = selectedOption != null ? isCartConflict(selectedOption) : false;
 
   // Per-option sale_price_usd takes priority over product-level sale_price_usd.
   // Product-level sale only applies when product.status === "on_sale".
@@ -141,34 +108,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
   // Show the sale image badge if product-level or any available variant has a sale price
   const showImageSaleBadge =
     product.status === "on_sale" ||
-    options.some((o) => o.sale_price_usd != null && o.status !== "sold" && !isComboBlocked(o));
-
-  // Price range for set-like products: min individual price → combo's sale price
-  const comboOpts = options.filter((o) => (o.combo_of?.length ?? 0) > 0);
-  const individualOpts = options.filter((o) => !(o.combo_of?.length));
-  const hasSetLayout = comboOpts.length > 0 && individualOpts.length > 0;
-
-  const rangeMin = hasSetLayout
-    ? individualOpts
-        .filter((o) => o.status !== "sold")
-        .map((o) => o.price_usd)
-        .filter((p): p is number => p != null)
-        .reduce((a, b) => Math.min(a, b), Infinity)
-    : null;
-
-  // Upper bound: only the combo variant's sale_price_usd (the discounted set price).
-  // Falls back to null so the range is hidden when no sale price is set.
-  const rangeMax = hasSetLayout
-    ? comboOpts
-        .filter((o) => o.status !== "sold" && !isComboBlocked(o) && o.sale_price_usd != null)
-        .map((o) => o.sale_price_usd!)
-        .reduce((a, b) => Math.max(a, b), -Infinity)
-    : null;
-
-  const showPriceRange =
-    rangeMin != null && isFinite(rangeMin) &&
-    rangeMax != null && isFinite(rangeMax) &&
-    rangeMin < rangeMax;
+    options.some((o) => o.sale_price_usd != null && o.status !== "sold");
 
   // Effective checkout price for the currently selected option
   const checkoutPrice = activeSalePrice ?? effectiveDisplayPrice;
@@ -184,48 +124,8 @@ export function ProductPageClient({ product, productImages, productVideos, optio
 
   function handleAddToCart() {
     if (checkoutPrice == null) return;
-    const activeOption = hasSelector ? options[selectedIdx] : null;
-
-    // If adding a component option, check whether it completes any combo.
-    // If so, silently swap the individual pieces for the combo variant.
-    if (activeOption && !activeOption.combo_of?.length) {
-      for (const comboOpt of options) {
-        if (!comboOpt.combo_of?.length) continue;
-        const componentIds = comboOpt.combo_of;
-        // Does every other component already sit in the cart?
-        const othersInCart = componentIds
-          .filter((id) => id !== activeOption.id)
-          .every((id) => cartItems.some((c) => c.productId === product.id && c.optionId === id));
-        if (othersInCart) {
-          // Remove existing individual components
-          for (const id of componentIds) {
-            if (cartItems.some((c) => c.productId === product.id && c.optionId === id)) {
-              removeFromCart(product.id, id);
-            }
-          }
-          // Add the combo variant
-          const comboPrice = comboOpt.sale_price_usd ?? comboOpt.price_usd ?? product.price_display_usd;
-          if (comboPrice == null) break;
-          const comboThumb = (comboOpt.images?.length ?? 0) > 0 ? comboOpt.images[0] : (productImages[0] ?? null);
-          addToCart({
-            productId: product.id,
-            productPublicId: product.public_id,
-            productName: product.name,
-            productSlug: product.slug,
-            optionId: comboOpt.id,
-            optionLabel: comboOpt.label,
-            price: comboPrice,
-            originalPrice: comboOpt.price_usd != null && comboOpt.price_usd !== comboPrice ? comboOpt.price_usd : null,
-            thumbnail: comboThumb,
-          });
-          setUpgradeNotice(comboOpt.label ?? product.name);
-          return;
-        }
-      }
-    }
-
-    // Normal add
     const thumbnail = effectiveImages[0] ?? null;
+    const activeOption = hasSelector ? options[selectedIdx] : null;
     const cartItem: CartItem = {
       productId: product.id,
       productPublicId: product.public_id,
@@ -243,6 +143,27 @@ export function ProductPageClient({ product, productImages, productVideos, optio
     addToCart(cartItem);
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2500);
+  }
+
+  function handleAddBundle(rule: BundleRule) {
+    for (const variantId of rule.requiredVariantIds) {
+      const opt = options.find((o) => o.id === variantId);
+      if (!opt || opt.status === "sold") continue;
+      if (cartItems.some((c) => c.productId === product.id && c.optionId === variantId)) continue;
+      const price = opt.price_usd ?? product.price_display_usd;
+      if (price == null) continue;
+      addToCart({
+        productId: product.id,
+        productPublicId: product.public_id,
+        productName: product.name,
+        productSlug: product.slug,
+        optionId: opt.id,
+        optionLabel: opt.label,
+        price,
+        originalPrice: null,
+        thumbnail: opt.images[0] ?? productImages[0] ?? null,
+      });
+    }
   }
 
   return (
@@ -300,10 +221,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
             </p>
             <div className="flex flex-wrap gap-2">
               {options.map((opt, i) => {
-                const blocked = isComboBlocked(opt);
-                const cartConflict = isCartConflict(opt);
-                const unavailable = opt.status === "sold" || blocked;
-                // Discount badge: only from explicit sale_price_usd, or product-level on_sale
+                const unavailable = opt.status === "sold";
                 const optBasePrice = opt.price_usd ?? product.price_display_usd;
                 const optSalePrice =
                   opt.sale_price_usd != null
@@ -319,23 +237,22 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                   <button
                     key={opt.id}
                     type="button"
-                    onClick={() => { if (!unavailable && !cartConflict) setSelectedIdx(i); }}
+                    onClick={() => { if (!unavailable) setSelectedIdx(i); }}
                     className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm border transition-all ${
                       i === selectedIdx
                         ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-medium"
-                        : unavailable || cartConflict
-                          ? "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-60"
+                        : unavailable
+                          ? "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 line-through cursor-not-allowed opacity-60"
                           : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-400 dark:hover:border-emerald-600 cursor-pointer"
                     }`}
                   >
                     {opt.label}
-                    {discountPct != null && !unavailable && !cartConflict && (
+                    {discountPct != null && !unavailable && (
                       <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-semibold text-white leading-none">
                         −{discountPct}%
                       </span>
                     )}
                     {opt.status === "sold" && <span className="text-xs not-italic">(Sold)</span>}
-                    {blocked && <span className="text-xs not-italic">(Unavailable)</span>}
                   </button>
                 );
               })}
@@ -343,14 +260,60 @@ export function ProductPageClient({ product, productImages, productVideos, optio
           </div>
         )}
 
-        {/* Price range hint for set products */}
-        {showPriceRange && (
-          <div className="mt-2 flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
-            <span>From</span>
-            <span className="font-semibold text-gray-800 dark:text-gray-200">${rangeMin!.toFixed(2)}</span>
-            <span className="text-gray-300 dark:text-gray-600">·</span>
-            <span>Full set</span>
-            <span className="font-semibold text-amber-600 dark:text-amber-400">${rangeMax!.toFixed(2)}</span>
+        {/* Bundle deals */}
+        {bundleRules.length > 0 && (
+          <div className="mt-4 space-y-3">
+            {bundleRules.map((rule) => {
+              const pieces = rule.requiredVariantIds
+                .map((id) => options.find((o) => o.id === id))
+                .filter((o): o is ProductOptionClient => o != null);
+              const individualTotal = pieces.reduce((s, o) => s + (o.price_usd ?? 0), 0);
+              const savings = Math.round((individualTotal - rule.bundlePrice) * 100) / 100;
+              const allAvailable = pieces.every((o) => o.status !== "sold");
+              const allInCart = rule.requiredVariantIds.every((id) =>
+                cartItems.some((c) => c.productId === product.id && c.optionId === id)
+              );
+              const someInCart = rule.requiredVariantIds.some((id) =>
+                cartItems.some((c) => c.productId === product.id && c.optionId === id)
+              );
+              return (
+                <div key={rule.id} className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3.5">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                      <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">{rule.name}</p>
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                        {pieces.map((o) => o.label).filter(Boolean).join(" + ")}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      {individualTotal > 0 && (
+                        <p className="text-xs text-gray-400 line-through">${individualTotal.toFixed(2)}</p>
+                      )}
+                      <p className="text-sm font-bold text-amber-700 dark:text-amber-400">${rule.bundlePrice.toFixed(2)}</p>
+                      {savings > 0 && (
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Save ${savings.toFixed(2)}</p>
+                      )}
+                    </div>
+                  </div>
+                  {allInCart ? (
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      Full set in cart — bundle discount applied automatically
+                    </div>
+                  ) : !allAvailable ? (
+                    <p className="text-xs text-gray-400 dark:text-gray-500">One or more pieces are sold</p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleAddBundle(rule)}
+                      className="mt-1 w-full rounded-full border border-amber-400 dark:border-amber-600 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/60 py-1.5 text-xs font-semibold text-amber-800 dark:text-amber-300 transition-colors"
+                    >
+                      {someInCart ? "Add remaining pieces" : "Add Full Set"}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -496,29 +459,20 @@ export function ProductPageClient({ product, productImages, productVideos, optio
               >
                 Inquire to Purchase
               </Link>
-            ) : isCartConflicted ? (
-              <div className="block w-full rounded-full py-3 text-center text-sm font-medium text-white bg-gray-400 dark:bg-gray-600 cursor-not-allowed">
-                Unable to add since you already have the {selectedOption ? cartConflictLabel(selectedOption) : ""} in cart
-              </div>
             ) : (
               <button
                 type="button"
                 onClick={handleAddToCart}
                 disabled={isInCart}
-                className={`block w-full rounded-full py-3 text-center text-sm font-medium text-white transition-colors ${isInCart
-                  ? "bg-emerald-500 cursor-default"
-                  : addedToCart
-                    ? "bg-emerald-600"
-                    : "bg-emerald-700 hover:bg-emerald-800"
-                  }`}
+                className={`block w-full rounded-full py-3 text-center text-sm font-medium text-white transition-colors ${
+                  isInCart ? "bg-emerald-500 cursor-default" : addedToCart ? "bg-emerald-600" : "bg-emerald-700 hover:bg-emerald-800"
+                }`}
               >
                 {isInCart ? "✓ Added to Cart" : addedToCart ? "✓ Added!" : "Add to Cart"}
               </button>
             )
           ) : (
-            <div
-              className="block w-full rounded-full py-3 text-center text-sm font-medium text-white bg-gray-400 dark:bg-gray-600 cursor-not-allowed"
-            >
+            <div className="block w-full rounded-full py-3 text-center text-sm font-medium text-white bg-gray-400 dark:bg-gray-600 cursor-not-allowed">
               {isEffectivelySold ? "This item has been sold" : "Contact for price"}
             </div>
           )}
@@ -550,7 +504,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
           </div>
           <p className="italic text-xs sm:text-sm text-emerald-600 font-semibold mt-4">** We can provide more pictures and videos of different lighting upon request.</p>
             {product.category === 'bangle' || product.category === 'custom_order' ? (<div className="text-sm">
-            
+
             <p className="text-gray-400 dark:text-gray-500 mt-2"><span className="mr-2 text-emerald-600">Not your styles?</span>Some pieces can be <span className="font-semibold text-gray-500">reshaped</span> or <span className="font-semibold text-gray-500">widened</span>, contact us for more details.</p>
           </div>) : null}
             {product.category === 'custom_order' ? (<div className="text-xs italic text-gray-500 mt-4">
