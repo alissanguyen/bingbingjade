@@ -79,6 +79,20 @@ export function ProductPageClient({ product, productImages, productVideos, optio
     return false;
   }
 
+  // Returns true if this variant conflicts with items already in the cart:
+  // 1. It is a combo and any of its component options is already in the cart
+  // 2. It is a component option and any combo that contains it is already in the cart
+  function isCartConflict(opt: ProductOptionClient): boolean {
+    if (opt.combo_of?.some((id) =>
+      cartItems.some((c) => c.productId === product.id && c.optionId === id)
+    )) return true;
+    if (options.some((o) =>
+      o.combo_of?.includes(opt.id) &&
+      cartItems.some((c) => c.productId === product.id && c.optionId === o.id)
+    )) return true;
+    return false;
+  }
+
   // Show selector if there are multiple options or any option has a label
   const hasSelector = options.length > 1 || (options.length === 1 && options[0].label !== null);
   // Default to the first non-sold, non-blocked option
@@ -95,6 +109,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
   const isOptionSold = selectedOption?.status === "sold" || (selectedOption ? isComboBlocked(selectedOption) : false);
   const isProductSold = product.status === "sold";
   const isEffectivelySold = isProductSold || isOptionSold;
+  const isCartConflicted = selectedOption != null ? isCartConflict(selectedOption) : false;
 
   // Per-option sale_price_usd takes priority over product-level sale_price_usd.
   // Product-level sale only applies when product.status === "on_sale".
@@ -236,6 +251,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
             <div className="flex flex-wrap gap-2">
               {options.map((opt, i) => {
                 const blocked = isComboBlocked(opt);
+                const cartConflict = isCartConflict(opt);
                 const unavailable = opt.status === "sold" || blocked;
                 // Discount badge: only from explicit sale_price_usd, or product-level on_sale
                 const optBasePrice = opt.price_usd ?? product.price_display_usd;
@@ -259,17 +275,20 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                         ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-medium"
                         : unavailable
                           ? "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 line-through cursor-not-allowed opacity-60"
-                          : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-400 dark:hover:border-emerald-600 cursor-pointer"
+                          : cartConflict
+                            ? "border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-500 cursor-pointer opacity-70"
+                            : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-400 dark:hover:border-emerald-600 cursor-pointer"
                     }`}
                   >
                     {opt.label}
-                    {discountPct != null && !unavailable && (
+                    {discountPct != null && !unavailable && !cartConflict && (
                       <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-semibold text-white leading-none">
                         −{discountPct}%
                       </span>
                     )}
                     {opt.status === "sold" && <span className="text-xs not-italic">(Sold)</span>}
                     {blocked && <span className="text-xs not-italic">(Unavailable)</span>}
+                    {!unavailable && cartConflict && <span className="text-xs not-italic">(In cart conflict)</span>}
                   </button>
                 );
               })}
@@ -430,6 +449,17 @@ export function ProductPageClient({ product, productImages, productVideos, optio
               >
                 Inquire to Purchase
               </Link>
+            ) : isCartConflicted ? (
+              <>
+                <div className="block w-full rounded-full py-3 text-center text-sm font-medium text-white bg-amber-400 dark:bg-amber-600 cursor-not-allowed">
+                  Cannot add — conflicts with cart
+                </div>
+                <p className="mt-2 text-xs text-amber-600 dark:text-amber-400 text-center">
+                  {selectedOption?.combo_of?.length
+                    ? "A piece of this set is already in your cart."
+                    : "A set containing this piece is already in your cart."}
+                </p>
+              </>
             ) : (
               <button
                 type="button"
