@@ -8,6 +8,9 @@ import { ReviewsCarousel } from "@/app/components/ReviewsCarousel";
 import { SubscribePopup } from "@/app/components/SubscribePopup";
 
 export const metadata: Metadata = {
+  title: "BingBing Jade | Natural Type A Jadeite Jewelry (Certified)",
+  description:
+    "100% natural Type A jadeite jewelry — no dye, no heat, no polymer. Shop bangles, bracelets, rings, and pendants with transparent pricing and certification available.",
   keywords: [
     "jadeite jewelry",
     "natural jadeite",
@@ -61,6 +64,7 @@ export default async function Home() {
   return (
     <div className="bg-white dark:bg-gray-950">
       <SubscribePopup />
+      <h1 className="sr-only">BingBing Jade — Certified Natural Type A Jadeite Jewelry. No dye, no heat, no polymer treatment. Shop authentic jade bangles, bracelets, rings, and pendants with transparent pricing.</h1>
 
       {/* ── Hero Banner ── */}
       <div className="relative w-full h-[72vh] min-h-120 overflow-hidden">
@@ -83,7 +87,7 @@ export default async function Home() {
             Carefully Selected,<br />Each Piece Unique
           </h1>
           <p className="mt-5 text-sm sm:text-lg text-white/80 max-w-xl leading-relaxed">
-            Type A jadeite from Myanmar and Guatemala — carefully sourced and manufactured for color, texture, and character.
+            Certified natural Type A jadeite — no dye, no heat, no polymer. Honestly priced bangles, bracelets, rings, and pendants sourced from trusted vendors.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <Link
@@ -155,6 +159,39 @@ export default async function Home() {
             />
             <div className="absolute inset-0 bg-linear-to-t from-black/30 to-transparent" />
           </div>
+        </div>
+      </div>
+
+      {/* ── Why BingBing Jade ── */}
+      <div className="bg-gray-50 dark:bg-gray-900/50 border-y border-gray-100 dark:border-gray-800">
+        <div className="mx-auto max-w-3xl px-6 py-16 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 mb-3">
+            Why BingBing Jade
+          </p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+            Authenticity You Can Trust
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-[17px] mb-10 max-w-2xl mx-auto">
+            BingBing Jade offers authentic, untreated Type A jadeite jewelry — carefully sourced and transparently priced. Every piece is free from dye, heat, or polymer treatment, with certification available for added assurance. From luminous bangles to delicate pendants, we focus on quality you can trust and pricing that reflects true value.
+          </p>
+          <ul className="inline-flex flex-col items-start gap-3 text-left">
+            {[
+              "100% Natural Type A Jadeite",
+              "No dye, no heat, no polymer — ever",
+              "Certification available",
+              "Transparent, fair pricing",
+              "Sourced from trusted vendors",
+            ].map((point) => (
+              <li key={point} className="flex items-center gap-3 text-gray-700 dark:text-gray-300 text-[16px]">
+                <span className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center shrink-0">
+                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 4L3.5 6.5L9 1" stroke="#059669" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </span>
+                {point}
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
 
