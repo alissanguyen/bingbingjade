@@ -33,6 +33,7 @@ interface ProductClient {
   description: string | null;
   blemishes: string | null;
   is_featured: boolean | null;
+  quick_ship: boolean;
   origin: string;
   status: string;
   slug: string;
@@ -425,6 +426,30 @@ export function ProductPageClient({ product, productImages, productVideos, optio
               </a>
             )}
           </div>
+          {/* Shipping info */}
+          {!isEffectivelySold && (
+            product.quick_ship ? (
+              <div className="mt-5 rounded-xl border border-sky-300 dark:border-sky-700 bg-sky-950 dark:bg-sky-950 px-4 py-3.5 flex items-start gap-3"
+                style={{ boxShadow: "0 0 12px 2px rgba(56,189,248,0.18), 0 0 2px 0px rgba(56,189,248,0.35)" }}>
+                <span className="mt-0.5 shrink-0 w-2 h-2 rounded-full bg-sky-400 shadow-[0_0_6px_2px_rgba(56,189,248,0.7)] animate-pulse" />
+                <div>
+                  <p className="text-sm font-semibold text-sky-300 tracking-wide">In Hand — Ready to Ship</p>
+                  <ul className="mt-1.5 space-y-0.5">
+                    <li className="text-xs text-sky-200/80">✔ Ships from USA in 2–5 business days</li>
+                    <li className="text-xs text-sky-200/80">✔ Easier returns &amp; exchanges</li>
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-3.5">
+                <ul className="space-y-1">
+                  <li className="text-xs text-gray-600 dark:text-gray-400">✨ Carefully sourced upon order</li>
+                  <li className="text-xs text-gray-500 dark:text-gray-500">⏳ Estimated 2–4 weeks delivery</li>
+                </ul>
+              </div>
+            )
+          )}
+
           <p className="italic text-xs sm:text-sm text-emerald-600 font-semibold mt-4">** We can provide more pictures and videos of different lighting upon request.</p>
             {product.category === 'bangle' || product.category === 'custom_order' ? (<div className="text-sm">
 

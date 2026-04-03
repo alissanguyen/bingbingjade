@@ -31,6 +31,7 @@ interface ProductCard {
   description: string | null;
   is_featured: boolean;
   is_published: boolean;
+  quick_ship: boolean;
   status: string;
   slug: string;
   public_id: string;
@@ -89,7 +90,7 @@ export default async function Products({
 
   const productsQuery = supabase
     .from("products")
-    .select("id, name, category, origin, images, color, tier, size, price_display_usd, sale_price_usd, description, is_featured, status, slug, public_id, is_published")
+    .select("id, name, category, origin, images, color, tier, size, price_display_usd, sale_price_usd, description, is_featured, status, slug, public_id, is_published, quick_ship")
     .order("created_at", { ascending: false });
 
   if (!isDev) productsQuery.eq("is_published", true);
@@ -293,6 +294,17 @@ export default async function Products({
                             −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
                           </div>
                         )}
+                      </div>
+                    )}
+                    {product.quick_ship && product.status !== "sold" && (
+                      <div className="absolute bottom-1.5 left-1.5 sm:bottom-2.5 sm:left-2.5 z-10">
+                        <div
+                          className="flex items-center gap-1 sm:gap-1.5 bg-sky-950 border border-sky-400/60 text-sky-300 text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full"
+                          style={{ boxShadow: "0 0 8px 1px rgba(56,189,248,0.35)" }}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_4px_1px_rgba(56,189,248,0.8)]" />
+                          Ships Now
+                        </div>
                       </div>
                     )}
                   </ProductCardImage>
