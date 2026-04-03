@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Suspense } from "react";
 import { productSlug } from "@/lib/slug";
 import { supabase } from "@/lib/supabase";
@@ -64,6 +63,7 @@ const COLOR_SWATCHES: Record<string, string> = {
 };
 
 import { getCategoryLabel } from "./categories";
+import { ProductCardLink } from "./ProductCardLink";
 
 export const revalidate = 21600;
 
@@ -262,7 +262,7 @@ export default async function Products({
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {paginatedWithImages.map((product, i) => (
-                <Link
+                <ProductCardLink
                   key={product.id}
                   href={`/products/${productSlug(product)}`}
                   className={`group rounded-2xl border overflow-hidden hover:shadow-lg transition-all block ${
@@ -435,7 +435,7 @@ export default async function Products({
                       )}
                     </div>
                   </div>
-                </Link>
+                </ProductCardLink>
               ))}
             </div>
           )}

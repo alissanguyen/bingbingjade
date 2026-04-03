@@ -1,10 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { publicIdFromSlug, productSlug } from "@/lib/slug";
 import { resolveImageUrls, resolveVideoUrls, resolveFirstImageUrl, isStoragePath } from "@/lib/storage";
 import { ProductPageClient } from "./ProductPageClient";
+import { BackToProductsLink } from "./BackToProductsLink";
 
 interface Product {
   id: string;
@@ -160,15 +160,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
       {/* Back */}
-      <Link
-        href="/products"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors mb-8"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="15 18 9 12 15 6" />
-        </svg>
-        Back to products
-      </Link>
+      <BackToProductsLink />
 
       <ProductPageClient
         product={product}
