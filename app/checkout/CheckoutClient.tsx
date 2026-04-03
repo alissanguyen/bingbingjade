@@ -222,36 +222,36 @@ export function CheckoutClient() {
       <div className="min-h-screen bg-[#faf9f7] dark:bg-[#0d0d0d] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-5 h-5 rounded-full border-2 border-emerald-600 border-t-transparent animate-spin" />
-          <p className="text-xs tracking-widest uppercase text-stone-400">Verifying your cart</p>
+          <p className="text-[12px] tracking-widest uppercase text-stone-400">Verifying your cart</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#faf9f7] dark:bg-[#0d0d0d]">
+    <div className="min-h-screen bg-[#faf9f7] dark:bg-[#0c0b12]">
 
       {/* ── Brand header ────────────────────────────────────────── */}
-      <div className="bg-white dark:bg-[#0d0d0d] border-b border-stone-200/70 dark:border-stone-800/70">
+      <div className="bg-white dark:bg-[#0c0b12] border-b border-stone-200/70 dark:border-stone-800/70">
         {/* Thin emerald accent line */}
-        <div className="h-[2px] bg-gradient-to-r from-emerald-700 via-emerald-500 to-emerald-700 opacity-80" />
+        <div className="bg-linear-to-r from-emerald-700 via-emerald-500 to-emerald-700 opacity-80 h-full" />
         <div className="mx-auto max-w-6xl px-5 sm:px-8 py-7 sm:py-9">
           <Link
             href="/products"
-            className="inline-flex items-center gap-1.5 text-xs tracking-widest uppercase text-stone-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors mb-6"
+            className="inline-flex items-center gap-1.5 text-[12px] tracking-widest uppercase text-stone-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors mb-6"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
             </svg>
             Continue Shopping
           </Link>
-          <p className="text-[10px] uppercase tracking-[0.3em] text-emerald-700 dark:text-emerald-500 font-semibold mb-2">
+          <p className="text-[14px] sm:text-sm uppercase tracking-[0.3em] text-emerald-700 dark:text-emerald-500 font-semibold mb-3 sm:mb-6">
             Secure Checkout
           </p>
           <h1 className="text-2xl sm:text-[2rem] font-semibold tracking-tight text-stone-900 dark:text-stone-100 leading-tight">
             Review Your Order
           </h1>
-          <p className="mt-1.5 text-sm text-stone-400 dark:text-stone-500">
+          <p className="mt-2 text-[12px] sm:text-sm text-stone-400 dark:text-stone-500">
             Confirm your selection before completing your purchase.
           </p>
         </div>
@@ -264,8 +264,8 @@ export function CheckoutClient() {
           {/* ── LEFT: Pure item gallery ───────────────────────── */}
           <div>
             {/* Section label */}
-            <div className="flex items-center justify-between mb-6">
-              <p className="text-[10px] uppercase tracking-[0.25em] font-semibold text-stone-400 dark:text-stone-500">
+            <div className="flex items-center justify-between mb-6 text-[12px] sm:text-sm">
+              <p className="text-[12px] sm:text-sm uppercase tracking-[0.25em] font-semibold text-stone-400 dark:text-stone-500">
                 Your Selection
                 {availableItems.length > 0 && (
                   <span className="ml-1.5 font-normal">· {availableItems.length} {availableItems.length === 1 ? "piece" : "pieces"}</span>
@@ -274,7 +274,7 @@ export function CheckoutClient() {
               {items.length > 0 && (
                 <button
                   onClick={() => { clearCart(); router.push("/products"); }}
-                  className="text-[11px] text-stone-400 dark:text-stone-500 hover:text-red-500 dark:hover:text-red-400 transition-colors tracking-wide"
+                  className="text-stone-400 dark:text-stone-500 hover:text-red-500 dark:hover:text-red-400 transition-colors tracking-wide"
                 >
                   Clear all
                 </button>
@@ -295,7 +295,7 @@ export function CheckoutClient() {
                   >
                     {/* Thumbnail */}
                     <Link href={productPath} className="shrink-0">
-                      <div className="w-[84px] h-[84px] sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-stone-100 dark:bg-stone-800">
+                      <div className="w-25 h-25 sm:w-30 sm:h-30 rounded-xl overflow-hidden bg-stone-100 dark:bg-stone-800">
                         {item.thumbnail ? (
                           <Image
                             src={item.thumbnail}
@@ -316,16 +316,16 @@ export function CheckoutClient() {
                     </Link>
 
                     {/* Details */}
-                    <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                    <div className="flex-1 min-w-0 flex flex-col justify-between">
                       <div>
                         <Link
                           href={productPath}
-                          className="block text-sm sm:text-[15px] font-medium text-stone-900 dark:text-stone-100 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors line-clamp-2 leading-snug"
+                          className="block text-[14px] sm:text-base font-medium text-stone-900 dark:text-stone-100 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors line-clamp-2 leading-snug"
                         >
                           {item.productName}
                         </Link>
                         {item.optionLabel && (
-                          <p className="text-xs text-stone-400 dark:text-stone-500 mt-1 tracking-wide">{item.optionLabel}</p>
+                          <p className="text-[12px] text-stone-400 dark:text-stone-500 mt-1 tracking-wide">{item.optionLabel}</p>
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-3">
@@ -333,7 +333,7 @@ export function CheckoutClient() {
                           {fmtPrice(item.price)}
                         </span>
                         {isOnSale && (
-                          <span className="text-xs text-stone-400 line-through">{fmtPrice(item.originalPrice!)}</span>
+                          <span className="text-[12px] text-stone-400 line-through">{fmtPrice(item.originalPrice!)}</span>
                         )}
                         {isOnSale && (
                           <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-full">Sale</span>
@@ -366,10 +366,10 @@ export function CheckoutClient() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-stone-500 dark:text-stone-400 line-clamp-1">{item.productName}</p>
-                      {item.optionLabel && <p className="text-xs text-stone-400 mt-0.5">{item.optionLabel}</p>}
-                      <p className="text-xs text-red-500 dark:text-red-400 mt-1.5">This piece is no longer available.</p>
+                      {item.optionLabel && <p className="text-[12px] text-stone-400 mt-0.5">{item.optionLabel}</p>}
+                      <p className="text-[12px] text-red-500 dark:text-red-400 mt-1.5">This piece is no longer available.</p>
                     </div>
-                    <button onClick={() => removeFromCart(item.productId, item.optionId)} className="self-center text-xs text-red-400 hover:text-red-600 transition-colors font-medium shrink-0">
+                    <button onClick={() => removeFromCart(item.productId, item.optionId)} className="self-center text-[12px] text-red-400 hover:text-red-600 transition-colors font-medium shrink-0">
                       Remove
                     </button>
                   </div>
@@ -393,13 +393,13 @@ export function CheckoutClient() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-stone-500 dark:text-stone-400 line-clamp-1">{item.productName}</p>
-                        {item.optionLabel && <p className="text-xs text-stone-400 mt-0.5">{item.optionLabel}</p>}
-                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5">
+                        {item.optionLabel && <p className="text-[12px] text-stone-400 mt-0.5">{item.optionLabel}</p>}
+                        <p className="text-[12px] text-amber-600 dark:text-amber-400 mt-1.5">
                           Updated —{" "}
                           <Link href={productPath} className="underline underline-offset-2">re-add from product page</Link>.
                         </p>
                       </div>
-                      <button onClick={() => removeFromCart(item.productId, item.optionId)} className="self-center text-xs text-amber-500 hover:text-amber-700 transition-colors font-medium shrink-0">
+                      <button onClick={() => removeFromCart(item.productId, item.optionId)} className="self-center text-[12px] text-amber-500 hover:text-amber-700 transition-colors font-medium shrink-0">
                         Remove
                       </button>
                     </div>
@@ -412,20 +412,20 @@ export function CheckoutClient() {
             {!isLiveMode && (
               <div className="mt-6 rounded-2xl border border-dashed border-stone-200 dark:border-stone-700 bg-white dark:bg-[#141414] px-5 py-4">
                 {adminUnlocked ? (
-                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5">
+                  <p className="text-[12px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                     Admin access granted — checkout is unlocked.
                   </p>
                 ) : !showAdminInput ? (
                   <button
                     onClick={() => setShowAdminInput(true)}
-                    className="text-xs text-stone-300 dark:text-stone-700 hover:text-stone-400 transition-colors"
+                    className="text-[12px] text-stone-300 dark:text-stone-700 hover:text-stone-400 transition-colors"
                   >
                     Admin access
                   </button>
                 ) : (
                   <div className="space-y-2">
-                    <p className="text-xs text-stone-400 font-medium">Enter admin password to unlock checkout</p>
+                    <p className="text-[12px] text-stone-400 font-medium">Enter admin password to unlock checkout</p>
                     <div className="flex gap-2">
                       <input
                         type="password"
@@ -442,7 +442,7 @@ export function CheckoutClient() {
                         Unlock
                       </button>
                     </div>
-                    {adminError && <p className="text-xs text-red-500">Incorrect password.</p>}
+                    {adminError && <p className="text-[12px] text-red-500">Incorrect password.</p>}
                   </div>
                 )}
               </div>
@@ -456,7 +456,7 @@ export function CheckoutClient() {
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 </span>
-                <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                <p className="text-[12px] text-emerald-700 dark:text-emerald-400 font-medium">
                   You save <span className="font-bold">{fmtPrice(totalSavings)}</span> with current sale pricing.
                 </p>
               </div>
@@ -468,32 +468,32 @@ export function CheckoutClient() {
             <div className="rounded-2xl border border-stone-200/80 dark:border-stone-800/80 bg-white dark:bg-[#141414] overflow-hidden shadow-lg shadow-stone-100/80 dark:shadow-none">
 
               {/* Card header */}
-              <div className="px-6 pt-6 pb-5 border-b border-stone-100 dark:border-stone-800">
-                <p className="text-[10px] uppercase tracking-[0.25em] font-semibold text-stone-400 dark:text-stone-500">
+              <div className="p-4 pb-0 sm:p-6 border-b border-stone-100 dark:border-stone-800">
+                <p className="text-[14px] sm:text-base uppercase tracking-[0.25em] font-semibold text-stone-400 dark:text-stone-500">
                   Order Summary
                 </p>
               </div>
 
-              <div className="px-6 py-5 space-y-5">
+              <div className="p-4 sm:px-6 sm:py-5 space-y-5">
 
                 {/* Subtotal row */}
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-stone-500 dark:text-stone-400">
+                  <span className="text-[13px] sm:text-sm text-stone-500 dark:text-stone-400">
                     Subtotal{availableItems.length > 0 ? ` · ${availableItems.length} ${availableItems.length === 1 ? "piece" : "pieces"}` : ""}
                   </span>
                   <div className="flex items-center gap-2">
                     {totalSavings > 0 && (
-                      <span className="text-xs text-stone-400 line-through">{fmtPrice(originalTotal)}</span>
+                      <span className="text-sm text-stone-400 line-through">{fmtPrice(originalTotal)}</span>
                     )}
-                    <span className={`text-sm font-semibold ${totalSavings > 0 ? "text-amber-600 dark:text-amber-400" : "text-stone-900 dark:text-stone-100"}`}>
+                    <span className={`text-sm font-semibold ${totalSavings > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-500"}`}>
                       {availableItems.length > 0 ? fmtPrice(subtotal) : "—"}
                     </span>
                   </div>
                 </div>
 
                 {/* ── Discount field ──────────────────────── */}
-                <div className="rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/40 p-3.5 space-y-2.5">
-                  <p className="text-[10px] uppercase tracking-[0.2em] font-semibold text-stone-400 dark:text-stone-500">
+                <div className="rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/40 p-2.5 sm:p-3.5 space-y-2.5">
+                  <p className="text-[11px] sm:text-[15px] uppercase tracking-[0.2em] font-semibold text-stone-400 dark:text-stone-500">
                     Discount or Referral Code
                   </p>
                   <div className="flex gap-2">
@@ -509,25 +509,25 @@ export function CheckoutClient() {
                       }}
                       onKeyDown={(e) => { if (e.key === "Enter") applyDiscount(); }}
                       placeholder="Enter code"
-                      className="min-w-0 flex-1 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-sm font-mono text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500 transition-shadow"
+                      className="text-[11px] sm:text-[14px] flex-1 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-2 sm:px-3 py-2 text-sm font-mono text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500 transition-shadow w-full"
                     />
                     <button
                       type="button"
                       onClick={applyDiscount}
                       disabled={discountLoading}
-                      className="rounded-lg border border-emerald-700 text-emerald-700 dark:border-emerald-600 dark:text-emerald-400 hover:bg-emerald-700 hover:text-white dark:hover:bg-emerald-700 dark:hover:text-white disabled:opacity-40 px-3 py-2 text-sm font-medium transition-colors shrink-0"
+                      className="text-[11px] sm:text-[15px] rounded-lg border border-emerald-700 text-emerald-700 dark:border-emerald-600 dark:text-emerald-400 hover:bg-emerald-700 hover:text-white dark:hover:bg-emerald-700 dark:hover:text-white disabled:opacity-40 px-2 sm:px-4 py-2 text-sm font-medium transition-colors shrink-0"
                     >
                       {discountLoading ? "…" : "Apply"}
                     </button>
                   </div>
                   {appliedDiscount && (
-                    <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1.5">
+                    <p className="text-[12px] text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1.5">
                       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                       {appliedDiscount.message}
                     </p>
                   )}
                   {discountError && (
-                    <p className="text-xs text-red-500 dark:text-red-400">{discountError}</p>
+                    <p className="text-[12px] text-red-500 dark:text-red-400">{discountError}</p>
                   )}
                 </div>
 
@@ -535,17 +535,17 @@ export function CheckoutClient() {
                 <div className="flex items-center justify-between py-0.5">
                   <div>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-sm text-stone-700 dark:text-stone-300">Expedited Shipping</span>
+                      <span className="text-[12px] sm:text-sm text-stone-700 dark:text-stone-300">Expedited Shipping</span>
                       <a
                         href="/faq#expedited-shipping"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[10px] text-stone-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline underline-offset-2 transition-colors"
+                        className="text-[8px] sm:text-[12px] text-stone-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline underline-offset-2 transition-colors"
                       >
                         learn more
                       </a>
                     </div>
-                    <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5">
+                    <p className="text-[12px] sm:text-sm text-stone-400 dark:text-stone-500 mt-0.5">
                       {expedited ? "$100 base + $10 per piece" : "$20 base + $10 per piece"}
                     </p>
                   </div>
@@ -563,25 +563,25 @@ export function CheckoutClient() {
                 {/* ── Line items ───────────────────────────── */}
                 <div className="border-t border-stone-100 dark:border-stone-800 pt-4 space-y-2.5">
                   <div className="flex justify-between text-sm">
-                    <span className="text-stone-500 dark:text-stone-400">
+                    <span className="text-[14px] sm:text-sm text-stone-500 dark:text-stone-400">
                       {expedited ? "Expedited" : "Standard"} Shipping
                       {availableItems.length > 1 ? ` · ${availableItems.length} pieces` : ""}
                     </span>
-                    <span className="font-medium text-stone-900 dark:text-stone-100">
+                    <span className="text-[14px] sm:text-sm font-medium text-stone-900 dark:text-stone-100">
                       {availableItems.length > 0 ? fmtPrice(shipping) : "—"}
                     </span>
                   </div>
 
                   {discountDollars > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-emerald-700 dark:text-emerald-400">Discount applied</span>
+                      <span className="text-[14px] sm:text-sm text-emerald-700 dark:text-emerald-400">Discount applied</span>
                       <span className="font-medium text-emerald-700 dark:text-emerald-400">−{fmtPrice(discountDollars)}</span>
                     </div>
                   )}
 
                   <div className="flex justify-between text-sm">
-                    <span className="text-stone-500 dark:text-stone-400">Transaction Fee · 3.5%</span>
-                    <span className="font-medium text-stone-900 dark:text-stone-100">
+                    <span className="text-[14px] sm:text-sm text-stone-500 dark:text-stone-400">Transaction Fee · 3.5%</span>
+                    <span className="text-[14px] sm:text-sm font-medium text-stone-900 dark:text-stone-100">
                       {availableItems.length > 0 ? fmtPrice(txFee) : "—"}
                     </span>
                   </div>
@@ -589,18 +589,18 @@ export function CheckoutClient() {
 
                 {/* ── Grand total ──────────────────────────── */}
                 <div className="border-t-2 border-stone-900 dark:border-stone-200 pt-4 flex items-center justify-between">
-                  <span className="text-xs uppercase tracking-[0.15em] font-semibold text-stone-500 dark:text-stone-400">Total</span>
-                  <span className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
+                  <span className="text-[13px] sm:text-[16px] uppercase tracking-[0.15em] font-semibold text-stone-500 dark:text-stone-400">Total</span>
+                  <span className="text-[16px] sm:text-lg font-semibold tracking-tight text-emerald-600 dark:text-emerald-500">
                     {availableItems.length > 0 ? fmtPrice(grandTotal) : "—"}
                   </span>
                 </div>
 
                 {/* Notes */}
-                <div className="text-[11px] text-stone-400 dark:text-stone-500 space-y-1 leading-relaxed">
-                  <p>Availability confirmed at time of purchase.</p>
+                <div className="text-[12px] sm:text-[16px] text-amber-600 dark:text-amber-500 space-y-1 leading-relaxed bg-amber-500/15 p-2 sm:p-4 rounded-lg border-1">
+                  <p>Item might sell while in cart. Availability confirmed at time of purchase.</p>
                   <p>
-                    <span className="font-medium text-stone-500 dark:text-stone-400">Prefer Zelle or Wire?</span>{" "}
-                    Transaction fee waived — reach out before checking out.
+                    <span className="font-medium text-orange-700 dark:text-orange-600 font-semibold italic">Prefer Zelle or Wire?</span>{" "}
+                    Transaction fee <span className="font-bold text-emerald-600">waived</span> — reach out before checking out.
                   </p>
                 </div>
 
@@ -618,14 +618,14 @@ export function CheckoutClient() {
                     type="button"
                     onClick={handleCheckout}
                     disabled={loading || !canCheckout}
-                    className="w-full rounded-full bg-emerald-800 hover:bg-emerald-700 active:bg-emerald-900 disabled:opacity-40 disabled:cursor-not-allowed text-white py-4 text-sm font-semibold tracking-wide transition-colors shadow-md shadow-emerald-900/20"
+                    className="text-[14px] sm:text-sm w-full rounded-full bg-emerald-800 hover:bg-emerald-700 active:bg-emerald-900 disabled:opacity-40 disabled:cursor-not-allowed text-white py-4 text-sm font-semibold tracking-wide transition-colors shadow-md shadow-emerald-900/20"
                   >
                     {loading ? "Redirecting to payment…" : "Complete Purchase"}
                   </button>
                 ) : (
                   <div
                     ref={ctaRef as React.RefObject<HTMLDivElement & HTMLButtonElement>}
-                    className="w-full rounded-full bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-500 py-4 text-sm font-semibold text-center cursor-not-allowed"
+                    className="text-[14px] sm:text-sm w-full rounded-full bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-500 py-4 text-sm font-semibold text-center cursor-not-allowed"
                   >
                     Checkout Unavailable
                   </div>
@@ -633,7 +633,7 @@ export function CheckoutClient() {
 
                 <Link
                   href="/products"
-                  className="block text-center text-xs text-stone-400 dark:text-stone-500 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                  className="block text-center text-[12px] sm:text-sm text-stone-400 dark:text-stone-500 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
                 >
                   ← Continue Shopping
                 </Link>
@@ -645,7 +645,7 @@ export function CheckoutClient() {
                 {[
                   {
                     icon: (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
                       </svg>
                     ),
@@ -654,7 +654,7 @@ export function CheckoutClient() {
                   },
                   {
                     icon: (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                       </svg>
                     ),
@@ -663,19 +663,19 @@ export function CheckoutClient() {
                   },
                   {
                     icon: (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
                       </svg>
                     ),
-                    title: "Ships Within 3–5 Business Days",
+                    title: "Orders Processed within 1-2 Business Days",
                     body: "Each order is carefully packaged. Expedited options available.",
                   },
                 ].map((badge) => (
                   <div key={badge.title} className="flex items-start gap-3">
-                    <span className="text-stone-400 dark:text-stone-500 shrink-0 mt-0.5">{badge.icon}</span>
+                    <span className="text-emerald-600 dark:text-emerald-500 shrink-0 mt-1">{badge.icon}</span>
                     <div>
-                      <p className="text-xs font-semibold text-stone-700 dark:text-stone-300">{badge.title}</p>
-                      <p className="text-[11px] text-stone-400 dark:text-stone-500 leading-relaxed mt-0.5">{badge.body}</p>
+                      <p className="text-[12px] sm:text-[17px] font-semibold text-stone-700 dark:text-stone-300">{badge.title}</p>
+                      <p className="text-[11px] sm:text-[15px] text-stone-400 dark:text-stone-500 mt-0.5">{badge.body}</p>
                     </div>
                   </div>
                 ))}

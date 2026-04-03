@@ -318,7 +318,7 @@ export function CartDrawer() {
                 You save {fmtPrice(totalSavings)} with current sale prices.
               </p>
             )}
-            <p className="text-[10px] text-gray-400 dark:text-gray-500">
+            <p className="text-[12px] sm:text-sm italic text-gray-400 dark:text-gray-500">
               Shipping, discounts & fees calculated at checkout.
             </p>
             {/* CTA → /checkout */}
@@ -331,7 +331,7 @@ export function CartDrawer() {
             </Link>
             <button
               onClick={() => { clearCart(); closeDrawer(); }}
-              className="w-full text-[11px] text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors py-0.5"
+              className="w-full text-xs sm:text-sm text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors py-0.5"
             >
               Clear cart
             </button>
