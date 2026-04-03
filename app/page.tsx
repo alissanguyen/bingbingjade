@@ -41,7 +41,7 @@ const JADE_IMG = "https://images.unsplash.com/photo-1767040276964-d2a39a86b1d4?q
 export default async function Home() {
   const { data: rawFeatured } = await supabase
     .from("products")
-    .select("id, name, category, images, tier, price_display_usd, sale_price_usd, status, slug, public_id")
+    .select("id, name, category, images, tier, price_display_usd, sale_price_usd, status, slug, public_id, size, origin")
     .eq("is_featured", true)
     .order("created_at", { ascending: false });
 
@@ -60,7 +60,7 @@ export default async function Home() {
       images: [r0 || "", r1 || "", ...rest].filter(Boolean),
     };
   });
-
+  console.log("Featured products:", featuredProducts);
   return (
     <div className="bg-white dark:bg-gray-950">
       <SubscribePopup />
