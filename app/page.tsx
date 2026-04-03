@@ -37,7 +37,6 @@ export const metadata: Metadata = {
 
 const HERO_IMG = "https://images.unsplash.com/photo-1705931396849-93822983c1dc?q=80&w=1624&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
 const JADE_IMG = "https://images.unsplash.com/photo-1767040276964-d2a39a86b1d4?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
-const HOMEPAGE_IMAGE3 = "/homepage3.jpg";
 
 export default async function Home() {
   const { data: rawFeatured } = await supabase
@@ -172,7 +171,7 @@ export default async function Home() {
           {/* Image — left */}
           <div className="relative rounded-2xl overflow-hidden aspect-square shadow-2xl">
             <Image
-              src={HOMEPAGE_IMAGE3}
+              src="/homepage3.jpg"
               alt="Jade pieces up close"
               fill
               className="object-cover object-center"
