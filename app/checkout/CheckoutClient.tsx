@@ -109,7 +109,7 @@ export function CheckoutClient() {
       setAvailabilityChecked(true);
     }
     checkAvailability();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Redirect if cart is empty after check
@@ -222,7 +222,7 @@ export function CheckoutClient() {
       <div className="min-h-screen bg-[#faf9f7] dark:bg-[#0d0d0d] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-5 h-5 rounded-full border-2 border-emerald-600 border-t-transparent animate-spin" />
-          <p className="text-[12px] tracking-widest uppercase text-stone-400">Verifying your cart</p>
+          <p className="text-[12px] sm:text-[16px] tracking-widest uppercase text-stone-400">Verifying your cart</p>
         </div>
       </div>
     );
@@ -238,7 +238,7 @@ export function CheckoutClient() {
         <div className="mx-auto max-w-6xl px-5 sm:px-8 py-7 sm:py-9">
           <Link
             href="/products"
-            className="inline-flex items-center gap-1.5 text-[12px] tracking-widest uppercase text-stone-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors mb-6"
+            className="inline-flex items-center gap-1.5 text-[12px] sm:text-[16px] tracking-widest uppercase text-stone-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors mb-6"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
@@ -325,18 +325,20 @@ export function CheckoutClient() {
                           {item.productName}
                         </Link>
                         {item.optionLabel && (
-                          <p className="text-[12px] text-stone-400 dark:text-stone-500 mt-1 tracking-wide">{item.optionLabel}</p>
+                          <p className="text-[12px] sm:text-[16px] text-stone-400 dark:text-stone-500 mt-1 tracking-wide">{item.optionLabel}</p>
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-3">
                         <span className={`text-[15px] sm:text-base font-semibold tracking-tight ${isOnSale ? "text-amber-600 dark:text-amber-400" : "text-emerald-800 dark:text-emerald-400"}`}>
                           {fmtPrice(item.price)}
                         </span>
-                        {isOnSale && (
-                          <span className="text-[12px] text-stone-400 line-through">{fmtPrice(item.originalPrice!)}</span>
-                        )}
-                        {isOnSale && (
-                          <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-full">Sale</span>
+                        {isOnSale && item.originalPrice != null && (
+                          <>
+                            <span className="text-[12px] sm:text-base text-stone-400 line-through">{fmtPrice(item.originalPrice)}</span>
+                            <span className="inline-flex items-center bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+                              −{Math.round((1 - item.price / item.originalPrice) * 100)}%
+                            </span>
+                          </>
                         )}
                       </div>
                     </div>
@@ -366,8 +368,8 @@ export function CheckoutClient() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-stone-500 dark:text-stone-400 line-clamp-1">{item.productName}</p>
-                      {item.optionLabel && <p className="text-[12px] text-stone-400 mt-0.5">{item.optionLabel}</p>}
-                      <p className="text-[12px] text-red-500 dark:text-red-400 mt-1.5">This piece is no longer available.</p>
+                      {item.optionLabel && <p className="text-[12px] sm:text-[16px] text-stone-400 mt-0.5">{item.optionLabel}</p>}
+                      <p className="text-[12px] sm:text-[16px] text-red-500 dark:text-red-400 mt-1.5">This piece is no longer available.</p>
                     </div>
                     <button onClick={() => removeFromCart(item.productId, item.optionId)} className="self-center text-[12px] text-red-400 hover:text-red-600 transition-colors font-medium shrink-0">
                       Remove
@@ -393,8 +395,8 @@ export function CheckoutClient() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-stone-500 dark:text-stone-400 line-clamp-1">{item.productName}</p>
-                        {item.optionLabel && <p className="text-[12px] text-stone-400 mt-0.5">{item.optionLabel}</p>}
-                        <p className="text-[12px] text-amber-600 dark:text-amber-400 mt-1.5">
+                        {item.optionLabel && <p className="text-[12px] sm:text-[16px] text-stone-400 mt-0.5">{item.optionLabel}</p>}
+                        <p className="text-[12px] sm:text-[16px] text-amber-600 dark:text-amber-400 mt-1.5">
                           Updated —{" "}
                           <Link href={productPath} className="underline underline-offset-2">re-add from product page</Link>.
                         </p>
@@ -412,20 +414,20 @@ export function CheckoutClient() {
             {!isLiveMode && (
               <div className="mt-6 rounded-2xl border border-dashed border-stone-200 dark:border-stone-700 bg-white dark:bg-[#141414] px-5 py-4">
                 {adminUnlocked ? (
-                  <p className="text-[12px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5">
+                  <p className="text-[12px] sm:text-base text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                     Admin access granted — checkout is unlocked.
                   </p>
                 ) : !showAdminInput ? (
                   <button
                     onClick={() => setShowAdminInput(true)}
-                    className="text-[12px] text-stone-300 dark:text-stone-700 hover:text-stone-400 transition-colors"
+                    className="text-[12px] sm:text-[16px] text-stone-300 dark:text-stone-700 hover:text-stone-400 transition-colors"
                   >
                     Admin access
                   </button>
                 ) : (
                   <div className="space-y-2">
-                    <p className="text-[12px] text-stone-400 font-medium">Enter admin password to unlock checkout</p>
+                    <p className="text-[12px] sm:text-[16px] text-stone-400 font-medium">Enter admin password to unlock checkout</p>
                     <div className="flex gap-2">
                       <input
                         type="password"
@@ -442,7 +444,7 @@ export function CheckoutClient() {
                         Unlock
                       </button>
                     </div>
-                    {adminError && <p className="text-[12px] text-red-500">Incorrect password.</p>}
+                    {adminError && <p className="text-[12px] sm:text-[16px] text-red-500">Incorrect password.</p>}
                   </div>
                 )}
               </div>
@@ -450,13 +452,13 @@ export function CheckoutClient() {
 
             {/* Sale savings callout */}
             {totalSavings > 0 && (
-              <div className="mt-5 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50">
+              <div className="mt-5 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-emerald-100/80 dark:bg-emerald-950/40 border border-emerald-300/50 dark:border-emerald-900/50">
                 <span className="text-emerald-600 dark:text-emerald-400 shrink-0">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 </span>
-                <p className="text-[12px] text-emerald-700 dark:text-emerald-400 font-medium">
+                <p className="text-[12px] sm:text-base text-emerald-700 dark:text-emerald-400 font-medium">
                   You save <span className="font-bold">{fmtPrice(totalSavings)}</span> with current sale pricing.
                 </p>
               </div>
@@ -521,7 +523,7 @@ export function CheckoutClient() {
                     </button>
                   </div>
                   {appliedDiscount && (
-                    <p className="text-[12px] text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1.5">
+                    <p className="text-[12px] sm:text-[16px] text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1.5">
                       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                       {appliedDiscount.message}
                     </p>
@@ -599,7 +601,7 @@ export function CheckoutClient() {
                 <div className="text-[12px] sm:text-[16px] text-amber-600 dark:text-amber-500 space-y-1 leading-relaxed bg-amber-500/15 p-2 sm:p-4 rounded-lg border-1">
                   <p>Item might sell while in cart. Availability confirmed at time of purchase.</p>
                   <p>
-                    <span className="font-medium text-orange-700 dark:text-orange-600 font-semibold italic">Prefer Zelle or Wire?</span>{" "}
+                    <span className="text-orange-700 dark:text-orange-600 font-semibold italic">Prefer Zelle or Wire?</span>{" "}
                     Transaction fee <span className="font-bold text-emerald-600">waived</span> — reach out before checking out.
                   </p>
                 </div>
@@ -690,9 +692,8 @@ export function CheckoutClient() {
       {/* ── Mobile sticky bottom bar ─────────────────────────── */}
       {/* Shows when the main CTA scrolls off-screen on mobile */}
       <div
-        className={`lg:hidden fixed bottom-0 inset-x-0 z-50 transition-transform duration-300 ease-in-out ${
-          showStickyBar && canCheckout ? "translate-y-0" : "translate-y-full"
-        }`}
+        className={`lg:hidden fixed bottom-0 inset-x-0 z-50 transition-transform duration-300 ease-in-out ${showStickyBar && canCheckout ? "translate-y-0" : "translate-y-full"
+          }`}
       >
         {/* Gradient fade above the bar */}
         <div className="h-8 bg-gradient-to-t from-[#faf9f7] dark:from-[#0d0d0d] to-transparent pointer-events-none" />
