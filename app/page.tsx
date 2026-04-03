@@ -170,7 +170,7 @@ export default async function Home() {
       <div className="bg-gray-50 dark:bg-gray-900/50 border-y border-gray-100 dark:border-gray-800">
         <div className="mx-auto max-w-7xl px-6 py-16 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Image — left */}
-          <div className="relative rounded-2xl overflow-hidden aspect-4/5 shadow-2xl">
+          <div className="relative rounded-2xl overflow-hidden aspect-square shadow-2xl">
             <Image
               src={HOMEPAGE_IMAGE3}
               alt="Jade pieces up close"
