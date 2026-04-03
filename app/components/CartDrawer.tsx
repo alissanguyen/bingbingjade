@@ -14,7 +14,7 @@ function fmtPrice(price: number): string {
 const isLiveMode = process.env.NEXT_PUBLIC_CHECKOUT_MODE === "live";
 
 export function CartDrawer() {
-  const { items, drawerOpen, closeDrawer, removeFromCart, clearCart, appliedBundles, bundleDiscount } = useCart();
+  const { items, drawerOpen, closeDrawer, removeFromCart, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [headerHeight, setHeaderHeight] = useState(0);
@@ -249,89 +249,70 @@ export function CartDrawer() {
             </div>
           ) : (
             <>
-              {/* Bundle groups */}
-              {appliedBundles.map((bundle) => {
-                const visibleItems = bundle.matchedItems.filter(
-                  (i) => !soldKeys.has(`${i.productId}-${i.optionId}`) && !staleKeys.has(`${i.productId}-${i.optionId}`)
-                );
-                if (visibleItems.length === 0) return null;
+              {/* Available items */}
+              {items.filter((item) => !soldKeys.has(`${item.productId}-${item.optionId}`) && !staleKeys.has(`${item.productId}-${item.optionId}`)).map((item) => {
+                const productPath = item.productSlug
+                  ? `/products/${item.productSlug}-${item.productPublicId}`
+                  : `/products/${item.productPublicId}`;
                 return (
-                  <div key={bundle.rule.id} className="rounded-xl border border-emerald-200 dark:border-emerald-800 overflow-hidden">
-                    <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5">
-                      <span className="text-[11px] sm:text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">{bundle.rule.name}</span>
-                      <span className="text-[11px] sm:text-xs font-semibold text-emerald-600 dark:text-emerald-400">−{fmtPrice(bundle.discount)}</span>
+                  <div key={`${item.productId}-${item.optionId}`} className="flex gap-3">
+                    {/* Thumbnail */}
+                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
+                      {item.thumbnail ? (
+                        <Image
+                          src={item.thumbnail}
+                          alt={item.productName}
+                          width={64}
+                          height={64}
+                          className="w-full h-full object-cover"
+                          unoptimized
+                          loading="eager"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+                        </div>
+                      )}
                     </div>
-                    <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                      {visibleItems.map((item) => {
-                        const productPath = item.productSlug
-                          ? `/products/${item.productSlug}-${item.productPublicId}`
-                          : `/products/${item.productPublicId}`;
-                        return (
-                          <div key={`${item.productId}-${item.optionId}`} className="flex gap-3 p-2.5">
-                            <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
-                              {item.thumbnail ? (
-                                <Image src={item.thumbnail} alt={item.productName} width={56} height={56} className="w-full h-full object-cover" unoptimized loading="eager" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <Link href={productPath} onClick={closeDrawer} className="text-[12px] sm:text-[15px] font-medium text-gray-900 dark:text-gray-100 hover:text-emerald-700 dark:hover:text-emerald-400 line-clamp-2 leading-snug">{item.productName}</Link>
-                              {item.optionLabel && <p className="text-[11px] sm:text-[14px] text-gray-500 dark:text-gray-400 mt-0.5">{item.optionLabel}</p>}
-                              <span className="text-[12px] sm:text-[15px] font-semibold text-gray-700 dark:text-gray-300">{fmtPrice(item.price)}</span>
-                            </div>
-                            <button onClick={() => removeFromCart(item.productId, item.optionId)} aria-label="Remove item" className="p-1 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors shrink-0 self-start mt-0.5">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                            </button>
-                          </div>
-                        );
-                      })}
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        href={productPath}
+                        onClick={closeDrawer}
+                        className="text-[12px] sm:text-[17px] font-medium text-gray-900 dark:text-gray-100 hover:text-emerald-700 dark:hover:text-emerald-400 line-clamp-2 leading-snug"
+                      >
+                        {item.productName}
+                      </Link>
+                      {item.optionLabel && (
+                        <p className="text-[12px] sm:text-[17px] sm:text-[16px] text-gray-500 dark:text-gray-400 mt-0.5">{item.optionLabel}</p>
+                      )}
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className={`text-[12px] sm:text-[17px] font-semibold ${item.originalPrice != null ? "text-amber-600 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}`}>
+                          {fmtPrice(item.price)}
+                        </span>
+                        {item.originalPrice != null && (
+                          <span className="text-[12px] sm:text-[17px] text-gray-400 line-through">
+                            {fmtPrice(item.originalPrice)}
+                          </span>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Remove */}
+                    <button
+                      onClick={() => removeFromCart(item.productId, item.optionId)}
+                      aria-label="Remove item"
+                      className="p-1 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors shrink-0 self-start mt-0.5"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
                   </div>
                 );
               })}
-
-              {/* Non-bundled available items */}
-              {(() => {
-                const bundledOptIds = new Set(appliedBundles.flatMap((b) => b.rule.requiredVariantIds));
-                return items
-                  .filter((i) =>
-                    !soldKeys.has(`${i.productId}-${i.optionId}`) &&
-                    !staleKeys.has(`${i.productId}-${i.optionId}`) &&
-                    !bundledOptIds.has(i.optionId ?? "")
-                  )
-                  .map((item) => {
-                    const productPath = item.productSlug
-                      ? `/products/${item.productSlug}-${item.productPublicId}`
-                      : `/products/${item.productPublicId}`;
-                    return (
-                      <div key={`${item.productId}-${item.optionId}`} className="flex gap-3">
-                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
-                          {item.thumbnail ? (
-                            <Image src={item.thumbnail} alt={item.productName} width={64} height={64} className="w-full h-full object-cover" unoptimized loading="eager" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <Link href={productPath} onClick={closeDrawer} className="text-[12px] sm:text-[17px] font-medium text-gray-900 dark:text-gray-100 hover:text-emerald-700 dark:hover:text-emerald-400 line-clamp-2 leading-snug">{item.productName}</Link>
-                          {item.optionLabel && <p className="text-[12px] sm:text-[17px] text-gray-500 dark:text-gray-400 mt-0.5">{item.optionLabel}</p>}
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <span className={`text-[12px] sm:text-[17px] font-semibold ${item.originalPrice != null ? "text-amber-600 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}`}>{fmtPrice(item.price)}</span>
-                            {item.originalPrice != null && <span className="text-[12px] sm:text-[17px] text-gray-400 line-through">{fmtPrice(item.originalPrice)}</span>}
-                          </div>
-                        </div>
-                        <button onClick={() => removeFromCart(item.productId, item.optionId)} aria-label="Remove item" className="p-1 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors shrink-0 self-start mt-0.5">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                        </button>
-                      </div>
-                    );
-                  });
-              })()}
 
               {/* Sold items */}
               {items.filter((item) => soldKeys.has(`${item.productId}-${item.optionId}`)).map((item) => (
@@ -437,12 +418,6 @@ export function CartDrawer() {
                 </span>
               </div>
             </div>
-            {bundleDiscount > 0 && (
-              <div className="flex items-center justify-between text-[12px] sm:text-[17px]">
-                <span className="text-emerald-600 dark:text-emerald-400">Bundle Discount</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">−{fmtPrice(bundleDiscount)}</span>
-              </div>
-            )}
             {/* Expedited shipping toggle */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
@@ -501,8 +476,7 @@ export function CartDrawer() {
               const shippingBase = expedited ? 100 : 20;
               const shipping = availableItems.length > 0 ? shippingBase + (availableItems.length - 1) * 10 : 0;
               const discountDollars = appliedDiscount ? appliedDiscount.amountCents / 100 : 0;
-              const afterBundle = Math.max(0, total - bundleDiscount);
-              const discountedTotal = Math.max(0, afterBundle - discountDollars);
+              const discountedTotal = Math.max(0, total - discountDollars);
               const txFee = Math.round((discountedTotal + shipping) * 0.035 * 100) / 100;
               const grandTotal = Math.round((discountedTotal + shipping + txFee) * 100) / 100;
               const shippingLabel = expedited ? "Expedited Shipping" : "Shipping";

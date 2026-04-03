@@ -157,20 +157,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     })
   );
 
-  // Fetch bundle rules for this product
-  const { data: bundleRulesRaw } = await supabase
-    .from("bundle_rules")
-    .select("id, product_id, name, required_variant_ids, bundle_price")
-    .eq("product_id", product.id);
-
-  const bundleRules = (bundleRulesRaw ?? []).map((r: { id: string; product_id: string; name: string; required_variant_ids: string[]; bundle_price: number }) => ({
-    id: r.id,
-    productId: r.product_id,
-    name: r.name,
-    requiredVariantIds: r.required_variant_ids,
-    bundlePrice: r.bundle_price,
-  }));
-
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
       {/* Back */}
@@ -189,7 +175,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         productImages={productImages}
         productVideos={productVideos}
         options={optionsWithResolvedImages}
-        bundleRules={bundleRules}
       />
     </div>
   );

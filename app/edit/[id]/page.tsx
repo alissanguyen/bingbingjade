@@ -11,7 +11,6 @@ interface InitialOptionRaw {
   size: number | null;
   price_usd: number | null;
   sale_price_usd: number | null;
-  combo_of: string[] | null;
   status: OptionStatus;
   images: string[];
 }
@@ -28,7 +27,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     supabaseAdmin.from("vendors").select("*").order("name"),
     supabaseAdmin
       .from("product_options")
-      .select("id, label, size, price_usd, sale_price_usd, combo_of, status, images")
+      .select("id, label, size, price_usd, sale_price_usd, status, images")
       .eq("product_id", id)
       .order("sort_order")
       .returns<InitialOptionRaw[]>(),

@@ -14,7 +14,6 @@ interface OptionRow {
   size: string;
   price: string;
   salePrice: string;
-  comboOf: number[];
   status: OptionStatus;
   imageFile: File | null;
   imagePreview: string | null;
@@ -182,7 +181,6 @@ interface InitialOption {
   size: number | null;
   price_usd: number | null;
   sale_price_usd: number | null;
-  combo_of: string[] | null;
   status: OptionStatus;
   images: string[];
   imageUrls: string[];
@@ -277,7 +275,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
     product.size_detailed?.[2] != null ? String(product.size_detailed[2]) : "",
   ]);
 
-  const blankRow = (): OptionRow => ({ label: "", size: "", price: "", salePrice: "", comboOf: [], status: "available", imageFile: null, imagePreview: null, existingImagePath: "", existingImageUrl: "" });
+  const blankRow = (): OptionRow => ({ label: "", size: "", price: "", salePrice: "", status: "available", imageFile: null, imagePreview: null, existingImagePath: "", existingImageUrl: "" });
 
   // Has variants = more than one option, or single option with a label
   const [hasVariants, setHasVariants] = useState(
@@ -285,12 +283,11 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
   );
   const [optionRows, setOptionRows] = useState<OptionRow[]>(
     initialOptions.length > 0
-      ? initialOptions.map((o, _, arr) => ({
+      ? initialOptions.map((o) => ({
           label: o.label ?? "",
           size: o.size != null ? String(o.size) : "",
           price: o.price_usd != null ? String(o.price_usd) : "",
           salePrice: o.sale_price_usd != null ? String(o.sale_price_usd) : "",
-          comboOf: (o.combo_of ?? []).map((id) => arr.findIndex((a) => a.id === id)).filter((idx) => idx >= 0),
           status: o.status,
           imageFile: null,
           imagePreview: null,
@@ -329,14 +326,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
   const removeOptionRow = (i: number) =>
     setOptionRows((prev) => {
       if (prev[i].imagePreview) URL.revokeObjectURL(prev[i].imagePreview!);
-      return prev
-        .filter((_, idx) => idx !== i)
-        .map((row) => ({
-          ...row,
-          comboOf: row.comboOf
-            .filter((idx) => idx !== i)
-            .map((idx) => (idx > i ? idx - 1 : idx)),
-        }));
+      return prev.filter((_, idx) => idx !== i);
     });
 
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -446,7 +436,6 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
         size: row.size,
         price: row.price,
         salePrice: row.salePrice,
-        comboOf: row.comboOf,
         status: row.status,
         images: optionImagePaths[i] ? [optionImagePaths[i]] : [],
       }));
@@ -908,38 +897,6 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
                 )}
               </div>
               </div>{/* end top flex row */}
-              {optionRows.length > 1 && (
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Combo of — blocked when any selected variant is sold</label>
-                  <div className="flex flex-wrap gap-2">
-                    {optionRows.map((other, j) => {
-                      if (j === i) return null;
-                      const checked = row.comboOf.includes(j);
-                      return (
-                        <button
-                          key={j}
-                          type="button"
-                          onClick={() =>
-                            setOptionRows((prev) => {
-                              const next = [...prev];
-                              const cur = next[i].comboOf;
-                              next[i] = { ...next[i], comboOf: checked ? cur.filter((x) => x !== j) : [...cur, j] };
-                              return next;
-                            })
-                          }
-                          className={`px-2 py-0.5 rounded-full text-xs border transition-all ${
-                            checked
-                              ? "border-violet-400 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400"
-                              : "border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300"
-                          }`}
-                        >
-                          {other.label || `Variant ${j + 1}`}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
           ))}
         </div>

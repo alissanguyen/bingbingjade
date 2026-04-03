@@ -7,7 +7,6 @@ import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { useCart } from "@/app/components/CartContext";
 import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
 import type { CartItem } from "@/types/cart";
-import type { BundleRule } from "@/types/bundle";
 import { getCategoryLabel } from "../categories";
 
 interface ProductOptionClient {
@@ -64,10 +63,9 @@ interface Props {
   productImages: string[];
   productVideos: string[];
   options: ProductOptionClient[];
-  bundleRules: BundleRule[];
 }
 
-export function ProductPageClient({ product, productImages, productVideos, options, bundleRules }: Props) {
+export function ProductPageClient({ product, productImages, productVideos, options }: Props) {
   const { addToCart, items: cartItems } = useCart();
   const [addedToCart, setAddedToCart] = useState(false);
 
@@ -143,27 +141,6 @@ export function ProductPageClient({ product, productImages, productVideos, optio
     addToCart(cartItem);
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2500);
-  }
-
-  function handleAddBundle(rule: BundleRule) {
-    for (const variantId of rule.requiredVariantIds) {
-      const opt = options.find((o) => o.id === variantId);
-      if (!opt || opt.status === "sold") continue;
-      if (cartItems.some((c) => c.productId === product.id && c.optionId === variantId)) continue;
-      const price = opt.price_usd ?? product.price_display_usd;
-      if (price == null) continue;
-      addToCart({
-        productId: product.id,
-        productPublicId: product.public_id,
-        productName: product.name,
-        productSlug: product.slug,
-        optionId: opt.id,
-        optionLabel: opt.label,
-        price,
-        originalPrice: null,
-        thumbnail: opt.images[0] ?? productImages[0] ?? null,
-      });
-    }
   }
 
   return (
@@ -261,61 +238,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
         )}
 
         {/* Bundle deals */}
-        {bundleRules.length > 0 && (
-          <div className="mt-4 space-y-3">
-            {bundleRules.map((rule) => {
-              const pieces = rule.requiredVariantIds
-                .map((id) => options.find((o) => o.id === id))
-                .filter((o): o is ProductOptionClient => o != null);
-              const individualTotal = pieces.reduce((s, o) => s + (o.price_usd ?? 0), 0);
-              const savings = Math.round((individualTotal - rule.bundlePrice) * 100) / 100;
-              const allAvailable = pieces.every((o) => o.status !== "sold");
-              const allInCart = rule.requiredVariantIds.every((id) =>
-                cartItems.some((c) => c.productId === product.id && c.optionId === id)
-              );
-              const someInCart = rule.requiredVariantIds.some((id) =>
-                cartItems.some((c) => c.productId === product.id && c.optionId === id)
-              );
-              return (
-                <div key={rule.id} className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3.5">
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div>
-                      <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">{rule.name}</p>
-                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                        {pieces.map((o) => o.label).filter(Boolean).join(" + ")}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      {individualTotal > 0 && (
-                        <p className="text-xs text-gray-400 line-through">${individualTotal.toFixed(2)}</p>
-                      )}
-                      <p className="text-sm font-bold text-amber-700 dark:text-amber-400">${rule.bundlePrice.toFixed(2)}</p>
-                      {savings > 0 && (
-                        <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Save ${savings.toFixed(2)}</p>
-                      )}
-                    </div>
-                  </div>
-                  {allInCart ? (
-                    <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                      Full set in cart — bundle discount applied automatically
-                    </div>
-                  ) : !allAvailable ? (
-                    <p className="text-xs text-gray-400 dark:text-gray-500">One or more pieces are sold</p>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleAddBundle(rule)}
-                      className="mt-1 w-full rounded-full border border-amber-400 dark:border-amber-600 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/60 py-1.5 text-xs font-semibold text-amber-800 dark:text-amber-300 transition-colors"
-                    >
-                      {someInCart ? "Add remaining pieces" : "Add Full Set"}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+        
 
         {/* Price */}
         <div className="IndividualProduct_PriceRow mt-3 flex items-baseline gap-3 flex-wrap">
