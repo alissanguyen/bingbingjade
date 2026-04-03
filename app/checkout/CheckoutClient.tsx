@@ -59,10 +59,6 @@ export function CheckoutClient() {
   // Shipping
   const [expedited, setExpedited] = useState(false);
 
-  // Email
-  const [email, setEmail] = useState("");
-  const [emailTouched, setEmailTouched] = useState(false);
-
   // Discount
   const [discountCode, setDiscountCode] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState<{
@@ -150,8 +146,7 @@ export function CheckoutClient() {
   const txFee = Math.round((discountedSubtotal + shipping) * 0.035 * 100) / 100;
   const grandTotal = Math.round((discountedSubtotal + shipping + txFee) * 100) / 100;
 
-  const emailValid = email.trim() === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-  const canCheckout = availableItems.length > 0 && adminUnlocked && emailValid;
+  const canCheckout = availableItems.length > 0 && adminUnlocked;
 
   function handleRemove(productId: string, optionId: string | null) {
     removeFromCart(productId, optionId);
@@ -175,7 +170,6 @@ export function CheckoutClient() {
         body: JSON.stringify({
           discountCode: discountCode.trim(),
           subtotalCents,
-          ...(email.trim() ? { customerEmail: email.trim() } : {}),
         }),
       });
       const data = await res.json();
@@ -221,7 +215,6 @@ export function CheckoutClient() {
           items: availableItems,
           expedited,
           discountCode: discountCode.trim() || undefined,
-          customerEmail: email.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -284,7 +277,7 @@ export function CheckoutClient() {
               {items.length > 0 && (
                 <button
                   onClick={() => { clearCart(); router.push("/products"); }}
-                  className="text-xs text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                  className="text-xs sm:text-sn text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                 >
                   Clear cart
                 </button>
@@ -412,77 +405,43 @@ export function CheckoutClient() {
               );
             })}
 
-            {/* ── Email field ──────────────────────────────────── */}
-            <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 space-y-5">
-              <div>
-                <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-3">
-                  Email Address
-                </label>
+            {/* ── Discount / referral code ─────────────────────── */}
+            <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+              <label htmlFor="discount" className="block text-xs font-semibold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-3">
+                Discount or Referral Code
+              </label>
+              <div className="flex gap-2">
                 <input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
+                  id="discount"
+                  type="text"
+                  autoComplete="off"
+                  value={discountCode}
                   onChange={(e) => {
-                    setEmail(e.target.value);
-                    setEmailTouched(true);
-                    if (appliedDiscount) setAppliedDiscount(null);
+                    setDiscountCode(e.target.value.toUpperCase());
+                    setAppliedDiscount(null);
+                    setDiscountError(null);
                   }}
-                  onBlur={() => setEmailTouched(true)}
-                  placeholder="your@email.com"
-                  className={`w-full rounded-xl border px-4 py-3 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:ring-2 focus:ring-emerald-500 transition-shadow ${
-                    emailTouched && email && !emailValid
-                      ? "border-red-400 dark:border-red-600"
-                      : "border-gray-200 dark:border-gray-700"
-                  }`}
+                  onKeyDown={(e) => { if (e.key === "Enter") applyDiscount(); }}
+                  placeholder="CODE"
+                  className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 text-sm font-mono text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:ring-2 focus:ring-emerald-500 transition-shadow"
                 />
-                {emailTouched && email && !emailValid ? (
-                  <p className="mt-1.5 text-xs text-red-500">Please enter a valid email address.</p>
-                ) : (
-                  <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
-                    Optional. Used to apply subscriber discounts and send order confirmation.
-                  </p>
-                )}
+                <button
+                  type="button"
+                  onClick={applyDiscount}
+                  disabled={discountLoading}
+                  className="rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white px-5 py-3 text-sm font-medium transition-colors shrink-0"
+                >
+                  {discountLoading ? "…" : "Apply"}
+                </button>
               </div>
-
-              {/* ── Discount / referral code ─────────────────── */}
-              <div>
-                <label htmlFor="discount" className="block text-xs font-semibold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-3">
-                  Discount or Referral Code
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    id="discount"
-                    type="text"
-                    autoComplete="off"
-                    value={discountCode}
-                    onChange={(e) => {
-                      setDiscountCode(e.target.value.toUpperCase());
-                      setAppliedDiscount(null);
-                      setDiscountError(null);
-                    }}
-                    onKeyDown={(e) => { if (e.key === "Enter") applyDiscount(); }}
-                    placeholder="CODE"
-                    className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 text-sm font-mono text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:ring-2 focus:ring-emerald-500 transition-shadow"
-                  />
-                  <button
-                    type="button"
-                    onClick={applyDiscount}
-                    disabled={discountLoading}
-                    className="rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white px-5 py-3 text-sm font-medium transition-colors shrink-0"
-                  >
-                    {discountLoading ? "…" : "Apply"}
-                  </button>
-                </div>
-                {appliedDiscount && (
-                  <p className="mt-2 text-sm text-emerald-700 dark:text-emerald-400 font-medium">
-                    ✓ {appliedDiscount.message}
-                  </p>
-                )}
-                {discountError && (
-                  <p className="mt-2 text-sm text-red-500 dark:text-red-400">{discountError}</p>
-                )}
-              </div>
+              {appliedDiscount && (
+                <p className="mt-2 text-sm text-emerald-700 dark:text-emerald-400 font-medium">
+                  ✓ {appliedDiscount.message}
+                </p>
+              )}
+              {discountError && (
+                <p className="mt-2 text-sm text-red-500 dark:text-red-400">{discountError}</p>
+              )}
             </div>
 
             {/* ── Admin unlock (beta mode only) ────────────── */}
