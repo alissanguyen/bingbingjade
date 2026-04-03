@@ -297,7 +297,7 @@ export default async function Products({
                       </div>
                     )}
                     {product.quick_ship && product.status !== "sold" && (
-                      <div className="absolute bottom-1.5 left-1.5 sm:bottom-2.5 sm:left-2.5 z-10">
+                      <div className="absolute bottom-1.5 right-1.5 sm:bottom-2.5 sm:right-2.5 z-10">
                         <div
                           className="flex items-center gap-1 sm:gap-1.5 bg-sky-950 border border-sky-400/60 text-sky-300 text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full"
                           style={{ boxShadow: "0 0 8px 1px rgba(56,189,248,0.35)" }}
