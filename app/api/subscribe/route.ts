@@ -68,13 +68,15 @@ export async function POST(req: NextRequest) {
     .eq("customer_email", email)
     .eq("marketing_opt_in", false);
 
-  // Assign a unique 6-digit welcome coupon, then send the welcome email
+  // Assign a unique 6-digit welcome coupon, then send the welcome email.
+  // Must be awaited — fire-and-forget gets killed by Vercel before the email sends.
   if (newSubscriber) {
-    assignSubscriberCoupon(newSubscriber.id)
-      .then(({ code, expiresAt }) =>
-        sendWelcomeSubscriberEmail(email, code, expiresAt)
-      )
-      .catch((err) => console.error("[subscribe] Coupon assign or welcome email failed (non-fatal):", err));
+    try {
+      const { code, expiresAt } = await assignSubscriberCoupon(newSubscriber.id);
+      await sendWelcomeSubscriberEmail(email, code, expiresAt);
+    } catch (err) {
+      console.error("[subscribe] Coupon assign or welcome email failed (non-fatal):", err);
+    }
   }
 
   return NextResponse.json({ success: true, alreadySubscribed: false });
