@@ -186,6 +186,15 @@ export function CartDrawer() {
                       {item.optionLabel && (
                         <p className="text-[12px] sm:text-[16px] text-gray-500 dark:text-gray-400 mt-0.5">{item.optionLabel}</p>
                       )}
+                      {item.quickShip && (
+                        <div
+                          className="mt-1 inline-flex items-center gap-1 bg-sky-950 border border-sky-400/60 text-sky-300 text-[10px] font-semibold px-2 py-0.5 rounded-full w-fit"
+                          style={{ boxShadow: "0 0 6px 1px rgba(56,189,248,0.3)" }}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_4px_1px_rgba(56,189,248,0.8)]" />
+                          Ships Now
+                        </div>
+                      )}
                       <div className="flex items-center gap-1.5 mt-1">
                         <span className={`text-[12px] sm:text-[17px] font-semibold ${item.originalPrice != null ? "text-amber-600 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}`}>
                           {fmtPrice(item.price)}

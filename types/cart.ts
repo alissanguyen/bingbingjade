@@ -8,4 +8,5 @@ export interface CartItem {
   price: number;
   originalPrice: number | null;
   thumbnail: string | null;
+  quickShip?: boolean;
 }
