@@ -321,6 +321,9 @@ export function CartDrawer() {
             <p className="text-[12px] sm:text-sm italic text-gray-400 dark:text-gray-500">
               Shipping, discounts & fees calculated at checkout.
             </p>
+            <p className="text-[11px] text-amber-700 dark:text-amber-400/80">
+              Items might sell while in cart. Availability confirmed at time of purchase.
+            </p>
             {/* CTA → /checkout */}
             <Link
               href="/checkout"
