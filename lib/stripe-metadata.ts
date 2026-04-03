@@ -16,6 +16,7 @@ export interface MetaItem {
   productId: string;
   optionId: string | null;
   price: number;
+  fulfillmentType?: "available_now" | "sourced_for_you";
 }
 
 // Discount fields stored alongside item chunks in Stripe session metadata.
@@ -48,6 +49,7 @@ interface CompactItem {
   p: string;
   o?: string | null;
   $: number;
+  f?: "a" | "s"; // fulfillmentType: 'a'=available_now, 's'=sourced_for_you
 }
 
 export const METADATA_CHUNK_SIZE = 4;
@@ -58,6 +60,7 @@ export function encodeCheckoutItems(items: MetaItem[]): Record<string, string> {
     p: i.productId,
     ...(i.optionId ? { o: i.optionId } : {}),
     $: i.price,
+    ...(i.fulfillmentType === "available_now" ? { f: "a" as const } : i.fulfillmentType === "sourced_for_you" ? { f: "s" as const } : {}),
   }));
 
   const metadata: Record<string, string> = {};
@@ -82,7 +85,12 @@ export function decodeCheckoutItems(
     while (`items_${idx}` in metadata) {
       const chunk: CompactItem[] = JSON.parse(metadata[`items_${idx}`]);
       for (const c of chunk) {
-        result.push({ productId: c.p, optionId: c.o ?? null, price: c.$ });
+        result.push({
+          productId: c.p,
+          optionId: c.o ?? null,
+          price: c.$,
+          fulfillmentType: c.f === "a" ? "available_now" : "sourced_for_you",
+        });
       }
       idx++;
     }
@@ -97,6 +105,7 @@ export function decodeCheckoutItems(
         productId: i.productId,
         optionId: i.optionId ?? null,
         price: i.price,
+        fulfillmentType: "sourced_for_you" as const, // legacy sessions default to sourced
       })
     );
   }

@@ -33,8 +33,8 @@ export function CheckoutClient() {
   const [quickShipIds, setQuickShipIds] = useState<Set<string>>(new Set());
   const [availabilityChecked, setAvailabilityChecked] = useState(false);
 
-  // Shipping
-  const [expedited, setExpedited] = useState(false);
+  // Shipping — Priority Sourcing upgrade (only for sourced_for_you items)
+  const [prioritySourcing, setPrioritySourcing] = useState(false);
 
   // Discount
   const [discountCode, setDiscountCode] = useState("");
@@ -127,11 +127,20 @@ export function CheckoutClient() {
   const soldItems = items.filter((i) => soldKeys.has(`${i.productId}-${i.optionId}`));
   const staleItems = items.filter((i) => staleKeys.has(`${i.productId}-${i.optionId}`));
 
+  // Group available items by fulfillment type
+  const getItemFulfillmentType = (item: (typeof items)[number]) =>
+    item.fulfillmentType ?? (quickShipIds.has(item.productId) || item.quickShip ? "available_now" : "sourced_for_you");
+  const availableNowItems = availableItems.filter((i) => getItemFulfillmentType(i) === "available_now");
+  const sourcedForYouItems = availableItems.filter((i) => getItemFulfillmentType(i) === "sourced_for_you");
+  const isMixedCart = availableNowItems.length > 0 && sourcedForYouItems.length > 0;
+  const hasSourcingItems = sourcedForYouItems.length > 0;
+
   // Pricing
   const subtotal = availableItems.reduce((s, i) => s + i.price, 0);
   const originalTotal = availableItems.reduce((s, i) => s + (i.originalPrice ?? i.price), 0);
   const totalSavings = originalTotal - subtotal;
-  const shippingBase = expedited ? 100 : 20;
+  // Priority Sourcing ($100 base) only applies when there are sourced_for_you items
+  const shippingBase = (prioritySourcing && hasSourcingItems) ? 100 : 20;
   const shipping = availableItems.length > 0 ? shippingBase + (availableItems.length - 1) * 10 : 0;
   const discountDollars = appliedDiscount ? appliedDiscount.amountCents / 100 : 0;
   const discountedSubtotal = Math.max(0, subtotal - discountDollars);
@@ -202,7 +211,7 @@ export function CheckoutClient() {
         },
         body: JSON.stringify({
           items: availableItems,
-          expedited,
+          expedited: prioritySourcing && hasSourcingItems,
           discountCode: discountCode.trim() || undefined,
         }),
       });
@@ -283,19 +292,26 @@ export function CheckoutClient() {
               )}
             </div>
 
-            {/* Available items — individual cards */}
-            <div className="space-y-3">
-              {availableItems.map((item) => {
+            {/* Mixed cart notice */}
+            {isMixedCart && (
+              <div className="mb-4 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/30 px-4 py-3 text-[12px] sm:text-sm text-indigo-700 dark:text-indigo-300 leading-relaxed">
+                This order contains both <strong>Available Now</strong> and <strong>Sourced for You</strong> pieces. They will ship separately at their respective timelines.
+              </div>
+            )}
+
+            {/* Available items — grouped by fulfillment type */}
+            {(() => {
+              const renderItemCard = (item: (typeof availableItems)[number]) => {
                 const productPath = item.productSlug
                   ? `/products/${item.productSlug}-${item.productPublicId}`
                   : `/products/${item.productPublicId}`;
                 const isOnSale = item.originalPrice != null;
+                const isAvailableNow = getItemFulfillmentType(item) === "available_now";
                 return (
                   <div
                     key={`${item.productId}-${item.optionId}`}
                     className="group bg-white dark:bg-[#141414] rounded-2xl border border-stone-200/80 dark:border-stone-800/80 p-4 sm:p-5 flex gap-4 sm:gap-5 shadow-sm shadow-stone-100 dark:shadow-none"
                   >
-                    {/* Thumbnail */}
                     <Link href={productPath} className="shrink-0">
                       <div className="w-25 h-25 sm:w-30 sm:h-30 rounded-xl overflow-hidden bg-stone-100 dark:bg-stone-800">
                         {item.thumbnail ? (
@@ -316,8 +332,6 @@ export function CheckoutClient() {
                         )}
                       </div>
                     </Link>
-
-                    {/* Details */}
                     <div className="flex-1 min-w-0 flex flex-col justify-between">
                       <div>
                         <Link
@@ -328,6 +342,15 @@ export function CheckoutClient() {
                         </Link>
                         {item.optionLabel && (
                           <p className="text-[12px] sm:text-[16px] text-stone-400 dark:text-stone-500 mt-1 tracking-wide">{item.optionLabel}</p>
+                        )}
+                        {isAvailableNow && (
+                          <div
+                            className="inline-flex items-center gap-1 bg-sky-200/65 dark:bg-sky-900 border border-sky-300/60 dark:border-sky-400/60 text-sky-600 dark:text-sky-300 text-[10px] sm:text-[14px] font-semibold px-2 py-0.5 rounded-full mt-1"
+                            style={{ boxShadow: "0 0 6px 1px rgba(56,189,248,0.3)" }}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_4px_1px_rgba(56,189,248,0.8)]" />
+                            Available Now
+                          </div>
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-3">
@@ -342,19 +365,8 @@ export function CheckoutClient() {
                             </span>
                           </>
                         )}
-                        {(item.quickShip || quickShipIds.has(item.productId)) && (
-                          <div
-                            className="inline-flex items-center gap-1 bg-sky-950 border border-sky-400/60 text-sky-300 text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                            style={{ boxShadow: "0 0 6px 1px rgba(56,189,248,0.3)" }}
-                          >
-                            <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_4px_1px_rgba(56,189,248,0.8)]" />
-                            Ships Now
-                          </div>
-                        )}
                       </div>
                     </div>
-
-                    {/* Remove */}
                     <button
                       onClick={() => handleRemove(item.productId, item.optionId)}
                       aria-label={`Remove ${item.productName}`}
@@ -364,8 +376,30 @@ export function CheckoutClient() {
                     </button>
                   </div>
                 );
-              })}
-            </div>
+              };
+
+              return (
+                <div className="space-y-3 mt-6">
+                  {isMixedCart && availableNowItems.length > 0 && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_4px_1px_rgba(56,189,248,0.8)]" />
+                      <span className="text-[13px] sm:text-[15px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">Available Now</span>
+                      <span className="text-[10px] sm:text-[14px] text-stone-400">· Ships in 2–5 business days</span>
+                    </div>
+                  )}
+                  {availableNowItems.map(renderItemCard)}
+
+                  {isMixedCart && sourcedForYouItems.length > 0 && (
+                    <div className="flex items-center gap-2 pt-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                      <span className="text-[13px] sm:text-[15px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Sourced for You</span>
+                      <span className="text-[10px] sm:text-[14px] text-stone-400">· Arrives in 2–4 weeks</span>
+                    </div>
+                  )}
+                  {sourcedForYouItems.map(renderItemCard)}
+                </div>
+              );
+            })()}
 
             {/* Sold items */}
             {soldItems.length > 0 && (
@@ -544,40 +578,42 @@ export function CheckoutClient() {
                   )}
                 </div>
 
-                {/* ── Expedited toggle ─────────────────────── */}
-                <div className="flex items-center justify-between py-0.5">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[12px] sm:text-sm text-stone-700 dark:text-stone-300">Expedited Shipping</span>
-                      <a
-                        href="/faq#expedited-shipping"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[8px] sm:text-[12px] text-stone-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline underline-offset-2 transition-colors"
-                      >
-                        learn more
-                      </a>
+                {/* ── Priority Sourcing toggle (only for sourced_for_you items) ── */}
+                {hasSourcingItems && (
+                  <div className="flex items-center justify-between py-0.5">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[12px] sm:text-sm text-stone-700 dark:text-stone-300">Priority Sourcing</span>
+                        <a
+                          href="/faq#expedited-sourcing"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[8px] sm:text-[12px] text-stone-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline underline-offset-2 transition-colors"
+                        >
+                          learn more
+                        </a>
+                      </div>
+                      <p className="text-[12px] sm:text-sm text-stone-400 dark:text-stone-500 mt-0.5">
+                        {prioritySourcing ? "$100 base + $10 per piece" : "$20 base + $10 per piece"}
+                      </p>
                     </div>
-                    <p className="text-[12px] sm:text-sm text-stone-400 dark:text-stone-500 mt-0.5">
-                      {expedited ? "$100 base + $10 per piece" : "$20 base + $10 per piece"}
-                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setPrioritySourcing((v) => !v)}
+                      role="switch"
+                      aria-checked={prioritySourcing}
+                      className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${prioritySourcing ? "bg-emerald-600" : "bg-stone-200 dark:bg-stone-700"}`}
+                    >
+                      <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${prioritySourcing ? "translate-x-4" : "translate-x-0"}`} />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setExpedited((v) => !v)}
-                    role="switch"
-                    aria-checked={expedited}
-                    className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${expedited ? "bg-emerald-600" : "bg-stone-200 dark:bg-stone-700"}`}
-                  >
-                    <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${expedited ? "translate-x-4" : "translate-x-0"}`} />
-                  </button>
-                </div>
+                )}
 
                 {/* ── Line items ───────────────────────────── */}
                 <div className="border-t border-stone-100 dark:border-stone-800 pt-4 space-y-2.5">
                   <div className="flex justify-between text-sm">
                     <span className="text-[14px] sm:text-sm text-stone-500 dark:text-stone-400">
-                      {expedited ? "Expedited" : "Standard"} Shipping
+                      {(prioritySourcing && hasSourcingItems) ? "Priority Sourcing" : "Standard"} Shipping
                       {availableItems.length > 1 ? ` · ${availableItems.length} pieces` : ""}
                     </span>
                     <span className="text-[14px] sm:text-sm font-medium text-stone-900 dark:text-stone-100">

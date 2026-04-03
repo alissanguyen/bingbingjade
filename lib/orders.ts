@@ -150,10 +150,18 @@ export async function sendOrderConfirmationEmail(params: {
 
   const itemRows = buildItemRowsHtml(params.items);
 
+  const hasAvailableNow = params.items.some((i) => i.fulfillmentType === "available_now");
+  const hasSourcedForYou = params.items.some((i) => !i.fulfillmentType || i.fulfillmentType === "sourced_for_you");
+  const isMixed = hasAvailableNow && hasSourcedForYou;
+
   const deliveryNote =
     params.estimatedDelivery
       ? `Estimated delivery: <strong>${params.estimatedDelivery}</strong>`
-      : "We will be in touch once your order ships. Authentic jade sourcing, certification, and international shipping take time — typically 2–4 weeks.";
+      : isMixed
+        ? "This order contains both <strong>Available Now</strong> pieces (ships in 2–5 business days) and <strong>Sourced for You</strong> pieces (typically 2–4 weeks). They will ship separately — we will be in touch to coordinate each shipment."
+        : hasAvailableNow
+          ? "Your piece is in our U.S. inventory and will ship within 2–5 business days. We will send tracking details as soon as it is on its way."
+          : "We will be in touch once your order ships. Authentic jade sourcing, certification, and international shipping take time — typically 2–4 weeks.";
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -324,7 +332,7 @@ const STATUS_META: Record<
 export async function fetchEmailItems(orderId: string): Promise<EmailItem[]> {
   const { data: rows } = await supabaseAdmin
     .from("order_items")
-    .select("product_name, option_label, price_usd, quantity, product_id")
+    .select("product_name, option_label, price_usd, quantity, product_id, fulfillment_type")
     .eq("order_id", orderId);
 
   if (!rows?.length) return [];
@@ -363,6 +371,7 @@ export async function fetchEmailItems(orderId: string): Promise<EmailItem[]> {
     quantity: r.quantity ?? 1,
     imageUrl: r.product_id ? (imageMap[r.product_id] ?? null) : null,
     href: r.product_id ? (hrefMap[r.product_id] ?? null) : null,
+    fulfillmentType: (r.fulfillment_type as "available_now" | "sourced_for_you" | null) ?? "sourced_for_you",
   }));
 }
 
@@ -373,6 +382,7 @@ export type EmailItem = {
   quantity?: number;
   imageUrl?: string | null;
   href?: string | null;
+  fulfillmentType?: "available_now" | "sourced_for_you";
 };
 
 // Shared helper — same item-row HTML used in all email templates

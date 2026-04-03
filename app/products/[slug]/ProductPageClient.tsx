@@ -139,6 +139,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
           : null,
       thumbnail,
       quickShip: product.quick_ship,
+      fulfillmentType: product.quick_ship ? "available_now" : "sourced_for_you",
     };
     addToCart(cartItem);
     setAddedToCart(true);
@@ -370,34 +371,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
               </span>
             )}
           </div>
-          {/* Shipping info */}
-          {!isEffectivelySold && (
-            product.quick_ship ? (
-              <div className="mt-5 rounded-xl border border-sky-300 dark:border-sky-700 bg-sky-200/50 dark:bg-sky-950 px-4 py-3.5 flex items-start gap-3"
-                style={{ boxShadow: "0 0 12px 2px rgba(56,189,248,0.18), 0 0 2px 0px rgba(56,189,248,0.35)" }}>
-                <span className="shrink-0 w-2 h-2 rounded-full bg-sky-600 dark:bg-sky-400 shadow-[0_0_6px_2px_rgba(56,189,248,0.7)] animate-pulse mt-1.5" />
-                <div>
-                  <p className="text-sm font-semibold text-sky-800 dark:text-sky-300 tracking-wide">In Hand — Ready to Ship</p>
-                  <ul className="mt-1.5 space-y-0.5">
-                    <li className="text-xs sm:text-[15px] text-sky-600 dark:text-sky-200/80">✔ Ships from USA in 2–5 business days</li>
-                    <li className="text-xs sm:text-[15px] text-sky-600 dark:text-sky-200/80">✔ Easier returns &amp; exchanges</li>
-                  </ul>
-                </div>
-              </div>
-            ) : (
-              <div className="mt-5 rounded-xl border border-indigo-300 dark:border-indigo-700 bg-indigo-300/50 dark:bg-indigo-950/70 px-4 py-3.5 flex items-start gap-3"
-                style={{ boxShadow: "0 0 12px 2px rgba(139, 56, 248, 0.18), 0 0 2px 0px rgba(123, 56, 248, 0.35)" }}>
-                <span className="shrink-0 w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 shadow-[0_0_6px_2px_rgba(123, 56, 248,0.7)] animate-pulse mt-1.5" />
-                <div>
-                  <p className="text-sm font-semibold text-indigo-800 dark:text-indigo-300 tracking-wide">Carefully Sourced for You</p>
-                  <ul className="mt-1.5 space-y-0.5">
-                    <li className="text-xs sm:text-[15px] text-indigo-600 dark:text-indigo-200/80">✔ Inspected and Certified Upon Order </li>
-                    <li className="text-xs sm:text-[15px] text-indigo-600 dark:text-indigo-200/80">✔ Estimate shipping within 2-4 weeks</li>
-                  </ul>
-                </div>
-              </div>
-            )
-          )}
+
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-6 mb-2">
             Interested in this piece? Add to cart to purchase, or reach out directly.
           </p>
@@ -462,6 +436,35 @@ export function ProductPageClient({ product, productImages, productVideos, optio
           {product.category === 'custom_order' ? (<div className="text-xs italic text-gray-500 mt-4">
             <p>*** Please note that custom made orders are not refundable nor returnable per our <a href="/policy" target="_blank" className="text-emerald-500 hover:underlined">policy</a>. </p>
           </div>) : null}
+
+          {/* Shipping info */}
+          {!isEffectivelySold && (
+            product.quick_ship ? (
+              <div className="mt-5 rounded-xl border border-sky-300 dark:border-sky-700 bg-sky-200/50 dark:bg-sky-950 px-4 py-3.5 flex items-start gap-3"
+                style={{ boxShadow: "0 0 12px 2px rgba(56,189,248,0.18), 0 0 2px 0px rgba(56,189,248,0.35)" }}>
+                <span className="shrink-0 w-2 h-2 rounded-full bg-sky-600 dark:bg-sky-400 shadow-[0_0_6px_2px_rgba(56,189,248,0.7)] animate-pulse mt-1.5" />
+                <div>
+                  <p className="text-sm font-semibold text-sky-800 dark:text-sky-300 tracking-wide">Available Now</p>
+                  <ul className="mt-1.5 space-y-0.5">
+                    <li className="text-xs sm:text-[15px] text-sky-600 dark:text-sky-200/80">✔ In U.S. inventory — ships in 2–5 business days</li>
+                    <li className="text-xs sm:text-[15px] text-sky-600 dark:text-sky-200/80">✔ Easier returns &amp; exchanges</li>
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-5 rounded-xl border border-indigo-300 dark:border-indigo-700 bg-indigo-200/60 dark:bg-indigo-950/70 px-4 py-3.5 flex items-start gap-3"
+                style={{ boxShadow: "0 0 12px 2px rgba(139, 56, 248, 0.18), 0 0 2px 0px rgba(123, 56, 248, 0.35)" }}>
+                <span className="shrink-0 w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 shadow-[0_0_6px_2px_rgba(123, 56, 248,0.7)] animate-pulse mt-1.5" />
+                <div>
+                  <p className="text-sm font-semibold text-indigo-800 dark:text-indigo-300 tracking-wide">Sourced for You</p>
+                  <ul className="mt-1.5 space-y-0.5">
+                    <li className="text-xs sm:text-[15px] text-indigo-600 dark:text-indigo-200/80">✔ Inspected and certified upon order</li>
+                    <li className="text-xs sm:text-[15px] text-indigo-600 dark:text-indigo-200/80">✔ Typically arrives in 2–4 weeks</li>
+                  </ul>
+                </div>
+              </div>
+            )
+          )}
           {/* Authenticity Guarantee */}
           <div className="IndividualProduct_AuthenticityGuarantee mt-6 rounded-xl border border-emerald-100 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 p-4">
             <div className="flex items-center gap-2 mb-2">

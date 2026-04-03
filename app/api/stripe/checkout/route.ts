@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
 
     const { data: product, error: pErr } = await supabase
       .from("products")
-      .select("id, name, status, price_display_usd, sale_price_usd, public_id, slug")
+      .select("id, name, status, price_display_usd, sale_price_usd, public_id, slug, quick_ship")
       .eq("id", item.productId)
       .single();
 
@@ -126,7 +126,8 @@ export async function POST(req: NextRequest) {
       quantity: 1,
     });
 
-    validatedItems.push({ ...item, price: serverPrice });
+    const fulfillmentType = item.fulfillmentType ?? (product.quick_ship ? "available_now" : "sourced_for_you");
+    validatedItems.push({ ...item, price: serverPrice, fulfillmentType });
   }
 
   // ── Server-side discount validation ──────────────────────────────────────────
@@ -166,9 +167,11 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Build shipping + fee line items ──────────────────────────────────────────
-  const shippingBase = body.expedited ? 100 : 20;
+  const hasSourcingItems = validatedItems.some((i) => (i.fulfillmentType ?? "sourced_for_you") === "sourced_for_you");
+  const isPrioritySourcing = body.expedited && hasSourcingItems;
+  const shippingBase = isPrioritySourcing ? 100 : 20;
   const shippingFee = shippingBase + (validatedItems.length - 1) * 10;
-  const shippingType = body.expedited ? "Expedited Shipping" : "Shipping";
+  const shippingType = isPrioritySourcing ? "Priority Sourcing" : "Shipping";
   const shippingLabel =
     validatedItems.length > 1
       ? `${shippingType} (${validatedItems.length} pieces)`
@@ -215,6 +218,7 @@ export async function POST(req: NextRequest) {
       productId: i.productId,
       optionId: i.optionId ?? null,
       price: i.price!,
+      fulfillmentType: i.fulfillmentType,
     }))
   );
 

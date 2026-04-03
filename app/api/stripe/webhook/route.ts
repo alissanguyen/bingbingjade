@@ -292,6 +292,7 @@ export async function POST(req: NextRequest) {
         price_usd: item.price,
         quantity: 1,
         line_total: item.price,
+        fulfillment_type: item.fulfillmentType ?? "sourced_for_you",
       };
     })
   );

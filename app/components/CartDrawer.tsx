@@ -151,84 +151,93 @@ export function CartDrawer() {
             </div>
           ) : (
             <>
-              {/* Available items */}
-              {items.filter((item) => !soldKeys.has(`${item.productId}-${item.optionId}`) && !staleKeys.has(`${item.productId}-${item.optionId}`)).map((item) => {
-                const productPath = item.productSlug
-                  ? `/products/${item.productSlug}-${item.productPublicId}`
-                  : `/products/${item.productPublicId}`;
-                return (
-                  <div key={`${item.productId}-${item.optionId}`} className="flex gap-3">
-                    {/* Thumbnail */}
-                    <div className="h-16 w-16 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
-                      {item.thumbnail ? (
-                        <Image
-                          src={item.thumbnail}
-                          alt={item.productName}
-                          width={64}
-                          height={64}
-                          className="w-full h-full object-cover"
-                          unoptimized
-                          loading="eager"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
-                        </div>
-                      )}
-                    </div>
+              {/* Available items — grouped by fulfillment type */}
+              {(() => {
+                const liveItems = items.filter((item) => !soldKeys.has(`${item.productId}-${item.optionId}`) && !staleKeys.has(`${item.productId}-${item.optionId}`));
+                const availableNow = liveItems.filter((i) => (i.fulfillmentType ?? (quickShipIds.has(i.productId) || i.quickShip ? "available_now" : "sourced_for_you")) === "available_now");
+                const sourcedForYou = liveItems.filter((i) => (i.fulfillmentType ?? (quickShipIds.has(i.productId) || i.quickShip ? "available_now" : "sourced_for_you")) === "sourced_for_you");
+                const isMixed = availableNow.length > 0 && sourcedForYou.length > 0;
 
-                    {/* Info */}
-                    <div className="flex-1 min-w-0 flex flex-col justify-between">
-                      <Link
-                        href={productPath}
-                        onClick={closeDrawer}
-                        className="text-[12px] sm:text-[17px] font-medium text-gray-900 dark:text-gray-100 hover:text-emerald-700 dark:hover:text-emerald-400 leading-snug"
-                      >
-                        {item.productName}
-                      </Link>
-                      {item.optionLabel && (
-                        <p className="text-[12px] sm:text-[16px] text-gray-500 dark:text-gray-400 mt-0.5">{item.optionLabel}</p>
-                      )}
-                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                        <span className={`text-[12px] sm:text-[17px] font-semibold ${item.originalPrice != null ? "text-amber-600 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}`}>
-                          {fmtPrice(item.price)}
-                        </span>
-                        {item.originalPrice != null && (
-                          <>
-                            <span className="text-[12px] sm:text-[17px] text-gray-400 line-through">
-                              {fmtPrice(item.originalPrice)}
-                            </span>
-                            <span className="inline-flex items-center bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 text-[10px] sm:text-[14px] font-semibold px-1.5 py-0.5 rounded-full">
-                              −{Math.round((1 - item.price / item.originalPrice) * 100)}%
-                            </span>
-                          </>
-                        )}
-                        {(item.quickShip || quickShipIds.has(item.productId)) && (
-                          <div
-                            className="inline-flex items-center gap-1 bg-sky-950 border border-sky-400/60 text-sky-300 text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                            style={{ boxShadow: "0 0 6px 1px rgba(56,189,248,0.3)" }}
-                          >
-                            <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_4px_1px_rgba(56,189,248,0.8)]" />
-                            Ships Now
+                const renderItem = (item: (typeof items)[number]) => {
+                  const productPath = item.productSlug
+                    ? `/products/${item.productSlug}-${item.productPublicId}`
+                    : `/products/${item.productPublicId}`;
+                  const isAvailableNow = item.fulfillmentType === "available_now" || quickShipIds.has(item.productId) || !!item.quickShip;
+                  return (
+                    <div key={`${item.productId}-${item.optionId}`} className="flex gap-3">
+                      <div className="h-16 w-16 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
+                        {item.thumbnail ? (
+                          <Image
+                            src={item.thumbnail}
+                            alt={item.productName}
+                            width={64}
+                            height={64}
+                            className="w-full h-full object-cover"
+                            unoptimized
+                            loading="eager"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
                           </div>
                         )}
                       </div>
+                      <div className="flex-1 min-w-0 flex flex-col justify-between">
+                        <Link
+                          href={productPath}
+                          onClick={closeDrawer}
+                          className="text-[12px] sm:text-[17px] font-medium text-gray-900 dark:text-gray-100 hover:text-emerald-700 dark:hover:text-emerald-400 leading-snug"
+                        >
+                          {item.productName}
+                        </Link>
+                        {item.optionLabel && (
+                          <p className="text-[12px] sm:text-[16px] text-gray-500 dark:text-gray-400 mt-0.5">{item.optionLabel}</p>
+                        )}
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          <span className={`text-[12px] sm:text-[17px] font-semibold ${item.originalPrice != null ? "text-amber-600 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}`}>
+                            {fmtPrice(item.price)}
+                          </span>
+                          {item.originalPrice != null && (
+                            <>
+                              <span className="text-[12px] sm:text-[17px] text-gray-400 line-through">
+                                {fmtPrice(item.originalPrice)}
+                              </span>
+                              <span className="inline-flex items-center bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 text-[10px] sm:text-[14px] font-semibold px-1.5 py-0.5 rounded-full">
+                                −{Math.round((1 - item.price / item.originalPrice) * 100)}%
+                              </span>
+                            </>
+                          )}
+                          {isAvailableNow && (
+                            <div
+                              className="flex flex-row items-center gap-1 bg-sky-950 border border-sky-400/60 text-sky-300 text-[10px] sm:text-[13px] font-semibold px-2 py-0.5 rounded-full mb-0.5"
+                              style={{ boxShadow: "0 0 6px 1px rgba(56,189,248,0.3)" }}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_4px_1px_rgba(56,189,248,0.8)]" />
+                              Available Now
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => removeFromCart(item.productId, item.optionId)}
+                        aria-label="Remove item"
+                        className="p-1 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors shrink-0 self-start mt-0.5"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
                     </div>
+                  );
+                };
 
-                    {/* Remove */}
-                    <button
-                      onClick={() => removeFromCart(item.productId, item.optionId)}
-                      aria-label="Remove item"
-                      className="p-1 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors shrink-0 self-start mt-0.5"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                    </button>
-                  </div>
+                return (
+                  <>
+                    {[...availableNow, ...sourcedForYou].map(renderItem)}
+                  </>
                 );
-              })}
+              })()}
 
               {/* Sold items */}
               {items.filter((item) => soldKeys.has(`${item.productId}-${item.optionId}`)).map((item) => (
