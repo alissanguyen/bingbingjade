@@ -11,37 +11,17 @@ function fmtPrice(price: number): string {
   return requiresInquiry(price) ? obfuscatedPrice(price) : `$${price.toFixed(2)}`;
 }
 
-const isLiveMode = process.env.NEXT_PUBLIC_CHECKOUT_MODE === "live";
-
 export function CartDrawer() {
   const { items, drawerOpen, closeDrawer, removeFromCart, clearCart } = useCart();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [headerHeight, setHeaderHeight] = useState(0);
-  const [adminPassword, setAdminPassword] = useState("");
-  const [adminUnlocked, setAdminUnlocked] = useState(isLiveMode); // auto-unlocked in live mode
-  const [showAdminInput, setShowAdminInput] = useState(false);
-  const [adminError, setAdminError] = useState(false);
   const [soldKeys, setSoldKeys] = useState<Set<string>>(new Set());
   const [staleKeys, setStaleKeys] = useState<Set<string>>(new Set());
-  const [expedited, setExpedited] = useState(false);
-  // Discount state
-  const [discountCode, setDiscountCode] = useState("");
-  const [appliedDiscount, setAppliedDiscount] = useState<{
-    source: string;
-    amountCents: number;
-    message: string;
-  } | null>(null);
-  const [discountError, setDiscountError] = useState<string | null>(null);
-  const [discountLoading, setDiscountLoading] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
-
-  // Reset discount state when drawer closes or cart changes
-  const cartKey = items.map((i) => `${i.productId}-${i.optionId}`).join(",");
 
   // Check live availability when drawer opens
   useEffect(() => {
     if (!drawerOpen || items.length === 0) return;
+
     async function checkAvailability() {
       const productIds = [...new Set(items.map((i) => i.productId))];
       const optionIds = items.map((i) => i.optionId).filter((id): id is string => id !== null);
@@ -114,87 +94,6 @@ export function CartDrawer() {
   const total = availableItems.reduce((sum, i) => sum + i.price, 0);
   const originalTotal = availableItems.reduce((sum, i) => sum + (i.originalPrice ?? i.price), 0);
   const totalSavings = originalTotal - total;
-
-  async function handleAdminUnlock() {
-    const res = await fetch("/api/stripe/verify-admin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: adminPassword }),
-    });
-    if (res.ok) {
-      setAdminUnlocked(true);
-      setShowAdminInput(false);
-      setAdminError(false);
-    } else {
-      setAdminError(true);
-    }
-  }
-
-  async function applyDiscount() {
-    if (!discountCode.trim()) {
-      setDiscountError("Enter a discount code.");
-      return;
-    }
-    setDiscountLoading(true);
-    setDiscountError(null);
-    setAppliedDiscount(null);
-    try {
-      const subtotalCents = Math.round(
-        availableItems.reduce((s, i) => s + (i.price ?? 0), 0) * 100
-      );
-      const res = await fetch("/api/validate-discount", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          discountCode: discountCode.trim(),
-          subtotalCents,
-        }),
-      });
-      const data = await res.json();
-      if (data.valid) {
-        setAppliedDiscount({
-          source: data.source,
-          amountCents: data.discountAmountCents,
-          message: data.displayMessage,
-        });
-      } else {
-        setDiscountError(data.error ?? "No discount available.");
-      }
-    } catch {
-      setDiscountError("Could not verify discount. Please try again.");
-    } finally {
-      setDiscountLoading(false);
-    }
-  }
-
-  async function handleCheckout() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/stripe/checkout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(adminUnlocked ? { "x-admin-password": adminPassword } : {}),
-        },
-        body: JSON.stringify({
-          items: availableItems,
-          expedited,
-          discountCode: discountCode.trim() || undefined,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Failed to start checkout.");
-        return;
-      }
-      window.location.href = data.url;
-    } catch {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }
 
   return (
     <>
@@ -401,172 +300,38 @@ export function CartDrawer() {
 
         {/* Footer */}
         {availableItems.length > 0 && (
-          <div className="border-t border-gray-200 dark:border-gray-800 px-4 py-3 space-y-2">
-            {error && (
-              <p className="text-[12px] sm:text-[17px] text-red-600 dark:text-red-400 rounded-lg bg-red-50 dark:bg-red-950/30 px-3 py-1.5">
-                {error}
-              </p>
-            )}
-            <div className="flex items-center justify-between text-[12px] sm:text-[17px]">
+          <div className="border-t border-gray-200 dark:border-gray-800 px-4 py-4 space-y-3">
+            {/* Subtotal */}
+            <div className="flex items-center justify-between text-[12px] sm:text-sm">
               <span className="text-gray-500 dark:text-gray-400">Subtotal</span>
               <div className="flex items-center gap-2">
                 {totalSavings > 0 && (
-                  <span className="text-[12px] sm:text-[17px] text-gray-400 line-through">{fmtPrice(originalTotal)}</span>
+                  <span className="text-xs text-gray-400 line-through">{fmtPrice(originalTotal)}</span>
                 )}
                 <span className={`font-semibold ${totalSavings > 0 ? "text-amber-600 dark:text-amber-400" : "text-gray-900 dark:text-gray-100"}`}>
                   {fmtPrice(total)}
                 </span>
               </div>
             </div>
-            {/* Expedited shipping toggle */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[12px] sm:text-[17px] text-gray-700 dark:text-gray-300">Expedited Shipping</span>
-                <a
-                  href="/faq#expedited-shipping"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[9px] sm:text-[13px] mb-2 text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline underline-offset-2 transition-colors"
-                >
-                  *Learn more
-                </a>
-              </div>
-              <button
-                type="button"
-                onClick={() => setExpedited((v) => !v)}
-                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${expedited ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"}`}
-                role="switch"
-                aria-checked={expedited}
-              >
-                <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${expedited ? "translate-x-4" : "translate-x-0"}`} />
-              </button>
-            </div>
-            {/* Discount / referral code section */}
-            <div className="flex gap-1.5 items-center">
-              <input
-                type="text"
-                value={discountCode}
-                onChange={(e) => {
-                  setDiscountCode(e.target.value.toUpperCase());
-                  setAppliedDiscount(null);
-                  setDiscountError(null);
-                }}
-                placeholder="Discount / referral code"
-                className="flex-1 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 text-[11px] sm:text-[15px] text-gray-900 dark:text-gray-100 placeholder-gray-400 outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
-              />
-              <button
-                type="button"
-                onClick={applyDiscount}
-                disabled={discountLoading}
-                className="rounded-md bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white px-3 py-1.5 text-[11px] sm:text-[16px] font-medium transition-colors shrink-0"
-              >
-                {discountLoading ? "…" : "Apply"}
-              </button>
-            </div>
-            {appliedDiscount && (
-              <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">
-                ✓ {appliedDiscount.message}
-              </p>
-            )}
-            {discountError && (
-              <p className="text-[10px] text-red-500 dark:text-red-400">{discountError}</p>
-            )}
-
-            {(() => {
-              const shippingBase = expedited ? 100 : 20;
-              const shipping = availableItems.length > 0 ? shippingBase + (availableItems.length - 1) * 10 : 0;
-              const discountDollars = appliedDiscount ? appliedDiscount.amountCents / 100 : 0;
-              const discountedTotal = Math.max(0, total - discountDollars);
-              const txFee = Math.round((discountedTotal + shipping) * 0.035 * 100) / 100;
-              const grandTotal = Math.round((discountedTotal + shipping + txFee) * 100) / 100;
-              const shippingLabel = expedited ? "Expedited Shipping" : "Shipping";
-              return (
-                <>
-                  <div className="flex items-center justify-between text-[12px] sm:text-[17px]">
-                    <span className="text-gray-500 dark:text-gray-400">
-                      {shippingLabel}{availableItems.length > 1 ? ` (${availableItems.length} pieces)` : ""}
-                    </span>
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">{fmtPrice(shipping)}</span>
-                  </div>
-                  {discountDollars > 0 && (
-                    <div className="flex items-center justify-between text-[12px] sm:text-[17px]">
-                      <span className="text-emerald-600 dark:text-emerald-400">Discount</span>
-                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">−{fmtPrice(discountDollars)}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between text-[12px] sm:text-[17px]">
-                    <span className="text-gray-500 dark:text-gray-400">Transaction Fee <span className="text-[12px] sm:text-[17px]">(3.5%)</span></span>
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">{fmtPrice(txFee)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-[12px] sm:text-[17px] border-t border-gray-100 dark:border-gray-800 pt-1.5">
-                    <span className="font-semibold text-gray-700 dark:text-gray-300">Total</span>
-                    <span className="font-bold text-gray-900 dark:text-gray-100">{fmtPrice(grandTotal)}</span>
-                  </div>
-                </>
-              );
-            })()}
             {totalSavings > 0 && (
-              <p className="text-[12px] sm:text-[17px] text-emerald-600 dark:text-emerald-400 font-medium">
+              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
                 You save {fmtPrice(totalSavings)} with current sale prices.
               </p>
             )}
-            <div className="text-[10px] sm:text-[15px] rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2 space-y-1">
-              <p className="text-amber-800 dark:text-amber-300">
-                Items might sell while in cart — availability confirmed only at checkout.
-              </p>
-              <p className="text-amber-800 dark:text-amber-300">
-                💳 <span className="font-semibold">Zelle / Wire Transfer</span>? Transaction fee waived — reach out before checking out.
-              </p>
-            </div>
-
-            {adminUnlocked ? (
-              <button
-                onClick={handleCheckout}
-                disabled={loading}
-                className="w-full rounded-full bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed text-white py-2.5 text-[12px] sm:text-[17px] font-medium transition-colors"
-              >
-                {loading ? "Redirecting to checkout…" : "Checkout"}
-              </button>
-            ) : (
-              <div className="w-full rounded-full bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-500 py-2.5 text-[12px] sm:text-[17px] font-medium text-center cursor-not-allowed">
-                Checkout unavailable
-              </div>
-            )}
-
-            {/* Admin unlock — only shown in beta mode */}
-            {!isLiveMode && !adminUnlocked && (
-              <div className="pt-0">
-                {!showAdminInput ? (
-                  <button
-                    onClick={() => setShowAdminInput(true)}
-                    className="w-full text-[12px] sm:text-[17px] text-gray-300 dark:text-gray-700 hover:text-gray-400 dark:hover:text-gray-500 transition-colors py-1"
-                  >
-                    Admin access
-                  </button>
-                ) : (
-                  <div className="flex gap-2">
-                    <input
-                      type="password"
-                      value={adminPassword}
-                      onChange={(e) => { setAdminPassword(e.target.value); setAdminError(false); }}
-                      onKeyDown={(e) => { if (e.key === "Enter") handleAdminUnlock(); }}
-                      placeholder="Admin password"
-                      className={`flex-1 rounded-lg border px-3 py-1.5 text-[12px] sm:text-[17px] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 outline-none focus:ring-1 focus:ring-emerald-500 ${adminError ? "border-red-400" : "border-gray-300 dark:border-gray-700"}`}
-                    />
-                    <button
-                      onClick={handleAdminUnlock}
-                      className="rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 text-[12px] sm:text-[17px] font-medium transition-colors"
-                    >
-                      Unlock
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
+            <p className="text-[10px] text-gray-400 dark:text-gray-500">
+              Shipping, discounts & fees calculated at checkout.
+            </p>
+            {/* CTA → /checkout */}
+            <Link
+              href="/checkout"
+              onClick={closeDrawer}
+              className="block w-full rounded-full bg-emerald-700 hover:bg-emerald-800 text-white py-2.5 text-[12px] sm:text-sm font-medium text-center transition-colors"
+            >
+              Review Order →
+            </Link>
             <button
               onClick={() => { clearCart(); closeDrawer(); }}
-              className="w-full text-[12px] sm:text-[17px] text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors py-1"
+              className="w-full text-[11px] text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors py-0.5"
             >
               Clear cart
             </button>
