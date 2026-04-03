@@ -30,7 +30,12 @@
       "Bash(git checkout:*)",
       "Bash(git pull:*)",
       "Bash(npx vitest:*)",
-      "Bash(code:*)"
+      "Bash(code:*)",
+      "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -name *schema* -o -name *prisma*)",
+      "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -path */node_modules -prune -o -type f \\\\\\(-name *.sql -o -name *migration* \\\\\\) -print)",
+      "Bash(since you already have the [option label] in cart\" using the actual:*)",
+      "Bash(git show:*)",
+      "Bash(git rm:*)"
     ]
   }
 }

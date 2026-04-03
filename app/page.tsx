@@ -187,7 +187,7 @@ export default async function Home() {
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">
               Authenticity You Can Trust
             </h2>
-            <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-[17px] mb-8">
+            <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-[17px] sm:text-[18px] mb-8">
               BingBing Jade offers authentic, untreated Type A jadeite jewelry — carefully sourced and transparently priced. Every piece is free from dye, heat, or polymer treatment, with certification available for added assurance. From luminous bangles to delicate pendants, we focus on quality you can trust and pricing that reflects true value.
             </p>
             <ul className="flex flex-col gap-3">
@@ -198,7 +198,7 @@ export default async function Home() {
                 "Transparent, fair pricing",
                 "Sourced from trusted vendors",
               ].map((point) => (
-                <li key={point} className="flex items-center gap-3 text-gray-700 dark:text-gray-300 text-[16px]">
+                <li key={point} className="flex items-center gap-3 text-gray-700 dark:text-gray-300 text-[17px] sm:text-[18px]">
                   <span className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center shrink-0">
                     <svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M1 4L3.5 6.5L9 1" stroke="#059669" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
