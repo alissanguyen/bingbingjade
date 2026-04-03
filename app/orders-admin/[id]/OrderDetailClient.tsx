@@ -661,7 +661,7 @@ export function OrderDetailClient({
                 )}
                 {(order.fee_breakdown?.paypal ?? 0) > 0 && (
                   <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                    <span>PayPal Fee</span><span>+${order.fee_breakdown!.paypal!.toFixed(2)}</span>
+                    <span>Transaction Fee</span><span>+${order.fee_breakdown!.paypal!.toFixed(2)}</span>
                   </div>
                 )}
                 {(order.fee_breakdown?.insurance ?? 0) > 0 && (
@@ -859,7 +859,7 @@ export function OrderDetailClient({
                 {[
                   { label: "Shipping", val: editFeeShipping, set: setEditFeeShipping, prefix: "$" },
                   { label: "Tax", val: editFeeTax, set: setEditFeeTax, prefix: "$" },
-                  { label: "PayPal Fee", val: editFeePaypal, set: setEditFeePaypal, prefix: "$" },
+                  { label: "Transaction Fee", val: editFeePaypal, set: setEditFeePaypal, prefix: "$" },
                   { label: "Insurance", val: editFeeInsurance, set: setEditFeeInsurance, prefix: "$" },
                   { label: "Discount", val: editFeeDiscount, set: setEditFeeDiscount, prefix: "−$" },
                   { label: "Other", val: editFeeOther, set: setEditFeeOther, prefix: "$" },

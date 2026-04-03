@@ -210,15 +210,15 @@ function TokenRequestRow({
   }
 
   return (
-    <li className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 space-y-3">
+    <li className="bg-amber-50 dark:bg-amber-600/20 rounded-lg border border-amber-200 dark:border-amber-800 p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-0.5">
           <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
             {request.userName}
-            <span className="ml-2 text-xs font-normal text-gray-400 dark:text-gray-500">{request.userEmail}</span>
+            <span className="ml-2 text-xs font-normal text-emerald-600 dark:text-emerald-500">{request.userEmail}</span>
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Requesting {request.requested_amount} tokens · currently has {request.current_tokens} · {fmt(request.created_at)}
+            Requesting {request.requested_amount} tokens · <span className="text-orange-600">currently has {request.current_tokens}</span> · {fmt(request.created_at)}
           </p>
           {request.message && (
             <p className="text-xs text-gray-600 dark:text-gray-300 italic">&ldquo;{request.message}&rdquo;</p>
@@ -227,7 +227,7 @@ function TokenRequestRow({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 flex-shrink-0"
+          className="text-xs text-amber-800 hover:text-green-600 dark:text-amber-300 dark:hover:text-green-600 shrink-0"
         >
           {expanded ? "Cancel" : "Respond"}
         </button>

@@ -374,7 +374,7 @@ export default async function TrackOrderPage({
                     )}
                     {(fb?.paypal ?? 0) > 0 && (
                       <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                        <span>PayPal Fee</span><span>+${fb!.paypal!.toFixed(2)}</span>
+                        <span>Transaction Fee</span><span>+${fb!.paypal!.toFixed(2)}</span>
                       </div>
                     )}
                     {(fb?.insurance ?? 0) > 0 && (
