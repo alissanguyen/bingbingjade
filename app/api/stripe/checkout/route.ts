@@ -197,16 +197,16 @@ export async function POST(req: NextRequest) {
     quantity: 1,
   });
 
-  // Discount as a negative line item (last, after fee)
+  // ── Create Stripe coupon for discount (Stripe doesn't accept negative amounts) ─
+  let stripeCouponId: string | null = null;
   if (discountAmountCents > 0) {
-    lineItems.push({
-      price_data: {
-        currency: "usd",
-        product_data: { name: "Discount" },
-        unit_amount: -discountAmountCents,
-      },
-      quantity: 1,
+    const coupon = await stripe.coupons.create({
+      amount_off: discountAmountCents,
+      currency: "usd",
+      duration: "once",
+      name: "Discount",
     });
+    stripeCouponId = coupon.id;
   }
 
   // ── Build metadata ────────────────────────────────────────────────────────────
@@ -244,6 +244,7 @@ export async function POST(req: NextRequest) {
           "I agree to the [Store Policy](https://www.bingbingjade.com/policy) and [FAQ](https://www.bingbingjade.com/faq).",
       },
     },
+    ...(stripeCouponId ? { discounts: [{ coupon: stripeCouponId }] } : {}),
     metadata: { ...itemMetadata, ...discountMetadata, ...emailMetadata },
   });
 

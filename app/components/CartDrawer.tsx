@@ -156,7 +156,7 @@ export function CartDrawer() {
                 return (
                   <div key={`${item.productId}-${item.optionId}`} className="flex gap-3">
                     {/* Thumbnail */}
-                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
+                    <div className="h-16 w-16 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
                       {item.thumbnail ? (
                         <Image
                           src={item.thumbnail}
@@ -175,16 +175,16 @@ export function CartDrawer() {
                     </div>
 
                     {/* Info */}
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 flex flex-col justify-between">
                       <Link
                         href={productPath}
                         onClick={closeDrawer}
-                        className="text-[12px] sm:text-[17px] font-medium text-gray-900 dark:text-gray-100 hover:text-emerald-700 dark:hover:text-emerald-400 line-clamp-2 leading-snug"
+                        className="text-[12px] sm:text-[17px] font-medium text-gray-900 dark:text-gray-100 hover:text-emerald-700 dark:hover:text-emerald-400 leading-snug"
                       >
                         {item.productName}
                       </Link>
                       {item.optionLabel && (
-                        <p className="text-[12px] sm:text-[17px] sm:text-[16px] text-gray-500 dark:text-gray-400 mt-0.5">{item.optionLabel}</p>
+                        <p className="text-[12px] sm:text-[16px] text-gray-500 dark:text-gray-400 mt-0.5">{item.optionLabel}</p>
                       )}
                       <div className="flex items-center gap-1.5 mt-1">
                         <span className={`text-[12px] sm:text-[17px] font-semibold ${item.originalPrice != null ? "text-amber-600 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}`}>
@@ -321,7 +321,7 @@ export function CartDrawer() {
             <p className="text-[12px] sm:text-sm italic text-gray-400 dark:text-gray-500">
               Shipping, discounts & fees calculated at checkout.
             </p>
-            <p className="text-[11px] text-amber-700 dark:text-amber-400/80">
+            <p className="p-2 sm:p-3 bg-amber-500/15 border-2 rounded-xl italic border-amber-500/50 text-[11px] sm:text-[15px] text-amber-700 dark:text-amber-400/80">
               Items might sell while in cart. Availability confirmed at time of purchase.
             </p>
             {/* CTA → /checkout */}
