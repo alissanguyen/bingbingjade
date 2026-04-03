@@ -283,7 +283,7 @@ interface VideoTrimModalProps {
 
 export function VideoTrimModal({ file, onConfirm, onClose }: VideoTrimModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const srcUrl = useRef<string>(URL.createObjectURL(file));
+  const [srcUrl] = useState<string>(() => URL.createObjectURL(file));
   const [duration, setDuration] = useState(0);
   const [startTime, setStartTime] = useState(0);
   const [endTime, setEndTime] = useState(0);
@@ -367,7 +367,7 @@ export function VideoTrimModal({ file, onConfirm, onClose }: VideoTrimModalProps
         <div className="bg-black flex items-center justify-center">
           <video
             ref={videoRef}
-            src={srcUrl.current}
+            src={srcUrl}
             onLoadedMetadata={handleLoadedMetadata}
             controls
             className="max-w-full"
