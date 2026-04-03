@@ -16,6 +16,7 @@ export function CartDrawer() {
   const [headerHeight, setHeaderHeight] = useState(0);
   const [soldKeys, setSoldKeys] = useState<Set<string>>(new Set());
   const [staleKeys, setStaleKeys] = useState<Set<string>>(new Set());
+  const [quickShipIds, setQuickShipIds] = useState<Set<string>>(new Set());
   const overlayRef = useRef<HTMLDivElement>(null);
 
   // Check live availability when drawer opens
@@ -27,13 +28,15 @@ export function CartDrawer() {
       const optionIds = items.map((i) => i.optionId).filter((id): id is string => id !== null);
 
       const [{ data: products }, { data: options }] = await Promise.all([
-        supabase.from("products").select("id, status").in("id", productIds),
+        supabase.from("products").select("id, status, quick_ship").in("id", productIds),
         optionIds.length > 0
           ? supabase.from("product_options").select("id, status").in("id", optionIds)
           : Promise.resolve({ data: [] }),
       ]);
 
-      const productStatus = new Map(products?.map((p: { id: string; status: string }) => [p.id, p.status]) ?? []);
+      const productStatus = new Map(products?.map((p: { id: string; status: string; quick_ship: boolean }) => [p.id, p.status]) ?? []);
+      const quickShip = new Set(products?.filter((p: { id: string; status: string; quick_ship: boolean }) => p.quick_ship).map((p: { id: string; status: string; quick_ship: boolean }) => p.id) ?? []);
+      setQuickShipIds(quickShip);
       const optionStatus = new Map((options ?? []).map((o: { id: string; status: string }) => [o.id, o.status]));
 
       const sold = new Set<string>();
@@ -195,12 +198,12 @@ export function CartDrawer() {
                             <span className="text-[12px] sm:text-[17px] text-gray-400 line-through">
                               {fmtPrice(item.originalPrice)}
                             </span>
-                            <span className="inline-flex items-center bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+                            <span className="inline-flex items-center bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 text-[10px] sm:text-[14px] font-semibold px-1.5 py-0.5 rounded-full">
                               −{Math.round((1 - item.price / item.originalPrice) * 100)}%
                             </span>
                           </>
                         )}
-                        {item.quickShip && (
+                        {(item.quickShip || quickShipIds.has(item.productId)) && (
                           <div
                             className="inline-flex items-center gap-1 bg-sky-950 border border-sky-400/60 text-sky-300 text-[10px] font-semibold px-2 py-0.5 rounded-full"
                             style={{ boxShadow: "0 0 6px 1px rgba(56,189,248,0.3)" }}
