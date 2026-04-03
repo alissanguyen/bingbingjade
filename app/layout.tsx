@@ -28,6 +28,12 @@ export const metadata: Metadata = {
   },
   description: "Shop authentic, handpicked jade jewelry — bracelets, bangles, rings, pendants, and necklaces. Direct from trusted vendors.",
   metadataBase: new URL(SITE_URL),
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+  },
   openGraph: {
     siteName: "BingBing Jade",
     type: "website",
