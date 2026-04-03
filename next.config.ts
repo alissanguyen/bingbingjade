@@ -21,6 +21,7 @@ const nextConfig: NextConfig = {
       // Existing public Supabase bucket (legacy products)
       { protocol: "https", hostname: "cszryoixzqtzikvgeksh.supabase.co" },
     ],
+    unoptimized: true,
   },
 };
 

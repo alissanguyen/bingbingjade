@@ -175,6 +175,7 @@ export default async function Home() {
               alt="Jade pieces up close"
               fill
               className="object-cover object-center"
+              unoptimized
             />
             <div className="absolute inset-0 bg-linear-to-t from-black/30 to-transparent" />
           </div>
