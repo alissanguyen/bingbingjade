@@ -238,6 +238,14 @@ export function Navbar() {
 
         <li>
           <Link
+            href="/custom-sourcing"
+            className={`hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors ${pathname.startsWith("/custom-sourcing") ? "text-emerald-700 dark:text-emerald-400 font-semibold" : ""}`}
+          >
+            Custom Sourcing
+          </Link>
+        </li>
+        <li>
+          <Link
             href="/contact"
             className={`hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors ${pathname === "/contact" ? "text-emerald-700 dark:text-emerald-400 font-semibold" : ""}`}
           >
@@ -358,6 +366,15 @@ export function Navbar() {
               )}
             </li>
 
+            <li>
+              <Link
+                href="/custom-sourcing"
+                onClick={() => setOpen(false)}
+                className={`block py-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors ${pathname.startsWith("/custom-sourcing") ? "text-emerald-700 dark:text-emerald-400 font-semibold" : ""}`}
+              >
+                Custom Sourcing
+              </Link>
+            </li>
             <li>
               <Link
                 href="/contact"

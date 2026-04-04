@@ -46,6 +46,15 @@ export function CheckoutClient() {
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [discountLoading, setDiscountLoading] = useState(false);
 
+  // Sourcing credit
+  const [sourcingId, setSourcingId] = useState("");
+  const [appliedSourcingCredit, setAppliedSourcingCredit] = useState<{
+    requestId: string;
+    availableCents: number;
+  } | null>(null);
+  const [sourcingCreditError, setSourcingCreditError] = useState<string | null>(null);
+  const [sourcingCreditLoading, setSourcingCreditLoading] = useState(false);
+
   // Admin unlock (beta mode)
   const [adminPassword, setAdminPassword] = useState("");
   const [adminUnlocked, setAdminUnlocked] = useState(isLiveMode);
@@ -145,7 +154,11 @@ export function CheckoutClient() {
   const discountDollars = appliedDiscount ? appliedDiscount.amountCents / 100 : 0;
   const discountedSubtotal = Math.max(0, subtotal - discountDollars);
   const txFee = Math.round((discountedSubtotal + shipping) * 0.035 * 100) / 100;
-  const grandTotal = Math.round((discountedSubtotal + shipping + txFee) * 100) / 100;
+  // Sourcing credit applied against grand total (never below 0)
+  const sourcingCreditAvailableDollars = appliedSourcingCredit ? appliedSourcingCredit.availableCents / 100 : 0;
+  const grandTotalBeforeCredit = Math.round((discountedSubtotal + shipping + txFee) * 100) / 100;
+  const sourcingCreditApplied = Math.min(sourcingCreditAvailableDollars, grandTotalBeforeCredit);
+  const grandTotal = Math.max(0, Math.round((grandTotalBeforeCredit - sourcingCreditApplied) * 100) / 100);
 
   const canCheckout = availableItems.length > 0 && adminUnlocked;
 
@@ -183,6 +196,34 @@ export function CheckoutClient() {
     }
   }
 
+  async function applySourcingCredit() {
+    const id = sourcingId.trim();
+    if (!id) {
+      setSourcingCreditError("Please enter your sourcing request ID.");
+      return;
+    }
+    setSourcingCreditLoading(true);
+    setSourcingCreditError(null);
+    setAppliedSourcingCredit(null);
+    try {
+      const res = await fetch("/api/sourcing/validate-credit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourcingRequestId: id }),
+      });
+      const data = await res.json();
+      if (res.ok && data.availableCents > 0) {
+        setAppliedSourcingCredit({ requestId: id, availableCents: data.availableCents });
+      } else {
+        setSourcingCreditError(data.error ?? "No available credit found for this ID.");
+      }
+    } catch {
+      setSourcingCreditError("Could not verify credit. Please try again.");
+    } finally {
+      setSourcingCreditLoading(false);
+    }
+  }
+
   async function handleAdminUnlock() {
     const res = await fetch("/api/stripe/verify-admin", {
       method: "POST",
@@ -213,6 +254,7 @@ export function CheckoutClient() {
           items: availableItems,
           expedited: prioritySourcing && hasSourcingItems,
           discountCode: discountCode.trim() || undefined,
+          sourcingRequestId: appliedSourcingCredit?.requestId || undefined,
         }),
       });
       const data = await res.json();
@@ -578,6 +620,56 @@ export function CheckoutClient() {
                   )}
                 </div>
 
+                {/* ── Sourcing credit ─────────────────────��── */}
+                <div className="rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/40 p-2.5 sm:p-3.5 space-y-2.5">
+                  <p className="text-[11px] sm:text-[15px] uppercase tracking-[0.2em] font-semibold text-stone-400 dark:text-stone-500">
+                    Sourcing Credit
+                  </p>
+                  {appliedSourcingCredit ? (
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[12px] sm:text-[16px] text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                        ${(appliedSourcingCredit.availableCents / 100).toFixed(2)} credit applied
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => { setAppliedSourcingCredit(null); setSourcingId(""); }}
+                        className="text-[11px] text-stone-400 hover:text-red-500 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          autoComplete="off"
+                          value={sourcingId}
+                          onChange={(e) => { setSourcingId(e.target.value); setSourcingCreditError(null); }}
+                          onKeyDown={(e) => { if (e.key === "Enter") applySourcingCredit(); }}
+                          placeholder="Sourcing request ID"
+                          className="text-[11px] sm:text-[14px] flex-1 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-2 sm:px-3 py-2 text-sm font-mono text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500 transition-shadow w-full"
+                        />
+                        <button
+                          type="button"
+                          onClick={applySourcingCredit}
+                          disabled={sourcingCreditLoading}
+                          className="text-[11px] sm:text-[15px] rounded-lg border border-emerald-700 text-emerald-700 dark:border-emerald-600 dark:text-emerald-400 hover:bg-emerald-700 hover:text-white dark:hover:bg-emerald-700 dark:hover:text-white disabled:opacity-40 px-2 sm:px-4 py-2 text-sm font-medium transition-colors shrink-0"
+                        >
+                          {sourcingCreditLoading ? "…" : "Apply"}
+                        </button>
+                      </div>
+                      <p className="text-[10px] sm:text-[13px] text-stone-400 dark:text-stone-500">
+                        From a Custom Sourcing deposit — find your ID in your confirmation email.
+                      </p>
+                      {sourcingCreditError && (
+                        <p className="text-[12px] text-red-500 dark:text-red-400">{sourcingCreditError}</p>
+                      )}
+                    </>
+                  )}
+                </div>
+
                 {/* ── Priority Sourcing toggle (only for sourced_for_you items) ── */}
                 {hasSourcingItems && (
                   <div className="flex items-center justify-between py-0.5">
@@ -625,6 +717,13 @@ export function CheckoutClient() {
                     <div className="flex justify-between text-sm">
                       <span className="text-[14px] sm:text-sm text-emerald-700 dark:text-emerald-400">Discount applied</span>
                       <span className="font-medium text-emerald-700 dark:text-emerald-400">−{fmtPrice(discountDollars)}</span>
+                    </div>
+                  )}
+
+                  {sourcingCreditApplied > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-[14px] sm:text-sm text-emerald-700 dark:text-emerald-400">Sourcing Credit</span>
+                      <span className="font-medium text-emerald-700 dark:text-emerald-400">−{fmtPrice(sourcingCreditApplied)}</span>
                     </div>
                   )}
 

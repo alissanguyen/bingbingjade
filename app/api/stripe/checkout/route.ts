@@ -3,6 +3,8 @@ import { stripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { encodeCheckoutItems, encodeDiscountMeta } from "@/lib/stripe-metadata";
 import { validateDiscount, normalizeEmail } from "@/lib/discount";
+import { computeAvailableCredit } from "@/lib/sourcing-classification";
+import type { LedgerRow } from "@/lib/sourcing-classification";
 import type { CartItem } from "@/types/cart";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
@@ -21,6 +23,7 @@ export async function POST(req: NextRequest) {
     expedited?: boolean;
     customerEmail?: string;
     discountCode?: string;
+    sourcingRequestId?: string;
   };
   try {
     body = await req.json();
@@ -200,14 +203,90 @@ export async function POST(req: NextRequest) {
     quantity: 1,
   });
 
-  // ── Create Stripe coupon for discount (Stripe doesn't accept negative amounts) ─
+  // ── Apply sourcing credit (Option B) ─────────────────────────────────────────
+  // Credit is applied as a direct reduction — Stripe receives the adjusted amount.
+  let sourcingCreditApplied = 0;
+  let sourcingRequestId: string | null = body.sourcingRequestId?.trim() || null;
+
+  if (sourcingRequestId) {
+    const { data: sourcingReq } = await supabaseAdmin
+      .from("sourcing_requests")
+      .select("id, customer_email, deposit_amount_cents, payment_status, credit_expires_at, credit_claimed_at, credit_claimed_session_id")
+      .eq("id", sourcingRequestId)
+      .maybeSingle();
+
+    if (!sourcingReq || sourcingReq.payment_status !== "paid") {
+      return NextResponse.json({ error: "Sourcing credit not found or not yet paid." }, { status: 400 });
+    }
+
+    const now = new Date();
+    if (sourcingReq.credit_expires_at && new Date(sourcingReq.credit_expires_at as string) < now) {
+      return NextResponse.json({ error: "This sourcing credit has expired." }, { status: 400 });
+    }
+
+    // Check if credit is currently locked by another active checkout (not expired)
+    const LOCK_EXPIRY_MINUTES = 30;
+    const lockExpiresAt = sourcingReq.credit_claimed_at
+      ? new Date(new Date(sourcingReq.credit_claimed_at as string).getTime() + LOCK_EXPIRY_MINUTES * 60 * 1000)
+      : null;
+    if (lockExpiresAt && lockExpiresAt > now) {
+      return NextResponse.json({ error: "This sourcing credit is currently reserved in another checkout. Please try again in 30 minutes." }, { status: 409 });
+    }
+
+    // Fetch ledger to compute available balance
+    const { data: ledger } = await supabaseAdmin
+      .from("sourcing_credit_ledger")
+      .select("event_type, amount_cents")
+      .eq("sourcing_request_id", sourcingRequestId);
+
+    const available = computeAvailableCredit(
+      sourcingReq.deposit_amount_cents as number,
+      (ledger ?? []) as LedgerRow[]
+    );
+
+    if (available <= 0) {
+      return NextResponse.json({ error: "No remaining credit on this sourcing request." }, { status: 400 });
+    }
+
+    // Grand total before credit (items after coupon discount + shipping + tx fee)
+    const totalBeforeCredit = discountedItemsCents + transactionFeeAmount + shippingFee * 100;
+    sourcingCreditApplied = Math.min(available, totalBeforeCredit);
+
+    if (sourcingCreditApplied <= 0) {
+      return NextResponse.json({ error: "Credit could not be applied to this order." }, { status: 400 });
+    }
+
+    // Atomic lock: only claims if not already claimed (or lock has expired)
+    const lockExpiry = new Date(now.getTime() - LOCK_EXPIRY_MINUTES * 60 * 1000).toISOString();
+    const { data: claimResult } = await supabaseAdmin
+      .from("sourcing_requests")
+      .update({
+        credit_claimed_at: now.toISOString(),
+        credit_claimed_session_id: "pending",
+        updated_at: now.toISOString(),
+      })
+      .eq("id", sourcingRequestId)
+      .eq("payment_status", "paid")
+      .or(`credit_claimed_at.is.null,credit_claimed_at.lt.${lockExpiry}`)
+      .select("id");
+
+    if (!claimResult || claimResult.length === 0) {
+      return NextResponse.json({ error: "Credit was just claimed by another checkout. Please try again shortly." }, { status: 409 });
+    }
+  }
+
+  // ── Create Stripe coupon for discount + sourcing credit combined ──────────────
+  // Stripe doesn't allow negative line items; combine all discounts into one coupon.
   let stripeCouponId: string | null = null;
-  if (discountAmountCents > 0) {
+  const totalCouponCents = discountAmountCents + sourcingCreditApplied;
+  if (totalCouponCents > 0) {
     const coupon = await stripe.coupons.create({
-      amount_off: discountAmountCents,
+      amount_off: totalCouponCents,
       currency: "usd",
       duration: "once",
-      name: "Discount",
+      name: sourcingCreditApplied > 0
+        ? discountAmountCents > 0 ? "Discount + Sourcing Credit" : "Sourcing Credit"
+        : "Discount",
     });
     stripeCouponId = coupon.id;
   }
@@ -226,6 +305,13 @@ export async function POST(req: NextRequest) {
   const emailMetadata: Record<string, string> = {};
   if (body.customerEmail) {
     emailMetadata.cust_email = normalizeEmail(body.customerEmail);
+  }
+
+  // Sourcing credit metadata (for webhook to commit the ledger row)
+  const sourcingMetadata: Record<string, string> = {};
+  if (sourcingRequestId && sourcingCreditApplied > 0) {
+    sourcingMetadata.sourcing_request_id = sourcingRequestId;
+    sourcingMetadata.sourcing_credit_applied_cents = String(sourcingCreditApplied);
   }
 
   const session = await stripe.checkout.sessions.create({
@@ -249,8 +335,16 @@ export async function POST(req: NextRequest) {
       },
     },
     ...(stripeCouponId ? { discounts: [{ coupon: stripeCouponId }] } : {}),
-    metadata: { ...itemMetadata, ...discountMetadata, ...emailMetadata },
+    metadata: { ...itemMetadata, ...discountMetadata, ...emailMetadata, ...sourcingMetadata },
   });
+
+  // Update the sourcing credit lock with the actual session ID
+  if (sourcingRequestId && sourcingCreditApplied > 0) {
+    await supabaseAdmin
+      .from("sourcing_requests")
+      .update({ credit_claimed_session_id: session.id, updated_at: new Date().toISOString() })
+      .eq("id", sourcingRequestId);
+  }
 
   return NextResponse.json({ url: session.url });
 }

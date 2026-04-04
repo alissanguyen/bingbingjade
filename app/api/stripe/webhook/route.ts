@@ -10,6 +10,7 @@ import {
   fetchEmailItems,
 } from "@/lib/orders";
 import { commitDiscount, normalizeEmail, buildShippingFingerprint } from "@/lib/discount";
+import { CREDIT_VALIDITY_DAYS } from "@/lib/sourcing-classification";
 import type Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -41,6 +42,11 @@ export async function POST(req: NextRequest) {
 
   const session = event.data.object as Stripe.Checkout.Session;
   const supabase = supabaseAdmin;
+
+  // ── Route: sourcing deposit vs product order ──────────────────────────────────
+  if (session.metadata?.is_sourcing_deposit === "true") {
+    return handleSourcingDeposit(session, supabase);
+  }
 
   // ── Idempotency: check if this session was already processed ──────────────────
   const { data: existing } = await supabase
@@ -247,6 +253,11 @@ export async function POST(req: NextRequest) {
       discount_source: discountMeta?.source ?? null,
       discount_amount_cents: discountMeta?.amountCents ?? 0,
       subtotal_before_discount_cents: discountMeta?.subtotalBeforeCents ?? null,
+      // Sourcing credit fields (populated below if credit was applied)
+      sourcing_credit_applied: session.metadata?.sourcing_credit_applied_cents
+        ? parseInt(session.metadata.sourcing_credit_applied_cents, 10)
+        : 0,
+      sourcing_request_id: session.metadata?.sourcing_request_id ?? null,
     })
     .select("id")
     .single();
@@ -300,6 +311,52 @@ export async function POST(req: NextRequest) {
       }
     } catch (err) {
       console.error("[webhook] Discount commit failed (non-fatal):", err);
+    }
+  }
+
+  // ── Commit sourcing credit (idempotent via checkout_session_id) ──────────────
+  if (session.metadata?.sourcing_request_id && session.metadata?.sourcing_credit_applied_cents) {
+    const sourcingRequestId = session.metadata.sourcing_request_id;
+    const appliedCents = parseInt(session.metadata.sourcing_credit_applied_cents, 10);
+
+    try {
+      // Idempotency: only insert if no row exists for this checkout session
+      const { data: existingLedger } = await supabase
+        .from("sourcing_credit_ledger")
+        .select("id")
+        .eq("checkout_session_id", session.id)
+        .eq("event_type", "credit_consumed")
+        .maybeSingle();
+
+      if (!existingLedger) {
+        const { data: sourcingReq } = await supabase
+          .from("sourcing_requests")
+          .select("customer_email, user_id")
+          .eq("id", sourcingRequestId)
+          .maybeSingle();
+
+        if (sourcingReq) {
+          await supabase.from("sourcing_credit_ledger").insert({
+            sourcing_request_id: sourcingRequestId,
+            customer_email:      sourcingReq.customer_email,
+            user_id:             sourcingReq.user_id ?? null,
+            event_type:          "credit_consumed",
+            amount_cents:        appliedCents,
+            currency:            "usd",
+            order_id:            order.id,
+            checkout_session_id: session.id,
+            notes:               `Applied at checkout for order ${orderNumber ?? order.id}`,
+          });
+
+          // Clear the lock so any remaining credit can be used on a future order
+          await supabase
+            .from("sourcing_requests")
+            .update({ credit_claimed_at: null, credit_claimed_session_id: null, updated_at: new Date().toISOString() })
+            .eq("id", sourcingRequestId);
+        }
+      }
+    } catch (err) {
+      console.error("[webhook] Sourcing credit commit failed (non-fatal):", err);
     }
   }
 
@@ -430,5 +487,80 @@ export async function POST(req: NextRequest) {
     await fetch(`${siteUrl}/api/revalidate?secret=${secret}`, { method: "POST" }).catch(() => {});
   }
 
+  return NextResponse.json({ received: true });
+}
+
+// ── Sourcing deposit handler ───────────────────────────────────────────────────
+async function handleSourcingDeposit(
+  session: Stripe.Checkout.Session,
+  supabase: typeof supabaseAdmin
+): Promise<NextResponse> {
+  const sourcingRequestId = session.metadata?.sourcing_request_id;
+  if (!sourcingRequestId) {
+    console.error("[webhook/sourcing] Missing sourcing_request_id in metadata", session.id);
+    return NextResponse.json({ error: "Missing sourcing_request_id." }, { status: 400 });
+  }
+
+  // Idempotency: check if already processed
+  const { data: existing } = await supabase
+    .from("sourcing_requests")
+    .select("id, payment_status, deposit_amount_cents, customer_email, user_id")
+    .eq("id", sourcingRequestId)
+    .maybeSingle();
+
+  if (!existing) {
+    console.error("[webhook/sourcing] sourcing_request not found:", sourcingRequestId);
+    return NextResponse.json({ error: "Sourcing request not found." }, { status: 404 });
+  }
+
+  if (existing.payment_status === "paid") {
+    // Already processed — idempotent no-op
+    return NextResponse.json({ received: true });
+  }
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : (session.payment_intent as { id?: string } | null)?.id ?? null;
+
+  const now = new Date().toISOString();
+  const creditExpiresAt = new Date(
+    Date.now() + CREDIT_VALIDITY_DAYS * 24 * 60 * 60 * 1000
+  ).toISOString();
+
+  // Mark as paid
+  await supabase
+    .from("sourcing_requests")
+    .update({
+      payment_status:          "paid",
+      stripe_payment_intent_id: paymentIntentId,
+      paid_at:                 now,
+      credit_expires_at:       creditExpiresAt,
+      updated_at:              now,
+    })
+    .eq("id", sourcingRequestId);
+
+  // Create credit_created ledger entry (idempotent: unique on sourcing_request_id + event_type + checkout_session_id)
+  const { data: existingLedger } = await supabase
+    .from("sourcing_credit_ledger")
+    .select("id")
+    .eq("sourcing_request_id", sourcingRequestId)
+    .eq("event_type", "credit_created")
+    .maybeSingle();
+
+  if (!existingLedger) {
+    await supabase.from("sourcing_credit_ledger").insert({
+      sourcing_request_id:  sourcingRequestId,
+      customer_email:       existing.customer_email,
+      user_id:              existing.user_id ?? null,
+      event_type:           "credit_created",
+      amount_cents:         existing.deposit_amount_cents,
+      currency:             "usd",
+      checkout_session_id:  session.id,
+      notes:                `Deposit paid via Stripe session ${session.id}`,
+    });
+  }
+
+  console.info("[webhook/sourcing] Deposit confirmed for", sourcingRequestId, "— credit:", existing.deposit_amount_cents);
   return NextResponse.json({ received: true });
 }

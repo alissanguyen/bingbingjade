@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const PROTECTED = ["/add", "/addvendor", "/edit", "/editvendor", "/vendors", "/orders-admin", "/products-admin", "/customers-admin", "/approved-users"];
+const PROTECTED = ["/add", "/addvendor", "/edit", "/editvendor", "/vendors", "/orders-admin", "/products-admin", "/customers-admin", "/approved-users", "/sourcing-admin"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
