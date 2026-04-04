@@ -18,6 +18,40 @@ interface OrderItem {
   line_total: number | null;
 }
 
+interface ShipmentEvent {
+  id: string;
+  event_key: string;
+  label: string;
+  description: string | null;
+  event_time: string | null;
+  is_current: boolean;
+  is_completed: boolean;
+  sort_order: number;
+}
+
+interface ShipmentItemRow {
+  id: string;
+  order_item_id: string;
+}
+
+interface Shipment {
+  id: string;
+  shipment_number: string | null;
+  fulfillment_type: "available_now" | "sourced_for_you" | null;
+  status: string;
+  carrier: string | null;
+  tracking_number: string | null;
+  tracking_url: string | null;
+  shipping_method: string | null;
+  estimated_ship_date: string | null;
+  estimated_delivery_start: string | null;
+  estimated_delivery_end: string | null;
+  shipped_at: string | null;
+  delivered_at: string | null;
+  shipment_events: ShipmentEvent[];
+  shipment_items: ShipmentItemRow[];
+}
+
 interface ShippingAddress {
   recipient_name: string | null;
   address_line1: string;
@@ -55,6 +89,7 @@ interface Order {
   } | null;
   order_items: OrderItem[];
   shipping_address: ShippingAddress | null;
+  shipments?: Shipment[];
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -152,10 +187,70 @@ export function OrderDetailClient({
   const [draftItems, setDraftItems] = useState<DraftItem[]>([]);
   const [savingItems, setSavingItems] = useState(false);
 
+  // Shipments state
+  const [shipments, setShipments] = useState<Shipment[]>((initialOrder.shipments ?? []) as Shipment[]);
+  const [shipmentDrafts, setShipmentDrafts] = useState<Record<string, { carrier: string; tracking_number: string; tracking_url: string; estimated_delivery_start: string; estimated_delivery_end: string }>>({});
+  const [savingShipment, setSavingShipment] = useState<string | null>(null);
+  const [advancingShipment, setAdvancingShipment] = useState<string | null>(null);
+
   // Cancel modal state
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState("customer_changed_mind");
   const [restoreItems, setRestoreItems] = useState(false);
+
+  function getShipmentDraft(id: string, shipment: Shipment) {
+    return shipmentDrafts[id] ?? {
+      carrier: shipment.carrier ?? "",
+      tracking_number: shipment.tracking_number ?? "",
+      tracking_url: shipment.tracking_url ?? "",
+      estimated_delivery_start: shipment.estimated_delivery_start ?? "",
+      estimated_delivery_end: shipment.estimated_delivery_end ?? "",
+    };
+  }
+
+  async function handleSaveShipment(shipmentId: string) {
+    const draft = shipmentDrafts[shipmentId];
+    if (!draft) return;
+    setSavingShipment(shipmentId);
+    try {
+      const res = await fetch(`/api/admin/shipments/${shipmentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          carrier: draft.carrier || null,
+          tracking_number: draft.tracking_number || null,
+          tracking_url: draft.tracking_url || null,
+          estimated_delivery_start: draft.estimated_delivery_start || null,
+          estimated_delivery_end: draft.estimated_delivery_end || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast("err", data.error ?? "Save failed"); return; }
+      setShipments((prev) => prev.map((s) => s.id === shipmentId ? { ...s, ...data.shipment } : s));
+      setShipmentDrafts((prev) => { const n = { ...prev }; delete n[shipmentId]; return n; });
+      showToast("ok", "Shipment saved");
+    } finally {
+      setSavingShipment(null);
+    }
+  }
+
+  async function handleAdvanceEvent(shipmentId: string) {
+    setAdvancingShipment(shipmentId);
+    try {
+      const res = await fetch(`/api/admin/shipments/${shipmentId}/advance-event`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { showToast("err", data.error ?? "Advance failed"); return; }
+      setShipments((prev) =>
+        prev.map((s) =>
+          s.id === shipmentId
+            ? { ...s, ...data.shipment, shipment_events: data.events, shipment_items: s.shipment_items }
+            : s
+        )
+      );
+    } finally {
+      setAdvancingShipment(null);
+    }
+  }
 
   function showToast(type: "ok" | "err", msg: string) {
     setToast({ type, msg });
@@ -688,6 +783,147 @@ export function OrderDetailClient({
                 </div>
               </div>
             </div>
+
+            {/* Shipments */}
+            {shipments.length > 0 && (
+              <div className="space-y-4">
+                {shipments.map((shipment) => {
+                  const draft = getShipmentDraft(shipment.id, shipment);
+                  const hasDraft = !!shipmentDrafts[shipment.id];
+                  const sortedEvents = [...(shipment.shipment_events ?? [])].sort((a, b) => a.sort_order - b.sort_order);
+                  const currentEvent = sortedEvents.find((e) => e.is_current);
+                  const isLastEvent = currentEvent && sortedEvents.indexOf(currentEvent) === sortedEvents.length - 1;
+                  const itemNames = (shipment.shipment_items ?? [])
+                    .map((si) => {
+                      const oi = order.order_items.find((i) => i.id === si.order_item_id);
+                      return oi ? oi.product_name + (oi.option_label ? ` — ${oi.option_label}` : "") : null;
+                    })
+                    .filter(Boolean) as string[];
+
+                  return (
+                    <div key={shipment.id} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                      {/* Header */}
+                      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            {shipment.shipment_number ?? "Shipment"}
+                          </h2>
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                            shipment.fulfillment_type === "available_now"
+                              ? "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400"
+                              : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400"
+                          }`}>
+                            {shipment.fulfillment_type === "available_now" ? "Available Now" : "Sourced for You"}
+                          </span>
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                            shipment.status === "delivered" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" :
+                            shipment.status === "shipped"   ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" :
+                            shipment.status === "processing"? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
+                            "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                          }`}>
+                            {shipment.status}
+                          </span>
+                        </div>
+                        {!isLastEvent && (
+                          <button
+                            onClick={() => handleAdvanceEvent(shipment.id)}
+                            disabled={advancingShipment === shipment.id}
+                            className="text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:underline disabled:opacity-50"
+                          >
+                            {advancingShipment === shipment.id ? "Advancing…" : "Advance →"}
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="px-4 py-3 space-y-4">
+                        {/* Items in shipment */}
+                        {itemNames.length > 0 && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
+                            {itemNames.map((n, i) => <p key={i}>{n}</p>)}
+                          </div>
+                        )}
+
+                        {/* Event timeline */}
+                        <ol className="space-y-1.5">
+                          {sortedEvents.map((ev) => (
+                            <li key={ev.id} className="flex items-start gap-2">
+                              <div className={`mt-0.5 w-2.5 h-2.5 rounded-full shrink-0 ${
+                                ev.is_completed ? "bg-emerald-500" :
+                                ev.is_current   ? "bg-amber-400 animate-pulse" :
+                                "bg-gray-200 dark:bg-gray-700"
+                              }`} />
+                              <div>
+                                <p className={`text-xs font-medium ${
+                                  ev.is_current   ? "text-amber-700 dark:text-amber-300" :
+                                  ev.is_completed ? "text-gray-500 dark:text-gray-400" :
+                                  "text-gray-400 dark:text-gray-600"
+                                }`}>
+                                  {ev.label}
+                                  {ev.is_current && <span className="ml-1.5 text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full">Current</span>}
+                                  {ev.event_time && (
+                                    <span className="ml-1.5 text-[10px] text-gray-400 font-normal">
+                                      {new Date(ev.event_time).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                                    </span>
+                                  )}
+                                </p>
+                              </div>
+                            </li>
+                          ))}
+                        </ol>
+
+                        {/* Tracking fields */}
+                        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gray-100 dark:border-gray-800">
+                          {[
+                            { key: "carrier", label: "Carrier", placeholder: "e.g. FedEx" },
+                            { key: "tracking_number", label: "Tracking #", placeholder: "Tracking number" },
+                            { key: "estimated_delivery_start", label: "Est. Delivery From", placeholder: "YYYY-MM-DD", type: "date" },
+                            { key: "estimated_delivery_end", label: "Est. Delivery To", placeholder: "YYYY-MM-DD", type: "date" },
+                          ].map(({ key, label, placeholder, type }) => (
+                            <div key={key}>
+                              <label className="block text-[10px] font-medium text-gray-400 dark:text-gray-500 mb-0.5">{label}</label>
+                              <input
+                                type={type ?? "text"}
+                                value={draft[key as keyof typeof draft]}
+                                onChange={(e) => setShipmentDrafts((prev) => ({
+                                  ...prev,
+                                  [shipment.id]: { ...draft, [key]: e.target.value },
+                                }))}
+                                placeholder={placeholder}
+                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs px-2.5 py-1.5 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                              />
+                            </div>
+                          ))}
+                          <div className="col-span-2">
+                            <label className="block text-[10px] font-medium text-gray-400 dark:text-gray-500 mb-0.5">Tracking URL</label>
+                            <input
+                              type="url"
+                              value={draft.tracking_url}
+                              onChange={(e) => setShipmentDrafts((prev) => ({
+                                ...prev,
+                                [shipment.id]: { ...draft, tracking_url: e.target.value },
+                              }))}
+                              placeholder="https://..."
+                              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs px-2.5 py-1.5 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                          </div>
+                          {hasDraft && (
+                            <div className="col-span-2 flex justify-end">
+                              <button
+                                onClick={() => handleSaveShipment(shipment.id)}
+                                disabled={savingShipment === shipment.id}
+                                className="text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:underline disabled:opacity-50"
+                              >
+                                {savingShipment === shipment.id ? "Saving…" : "Save tracking info"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Customer */}
             <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-4">

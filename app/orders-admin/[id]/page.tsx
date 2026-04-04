@@ -23,6 +23,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       shipping_address:customer_addresses(
         recipient_name, address_line1, address_line2,
         city, state_or_region, postal_code, country
+      ),
+      shipments(
+        *,
+        shipment_events(*),
+        shipment_items(id, order_item_id)
       )
     `)
     .eq("id", id)
