@@ -364,8 +364,8 @@ export default function SourcingForm() {
               <p className="font-bold text-emerald-700 dark:text-emerald-300 mb-0.5">Standard · $50</p>
               <p className="text-gray-500 dark:text-gray-400 leading-relaxed">Score 0–1. General preferences, flexible on details.</p>
             </div>
-            <div className="rounded-xl border border-yellow-200 dark:border-yellow-800 bg-white dark:bg-gray-950 px-3 py-2.5">
-              <p className="font-bold text-yellow-700 dark:text-yellow-300 mb-0.5">Premium · $100</p>
+            <div className="rounded-xl border border-violet-200 dark:border-violet-800 bg-white dark:bg-gray-950 px-3 py-2.5">
+              <p className="font-bold text-violet-700 dark:text-violet-300 mb-0.5">Premium · $100</p>
               <p className="text-gray-500 dark:text-gray-400 leading-relaxed">Score 2–4. Specific color, pattern, or translucency requirements.</p>
             </div>
             <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-white dark:bg-gray-950 px-3 py-2.5">
@@ -559,7 +559,7 @@ export default function SourcingForm() {
                 requestType === "concierge"
                   ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
                   : requestType === "premium"
-                    ? "bg-yellow-100 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800"
+                    ? "bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800"
                     : "bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800"
               }`}>
                 {requestType === "concierge" ? "Concierge" : requestType === "premium" ? "Premium" : "Standard"} · Score {score}
@@ -867,7 +867,7 @@ export default function SourcingForm() {
                   requestType === "concierge"
                     ? "text-amber-800 dark:text-amber-200"
                     : requestType === "premium"
-                      ? "text-yellow-700 dark:text-yellow-300"
+                      ? "text-violet-800 dark:text-violet-200"
                       : "text-emerald-800 dark:text-emerald-200"
                 }`}>
                   {requestType === "concierge"
@@ -881,7 +881,7 @@ export default function SourcingForm() {
                 requestType === "concierge"
                   ? "bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200"
                   : requestType === "premium"
-                    ? "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300"
+                    ? "bg-violet-200 dark:bg-violet-900 text-violet-800 dark:text-violet-200"
                     : "bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200"
               }`}>
                 {requestType.toUpperCase()}
@@ -927,7 +927,7 @@ export default function SourcingForm() {
                     requestType === "concierge"
                       ? "text-amber-700 dark:text-amber-300"
                       : requestType === "premium"
-                        ? "text-yellow-700 dark:text-yellow-400"
+                        ? "text-violet-700 dark:text-violet-300"
                         : "text-emerald-700 dark:text-emerald-300"
                   }`}>
                     ${depositDollars}
@@ -966,7 +966,7 @@ export default function SourcingForm() {
                 ? requestType === "concierge"
                   ? "bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-200 dark:shadow-amber-900/30"
                   : requestType === "premium"
-                    ? "bg-yellow-600 hover:bg-yellow-700 text-white shadow-lg shadow-yellow-200 dark:shadow-yellow-900/30"
+                    ? "bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-200 dark:shadow-violet-900/30"
                     : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 dark:shadow-emerald-900/30"
                 : "bg-gray-200 dark:bg-gray-800 text-gray-400 cursor-not-allowed"
             }`}
