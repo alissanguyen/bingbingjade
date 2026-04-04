@@ -340,11 +340,11 @@ export function CartDrawer() {
               </div>
             </div>
             {totalSavings > 0 && (
-              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+              <p className="text-[11px] sm:text-[16px] text-emerald-600 dark:text-emerald-400 font-medium">
                 You save {fmtPrice(totalSavings)} with current sale prices.
               </p>
             )}
-            <p className="text-[12px] sm:text-sm italic text-gray-400 dark:text-gray-500">
+            <p className="text-[12px] sm:text-[16px] italic text-gray-400 dark:text-gray-500">
               Shipping, discounts & fees calculated at checkout.
             </p>
             <p className="p-2 sm:p-3 bg-amber-500/15 border-2 rounded-xl italic border-amber-500/50 text-[11px] sm:text-[15px] text-amber-700 dark:text-amber-400/80">

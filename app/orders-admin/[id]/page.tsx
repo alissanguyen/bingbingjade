@@ -23,17 +23,28 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       shipping_address:customer_addresses(
         recipient_name, address_line1, address_line2,
         city, state_or_region, postal_code, country
-      ),
-      shipments(
-        *,
-        shipment_events(*),
-        shipment_items(id, order_item_id)
       )
     `)
     .eq("id", id)
     .single();
 
   if (!order) notFound();
+
+  // Fetch shipments separately — safe to fail before migration_042 is run
+  let shipments: unknown[] = [];
+  try {
+    const { data } = await supabaseAdmin
+      .from("shipments")
+      .select(`
+        *,
+        shipment_events(*),
+        shipment_items(id, order_item_id)
+      `)
+      .eq("order_id", id);
+    shipments = data ?? [];
+  } catch {
+    // Table doesn't exist yet — page loads without shipment data
+  }
 
   // Fetch product images for each order item that has a product_id
   const productIds = (order.order_items as { product_id: string | null }[])
@@ -60,7 +71,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   return (
     <>
       <AdminBarServer />
-      <OrderDetailClient order={order} productImages={productImages} />
+      <OrderDetailClient order={{ ...order, shipments }} productImages={productImages} />
     </>
   );
 }
