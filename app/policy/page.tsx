@@ -59,12 +59,12 @@ const sections = [
   {
     id: "shipping-delivery",
     title: "Shipping & Delivery",
-    body: "Orders are carefully prepared, processed, and shipped within an estimated timeframe of 2–4 weeks. This includes quality inspection, certification, and international handling when applicable. Once dispatched, your order will continue to its final destination. We prioritize care and accuracy at every step to ensure your piece arrives safely.",
+    body: "Items labeled “Available Now” are in our U.S. inventory and typically ship within 2–5 business days, offering a faster and more convenient delivery experience. Pieces labeled “Sourced for You” are carefully selected and prepared upon order, with an estimated delivery timeframe of 2–4 weeks. This allows for quality inspection, certification, and international handling when applicable. We prioritize care and accuracy at every step to ensure your piece arrives safely.",
   },
   {
     id: "expedited-shipping",
-    title: "Expedited Shipping",
-    body: "Expedited shipping is available for $100 (plus $10 per additional item). With this option, your piece is prioritized and dispatched without delay. This is recommended for time-sensitive orders, high-value pieces, or special occasions.",
+    title: "Expedited Sourcing & Shipping",
+    body: `Expedited shipping is available for "Sourced for You" items for $100 (plus $10 per additional item). With this option, your piece is prioritized and dispatched without delay. This is recommended for time-sensitive orders, high-value pieces, or special occasions.`,
   },
   {
     id: "shipping-insurance",

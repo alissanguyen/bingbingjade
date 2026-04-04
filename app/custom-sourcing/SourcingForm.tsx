@@ -362,15 +362,15 @@ export default function SourcingForm() {
           <div className="grid sm:grid-cols-3 gap-3 text-xs">
             <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-gray-950 px-3 py-2.5">
               <p className="font-bold text-emerald-700 dark:text-emerald-300 mb-0.5">Standard · $50</p>
-              <p className="text-gray-500 dark:text-gray-400 leading-relaxed">Score 0–1. General preferences, flexible on details.</p>
+              <p className="text-gray-500 dark:text-gray-400 leading-relaxed">General preferences, flexible on details.</p>
             </div>
             <div className="rounded-xl border border-violet-200 dark:border-violet-800 bg-white dark:bg-gray-950 px-3 py-2.5">
               <p className="font-bold text-violet-700 dark:text-violet-300 mb-0.5">Premium · $100</p>
-              <p className="text-gray-500 dark:text-gray-400 leading-relaxed">Score 2–4. Specific color, pattern, or translucency requirements.</p>
+              <p className="text-gray-500 dark:text-gray-400 leading-relaxed">Specific color, pattern, or translucency requirements.</p>
             </div>
             <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-white dark:bg-gray-950 px-3 py-2.5">
               <p className="font-bold text-amber-700 dark:text-amber-300 mb-0.5">Concierge · $150</p>
-              <p className="text-gray-500 dark:text-gray-400 leading-relaxed">Score 5+. Close photo match or multiple strict requirements.</p>
+              <p className="text-gray-500 dark:text-gray-400 leading-relaxed">Close photo match or multiple strict requirements.</p>
             </div>
           </div>
           <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
@@ -852,7 +852,72 @@ export default function SourcingForm() {
         </div>
 
         {/* ── Preview + Deposit ─────────────────────────────────── */}
-        {showPreview && (
+        {showPreview && (requestType === "concierge" ? (
+          <div className="concierge-gold-card rounded-2xl p-6 space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs text-[16px] font-semibold uppercase tracking-[0.15em] text-amber-900/60 mb-1">
+                  Request Summary
+                </p>
+                <h3 className="text-lg font-bold text-amber-950">
+                  Concierge Sourcing Request
+                </h3>
+              </div>
+              <div className="px-3 py-1.5 rounded-full text-xs text-[16px] font-bold tracking-wider shrink-0 bg-amber-900/20 text-amber-950">
+                CONCIERGE
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-3 text-sm">
+              {form.category && (
+                <div>
+                  <span className="text-xs text-[16px] text-amber-900/60 uppercase tracking-wide">Category</span>
+                  <p className="font-medium text-amber-950 capitalize">{form.category}</p>
+                </div>
+              )}
+              {form.budget_min && (
+                <div>
+                  <span className="text-xs text-[16px] text-amber-900/60 uppercase tracking-wide">Budget</span>
+                  <p className="font-medium text-amber-950">
+                    ${form.budget_min}{form.budget_max ? `–$${form.budget_max}` : "+"}
+                  </p>
+                </div>
+              )}
+              {form.preferred_color && (
+                <div>
+                  <span className="text-xs text-[16px] text-amber-900/60 uppercase tracking-wide">Color</span>
+                  <p className="font-medium text-amber-950">{form.preferred_color}</p>
+                </div>
+              )}
+              {form.timeline && (
+                <div>
+                  <span className="text-xs text-[16px] text-amber-900/60 uppercase tracking-wide">Timeline</span>
+                  <p className="font-medium text-amber-950">
+                    {TIMELINES.find((t) => t.value === form.timeline)?.label}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-amber-900/20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-amber-900/70">Deposit due today</p>
+                  <p className="text-2xl font-bold text-amber-950">
+                    ${depositDollars}
+                  </p>
+                  <div className="text-xs text-amber-900/60 mt-0.5 space-y-0.5">
+                    <p>Base ({requestType}): ${baseDepositCents / 100}</p>
+                    {timelineSurchargeCents > 0 && (
+                      <p>Timeline urgency: +${timelineSurchargeCents / 100}</p>
+                    )}
+                    <p>Applied as credit toward your final purchase</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
           <div className={`rounded-2xl border-2 p-6 space-y-4 ${
             requestType === "premium"
               ? "border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/20"
@@ -864,25 +929,17 @@ export default function SourcingForm() {
                   Request Summary
                 </p>
                 <h3 className={`text-lg font-bold ${
-                  requestType === "concierge"
-                    ? "text-amber-800 dark:text-amber-200"
-                    : requestType === "premium"
-                      ? "text-violet-800 dark:text-violet-200"
-                      : "text-emerald-800 dark:text-emerald-200"
+                  requestType === "premium"
+                    ? "text-violet-800 dark:text-violet-200"
+                    : "text-emerald-800 dark:text-emerald-200"
                 }`}>
-                  {requestType === "concierge"
-                    ? "Concierge Sourcing Request"
-                    : requestType === "premium"
-                      ? "Premium Sourcing Request"
-                      : "Standard Sourcing Request"}
+                  {requestType === "premium" ? "Premium Sourcing Request" : "Standard Sourcing Request"}
                 </h3>
               </div>
               <div className={`px-3 py-1.5 rounded-full text-xs text-[16px] font-bold tracking-wider shrink-0 ${
-                requestType === "concierge"
-                  ? "bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200"
-                  : requestType === "premium"
-                    ? "bg-violet-200 dark:bg-violet-900 text-violet-800 dark:text-violet-200"
-                    : "bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200"
+                requestType === "premium"
+                  ? "bg-violet-200 dark:bg-violet-900 text-violet-800 dark:text-violet-200"
+                  : "bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200"
               }`}>
                 {requestType.toUpperCase()}
               </div>
@@ -924,11 +981,9 @@ export default function SourcingForm() {
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Deposit due today</p>
                   <p className={`text-2xl font-bold ${
-                    requestType === "concierge"
-                      ? "text-amber-700 dark:text-amber-300"
-                      : requestType === "premium"
-                        ? "text-violet-700 dark:text-violet-300"
-                        : "text-emerald-700 dark:text-emerald-300"
+                    requestType === "premium"
+                      ? "text-violet-700 dark:text-violet-300"
+                      : "text-emerald-700 dark:text-emerald-300"
                   }`}>
                     ${depositDollars}
                   </p>
@@ -940,14 +995,10 @@ export default function SourcingForm() {
                     <p>Applied as credit toward your final purchase</p>
                   </div>
                 </div>
-                <div className="text-right text-xs text-[16px] text-gray-400 dark:text-gray-500 space-y-0.5">
-                  <p>Score: {score}</p>
-                  <p>Tier: {requestType}</p>
-                </div>
               </div>
             </div>
           </div>
-        )}
+        ))}
 
         {/* ── Error ─────────────────────────────────────────────── */}
         {error && (

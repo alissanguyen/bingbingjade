@@ -66,6 +66,20 @@ body {
   --animate-marquee: marquee 40s linear infinite;
 }
 
+/* Concierge gold card */
+.concierge-gold-card {
+  background-image: linear-gradient(
+    140deg,
+    #fefae8 0%,
+    #f5da6a 20%,
+    #e2b830 45%,
+    #c89518 70%,
+    #d4a830 90%,
+    #f0cc58 100%
+  );
+  transition: none;
+}
+
 *, *::before, *::after {
   transition-property: background-color, border-color, color;
   transition-duration: 0.3s;

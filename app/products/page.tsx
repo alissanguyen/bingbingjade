@@ -303,7 +303,7 @@ export default async function Products({
                           style={{ boxShadow: "0 0 8px 1px rgba(56,189,248,0.35)" }}
                         >
                           <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_4px_1px_rgba(56,189,248,0.8)]" />
-                          Ships Now
+                          Available Now
                         </div>
                       </div>
                     )}

@@ -53,7 +53,7 @@ export default async function Contact({
 
         {/* Reddit */}
         <a
-          href="https://www.reddit.com/user/Technical-Slice657/"
+          href="https://www.reddit.com/user/BingBingJade/"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:border-orange-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors group"

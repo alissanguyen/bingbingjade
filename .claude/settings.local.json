@@ -35,7 +35,11 @@
       "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -path */node_modules -prune -o -type f \\\\\\(-name *.sql -o -name *migration* \\\\\\) -print)",
       "Bash(since you already have the [option label] in cart\" using the actual:*)",
       "Bash(git show:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(wc:*)",
+      "Bash(find /Users/nouveau/Documents/workspaces/jade-shop/supabase/migrations -name *.sql)",
+      "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -path */migrations/* -name *.sql)",
+      "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -name *migration* -o -name migrations)"
     ]
   }
 }

@@ -32,6 +32,12 @@ const faqs = [
     )
   },
   {
+    id: "inventory-types",
+    question: "What is the difference between “Available Now” and “Sourced for You”?",
+    answer:
+      "“Available Now” pieces are already in our U.S. inventory and typically ship within 2–5 business days. “Sourced for You” pieces are carefully selected and prepared upon order, with an estimated delivery timeframe of 2–4 weeks. This allows us to offer a wider range of unique and high-quality jade while maintaining strict quality control.",
+  },
+  {
     id: "natural-variation",
     question: "Why doesn't my jade look exactly the same in person?",
     answer:
@@ -41,19 +47,18 @@ const faqs = [
     id: "payment-methods",
     question: "What payment methods do you accept?",
     answer:
-     "We accept PayPal Goods & Services (a 3.5% processing fee applies), PayPal Friends & Family, Zelle, and wire transfer. Applicable sales tax may apply based on the delivery destination.",
+      "We accept PayPal Goods & Services (a 3.5% processing fee applies), PayPal Friends & Family, Zelle, and wire transfer. Applicable sales tax may apply based on the delivery destination.",
   },
   {
     id: "standard-shipping",
-    question: "How does standard shipping work?",
+    question: "How does shipping work?",
     answer:
-      "Orders are carefully prepared and shipped within an estimated timeframe of 2–4 weeks. This allows for quality inspection, certification, and international handling where applicable. Once dispatched, your order will continue to its final destination.",
+      "Shipping time depends on the type of piece you select. Items labeled “Available Now” are already in our U.S. inventory and typically ship within 2–5 business days. Pieces labeled “Sourced for You” are carefully prepared upon order and typically arrive within 2–4 weeks, allowing time for quality inspection, certification, and international handling.",
   },
   {
-    id: "expedited-shipping",
-    question: "Do you offer expedited shipping?",
-    answer:
-      "Yes. Expedited shipping is available for $100 (plus $10 per additional item) and prioritizes your piece for immediate processing and dispatch. This option is recommended for time-sensitive orders or special occasions.",
+    id: "expedited-sourcing",
+    question: "Priority Sourcing / Expedited Shipping: What is it and how does it work?",
+    answer: "For pieces labeled “Sourced for You,” priority sourcing is available for $100 (plus $10 per additional item). With this option, your order is prioritized at every stage — including sourcing, preparation, and dispatch — to reduce overall processing time. This is recommended for time-sensitive orders or special occasions. Priority sourcing does not apply to items labeled “Available Now,” which are already ready for immediate shipment from our U.S. inventory.",
   },
   {
     id: "shipping-insurance",
