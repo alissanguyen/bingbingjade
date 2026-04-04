@@ -200,6 +200,30 @@ export async function POST(req: NextRequest) {
       ? session.payment_intent
       : (session.payment_intent as Stripe.PaymentIntent | null)?.id ?? null;
 
+  // ── Fetch Stripe line items to extract shipping + fee breakdown ──────────────
+  let feeBreakdown: Record<string, number | string> | null = null;
+  try {
+    const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 20 });
+    let shippingCents = 0;
+    let txFeeCents = 0;
+    let discountCents = discountMeta?.amountCents ?? 0;
+    for (const li of lineItems.data) {
+      const name = li.description ?? "";
+      if (name.startsWith("Shipping") || name.startsWith("Priority Sourcing")) {
+        shippingCents = li.amount_total;
+      } else if (name.startsWith("Transaction Fee")) {
+        txFeeCents = li.amount_total;
+      }
+    }
+    const fees: Record<string, number | string> = {};
+    if (shippingCents > 0) fees.shipping = shippingCents / 100;
+    if (txFeeCents > 0) fees.paypal = txFeeCents / 100; // stored under 'paypal' = transaction fee slot
+    if (discountCents > 0) fees.discount = discountCents / 100;
+    if (Object.keys(fees).length > 0) feeBreakdown = fees;
+  } catch (err) {
+    console.error("[webhook] Failed to fetch line items for fee breakdown (non-fatal):", err);
+  }
+
   // ── Create order record ───────────────────────────────────────────────────────
   const { data: order, error: orderErr } = await supabase
     .from("orders")
@@ -218,6 +242,7 @@ export async function POST(req: NextRequest) {
       order_status: "order_confirmed",
       source: "stripe",
       shipping_address_id: shippingAddressId,
+      fee_breakdown: feeBreakdown,
       // Discount fields
       discount_source: discountMeta?.source ?? null,
       discount_amount_cents: discountMeta?.amountCents ?? 0,
