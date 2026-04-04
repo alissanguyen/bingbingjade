@@ -28,7 +28,7 @@ const SOURCING_STATUS_COLORS: Record<string, string> = {
 
 const REQUEST_TYPE_COLORS: Record<string, string> = {
   standard:  "bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300",
-  premium:   "bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300",
+  premium:   "bg-yellow-100 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-400",
   concierge: "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300",
 };
 

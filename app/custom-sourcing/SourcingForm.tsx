@@ -355,12 +355,26 @@ export default function SourcingForm() {
 
       {/* ── How classification works ───────────────────────────── */}
       <div className="mx-auto max-w-3xl px-6 pt-10">
-        <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 px-5 py-4">
-          <p className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-1">
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/60 px-5 py-4 space-y-3">
+          <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
             How your request is classified
           </p>
-          <p className="text-xs text-[16px] text-amber-700/80 dark:text-amber-300/70 leading-relaxed">
-            Based on your preferences, requests are automatically classified as <strong>Standard ($50 deposit)</strong> or <strong>Premium ($100 deposit)</strong>. More specific requests — close photo matching, exact dimensions, or strict must-haves — are classified as Premium. The deposit is fully applied as credit toward your purchase.
+          <div className="grid sm:grid-cols-3 gap-3 text-xs">
+            <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-gray-950 px-3 py-2.5">
+              <p className="font-bold text-emerald-700 dark:text-emerald-300 mb-0.5">Standard · $50</p>
+              <p className="text-gray-500 dark:text-gray-400 leading-relaxed">Score 0–1. General preferences, flexible on details.</p>
+            </div>
+            <div className="rounded-xl border border-yellow-200 dark:border-yellow-800 bg-white dark:bg-gray-950 px-3 py-2.5">
+              <p className="font-bold text-yellow-700 dark:text-yellow-300 mb-0.5">Premium · $100</p>
+              <p className="text-gray-500 dark:text-gray-400 leading-relaxed">Score 2–4. Specific color, pattern, or translucency requirements.</p>
+            </div>
+            <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-white dark:bg-gray-950 px-3 py-2.5">
+              <p className="font-bold text-amber-700 dark:text-amber-300 mb-0.5">Concierge · $150</p>
+              <p className="text-gray-500 dark:text-gray-400 leading-relaxed">Score 5+. Close photo match or multiple strict requirements.</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
+            Timeline urgency adds <strong className="text-gray-600 dark:text-gray-300">$0–$50</strong> on top of the base deposit. The full deposit is applied as credit toward your purchase.
           </p>
         </div>
       </div>
@@ -502,8 +516,8 @@ export default function SourcingForm() {
         {/* ── Section 3: Must-haves & Must-avoids ─────────────── */}
         <div className={sectionClass}>
           <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">Requirements</h2>
-          <p className="text-xs text-[16px] text-[16px] text-gray-400 dark:text-gray-500 -mt-2">
-            Listing 3+ specific must-haves may upgrade your request to <strong>Premium</strong>.
+          <p className="text-xs text-[16px] text-gray-400 dark:text-gray-500 -mt-2">
+            The more specific your requirements, the higher the sourcing effort — and the tier.
           </p>
 
           <div>
@@ -536,17 +550,19 @@ export default function SourcingForm() {
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Specificity</h2>
-              <p className="text-xs text-[16px] text-[16px] text-gray-400 dark:text-gray-500 mt-0.5">
-                These signals determine whether your request is Standard or Premium.
+              <p className="text-xs text-[16px] text-gray-400 dark:text-gray-500 mt-0.5">
+                These signals determine your tier: Standard, Premium, or Concierge.
               </p>
             </div>
             {showPreview && (
-              <div className={`shrink-0 px-3 py-1.5 rounded-full text-xs text-[16px] text-[16px] font-bold tracking-wide ${
-                requestType === "premium"
-                  ? "bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800"
-                  : "bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800"
+              <div className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold tracking-wide border ${
+                requestType === "concierge"
+                  ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                  : requestType === "premium"
+                    ? "bg-yellow-100 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800"
+                    : "bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800"
               }`}>
-                {requestType === "premium" ? "Premium" : "Standard"} · Score {score}
+                {requestType === "concierge" ? "Concierge" : requestType === "premium" ? "Premium" : "Standard"} · Score {score}
               </div>
             )}
           </div>
@@ -554,7 +570,7 @@ export default function SourcingForm() {
           <div className="space-y-3">
             <Toggle
               label="I have a close reference photo or piece I want to match"
-              description="You'll upload or link reference images. Adds +2 to strictness score."
+              description="You'll upload reference images. Adds +3 to strictness score — strongest signal."
               checked={form.close_reference_match}
               onChange={(v) => set("close_reference_match", v)}
             />
@@ -574,7 +590,7 @@ export default function SourcingForm() {
 
             <Toggle
               label="Exact color / tone is important"
-              description="You have a specific shade in mind and won't accept significant variation."
+              description="You have a specific shade in mind and won't accept significant variation. Adds +2."
               checked={form.exact_color_matters}
               onChange={(v) => set("exact_color_matters", v)}
             />
@@ -593,7 +609,7 @@ export default function SourcingForm() {
 
             <Toggle
               label="Pattern / veining is important"
-              description="The natural markings and texture of the jade matter to you."
+              description="The natural markings and texture of the jade matter to you. Adds +2."
               checked={form.pattern_veining_matters}
               onChange={(v) => set("pattern_veining_matters", v)}
             />
@@ -612,7 +628,7 @@ export default function SourcingForm() {
 
             <Toggle
               label="Translucency level is important"
-              description="How much light passes through the stone matters to you."
+              description="How much light passes through the stone matters to you. Adds +2."
               checked={form.translucency_matters}
               onChange={(v) => set("translucency_matters", v)}
             />
@@ -689,7 +705,7 @@ export default function SourcingForm() {
 
             <Toggle
               label="Exact size / shape / dimensions are important"
-              description="You need a specific size that won't fit otherwise (e.g. ring size, wrist fit, pendant dimensions)."
+              description="You need a specific size that won't fit otherwise (e.g. ring size, wrist fit, pendant dimensions). Adds +1."
               checked={form.exact_dimensions_matters}
               onChange={(v) => set("exact_dimensions_matters", v)}
             />
@@ -848,18 +864,24 @@ export default function SourcingForm() {
                   Request Summary
                 </p>
                 <h3 className={`text-lg font-bold ${
-                  requestType === "premium"
-                    ? "text-violet-800 dark:text-violet-200"
-                    : "text-emerald-800 dark:text-emerald-200"
+                  requestType === "concierge"
+                    ? "text-amber-800 dark:text-amber-200"
+                    : requestType === "premium"
+                      ? "text-yellow-700 dark:text-yellow-300"
+                      : "text-emerald-800 dark:text-emerald-200"
                 }`}>
-                  {requestType === "premium" ? "Premium Sourcing Request" : "Standard Sourcing Request"}
+                  {requestType === "concierge"
+                    ? "Concierge Sourcing Request"
+                    : requestType === "premium"
+                      ? "Premium Sourcing Request"
+                      : "Standard Sourcing Request"}
                 </h3>
               </div>
               <div className={`px-3 py-1.5 rounded-full text-xs text-[16px] font-bold tracking-wider shrink-0 ${
                 requestType === "concierge"
                   ? "bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200"
                   : requestType === "premium"
-                    ? "bg-violet-200 dark:bg-violet-900 text-violet-800 dark:text-violet-200"
+                    ? "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300"
                     : "bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200"
               }`}>
                 {requestType.toUpperCase()}
@@ -905,7 +927,7 @@ export default function SourcingForm() {
                     requestType === "concierge"
                       ? "text-amber-700 dark:text-amber-300"
                       : requestType === "premium"
-                        ? "text-violet-700 dark:text-violet-300"
+                        ? "text-yellow-700 dark:text-yellow-400"
                         : "text-emerald-700 dark:text-emerald-300"
                   }`}>
                     ${depositDollars}
@@ -944,7 +966,7 @@ export default function SourcingForm() {
                 ? requestType === "concierge"
                   ? "bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-200 dark:shadow-amber-900/30"
                   : requestType === "premium"
-                    ? "bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-200 dark:shadow-violet-900/30"
+                    ? "bg-yellow-600 hover:bg-yellow-700 text-white shadow-lg shadow-yellow-200 dark:shadow-yellow-900/30"
                     : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 dark:shadow-emerald-900/30"
                 : "bg-gray-200 dark:bg-gray-800 text-gray-400 cursor-not-allowed"
             }`}
