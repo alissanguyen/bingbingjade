@@ -13,6 +13,19 @@ import {
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type Category = "bracelet" | "bangle" | "ring" | "pendant" | "necklace" | "set" | "other";
+
+// Minimum effective budget (max ?? min) required per translucency tier per category.
+// Categories not listed (ring, pendant, other) have no tier-specific minimum beyond the global $300.
+const TRANSLUCENCY_BUDGET_MIN: Record<string, Partial<Record<Category, number>>> = {
+  glutinous_fine: { bangle: 1500, bracelet: 500, necklace: 500, set: 2000 },
+  icy_glutinous: { bangle: 3000, bracelet: 1000, necklace: 1000, set: 4000 },
+  icy_above: { bangle: 6000, bracelet: 2000, necklace: 2000, set: 8000 },
+};
+
+function tierMinBudget(tier: string, category: Category | ""): number {
+  if (!category) return 0;
+  return TRANSLUCENCY_BUDGET_MIN[tier]?.[category as Category] ?? 0;
+}
 type Timeline = "asap" | "within_1_month" | "1-2_months" | "within_3_months";
 type TranslucencyPref = "glutinous_fine" | "icy_glutinous" | "icy_above" | "";
 
@@ -88,22 +101,22 @@ const CATEGORIES: { value: Category; label: string }[] = [
 ];
 
 const TIMELINES: { value: Timeline; label: string }[] = [
-  { value: "asap",            label: "As soon as possible" },
-  { value: "within_1_month",  label: "Within 1 month" },
-  { value: "1-2_months",      label: "1–2 months" },
+  { value: "asap", label: "As soon as possible" },
+  { value: "within_1_month", label: "Within 1 month" },
+  { value: "1-2_months", label: "1–2 months" },
   { value: "within_3_months", label: "Within 3 months" },
 ];
 
 // ── Style helpers ─────────────────────────────────────────────────────────────
 
 const inputClass =
-  "w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors";
+  "w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-xs sm:text-[16px] text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors";
 
 const labelClass =
-  "block text-xs text-[16px] font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400 mb-1.5";
+  "block text-[12px] sm:text-[16px] font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400 mb-1.5";
 
 const sectionClass =
-  "rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 space-y-5";
+  "rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-3.5 sm:p-6 space-y-5";
 
 function Toggle({
   label, checked, onChange, description,
@@ -114,23 +127,21 @@ function Toggle({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className={`w-full flex items-start justify-between gap-4 rounded-xl border px-4 py-3.5 text-left transition-colors ${
-        checked
-          ? "border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30"
-          : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 hover:border-gray-300 dark:hover:border-gray-600"
-      }`}
+      className={`w-full flex items-start justify-between gap-4 rounded-xl border px-4 py-3.5 text-left transition-colors ${checked
+        ? "border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30"
+        : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 hover:border-gray-300 dark:hover:border-gray-600"
+        }`}
     >
       <div>
-        <p className={`text-sm font-medium ${checked ? "text-emerald-800 dark:text-emerald-200" : "text-gray-700 dark:text-gray-300"}`}>
+        <p className={`text-[15px] sm:text-[16px] font-medium ${checked ? "text-emerald-800 dark:text-emerald-200" : "text-gray-700 dark:text-gray-300"}`}>
           {label}
         </p>
         {description && (
-          <p className="text-xs text-[16px] text-gray-400 dark:text-gray-500 mt-0.5 leading-relaxed">{description}</p>
+          <p className="text-xs sm:text-[16px] text-gray-400 dark:text-gray-500 mt-0.5 leading-relaxed">{description}</p>
         )}
       </div>
-      <div className={`shrink-0 mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-        checked ? "bg-emerald-500 border-emerald-500" : "border-gray-300 dark:border-gray-600"
-      }`}>
+      <div className={`shrink-0 mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${checked ? "bg-emerald-500 border-emerald-500" : "border-gray-300 dark:border-gray-600"
+        }`}>
         {checked && (
           <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
@@ -253,7 +264,9 @@ export default function SourcingForm() {
   const budgetMaxVal = form.budget_max !== "" ? Number(form.budget_max) : null;
   const budgetMinVal = form.budget_min !== "" ? Number(form.budget_min) : null;
   const effectiveBudget = budgetMaxVal ?? budgetMinVal ?? 0;
-  const canSelectIcyAbove = effectiveBudget >= 3000;
+  const canSelectGlutinousFine = effectiveBudget >= tierMinBudget("glutinous_fine", form.category);
+  const canSelectIcyGlutinous = effectiveBudget >= tierMinBudget("icy_glutinous", form.category);
+  const canSelectIcyAbove = effectiveBudget >= tierMinBudget("icy_above", form.category);
 
   const uploadingCount = form.ref_images.filter((r) => r.uploading).length;
 
@@ -327,23 +340,23 @@ export default function SourcingForm() {
       {/* ── Hero ──────────────────────────────────────────────────── */}
       <div className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
         <div className="mx-auto max-w-3xl px-6 py-14 sm:py-20">
-          <p className="text-xs text-[16px] font-semibold uppercase tracking-[0.25em] text-emerald-600 dark:text-emerald-400 mb-3">
+          <p className="text-xs sm:text-[16px] font-semibold uppercase tracking-[0.25em] text-emerald-600 dark:text-emerald-400 mb-3">
             Custom Sourcing
           </p>
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 leading-tight">
             Your Perfect Piece,<br />Sourced for You
           </h1>
-          <p className="mt-4 text-base text-gray-500 dark:text-gray-400 leading-relaxed max-w-xl">
-            Tell us exactly what you&apos;re looking for — color, size, translucency, budget — and we&apos;ll hand-source a jadeite piece matched to your preferences.
+          <p className="mt-4 text-sm sm:text-base text-gray-500 dark:text-gray-400 leading-relaxed max-w-2xl">
+            Our custom sourcing service is designed for clients who want more than browsing ready stock — a guided, more tailored way to find a piece that feels personal, intentional, and closely aligned with your preferences.
           </p>
-          <div className="mt-6 flex flex-wrap gap-4 text-sm">
+          <div className="mt-6 flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm">
             <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              Deposit applied as store credit
+              Deposit applied toward your purchase
             </div>
             <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              No obligation if nothing fits
+              Access to carefully curated options
             </div>
             <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -359,29 +372,29 @@ export default function SourcingForm() {
           <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
             How your request is classified
           </p>
-          <div className="grid sm:grid-cols-3 gap-3 text-xs">
-            <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-gray-950 px-3 py-2.5">
-              <p className="font-bold text-emerald-700 dark:text-emerald-300 mb-0.5">Standard · $50</p>
+          <div className="grid sm:grid-cols-3 gap-3 text-xs sm:text-[16px]">
+            <div className="rounded-xl border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-gray-950 px-3 py-2.5">
+              <p className="sm:text-[18px] font-bold text-emerald-700 dark:text-emerald-300 mb-0.5">Standard</p>
               <p className="text-gray-500 dark:text-gray-400 leading-relaxed">General preferences, flexible on details.</p>
             </div>
-            <div className="rounded-xl border border-violet-200 dark:border-violet-800 bg-white dark:bg-gray-950 px-3 py-2.5">
-              <p className="font-bold text-violet-700 dark:text-violet-300 mb-0.5">Premium · $100</p>
+            <div className="rounded-xl border border-violet-400 dark:border-violet-800 bg-white dark:bg-gray-950 px-3 py-2.5">
+              <p className="font-bold text-violet-700 dark:text-violet-300 mb-0.5">Premium</p>
               <p className="text-gray-500 dark:text-gray-400 leading-relaxed">Specific color, pattern, or translucency requirements.</p>
             </div>
-            <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-white dark:bg-gray-950 px-3 py-2.5">
-              <p className="font-bold text-amber-700 dark:text-amber-300 mb-0.5">Concierge · $150</p>
+            <div className="rounded-xl border border-amber-400 dark:border-amber-800 bg-white dark:bg-gray-950 px-3 py-2.5">
+              <p className="font-bold text-amber-700 dark:text-amber-300 mb-0.5">Concierge</p>
               <p className="text-gray-500 dark:text-gray-400 leading-relaxed">Close photo match or multiple strict requirements.</p>
             </div>
           </div>
           <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
-            Timeline urgency adds <strong className="text-gray-600 dark:text-gray-300">$0–$50</strong> on top of the base deposit. The full deposit is applied as credit toward your purchase.
+            Timeline urgency adds <strong className="text-gray-600 dark:text-gray-300">$0–$50</strong> on top of the base deposit. <span className="text-emerald-600 dark:text-emerald-400">The full deposit is applied as credit toward your purchase.</span>
           </p>
         </div>
       </div>
 
       {cancelled && (
         <div className="mx-auto max-w-3xl px-6 pt-4">
-          <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+          <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20 px-4 py-3 text-xs sm:text-sm text-red-700 dark:text-red-300">
             Your payment was cancelled. Your request details are preserved below — you can continue when ready.
           </div>
         </div>
@@ -404,7 +417,7 @@ export default function SourcingForm() {
 
         {/* ── Section 1: Who are you ───────────────────────────── */}
         <div className={sectionClass}>
-          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">About you</h2>
+          <h2 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">About you</h2>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Your Name *</label>
@@ -444,11 +457,10 @@ export default function SourcingForm() {
                   key={value}
                   type="button"
                   onClick={() => set("category", value)}
-                  className={`rounded-lg border px-3 py-2.5 text-xs text-[16px] font-medium transition-colors text-center ${
-                    form.category === value
+                  className={`rounded-lg border px-3 py-2.5 text-xs sm:text-[16px] font-medium transition-colors text-center ${form.category === value
                       ? "border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
                       : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
-                  }`}
+                    }`}
                 >
                   {label}
                 </button>
@@ -460,7 +472,7 @@ export default function SourcingForm() {
             <div>
               <label className={labelClass}>Minimum Budget (USD) *</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs sm:text-sm">$</span>
                 <input
                   type="number"
                   className={`${inputClass} pl-7`}
@@ -475,7 +487,7 @@ export default function SourcingForm() {
             <div>
               <label className={labelClass}>Maximum Budget (optional)</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs sm:text-sm">$</span>
                 <input
                   type="number"
                   className={`${inputClass} pl-7`}
@@ -516,14 +528,14 @@ export default function SourcingForm() {
         {/* ── Section 3: Must-haves & Must-avoids ─────────────── */}
         <div className={sectionClass}>
           <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">Requirements</h2>
-          <p className="text-xs text-[16px] text-gray-400 dark:text-gray-500 -mt-2">
+          <p className="text-xs sm:text-[16px] text-gray-400 dark:text-gray-500 -mt-2">
             The more specific your requirements, the higher the sourcing effort — and the tier.
           </p>
 
           <div>
             <label className={labelClass}>Must-haves</label>
             <textarea
-              className={`${inputClass} resize-none`}
+              className={`${inputClass} resize-none text-xs sm:text-[16px]`}
               rows={3}
               placeholder="e.g. natural color, no cracks, strong translucency, uniform texture…"
               value={form.must_haves}
@@ -535,7 +547,7 @@ export default function SourcingForm() {
           <div>
             <label className={labelClass}>Must-avoids (optional)</label>
             <textarea
-              className={`${inputClass} resize-none`}
+              className={`${inputClass} resize-none text-xs sm:text-[16px]`}
               rows={2}
               placeholder="e.g. no brown spots, avoid overly dark color, no visible inclusions…"
               value={form.must_avoid}
@@ -550,18 +562,17 @@ export default function SourcingForm() {
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Specificity</h2>
-              <p className="text-xs text-[16px] text-gray-400 dark:text-gray-500 mt-0.5">
+              <p className="text-xs sm:text-[16px] text-gray-400 dark:text-gray-500 mt-0.5">
                 These signals determine your tier: Standard, Premium, or Concierge.
               </p>
             </div>
             {showPreview && (
-              <div className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold tracking-wide border ${
-                requestType === "concierge"
-                  ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-                  : requestType === "premium"
-                    ? "bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800"
-                    : "bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800"
-              }`}>
+              <div className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold tracking-wide border ${requestType === "concierge"
+                ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                : requestType === "premium"
+                  ? "bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800"
+                  : "bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800"
+                }`}>
                 {requestType === "concierge" ? "Concierge" : requestType === "premium" ? "Premium" : "Standard"} · Score {score}
               </div>
             )}
@@ -570,7 +581,7 @@ export default function SourcingForm() {
           <div className="space-y-3">
             <Toggle
               label="I have a close reference photo or piece I want to match"
-              description="You'll upload reference images. Adds +3 to strictness score — strongest signal."
+              description="Please upload your reference images below."
               checked={form.close_reference_match}
               onChange={(v) => set("close_reference_match", v)}
             />
@@ -578,7 +589,7 @@ export default function SourcingForm() {
               <div className="ml-4 pl-4 border-l-2 border-emerald-200 dark:border-emerald-800">
                 <label className={labelClass}>Reference notes (optional)</label>
                 <textarea
-                  className={`${inputClass} resize-none`}
+                  className={`${inputClass} resize-none text-xs sm:text-[16px]`}
                   rows={2}
                   placeholder="Describe what you love about the reference piece…"
                   value={form.reference_notes}
@@ -590,7 +601,7 @@ export default function SourcingForm() {
 
             <Toggle
               label="Exact color / tone is important"
-              description="You have a specific shade in mind and won't accept significant variation. Adds +2."
+              description="You have a specific shade in mind and won't accept significant variation."
               checked={form.exact_color_matters}
               onChange={(v) => set("exact_color_matters", v)}
             />
@@ -609,7 +620,7 @@ export default function SourcingForm() {
 
             <Toggle
               label="Pattern / veining is important"
-              description="The natural markings and texture of the jade matter to you. Adds +2."
+              description="The natural markings and texture of the jade matter to you."
               checked={form.pattern_veining_matters}
               onChange={(v) => set("pattern_veining_matters", v)}
             />
@@ -628,76 +639,106 @@ export default function SourcingForm() {
 
             <Toggle
               label="Translucency level is important"
-              description="How much light passes through the stone matters to you. Adds +2."
+              description="How much light passes through the stone matters to you."
               checked={form.translucency_matters}
-              onChange={(v) => set("translucency_matters", v)}
+              onChange={(v) => {
+                set("translucency_matters", v);
+                if (!v) set("translucency_preference", "");
+              }}
             />
             {form.translucency_matters && (
               <div className="ml-4 pl-4 border-l-2 border-emerald-200 dark:border-emerald-800 space-y-3">
                 <div className="flex gap-2 flex-wrap">
                   {/* Glutinous to Fine Glutinous */}
-                  <button
-                    type="button"
-                    onClick={() => set("translucency_preference", "glutinous_fine")}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                      form.translucency_preference === "glutinous_fine"
-                        ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
-                        : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300"
-                    }`}
-                  >
-                    Glutinous to Fine Glutinous
-                  </button>
+                  {(() => {
+                    const min = tierMinBudget("glutinous_fine", form.category);
+                    const locked = !canSelectGlutinousFine;
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => { if (!locked) set("translucency_preference", "glutinous_fine"); }}
+                        disabled={locked}
+                        title={locked ? `Requires budget of at least $${min.toLocaleString()} for ${form.category}` : undefined}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${locked
+                          ? "border-red-200 dark:border-red-800 text-red-400 cursor-not-allowed"
+                          : form.translucency_preference === "glutinous_fine"
+                            ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
+                            : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300"
+                          }`}
+                      >
+                        Glutinous to Fine Glutinous
+                        {locked && <span className="ml-1 text-[12px] sm:text-[14px]">(budget ${min >= 1000 ? `${min / 1000}k` : min}+)</span>}
+                      </button>
+                    );
+                  })()}
 
                   {/* Icy Glutinous */}
-                  <button
-                    type="button"
-                    onClick={() => set("translucency_preference", "icy_glutinous")}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                      form.translucency_preference === "icy_glutinous"
-                        ? "border-sky-400 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300"
-                        : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300"
-                    }`}
-                  >
-                    Icy Glutinous
-                  </button>
+                  {(() => {
+                    const min = tierMinBudget("icy_glutinous", form.category);
+                    const locked = !canSelectIcyGlutinous;
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => { if (!locked) set("translucency_preference", "icy_glutinous"); }}
+                        disabled={locked}
+                        title={locked ? `Requires budget of at least $${min.toLocaleString()} for ${form.category}` : undefined}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${locked
+                          ? "border-red-200 dark:border-red-800 text-red-400 cursor-not-allowed"
+                          : form.translucency_preference === "icy_glutinous"
+                            ? "border-sky-400 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300"
+                            : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300"
+                          }`}
+                      >
+                        Icy Glutinous
+                        {locked && <span className="ml-1 text-[12px] sm:text-[14px]">(budget ${min >= 1000 ? `${min / 1000}k` : min}+)</span>}
+                      </button>
+                    );
+                  })()}
 
-                  {/* Icy or Above — gated by budget */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!canSelectIcyAbove) return;
-                      set("translucency_preference", "icy_above");
-                    }}
-                    disabled={!canSelectIcyAbove}
-                    title={!canSelectIcyAbove ? "Requires budget of at least $3,000" : undefined}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                      !canSelectIcyAbove
-                        ? "border-gray-100 dark:border-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed"
-                        : form.translucency_preference === "icy_above"
-                          ? "border-violet-400 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
-                          : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300"
-                    }`}
-                  >
-                    Icy or Above
-                    {!canSelectIcyAbove && <span className="ml-1 text-[10px]">(budget $3k+)</span>}
-                  </button>
+                  {/* Icy or Above */}
+                  {(() => {
+                    const min = tierMinBudget("icy_above", form.category);
+                    const locked = !canSelectIcyAbove;
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => { if (!locked) set("translucency_preference", "icy_above"); }}
+                        disabled={locked}
+                        title={locked ? `Requires budget of at least $${min.toLocaleString()} for ${form.category}` : undefined}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${locked
+                          ? "border-red-200 dark:border-red-800 text-red-400 cursor-not-allowed"
+                          : form.translucency_preference === "icy_above"
+                            ? "border-violet-400 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
+                            : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300"
+                          }`}
+                      >
+                        High Icy or Above
+                        {locked && <span className="ml-1 text-[12px] sm:text-[14px]">(budget ${min >= 1000 ? `${min / 1000}k` : min}+)</span>}
+                      </button>
+                    );
+                  })()}
                 </div>
+
+                {/* Glutinous Fine pricing note */}
+                {form.translucency_preference === "glutinous_fine" && tierMinBudget("glutinous_fine", form.category) > 0 && (
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                    Glutinous to fine glutinous jade for {form.category} typically starts at ${tierMinBudget("glutinous_fine", form.category).toLocaleString()}.
+                  </p>
+                )}
 
                 {/* Icy Glutinous pricing note */}
                 {form.translucency_preference === "icy_glutinous" && (
                   <p className="text-xs text-sky-600 dark:text-sky-400">
-                    Icy glutinous jade typically starts at{" "}
-                    {form.category === "bangle" ? "$1,500" : form.category === "bracelet" ? "$500" : "$300"} for{" "}
-                    {form.category || "this category"}.
+                    Icy glutinous jade for {form.category || "this category"} typically starts at{" "}
+                    ${(tierMinBudget("icy_glutinous", form.category) || 300).toLocaleString()}.
                   </p>
                 )}
 
                 {/* Icy Above pricing note */}
                 {form.translucency_preference === "icy_above" && (
                   <p className="text-xs text-violet-600 dark:text-violet-400">
-                    Icy or above jade typically starts at{" "}
-                    {form.category === "bangle" ? "$3,000" : form.category === "bracelet" ? "$800" : "$500"} for{" "}
-                    {form.category || "this category"}.
+                    Icy or above jade for {form.category || "this category"} typically starts at{" "}
+                    ${(tierMinBudget("icy_above", form.category) || 300).toLocaleString()}.
                   </p>
                 )}
               </div>
@@ -705,7 +746,7 @@ export default function SourcingForm() {
 
             <Toggle
               label="Exact size / shape / dimensions are important"
-              description="You need a specific size that won't fit otherwise (e.g. ring size, wrist fit, pendant dimensions). Adds +1."
+              description="You need a specific size that won't fit otherwise (e.g. ring size, wrist fit, pendant dimensions)."
               checked={form.exact_dimensions_matters}
               onChange={(v) => set("exact_dimensions_matters", v)}
             />
@@ -735,9 +776,9 @@ export default function SourcingForm() {
           {form.ref_images.filter((r) => !r.error).length < MAX_FILES && (
             <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors cursor-pointer px-6 py-8">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 dark:text-gray-600">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
               </svg>
-              <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+              <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">
                 {uploadingCount > 0 ? `Uploading ${uploadingCount} file${uploadingCount > 1 ? "s" : ""}…` : "Click to upload files"}
               </span>
               <span className="text-xs text-gray-400 dark:text-gray-500">JPG · PNG · WebP · HEIC · PDF</span>
@@ -767,14 +808,14 @@ export default function SourcingForm() {
                     ) : img.ext === "pdf" ? (
                       <div className="flex flex-col items-center gap-1 p-3 text-center">
                         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-red-400">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
                         </svg>
                         <span className="text-[10px] text-gray-400 font-mono uppercase">PDF</span>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center gap-1 p-3 text-center">
                         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 dark:text-gray-600">
-                          <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                          <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
                         </svg>
                         <span className="text-[10px] text-gray-400 font-mono uppercase">{img.ext || "file"}</span>
                       </div>
@@ -803,7 +844,7 @@ export default function SourcingForm() {
                         className="shrink-0 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                         </svg>
                       </button>
                     )}
@@ -826,11 +867,10 @@ export default function SourcingForm() {
                   key={value}
                   type="button"
                   onClick={() => set("timeline", value)}
-                  className={`rounded-lg border px-4 py-2.5 text-sm text-left transition-colors ${
-                    form.timeline === value
-                      ? "border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-medium"
-                      : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
-                  }`}
+                  className={`rounded-lg border px-4 py-2.5 text-xs :text-sm text-left transition-colors ${form.timeline === value
+                    ? "border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-medium"
+                    : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}
                 >
                   {label}
                 </button>
@@ -856,28 +896,28 @@ export default function SourcingForm() {
           <div className="concierge-gold-card rounded-2xl p-6 space-y-4">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs text-[16px] font-semibold uppercase tracking-[0.15em] text-amber-900/60 mb-1">
+                <p className="text-xs sm:text-[16px] font-semibold uppercase tracking-[0.15em] text-amber-900/60 mb-1">
                   Request Summary
                 </p>
                 <h3 className="text-lg font-bold text-amber-950">
                   Concierge Sourcing Request
                 </h3>
               </div>
-              <div className="px-3 py-1.5 rounded-full text-xs text-[16px] font-bold tracking-wider shrink-0 bg-amber-900/20 text-amber-950">
+              <div className="px-3 py-1.5 rounded-full text-xs sm:text-[16px] font-bold tracking-wider shrink-0 bg-amber-900/20 text-amber-950">
                 CONCIERGE
               </div>
             </div>
 
-            <div className="grid sm:grid-cols-2 gap-3 text-sm">
+            <div className="grid sm:grid-cols-2 gap-3 text-xs sm:text-sm">
               {form.category && (
                 <div>
-                  <span className="text-xs text-[16px] text-amber-900/60 uppercase tracking-wide">Category</span>
+                  <span className="text-xs sm:text-[16px] text-amber-900/60 uppercase tracking-wide">Category</span>
                   <p className="font-medium text-amber-950 capitalize">{form.category}</p>
                 </div>
               )}
               {form.budget_min && (
                 <div>
-                  <span className="text-xs text-[16px] text-amber-900/60 uppercase tracking-wide">Budget</span>
+                  <span className="text-xs sm:text-[16px] text-amber-900/60 uppercase tracking-wide">Budget</span>
                   <p className="font-medium text-amber-950">
                     ${form.budget_min}{form.budget_max ? `–$${form.budget_max}` : "+"}
                   </p>
@@ -885,13 +925,13 @@ export default function SourcingForm() {
               )}
               {form.preferred_color && (
                 <div>
-                  <span className="text-xs text-[16px] text-amber-900/60 uppercase tracking-wide">Color</span>
+                  <span className="text-xs sm:text-[16px] text-amber-900/60 uppercase tracking-wide">Color</span>
                   <p className="font-medium text-amber-950">{form.preferred_color}</p>
                 </div>
               )}
               {form.timeline && (
                 <div>
-                  <span className="text-xs text-[16px] text-amber-900/60 uppercase tracking-wide">Timeline</span>
+                  <span className="text-xs sm:text-[16px] text-amber-900/60 uppercase tracking-wide">Timeline</span>
                   <p className="font-medium text-amber-950">
                     {TIMELINES.find((t) => t.value === form.timeline)?.label}
                   </p>
@@ -918,29 +958,26 @@ export default function SourcingForm() {
             </div>
           </div>
         ) : (
-          <div className={`rounded-2xl border-2 p-6 space-y-4 ${
-            requestType === "premium"
-              ? "border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/20"
-              : "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20"
-          }`}>
+          <div className={`rounded-2xl border-2 p-6 space-y-4 ${requestType === "premium"
+            ? "border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/20"
+            : "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20"
+            }`}>
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs text-[16px] font-semibold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-1">
+                <p className="text-xs sm:text-[16px] font-semibold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-1">
                   Request Summary
                 </p>
-                <h3 className={`text-lg font-bold ${
-                  requestType === "premium"
-                    ? "text-violet-800 dark:text-violet-200"
-                    : "text-emerald-800 dark:text-emerald-200"
-                }`}>
+                <h3 className={`text-lg font-bold ${requestType === "premium"
+                  ? "text-violet-800 dark:text-violet-200"
+                  : "text-emerald-800 dark:text-emerald-200"
+                  }`}>
                   {requestType === "premium" ? "Premium Sourcing Request" : "Standard Sourcing Request"}
                 </h3>
               </div>
-              <div className={`px-3 py-1.5 rounded-full text-xs text-[16px] font-bold tracking-wider shrink-0 ${
-                requestType === "premium"
-                  ? "bg-violet-200 dark:bg-violet-900 text-violet-800 dark:text-violet-200"
-                  : "bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200"
-              }`}>
+              <div className={`px-3 py-1.5 rounded-full text-xs sm:text-[16px] font-bold tracking-wider shrink-0 ${requestType === "premium"
+                ? "bg-violet-200 dark:bg-violet-900 text-violet-800 dark:text-violet-200"
+                : "bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200"
+                }`}>
                 {requestType.toUpperCase()}
               </div>
             </div>
@@ -948,13 +985,13 @@ export default function SourcingForm() {
             <div className="grid sm:grid-cols-2 gap-3 text-sm">
               {form.category && (
                 <div>
-                  <span className="text-xs text-[16px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">Category</span>
+                  <span className="text-xs sm:text-[16px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">Category</span>
                   <p className="font-medium text-gray-800 dark:text-gray-200 capitalize">{form.category}</p>
                 </div>
               )}
               {form.budget_min && (
                 <div>
-                  <span className="text-xs text-[16px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">Budget</span>
+                  <span className="text-xs sm:text-[16px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">Budget</span>
                   <p className="font-medium text-gray-800 dark:text-gray-200">
                     ${form.budget_min}{form.budget_max ? `–$${form.budget_max}` : "+"}
                   </p>
@@ -962,13 +999,13 @@ export default function SourcingForm() {
               )}
               {form.preferred_color && (
                 <div>
-                  <span className="text-xs text-[16px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">Color</span>
+                  <span className="text-xs sm:text-[16px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">Color</span>
                   <p className="font-medium text-gray-800 dark:text-gray-200">{form.preferred_color}</p>
                 </div>
               )}
               {form.timeline && (
                 <div>
-                  <span className="text-xs text-[16px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">Timeline</span>
+                  <span className="text-xs sm:text-[16px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">Timeline</span>
                   <p className="font-medium text-gray-800 dark:text-gray-200">
                     {TIMELINES.find((t) => t.value === form.timeline)?.label}
                   </p>
@@ -980,11 +1017,10 @@ export default function SourcingForm() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Deposit due today</p>
-                  <p className={`text-2xl font-bold ${
-                    requestType === "premium"
-                      ? "text-violet-700 dark:text-violet-300"
-                      : "text-emerald-700 dark:text-emerald-300"
-                  }`}>
+                  <p className={`text-2xl font-bold ${requestType === "premium"
+                    ? "text-violet-700 dark:text-violet-300"
+                    : "text-emerald-700 dark:text-emerald-300"
+                    }`}>
                     ${depositDollars}
                   </p>
                   <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 space-y-0.5">
@@ -1012,15 +1048,14 @@ export default function SourcingForm() {
           <button
             type="submit"
             disabled={!formFilled || loading}
-            className={`w-full py-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
-              formFilled && !loading
-                ? requestType === "concierge"
-                  ? "bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-200 dark:shadow-amber-900/30"
-                  : requestType === "premium"
-                    ? "bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-200 dark:shadow-violet-900/30"
-                    : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 dark:shadow-emerald-900/30"
-                : "bg-gray-200 dark:bg-gray-800 text-gray-400 cursor-not-allowed"
-            }`}
+            className={`relative overflow-hidden w-full py-4 rounded-xl text-sm font-semibold tracking-wide ${formFilled && !loading
+              ? requestType === "concierge"
+                ? "concierge-btn"
+                : requestType === "premium"
+                  ? "bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-200 dark:shadow-violet-900/30 transition-all"
+                  : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 dark:shadow-emerald-900/30 transition-all"
+              : "bg-gray-200 dark:bg-gray-800 text-gray-400 cursor-not-allowed"
+              }`}
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
@@ -1035,10 +1070,10 @@ export default function SourcingForm() {
               "Fill in your details to continue"
             )}
           </button>
-          <p className="text-center text-xs text-[16px] text-gray-400 dark:text-gray-500">
-            Secured by Stripe. Deposit is credited to your first order — no obligation if nothing fits.
+          <p className="text-center text-xs sm:text-[16px] text-gray-400 dark:text-gray-500">
+            Secured by Stripe. Our custom sourcing service is designed to help you find a piece that feels personal, intentional, and closely aligned with your preferences. Your deposit is credited toward your first order if you purchase.
           </p>
-          <p className="text-center text-xs text-[16px] text-gray-400 dark:text-gray-500">
+          <p className="text-center text-xs sm:text-[16px] text-gray-400 dark:text-gray-500">
             Questions?{" "}
             <Link href="/contact" className="text-emerald-600 dark:text-emerald-400 hover:underline">
               Contact us first

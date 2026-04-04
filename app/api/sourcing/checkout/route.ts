@@ -96,14 +96,27 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Translucency level validation
+  // Translucency level validation — minimums vary by tier + category
+  const TRANSLUCENCY_BUDGET_MIN: Record<string, Partial<Record<string, number>>> = {
+    glutinous_fine: { bangle: 1500, bracelet: 500, necklace: 500, set: 2000 },
+    icy_glutinous:  { bangle: 3000, bracelet: 1000, necklace: 1000, set: 4000 },
+    icy_above:      { bangle: 6000, bracelet: 2000, necklace: 2000, set: 8000 },
+  };
+
   const translucencyPref = isString(body.translucency_preference) ? body.translucency_preference.trim() : "";
-  if (translucencyPref === "icy_above") {
-    const effectiveBudget = budgetMax ?? budgetMin;
-    if (effectiveBudget < 3000) {
-      return NextResponse.json({
-        error: "Icy or above jade requires a budget of at least $3,000. Please adjust your budget or choose a different translucency level.",
-      }, { status: 400 });
+  if (translucencyPref) {
+    const minRequired = TRANSLUCENCY_BUDGET_MIN[translucencyPref]?.[category] ?? 0;
+    if (minRequired > 0) {
+      const effectiveBudget = budgetMax ?? budgetMin;
+      if (effectiveBudget < minRequired) {
+        const tierLabel =
+          translucencyPref === "icy_above"     ? "High Icy or Above" :
+          translucencyPref === "icy_glutinous" ? "Icy Glutinous" :
+                                                 "Glutinous to Fine Glutinous";
+        return NextResponse.json({
+          error: `${tierLabel} jade for ${category} requires a budget of at least $${minRequired.toLocaleString()}. Please adjust your budget or choose a different translucency level.`,
+        }, { status: 400 });
+      }
     }
   }
 
