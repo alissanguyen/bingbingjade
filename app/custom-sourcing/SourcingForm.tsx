@@ -828,7 +828,7 @@ export default function SourcingForm() {
                   <p className="font-medium text-gray-800 dark:text-gray-200">{form.preferred_color}</p>
                 </div>
               )}
-              {form.timeline !== "flexible" && (
+              {form.timeline && (
                 <div>
                   <span className="text-xs text-[16px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">Timeline</span>
                   <p className="font-medium text-gray-800 dark:text-gray-200">

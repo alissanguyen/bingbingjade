@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser, isAdmin } from "@/lib/approved-auth";
 import { computeAvailableCredit } from "@/lib/sourcing-classification";
 import type { LedgerRow } from "@/lib/sourcing-classification";
+import { SourcingActions } from "./SourcingActions";
 
 export const dynamic = "force-dynamic";
 
@@ -16,11 +17,13 @@ const PAYMENT_STATUS_COLORS: Record<string, string> = {
 };
 
 const SOURCING_STATUS_COLORS: Record<string, string> = {
-  queued:       "bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300",
-  options_sent: "bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300",
-  in_progress:  "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300",
-  fulfilled:    "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300",
-  cancelled:    "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400",
+  queued:                      "bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300",
+  options_sent:                "bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300",
+  in_progress:                 "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300",
+  accepted_pending_checkout:   "bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300",
+  checkout_expired:            "bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400",
+  fulfilled:                   "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300",
+  cancelled:                   "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400",
 };
 
 const REQUEST_TYPE_COLORS: Record<string, string> = {
@@ -208,19 +211,53 @@ export default async function SourcingAdminPage({
                   </div>
                 </div>
 
-                {/* Ledger summary */}
-                {ledgerRows.length > 0 && (
-                  <div className="px-5 py-3 bg-gray-50 dark:bg-gray-900/60 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-400 dark:text-gray-500">
-                    <span className="font-medium text-gray-500 dark:text-gray-400">Ledger: </span>
-                    {ledgerRows.map((r, i) => (
-                      <span key={i}>
-                        {i > 0 && " · "}
-                        {r.event_type.replace(/_/g, " ")} ${(r.amount_cents / 100).toFixed(2)}
+                {/* Attempt + checkout timing */}
+                {(req.last_attempt_sent_at || req.credit_expires_at || req.accepted_checkout_expires_at) && (
+                  <div className="px-5 pb-3 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-gray-400 dark:text-gray-500">
+                    {!!req.last_attempt_sent_at && (
+                      <span>Last attempt: {new Date(String(req.last_attempt_sent_at)).toLocaleDateString()}{req.last_attempt_response_due_at ? ` · due ${new Date(String(req.last_attempt_response_due_at)).toLocaleDateString()}` : ""}</span>
+                    )}
+                    {!!req.final_attempt_sent_at && (
+                      <span className="text-amber-500 dark:text-amber-400">Final attempt sent {new Date(String(req.final_attempt_sent_at)).toLocaleDateString()}</span>
+                    )}
+                    {!!req.credit_expires_at && (
+                      <span className={new Date(String(req.credit_expires_at)) < new Date() ? "text-red-500 dark:text-red-400" : ""}>
+                        Credit expires {new Date(String(req.credit_expires_at)).toLocaleDateString()}
                       </span>
-                    ))}
+                    )}
+                    {!!req.accepted_checkout_expires_at && (
+                      <span className={new Date(String(req.accepted_checkout_expires_at)) < new Date() ? "text-red-500 dark:text-red-400" : "text-blue-500 dark:text-blue-400"}>
+                        Checkout {new Date(String(req.accepted_checkout_expires_at)) < new Date() ? "expired" : "expires"} {new Date(String(req.accepted_checkout_expires_at)).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    )}
                   </div>
                 )}
-              </div>
+
+              {/* Ledger summary */}
+              {ledgerRows.length > 0 && (
+                <div className="px-5 py-3 bg-gray-50 dark:bg-gray-900/60 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-400 dark:text-gray-500">
+                  <span className="font-medium text-gray-500 dark:text-gray-400">Ledger: </span>
+                  {ledgerRows.map((r, i) => (
+                    <span key={i}>
+                      {i > 0 && " · "}
+                      {r.event_type.replace(/_/g, " ")} ${(r.amount_cents / 100).toFixed(2)}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <SourcingActions
+                id={String(req.id)}
+                sourcingStatus={String(req.sourcing_status)}
+                paymentStatus={String(req.payment_status)}
+                creditExpiresAt={req.credit_expires_at ? String(req.credit_expires_at) : null}
+                lastAttemptSentAt={req.last_attempt_sent_at ? String(req.last_attempt_sent_at) : null}
+                finalAttemptSentAt={req.final_attempt_sent_at ? String(req.final_attempt_sent_at) : null}
+                privateCheckoutUrl={req.private_checkout_url ? String(req.private_checkout_url) : null}
+                acceptedCheckoutExpiresAt={req.accepted_checkout_expires_at ? String(req.accepted_checkout_expires_at) : null}
+                availableCredit={availableCredit}
+              />
+            </div>
             );
           })}
         </div>

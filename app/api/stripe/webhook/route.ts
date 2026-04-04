@@ -36,16 +36,40 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 
+  const supabase = supabaseAdmin;
+
+  // ── checkout.session.expired — only care about private sourcing checkouts ─────
+  if (event.type === "checkout.session.expired") {
+    const expired = event.data.object as Stripe.Checkout.Session;
+    if (expired.metadata?.is_sourcing_private_checkout === "true") {
+      const srcId = expired.metadata.sourcing_request_id;
+      if (srcId) {
+        await supabase
+          .from("sourcing_requests")
+          .update({
+            sourcing_status: "checkout_expired",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", srcId)
+          .eq("private_checkout_session_id", expired.id);
+      }
+    }
+    return NextResponse.json({ received: true });
+  }
+
   if (event.type !== "checkout.session.completed") {
     return NextResponse.json({ received: true });
   }
 
   const session = event.data.object as Stripe.Checkout.Session;
-  const supabase = supabaseAdmin;
 
-  // ── Route: sourcing deposit vs product order ──────────────────────────────────
+  // ── Route: sourcing deposit vs private checkout vs product order ──────────────
   if (session.metadata?.is_sourcing_deposit === "true") {
     return handleSourcingDeposit(session, supabase);
+  }
+
+  if (session.metadata?.is_sourcing_private_checkout === "true") {
+    return handleSourcingPrivateCheckout(session, supabase);
   }
 
   // ── Idempotency: check if this session was already processed ──────────────────
@@ -487,6 +511,72 @@ export async function POST(req: NextRequest) {
     await fetch(`${siteUrl}/api/revalidate?secret=${secret}`, { method: "POST" }).catch(() => {});
   }
 
+  return NextResponse.json({ received: true });
+}
+
+// ── Sourcing private checkout handler ─────────────────────────────────────────
+// Called when a customer pays via the admin-generated private checkout link.
+async function handleSourcingPrivateCheckout(
+  session: Stripe.Checkout.Session,
+  supabase: typeof supabaseAdmin
+): Promise<NextResponse> {
+  const sourcingRequestId = session.metadata?.sourcing_request_id;
+  const appliedCentsStr   = session.metadata?.sourcing_credit_applied_cents;
+
+  if (!sourcingRequestId) {
+    console.error("[webhook/sourcing-private] Missing sourcing_request_id", session.id);
+    return NextResponse.json({ error: "Missing sourcing_request_id." }, { status: 400 });
+  }
+
+  // Idempotency: check existing ledger row for this session
+  const { data: existingLedger } = await supabase
+    .from("sourcing_credit_ledger")
+    .select("id")
+    .eq("checkout_session_id", session.id)
+    .eq("event_type", "credit_consumed")
+    .maybeSingle();
+
+  if (existingLedger) {
+    return NextResponse.json({ received: true });
+  }
+
+  const { data: sourcingReq } = await supabase
+    .from("sourcing_requests")
+    .select("id, customer_email, user_id, payment_status")
+    .eq("id", sourcingRequestId)
+    .maybeSingle();
+
+  if (!sourcingReq || sourcingReq.payment_status !== "paid") {
+    console.error("[webhook/sourcing-private] Sourcing request not found or not paid:", sourcingRequestId);
+    return NextResponse.json({ error: "Sourcing request invalid." }, { status: 400 });
+  }
+
+  const appliedCents = appliedCentsStr ? parseInt(appliedCentsStr, 10) : 0;
+  const now = new Date().toISOString();
+
+  if (appliedCents > 0) {
+    await supabase.from("sourcing_credit_ledger").insert({
+      sourcing_request_id:  sourcingRequestId,
+      customer_email:       sourcingReq.customer_email,
+      user_id:              sourcingReq.user_id ?? null,
+      event_type:           "credit_consumed",
+      amount_cents:         appliedCents,
+      currency:             "usd",
+      checkout_session_id:  session.id,
+      notes:                `Applied via private checkout ${session.id}`,
+    });
+  }
+
+  // Mark the request fulfilled
+  await supabase
+    .from("sourcing_requests")
+    .update({
+      sourcing_status: "fulfilled",
+      updated_at:      now,
+    })
+    .eq("id", sourcingRequestId);
+
+  console.info("[webhook/sourcing-private] Fulfilled request", sourcingRequestId, "— credit applied:", appliedCents);
   return NextResponse.json({ received: true });
 }
 
