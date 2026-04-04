@@ -23,7 +23,7 @@ function XIcon() {
 }
 
 export function CheckoutClient() {
-  const { items, removeFromCart, clearCart } = useCart();
+  const { items, removeFromCart, clearCart, drawerOpen } = useCart();
   const router = useRouter();
   const ctaRef = useRef<HTMLElement>(null);
 
@@ -739,7 +739,7 @@ export function CheckoutClient() {
       {/* ── Mobile sticky bottom bar ─────────────────────────── */}
       {/* Shows when the main CTA scrolls off-screen on mobile */}
       <div
-        className={`lg:hidden fixed bottom-0 inset-x-0 z-50 transition-transform duration-300 ease-in-out ${showStickyBar && canCheckout ? "translate-y-0" : "translate-y-full"
+        className={`lg:hidden fixed bottom-0 inset-x-0 transition-transform duration-300 ease-in-out ${drawerOpen ? "z-20" : "z-50"} ${showStickyBar && canCheckout ? "translate-y-0" : "translate-y-full"
           }`}
       >
         {/* Gradient fade above the bar */}

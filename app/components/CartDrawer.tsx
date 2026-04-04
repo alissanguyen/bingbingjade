@@ -112,7 +112,7 @@ export function CartDrawer() {
 
       {/* Drawer */}
       <div
-        className="fixed right-0 bottom-0 z-30 w-full max-w-sm bg-white/90 dark:bg-gray-950 border-l border-gray-200 dark:border-gray-800 flex flex-col"
+        className="fixed right-0 bottom-0 z-30 w-full max-w-sm bg-white dark:bg-gray-950 border-l border-gray-200 dark:border-gray-800 flex flex-col"
         style={{
           top: headerHeight,
           transform: drawerOpen ? "translateX(0)" : "translateX(100%)",
@@ -209,7 +209,7 @@ export function CartDrawer() {
                           )}
                           {isAvailableNow && (
                             <div
-                              className="flex flex-row items-center gap-1 bg-sky-950 border border-sky-400/60 text-sky-300 text-[10px] sm:text-[13px] font-semibold px-2 py-0.5 rounded-full mb-0.5"
+                              className="flex flex-row items-center gap-1 bg-sky-200/65 dark:bg-sky-900 border border-sky-300/60 dark:border-sky-400/60 text-sky-600 dark:text-sky-300 text-[10px] sm:text-[14px] font-semibold px-2 py-0.5 rounded-full mb-0.5"
                               style={{ boxShadow: "0 0 6px 1px rgba(56,189,248,0.3)" }}
                             >
                               <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_4px_1px_rgba(56,189,248,0.8)]" />
