@@ -376,14 +376,17 @@ export default function SourcingForm() {
             <div className="rounded-xl border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-gray-950 px-3 py-2.5">
               <p className="sm:text-[18px] font-bold text-emerald-700 dark:text-emerald-300 mb-0.5">Standard</p>
               <p className="text-gray-500 dark:text-gray-400 leading-relaxed">General preferences, flexible on details.</p>
+              <p className="mt-1 text-emerald-600 dark:text-emerald-400 font-medium">2 rounds of selection</p>
             </div>
             <div className="rounded-xl border border-violet-400 dark:border-violet-800 bg-white dark:bg-gray-950 px-3 py-2.5">
               <p className="font-bold text-violet-700 dark:text-violet-300 mb-0.5">Premium</p>
               <p className="text-gray-500 dark:text-gray-400 leading-relaxed">Specific color, pattern, or translucency requirements.</p>
+              <p className="mt-1 text-violet-600 dark:text-violet-400 font-medium">3 rounds of selection</p>
             </div>
             <div className="rounded-xl border border-amber-400 dark:border-amber-800 bg-white dark:bg-gray-950 px-3 py-2.5">
               <p className="font-bold text-amber-700 dark:text-amber-300 mb-0.5">Concierge</p>
               <p className="text-gray-500 dark:text-gray-400 leading-relaxed">Close photo match or multiple strict requirements.</p>
+              <p className="mt-1 text-amber-600 dark:text-amber-400 font-medium">4 rounds of selection</p>
             </div>
           </div>
           <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
@@ -867,7 +870,7 @@ export default function SourcingForm() {
                   key={value}
                   type="button"
                   onClick={() => set("timeline", value)}
-                  className={`rounded-lg border px-4 py-2.5 text-xs :text-sm text-left transition-colors ${form.timeline === value
+                  className={`rounded-lg border px-4 py-2.5 text-xs sm:text-sm text-left transition-colors ${form.timeline === value
                     ? "border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-medium"
                     : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
                     }`}
