@@ -16,8 +16,14 @@ type Timeline = "asap" | "1-3_months" | "3-6_months" | "flexible";
 type TranslucencyPref = "very_transparent" | "semi_transparent" | "opaque" | "";
 
 interface RefImage {
-  type: "url";
-  value: string;
+  type: "storage";
+  path: string;          // storage path for the API
+  url: string;           // public URL for display (unoptimized)
+  originalName: string;
+  ext: string;
+  previewObjectUrl?: string; // blob URL for instant preview before upload completes
+  uploading?: boolean;
+  error?: string;
 }
 
 interface FormState {
@@ -43,8 +49,7 @@ interface FormState {
   translucency_preference: TranslucencyPref;
   exact_dimensions_matters: boolean;
   exact_dimensions: string;
-  // Reference image URLs
-  ref_url_input: string;
+  // Reference images (uploaded files)
   ref_images: RefImage[];
   // Honeypot (hidden from real users)
   website: string;
@@ -59,13 +64,21 @@ const INITIAL: FormState = {
   pattern_veining_matters: false, pattern_description: "",
   translucency_matters: false, translucency_preference: "",
   exact_dimensions_matters: false, exact_dimensions: "",
-  ref_url_input: "", ref_images: [],
+  ref_images: [],
   website: "",
 };
 
+const ACCEPTED_TYPES = ".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf";
+const MAX_FILES = 10;
+const MAX_SIZE_MB = 15;
+
+function isImageExt(ext: string) {
+  return ["jpg", "jpeg", "png", "webp"].includes(ext.toLowerCase());
+}
+
 const CATEGORIES: { value: Category; label: string }[] = [
-  { value: "bracelet", label: "Bangle / Bracelet" },
-  { value: "bangle", label: "Bangle (rigid)" },
+  { value: "bracelet", label: "Bracelet" },
+  { value: "bangle", label: "Bangle" },
   { value: "ring", label: "Ring" },
   { value: "pendant", label: "Pendant" },
   { value: "necklace", label: "Necklace" },
@@ -86,7 +99,7 @@ const inputClass =
   "w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors";
 
 const labelClass =
-  "block text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400 mb-1.5";
+  "block text-xs text-[16px] font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400 mb-1.5";
 
 const sectionClass =
   "rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 space-y-5";
@@ -111,7 +124,7 @@ function Toggle({
           {label}
         </p>
         {description && (
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 leading-relaxed">{description}</p>
+          <p className="text-xs text-[16px] text-gray-400 dark:text-gray-500 mt-0.5 leading-relaxed">{description}</p>
         )}
       </div>
       <div className={`shrink-0 mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
@@ -142,17 +155,83 @@ export default function SourcingForm() {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  function addRefUrl() {
-    const url = form.ref_url_input.trim();
-    if (!url) return;
-    try { new URL(url); } catch { return; }
-    if (form.ref_images.length >= 10) return;
-    set("ref_images", [...form.ref_images, { type: "url", value: url }]);
-    set("ref_url_input", "");
+  function removeRefImage(idx: number) {
+    const img = form.ref_images[idx];
+    if (img?.previewObjectUrl) URL.revokeObjectURL(img.previewObjectUrl);
+    set("ref_images", form.ref_images.filter((_, i) => i !== idx));
   }
 
-  function removeRefImage(idx: number) {
-    set("ref_images", form.ref_images.filter((_, i) => i !== idx));
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    e.target.value = ""; // reset so same file can be re-selected
+
+    const remaining = MAX_FILES - form.ref_images.filter((r) => !r.error).length;
+    const toProcess = files.slice(0, remaining);
+
+    // Add placeholders immediately with preview object URLs
+    const placeholders: RefImage[] = toProcess.map((f) => ({
+      type: "storage",
+      path: "",
+      url: "",
+      originalName: f.name,
+      ext: f.name.split(".").pop()?.toLowerCase() ?? "",
+      previewObjectUrl: f.type.startsWith("image/") ? URL.createObjectURL(f) : undefined,
+      uploading: true,
+    }));
+
+    const startIdx = form.ref_images.length;
+    set("ref_images", [...form.ref_images, ...placeholders]);
+
+    // Upload each file
+    for (let i = 0; i < toProcess.length; i++) {
+      const file = toProcess[i];
+      const idx = startIdx + i;
+
+      if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+        setForm((prev) => {
+          const next = [...prev.ref_images];
+          next[idx] = { ...next[idx], uploading: false, error: `File too large (max ${MAX_SIZE_MB} MB)` };
+          return { ...prev, ref_images: next };
+        });
+        continue;
+      }
+
+      const fd = new FormData();
+      fd.append("file", file);
+
+      try {
+        const res = await fetch("/api/sourcing/upload-ref", { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok) {
+          setForm((prev) => {
+            const next = [...prev.ref_images];
+            next[idx] = { ...next[idx], uploading: false, error: data.error ?? "Upload failed" };
+            return { ...prev, ref_images: next };
+          });
+        } else {
+          setForm((prev) => {
+            const next = [...prev.ref_images];
+            next[idx] = {
+              type: "storage",
+              path: data.path,
+              url: data.url,
+              originalName: data.originalName,
+              ext: data.ext,
+              previewObjectUrl: next[idx].previewObjectUrl,
+              uploading: false,
+            };
+            return { ...prev, ref_images: next };
+          });
+        }
+      } catch {
+        setForm((prev) => {
+          const next = [...prev.ref_images];
+          next[idx] = { ...next[idx], uploading: false, error: "Upload failed. Please try again." };
+          return { ...prev, ref_images: next };
+        });
+      }
+    }
   }
 
   // Client-side classification preview (server always recomputes)
@@ -168,12 +247,15 @@ export default function SourcingForm() {
   const depositCents = getDepositCents(requestType);
   const depositDollars = depositCents / 100;
 
+  const uploadingCount = form.ref_images.filter((r) => r.uploading).length;
+
   const formFilled =
     form.name.trim().length >= 2 &&
     form.email.includes("@") &&
     form.category !== "" &&
     form.budget_min !== "" &&
-    !isNaN(Number(form.budget_min));
+    !isNaN(Number(form.budget_min)) &&
+    uploadingCount === 0;
 
   // Show preview once the base fields are filled
   useEffect(() => {
@@ -211,7 +293,9 @@ export default function SourcingForm() {
           translucency_preference: form.translucency_preference || null,
           exact_dimensions_matters: form.exact_dimensions_matters,
           exact_dimensions: form.exact_dimensions.trim() || null,
-          reference_images: form.ref_images,
+          reference_images: form.ref_images
+            .filter((r) => !r.uploading && !r.error && r.path)
+            .map(({ type, path, url, originalName, ext }) => ({ type, path, url, originalName, ext })),
           // Honeypot fields (real users leave these empty)
           website: form.website,
         }),
@@ -235,7 +319,7 @@ export default function SourcingForm() {
       {/* ── Hero ──────────────────────────────────────────────────── */}
       <div className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
         <div className="mx-auto max-w-3xl px-6 py-14 sm:py-20">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-600 dark:text-emerald-400 mb-3">
+          <p className="text-xs text-[16px] font-semibold uppercase tracking-[0.25em] text-emerald-600 dark:text-emerald-400 mb-3">
             Custom Sourcing
           </p>
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 leading-tight">
@@ -267,7 +351,7 @@ export default function SourcingForm() {
           <p className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-1">
             How your request is classified
           </p>
-          <p className="text-xs text-amber-700/80 dark:text-amber-300/70 leading-relaxed">
+          <p className="text-xs text-[16px] text-amber-700/80 dark:text-amber-300/70 leading-relaxed">
             Based on your preferences, requests are automatically classified as <strong>Standard ($50 deposit)</strong> or <strong>Premium ($100 deposit)</strong>. More specific requests — close photo matching, exact dimensions, or strict must-haves — are classified as Premium. The deposit is fully applied as credit toward your purchase.
           </p>
         </div>
@@ -338,7 +422,7 @@ export default function SourcingForm() {
                   key={value}
                   type="button"
                   onClick={() => set("category", value)}
-                  className={`rounded-lg border px-3 py-2.5 text-xs font-medium transition-colors text-center ${
+                  className={`rounded-lg border px-3 py-2.5 text-xs text-[16px] font-medium transition-colors text-center ${
                     form.category === value
                       ? "border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
                       : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
@@ -409,8 +493,8 @@ export default function SourcingForm() {
 
         {/* ── Section 3: Must-haves & Must-avoids ─────────────── */}
         <div className={sectionClass}>
-          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Requirements</h2>
-          <p className="text-xs text-gray-400 dark:text-gray-500 -mt-2">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">Requirements</h2>
+          <p className="text-xs text-[16px] text-[16px] text-gray-400 dark:text-gray-500 -mt-2">
             Listing 3+ specific must-haves may upgrade your request to <strong>Premium</strong>.
           </p>
 
@@ -444,12 +528,12 @@ export default function SourcingForm() {
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Specificity</h2>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              <p className="text-xs text-[16px] text-[16px] text-gray-400 dark:text-gray-500 mt-0.5">
                 These signals determine whether your request is Standard or Premium.
               </p>
             </div>
             {showPreview && (
-              <div className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold tracking-wide ${
+              <div className={`shrink-0 px-3 py-1.5 rounded-full text-xs text-[16px] text-[16px] font-bold tracking-wide ${
                 requestType === "premium"
                   ? "bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800"
                   : "bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800"
@@ -532,7 +616,7 @@ export default function SourcingForm() {
                       key={opt}
                       type="button"
                       onClick={() => set("translucency_preference", opt)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                      className={`px-3 py-1.5 rounded-full text-xs text-[16px] font-medium border transition-colors ${
                         form.translucency_preference === opt
                           ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
                           : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400"
@@ -571,45 +655,86 @@ export default function SourcingForm() {
         <div className={sectionClass}>
           <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Reference Images (optional)</h2>
           <p className="text-xs text-gray-400 dark:text-gray-500 -mt-2">
-            Add image URLs for reference pieces you like (from Pinterest, Google Images, etc.)
+            Upload photos or PDFs of pieces you like. Accepted: JPG, PNG, WebP, HEIC, PDF · Max {MAX_SIZE_MB} MB each · Up to {MAX_FILES} files.
           </p>
 
-          <div className="flex gap-2">
-            <input
-              type="url"
-              className={`${inputClass} flex-1`}
-              placeholder="https://example.com/image.jpg"
-              value={form.ref_url_input}
-              onChange={(e) => set("ref_url_input", e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addRefUrl(); } }}
-            />
-            <button
-              type="button"
-              onClick={addRefUrl}
-              disabled={!form.ref_url_input.trim()}
-              className="px-4 py-2.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300 font-medium hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 disabled:opacity-40 transition-colors border border-gray-200 dark:border-gray-700"
-            >
-              Add
-            </button>
-          </div>
+          {/* Drop zone / file input */}
+          {form.ref_images.filter((r) => !r.error).length < MAX_FILES && (
+            <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors cursor-pointer px-6 py-8">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 dark:text-gray-600">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                {uploadingCount > 0 ? `Uploading ${uploadingCount} file${uploadingCount > 1 ? "s" : ""}…` : "Click to upload files"}
+              </span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">JPG · PNG · WebP · HEIC · PDF</span>
+              <input
+                type="file"
+                accept={ACCEPTED_TYPES}
+                multiple
+                className="sr-only"
+                onChange={handleFileSelect}
+              />
+            </label>
+          )}
 
+          {/* File grid */}
           {form.ref_images.length > 0 && (
-            <ul className="space-y-2">
+            <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {form.ref_images.map((img, idx) => (
-                <li key={idx} className="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400 shrink-0">
-                    <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
-                  </svg>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 flex-1 truncate">{img.value}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeRefImage(idx)}
-                    className="text-gray-400 hover:text-red-500 transition-colors"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                  </button>
+                <li key={idx} className={`relative rounded-xl border overflow-hidden bg-gray-50 dark:bg-gray-900 ${img.error ? "border-red-200 dark:border-red-800" : "border-gray-200 dark:border-gray-700"}`}>
+                  {/* Preview area */}
+                  <div className="relative w-full aspect-square flex items-center justify-center bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                    {(img.previewObjectUrl && isImageExt(img.ext)) ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={img.previewObjectUrl} alt={img.originalName} className="w-full h-full object-cover" />
+                    ) : (img.url && isImageExt(img.ext)) ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={img.url} alt={img.originalName} className="w-full h-full object-cover" />
+                    ) : img.ext === "pdf" ? (
+                      <div className="flex flex-col items-center gap-1 p-3 text-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-red-400">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                        <span className="text-[10px] text-gray-400 font-mono uppercase">PDF</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 p-3 text-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 dark:text-gray-600">
+                          <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                        <span className="text-[10px] text-gray-400 font-mono uppercase">{img.ext || "file"}</span>
+                      </div>
+                    )}
+
+                    {/* Uploading spinner overlay */}
+                    {img.uploading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-gray-950/70">
+                        <div className="w-5 h-5 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Filename + remove */}
+                  <div className="px-2 py-1.5 flex items-center justify-between gap-1">
+                    <span className="text-[10px] leading-tight truncate">
+                      {img.error
+                        ? <span className="text-red-500 dark:text-red-400">{img.error}</span>
+                        : <span className="text-gray-400 dark:text-gray-500">{img.originalName}</span>
+                      }
+                    </span>
+                    {!img.uploading && (
+                      <button
+                        type="button"
+                        onClick={() => removeRefImage(idx)}
+                        className="shrink-0 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                      </button>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -662,7 +787,7 @@ export default function SourcingForm() {
           }`}>
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-1">
+                <p className="text-xs text-[16px] font-semibold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-1">
                   Request Summary
                 </p>
                 <h3 className={`text-lg font-bold ${
@@ -673,7 +798,7 @@ export default function SourcingForm() {
                   {requestType === "premium" ? "Premium Sourcing Request" : "Standard Sourcing Request"}
                 </h3>
               </div>
-              <div className={`px-3 py-1.5 rounded-full text-xs font-bold tracking-wider shrink-0 ${
+              <div className={`px-3 py-1.5 rounded-full text-xs text-[16px] font-bold tracking-wider shrink-0 ${
                 requestType === "premium"
                   ? "bg-violet-200 dark:bg-violet-900 text-violet-800 dark:text-violet-200"
                   : "bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200"
@@ -685,13 +810,13 @@ export default function SourcingForm() {
             <div className="grid sm:grid-cols-2 gap-3 text-sm">
               {form.category && (
                 <div>
-                  <span className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Category</span>
+                  <span className="text-xs text-[16px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">Category</span>
                   <p className="font-medium text-gray-800 dark:text-gray-200 capitalize">{form.category}</p>
                 </div>
               )}
               {form.budget_min && (
                 <div>
-                  <span className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Budget</span>
+                  <span className="text-xs text-[16px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">Budget</span>
                   <p className="font-medium text-gray-800 dark:text-gray-200">
                     ${form.budget_min}{form.budget_max ? `–$${form.budget_max}` : "+"}
                   </p>
@@ -699,13 +824,13 @@ export default function SourcingForm() {
               )}
               {form.preferred_color && (
                 <div>
-                  <span className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Color</span>
+                  <span className="text-xs text-[16px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">Color</span>
                   <p className="font-medium text-gray-800 dark:text-gray-200">{form.preferred_color}</p>
                 </div>
               )}
               {form.timeline !== "flexible" && (
                 <div>
-                  <span className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Timeline</span>
+                  <span className="text-xs text-[16px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">Timeline</span>
                   <p className="font-medium text-gray-800 dark:text-gray-200">
                     {TIMELINES.find((t) => t.value === form.timeline)?.label}
                   </p>
@@ -724,11 +849,11 @@ export default function SourcingForm() {
                   }`}>
                     ${depositDollars}
                   </p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                  <p className="text-xs text-[16px] text-gray-400 dark:text-gray-500 mt-0.5">
                     Applied as credit toward your final purchase
                   </p>
                 </div>
-                <div className="text-right text-xs text-gray-400 dark:text-gray-500 space-y-0.5">
+                <div className="text-right text-xs text-[16px] text-gray-400 dark:text-gray-500 space-y-0.5">
                   <p>Strictness score: {score}</p>
                   <p>Classification: {requestType}</p>
                 </div>
@@ -762,16 +887,18 @@ export default function SourcingForm() {
                 <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                 Redirecting to payment…
               </span>
+            ) : uploadingCount > 0 ? (
+              `Uploading ${uploadingCount} file${uploadingCount > 1 ? "s" : ""}… please wait`
             ) : formFilled ? (
               `Pay $${depositDollars} Deposit — ${requestType === "premium" ? "Premium" : "Standard"}`
             ) : (
               "Fill in your details to continue"
             )}
           </button>
-          <p className="text-center text-xs text-gray-400 dark:text-gray-500">
+          <p className="text-center text-xs text-[16px] text-gray-400 dark:text-gray-500">
             Secured by Stripe. Deposit is credited to your first order — no obligation if nothing fits.
           </p>
-          <p className="text-center text-xs text-gray-400 dark:text-gray-500">
+          <p className="text-center text-xs text-[16px] text-gray-400 dark:text-gray-500">
             Questions?{" "}
             <Link href="/contact" className="text-emerald-600 dark:text-emerald-400 hover:underline">
               Contact us first
