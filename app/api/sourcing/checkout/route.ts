@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { normalizeEmail } from "@/lib/discount";
-import { classifyFromInputs, CREDIT_VALIDITY_DAYS } from "@/lib/sourcing-classification";
+import { classifyFromInputs, computeTotalDepositCents, CREDIT_VALIDITY_DAYS } from "@/lib/sourcing-classification";
 import type { ClassificationInputs } from "@/lib/sourcing-classification";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
@@ -84,8 +84,8 @@ export async function POST(req: NextRequest) {
   }
 
   const budgetMin = typeof budgetMinRaw === "number" ? Math.floor(budgetMinRaw) : parseInt(String(budgetMinRaw ?? ""), 10);
-  if (isNaN(budgetMin) || budgetMin < 50 || budgetMin > 1_000_000) {
-    return NextResponse.json({ error: "Please enter a valid minimum budget (at least $50)." }, { status: 400 });
+  if (isNaN(budgetMin) || budgetMin < 300 || budgetMin > 1_000_000) {
+    return NextResponse.json({ error: "Please enter a valid minimum budget (at least $300)." }, { status: 400 });
   }
 
   let budgetMax: number | null = null;
@@ -93,6 +93,17 @@ export async function POST(req: NextRequest) {
     budgetMax = typeof budgetMaxRaw === "number" ? Math.floor(budgetMaxRaw) : parseInt(String(budgetMaxRaw), 10);
     if (isNaN(budgetMax) || budgetMax < budgetMin) {
       return NextResponse.json({ error: "Maximum budget must be greater than minimum budget." }, { status: 400 });
+    }
+  }
+
+  // Translucency level validation
+  const translucencyPref = isString(body.translucency_preference) ? body.translucency_preference.trim() : "";
+  if (translucencyPref === "icy_above") {
+    const effectiveBudget = budgetMax ?? budgetMin;
+    if (effectiveBudget < 3000) {
+      return NextResponse.json({
+        error: "Icy or above jade requires a budget of at least $3,000. Please adjust your budget or choose a different translucency level.",
+      }, { status: 400 });
     }
   }
 
@@ -108,10 +119,10 @@ export async function POST(req: NextRequest) {
     patternVeiningMatters:  body.pattern_veining_matters === true,
     translucencyMatters:    body.translucency_matters === true,
     exactDimensionsMatters: body.exact_dimensions_matters === true,
-    mustHaves:              isString(body.must_haves) ? body.must_haves.slice(0, 2000) : undefined,
   };
 
-  const { score, requestType, depositCents } = classifyFromInputs(classInputs);
+  const { score, requestType } = classifyFromInputs(classInputs);
+  const depositCents = computeTotalDepositCents(requestType, timeline);
 
   // ── Build preferences snapshot ────────────────────────────────────────────
   const preferences = {
@@ -200,11 +211,8 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Create Stripe Checkout Session ────────────────────────────────────────
-  const productLabel =
-    requestType === "premium"
-      ? "Custom Sourcing Deposit — Premium"
-      : "Custom Sourcing Deposit — Standard";
-
+  const tierLabel = requestType === "concierge" ? "Concierge" : requestType === "premium" ? "Premium" : "Standard";
+  const productLabel = `Custom Sourcing Deposit — ${tierLabel}`;
   const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1);
 
   let stripeSession: { id: string; url: string | null };
@@ -217,7 +225,7 @@ export async function POST(req: NextRequest) {
             currency: "usd",
             product_data: {
               name: productLabel,
-              description: `${categoryLabel} · ${requestType === "premium" ? "Premium" : "Standard"} sourcing request. Budget: $${budgetMin}${budgetMax ? `–$${budgetMax}` : "+"}. Deposit is applied as credit toward your final order.`,
+              description: `${categoryLabel} · ${tierLabel} sourcing request. Budget: $${budgetMin}${budgetMax ? `–$${budgetMax}` : "+"}. Deposit is applied as credit toward your final order.`,
             },
             unit_amount: depositCents,
           },

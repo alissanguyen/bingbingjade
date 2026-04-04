@@ -7,13 +7,14 @@ import {
   computeStrictnessScore,
   classifyRequest,
   getDepositCents,
+  getTimelineSurchargeCents,
 } from "@/lib/sourcing-classification";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type Category = "bracelet" | "bangle" | "ring" | "pendant" | "necklace" | "set" | "other";
 type Timeline = "asap" | "within_1_month" | "1-2_months" | "within_3_months";
-type TranslucencyPref = "very_transparent" | "semi_transparent" | "opaque" | "";
+type TranslucencyPref = "glutinous_fine" | "icy_glutinous" | "icy_above" | "";
 
 interface RefImage {
   type: "storage";
@@ -241,11 +242,18 @@ export default function SourcingForm() {
     patternVeiningMatters: form.pattern_veining_matters,
     translucencyMatters: form.translucency_matters,
     exactDimensionsMatters: form.exact_dimensions_matters,
-    mustHaves: form.must_haves,
   });
   const requestType = classifyRequest(score);
-  const depositCents = getDepositCents(requestType);
+  const baseDepositCents = getDepositCents(requestType);
+  const timelineSurchargeCents = getTimelineSurchargeCents(form.timeline);
+  const depositCents = baseDepositCents + timelineSurchargeCents;
   const depositDollars = depositCents / 100;
+
+  // Budget helpers for translucency validation
+  const budgetMaxVal = form.budget_max !== "" ? Number(form.budget_max) : null;
+  const budgetMinVal = form.budget_min !== "" ? Number(form.budget_min) : null;
+  const effectiveBudget = budgetMaxVal ?? budgetMinVal ?? 0;
+  const canSelectIcyAbove = effectiveBudget >= 3000;
 
   const uploadingCount = form.ref_images.filter((r) => r.uploading).length;
 
@@ -442,8 +450,8 @@ export default function SourcingForm() {
                 <input
                   type="number"
                   className={`${inputClass} pl-7`}
-                  placeholder="e.g. 500"
-                  min={50}
+                  placeholder="e.g. 500 (min $300)"
+                  min={300}
                   value={form.budget_min}
                   onChange={(e) => set("budget_min", e.target.value)}
                   required
@@ -458,7 +466,7 @@ export default function SourcingForm() {
                   type="number"
                   className={`${inputClass} pl-7`}
                   placeholder="No limit"
-                  min={Number(form.budget_min) || 50}
+                  min={Number(form.budget_min) || 300}
                   value={form.budget_max}
                   onChange={(e) => set("budget_max", e.target.value)}
                 />
@@ -609,24 +617,73 @@ export default function SourcingForm() {
               onChange={(v) => set("translucency_matters", v)}
             />
             {form.translucency_matters && (
-              <div className="ml-4 pl-4 border-l-2 border-emerald-200 dark:border-emerald-800">
+              <div className="ml-4 pl-4 border-l-2 border-emerald-200 dark:border-emerald-800 space-y-3">
                 <div className="flex gap-2 flex-wrap">
-                  {(["very_transparent", "semi_transparent", "opaque"] as TranslucencyPref[]).map((opt) => (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => set("translucency_preference", opt)}
-                      className={`px-3 py-1.5 rounded-full text-xs text-[16px] font-medium border transition-colors ${
-                        form.translucency_preference === opt
-                          ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
-                          : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400"
-                      }`}
-                    >
-                      {opt === "very_transparent" ? "Very transparent (glass-like)" :
-                       opt === "semi_transparent" ? "Semi-transparent" : "Opaque"}
-                    </button>
-                  ))}
+                  {/* Glutinous to Fine Glutinous */}
+                  <button
+                    type="button"
+                    onClick={() => set("translucency_preference", "glutinous_fine")}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                      form.translucency_preference === "glutinous_fine"
+                        ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
+                        : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300"
+                    }`}
+                  >
+                    Glutinous to Fine Glutinous
+                  </button>
+
+                  {/* Icy Glutinous */}
+                  <button
+                    type="button"
+                    onClick={() => set("translucency_preference", "icy_glutinous")}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                      form.translucency_preference === "icy_glutinous"
+                        ? "border-sky-400 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300"
+                        : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300"
+                    }`}
+                  >
+                    Icy Glutinous
+                  </button>
+
+                  {/* Icy or Above — gated by budget */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!canSelectIcyAbove) return;
+                      set("translucency_preference", "icy_above");
+                    }}
+                    disabled={!canSelectIcyAbove}
+                    title={!canSelectIcyAbove ? "Requires budget of at least $3,000" : undefined}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                      !canSelectIcyAbove
+                        ? "border-gray-100 dark:border-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed"
+                        : form.translucency_preference === "icy_above"
+                          ? "border-violet-400 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
+                          : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300"
+                    }`}
+                  >
+                    Icy or Above
+                    {!canSelectIcyAbove && <span className="ml-1 text-[10px]">(budget $3k+)</span>}
+                  </button>
                 </div>
+
+                {/* Icy Glutinous pricing note */}
+                {form.translucency_preference === "icy_glutinous" && (
+                  <p className="text-xs text-sky-600 dark:text-sky-400">
+                    Icy glutinous jade typically starts at{" "}
+                    {form.category === "bangle" ? "$1,500" : form.category === "bracelet" ? "$500" : "$300"} for{" "}
+                    {form.category || "this category"}.
+                  </p>
+                )}
+
+                {/* Icy Above pricing note */}
+                {form.translucency_preference === "icy_above" && (
+                  <p className="text-xs text-violet-600 dark:text-violet-400">
+                    Icy or above jade typically starts at{" "}
+                    {form.category === "bangle" ? "$3,000" : form.category === "bracelet" ? "$800" : "$500"} for{" "}
+                    {form.category || "this category"}.
+                  </p>
+                )}
               </div>
             )}
 
@@ -799,9 +856,11 @@ export default function SourcingForm() {
                 </h3>
               </div>
               <div className={`px-3 py-1.5 rounded-full text-xs text-[16px] font-bold tracking-wider shrink-0 ${
-                requestType === "premium"
-                  ? "bg-violet-200 dark:bg-violet-900 text-violet-800 dark:text-violet-200"
-                  : "bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200"
+                requestType === "concierge"
+                  ? "bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200"
+                  : requestType === "premium"
+                    ? "bg-violet-200 dark:bg-violet-900 text-violet-800 dark:text-violet-200"
+                    : "bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200"
               }`}>
                 {requestType.toUpperCase()}
               </div>
@@ -843,19 +902,25 @@ export default function SourcingForm() {
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Deposit due today</p>
                   <p className={`text-2xl font-bold ${
-                    requestType === "premium"
-                      ? "text-violet-700 dark:text-violet-300"
-                      : "text-emerald-700 dark:text-emerald-300"
+                    requestType === "concierge"
+                      ? "text-amber-700 dark:text-amber-300"
+                      : requestType === "premium"
+                        ? "text-violet-700 dark:text-violet-300"
+                        : "text-emerald-700 dark:text-emerald-300"
                   }`}>
                     ${depositDollars}
                   </p>
-                  <p className="text-xs text-[16px] text-gray-400 dark:text-gray-500 mt-0.5">
-                    Applied as credit toward your final purchase
-                  </p>
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 space-y-0.5">
+                    <p>Base ({requestType}): ${baseDepositCents / 100}</p>
+                    {timelineSurchargeCents > 0 && (
+                      <p>Timeline urgency: +${timelineSurchargeCents / 100}</p>
+                    )}
+                    <p>Applied as credit toward your final purchase</p>
+                  </div>
                 </div>
                 <div className="text-right text-xs text-[16px] text-gray-400 dark:text-gray-500 space-y-0.5">
-                  <p>Strictness score: {score}</p>
-                  <p>Classification: {requestType}</p>
+                  <p>Score: {score}</p>
+                  <p>Tier: {requestType}</p>
                 </div>
               </div>
             </div>
@@ -876,9 +941,11 @@ export default function SourcingForm() {
             disabled={!formFilled || loading}
             className={`w-full py-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
               formFilled && !loading
-                ? requestType === "premium"
-                  ? "bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-200 dark:shadow-violet-900/30"
-                  : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 dark:shadow-emerald-900/30"
+                ? requestType === "concierge"
+                  ? "bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-200 dark:shadow-amber-900/30"
+                  : requestType === "premium"
+                    ? "bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-200 dark:shadow-violet-900/30"
+                    : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 dark:shadow-emerald-900/30"
                 : "bg-gray-200 dark:bg-gray-800 text-gray-400 cursor-not-allowed"
             }`}
           >
@@ -890,7 +957,7 @@ export default function SourcingForm() {
             ) : uploadingCount > 0 ? (
               `Uploading ${uploadingCount} file${uploadingCount > 1 ? "s" : ""}… please wait`
             ) : formFilled ? (
-              `Pay $${depositDollars} Deposit — ${requestType === "premium" ? "Premium" : "Standard"}`
+              `Pay $${depositDollars} Deposit — ${requestType === "concierge" ? "Concierge" : requestType === "premium" ? "Premium" : "Standard"}`
             ) : (
               "Fill in your details to continue"
             )}
