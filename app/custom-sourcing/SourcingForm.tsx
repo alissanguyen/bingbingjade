@@ -12,7 +12,7 @@ import {
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type Category = "bracelet" | "bangle" | "ring" | "pendant" | "necklace" | "set" | "other";
-type Timeline = "asap" | "1-3_months" | "3-6_months" | "flexible";
+type Timeline = "asap" | "within_1_month" | "1-2_months" | "within_3_months";
 type TranslucencyPref = "very_transparent" | "semi_transparent" | "opaque" | "";
 
 interface RefImage {
@@ -58,7 +58,7 @@ interface FormState {
 const INITIAL: FormState = {
   name: "", email: "", category: "", budget_min: "", budget_max: "",
   preferred_color: "", size_description: "", must_haves: "", must_avoid: "",
-  timeline: "flexible", notes: "",
+  timeline: "within_3_months", notes: "",
   close_reference_match: false, reference_notes: "",
   exact_color_matters: false, color_detail: "",
   pattern_veining_matters: false, pattern_description: "",
@@ -87,10 +87,10 @@ const CATEGORIES: { value: Category; label: string }[] = [
 ];
 
 const TIMELINES: { value: Timeline; label: string }[] = [
-  { value: "asap", label: "As soon as possible" },
-  { value: "1-3_months", label: "Within 1–3 months" },
-  { value: "3-6_months", label: "3–6 months is fine" },
-  { value: "flexible", label: "Flexible — no rush" },
+  { value: "asap",            label: "As soon as possible" },
+  { value: "within_1_month",  label: "Within 1 month" },
+  { value: "1-2_months",      label: "1–2 months" },
+  { value: "within_3_months", label: "Within 3 months" },
 ];
 
 // ── Style helpers ─────────────────────────────────────────────────────────────

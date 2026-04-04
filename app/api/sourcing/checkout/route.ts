@@ -28,7 +28,7 @@ function checkRateLimit(ip: string): boolean {
 
 // ── Input validation ──────────────────────────────────────────────────────────
 const VALID_CATEGORIES = ["bracelet", "bangle", "ring", "pendant", "necklace", "set", "other"] as const;
-const VALID_TIMELINES = ["asap", "1-3_months", "3-6_months", "flexible"] as const;
+const VALID_TIMELINES = ["asap", "within_1_month", "1-2_months", "within_3_months"] as const;
 
 function isString(v: unknown): v is string {
   return typeof v === "string";
