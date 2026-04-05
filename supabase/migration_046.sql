@@ -3,7 +3,7 @@
 
 -- ── 1. public_token on sourcing_requests ──────────────────────────────────────
 ALTER TABLE public.sourcing_requests
-  ADD COLUMN IF NOT EXISTS public_token TEXT UNIQUE;
+  ADD COLUMN IF NOT EXISTS public_token TEXT UNIQUE DEFAULT gen_random_uuid()::text;
 
 UPDATE public.sourcing_requests
   SET public_token = gen_random_uuid()::text
