@@ -27,6 +27,43 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+/* Concierge sourcing card — animated gold conic-gradient border */
+@property --concierge-angle {
+  syntax: "<angle>";
+  initial-value: 0turn;
+  inherits: false;
+}
+
+@keyframes concierge-spin {
+  to { --concierge-angle: 1turn; }
+}
+
+.concierge-card {
+  animation: concierge-spin 3s linear infinite;
+  border: 2px solid transparent;
+  background-image:
+    linear-gradient(var(--card-bg, #ffffff), var(--card-bg, #ffffff)),
+    conic-gradient(
+      from var(--concierge-angle),
+      #584827 0%,
+      #c7a03c 27%,
+      #f9de90 30%,
+      #c7a03c 33%,
+      #584827 40%,
+      #584827 50%,
+      #c7a03c 77%,
+      #f9de90 80%,
+      #c7a03c 83%,
+      #584827 90%
+    );
+  background-clip: padding-box, border-box;
+  background-origin: padding-box, border-box;
+}
+
+.dark .concierge-card {
+  --card-bg: #111827;
+}
+
 @keyframes popupIn {
   from { opacity: 0; transform: scale(0.95) translateY(8px); }
   to   { opacity: 1; transform: scale(1)    translateY(0); }

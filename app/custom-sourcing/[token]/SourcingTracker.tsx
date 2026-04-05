@@ -226,9 +226,12 @@ export function SourcingTracker({ token, data }: Props) {
       </div>
 
       {/* Request summary */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex flex-wrap items-start justify-between gap-3">
+      <div className={`rounded-xl overflow-hidden ${data.request_type === "concierge" ? "concierge-card" : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800"}`}>
+        <div className={`px-5 py-4 flex flex-wrap items-start justify-between gap-3 ${data.request_type === "concierge" ? "border-b border-amber-900/30" : "border-b border-gray-100 dark:border-gray-800"}`}>
           <div>
+            {data.request_type === "concierge" && (
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-500 mb-1">✦ Concierge Service</p>
+            )}
             <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
               {data.category.charAt(0).toUpperCase() + data.category.slice(1)} Sourcing Request
             </p>
@@ -304,7 +307,7 @@ export function SourcingTracker({ token, data }: Props) {
             </div>
             <div className="px-5 py-4">
               <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-emerald-600 dark:text-emerald-400 text-base">🪨</span>
+                <span className="text-emerald-600 dark:text-emerald-400 text-base">✨</span>
                 <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">Authenticity Guaranteed</p>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
