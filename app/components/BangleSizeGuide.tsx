@@ -286,15 +286,15 @@ function BangleSizeGuideContent({ productSize }: { productSize?: number }) {
                     )}
                     <div className="grid grid-cols-2 gap-2 pt-1">
                       <div className="rounded-lg bg-white dark:bg-gray-900 border border-emerald-100 dark:border-emerald-900 px-3 py-2 text-center">
-                        <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-[0.1em] mb-0.5">Snug fit</p>
+                        <p className="text-[11px] sm:text-[15px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-0.5">Snug fit</p>
                         <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{result.sizeMin}</p>
                       </div>
                       <div className="rounded-lg bg-white dark:bg-gray-900 border border-emerald-100 dark:border-emerald-900 px-3 py-2 text-center">
-                        <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-[0.1em] mb-0.5">Easier fit</p>
+                        <p className="text-[11px] sm:text-[15px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-0.5">Easier fit</p>
                         <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{result.sizeMax}</p>
                       </div>
                     </div>
-                    <p className="text-[11px] text-emerald-600 dark:text-emerald-500 pt-0.5">
+                    <p className="text-[11px] sm:text-[15px] text-emerald-600 dark:text-emerald-500 pt-0.5">
                       For fuller hands or pronounced knuckles, sizing up ({result.sizeMax}) may be more comfortable.
                     </p>
                   </>
@@ -304,8 +304,8 @@ function BangleSizeGuideContent({ productSize }: { productSize?: number }) {
 
             {/* Between sizes note */}
             {result && result.status !== "below" && result.status !== "above" && (
-              <p className="text-[11px] text-gray-400 dark:text-gray-500 text-center">
-                I&apos;m between sizes? We recommend the larger size. <a href="/contact" className="underline underline-offset-2 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Ask us</a> if unsure.
+              <p className="text-[11px] sm:text-[16px] text-gray-400 dark:text-gray-500 text-center">
+                I&apos;m between sizes? We recommend the larger size. <a href="/contact" className="underline underline-offset-2 text-black dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Ask us</a> if unsure.
               </p>
             )}
           </>
