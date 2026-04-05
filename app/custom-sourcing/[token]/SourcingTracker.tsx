@@ -33,6 +33,19 @@ interface Attempt {
   sourcing_attempt_options: AttemptOption[];
 }
 
+interface Preferences {
+  timeline?: string;
+  preferred_color?: string;
+  size_description?: string;
+  translucency_preference?: string;
+  exact_dimensions?: string;
+  surface_finish?: string;
+  pattern_description?: string;
+  reference_notes?: string;
+  must_haves?: string;
+  [key: string]: unknown;
+}
+
 interface SourcingData {
   id: string;
   public_token: string;
@@ -48,6 +61,7 @@ interface SourcingData {
   payment_status: string;
   credit_expires_at: string | null;
   deposit_amount_cents: number;
+  preferences_json: Preferences | null;
   attempts: Attempt[];
   availableCreditCents: number;
 }
@@ -235,6 +249,42 @@ export function SourcingTracker({ token, data }: Props) {
           </div>
         )}
       </div>
+
+      {/* Request details summary */}
+      {data.preferences_json && Object.keys(data.preferences_json).length > 0 && (() => {
+        const p = data.preferences_json!;
+        const rows: { label: string; value: string }[] = [];
+        if (p.timeline)                 rows.push({ label: "Timeline",        value: String(p.timeline).replace(/_/g, " ") });
+        if (p.preferred_color)          rows.push({ label: "Color",           value: String(p.preferred_color) });
+        if (p.size_description)         rows.push({ label: "Size",            value: String(p.size_description) });
+        if (p.translucency_preference)  rows.push({ label: "Translucency",    value: String(p.translucency_preference).replace(/_/g, " ") });
+        if (p.exact_dimensions)         rows.push({ label: "Dimensions",      value: String(p.exact_dimensions) });
+        if (p.surface_finish)           rows.push({ label: "Surface finish",  value: String(p.surface_finish) });
+        if (p.pattern_description)      rows.push({ label: "Pattern",         value: String(p.pattern_description) });
+        if (p.reference_notes)          rows.push({ label: "Notes",           value: String(p.reference_notes) });
+        if (p.must_haves)               rows.push({ label: "Must-haves",      value: String(p.must_haves) });
+        if (rows.length === 0) return null;
+        return (
+          <details className="group rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
+            <summary className="px-5 py-3.5 flex items-center justify-between gap-2 cursor-pointer list-none select-none">
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-500 dark:text-gray-400">
+                Your Request Details
+              </p>
+              <svg className="w-4 h-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </summary>
+            <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-4 grid sm:grid-cols-2 gap-x-6 gap-y-3">
+              {rows.map(({ label, value }) => (
+                <div key={label}>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500 mb-0.5">{label}</p>
+                  <p className="text-sm text-gray-800 dark:text-gray-200">{value}</p>
+                </div>
+              ))}
+            </div>
+          </details>
+        );
+      })()}
 
       {/* Trust / upsell block — shown while we're still sourcing */}
       {(status === "queued" || status === "in_progress" || status === "responded") && (
