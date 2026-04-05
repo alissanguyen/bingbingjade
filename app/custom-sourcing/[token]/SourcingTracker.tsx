@@ -292,7 +292,7 @@ export function SourcingTracker({ token, data }: Props) {
           <div className="px-5 pt-4 pb-2 border-b border-gray-100 dark:border-gray-800">
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500">What we&apos;re doing for you</p>
           </div>
-          <div className="grid sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-100 dark:divide-gray-800">
+          <div className="grid sm:grid-cols-3 gap-0">
             <div className="px-5 py-4">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-emerald-600 dark:text-emerald-400 text-base">🔍</span>
