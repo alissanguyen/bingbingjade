@@ -98,6 +98,70 @@ export async function sendAdminNewRequestEmail(params: {
   }
 }
 
+// ── Deposit confirmed → customer confirmation ─────────────────────────────────
+
+export async function sendDepositConfirmationEmail(params: {
+  customerName: string;
+  customerEmail: string;
+  publicToken: string;
+  category: string;
+  requestType: string;
+  depositCents: number;
+}): Promise<void> {
+  const resend = getResend();
+  if (!resend) return;
+
+  const firstName = params.customerName.split(" ")[0];
+  const trackUrl  = `${SITE_URL}/custom-sourcing/${params.publicToken}`;
+  const tier      = params.requestType.charAt(0).toUpperCase() + params.requestType.slice(1);
+  const deposit   = `$${(params.depositCents / 100).toFixed(0)}`;
+  const category  = params.category.charAt(0).toUpperCase() + params.category.slice(1);
+
+  const content = `
+    <p style="margin:0 0 20px;font-size:16px;color:#111827;">Hi ${firstName},</p>
+    <p style="margin:0 0 20px;font-size:15px;color:#374151;line-height:1.6;">
+      Your custom sourcing request has been confirmed! We've received your ${deposit} deposit
+      and will begin sourcing your <strong>${category}</strong> (${tier} tier).
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:24px;">
+      <tr><td style="padding:16px 20px;">
+        <p style="margin:0 0 4px;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#059669;">What happens next</p>
+        <p style="margin:0;font-size:13px;color:#374151;line-height:1.7;">
+          We'll search our network for the best options matching your preferences.
+          Once we have options ready, you'll receive another email with a link to review and respond.
+          This typically takes a few business days.
+        </p>
+      </td></tr>
+    </table>
+    <p style="margin:0 0 16px;font-size:14px;color:#374151;">
+      You can check the status of your request anytime using the link below — bookmark it for easy access.
+    </p>
+    <table cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+      <tr><td style="background:#065f46;border-radius:999px;">
+        <a href="${trackUrl}" style="display:inline-block;padding:13px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">
+          Track My Request &rarr;
+        </a>
+      </td></tr>
+    </table>
+    <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.6;">
+      This link is private and tied to your request — keep it safe.
+      Questions? <a href="${SITE_URL}/contact" style="color:#059669;text-decoration:none;">Contact us</a>.
+    </p>
+  `;
+
+  try {
+    await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL_ORDER_CONFIRMATION ?? "BingBing Jade <orders@bingbingjade.com>",
+      to:   params.customerEmail,
+      bcc:  ADMIN_EMAIL,
+      subject: `[BingBing Jade] Your custom sourcing request is confirmed`,
+      html: brandedLayout(content),
+    });
+  } catch (err) {
+    console.error("[sourcing-emails] Deposit confirmation email failed:", err);
+  }
+}
+
 // ── Attempt sent → customer email ─────────────────────────────────────────────
 
 export async function sendAttemptEmail(params: {

@@ -15,7 +15,7 @@ export default async function SourcingSuccessPage({
   const isBot = session_id === "bot";
 
   return (
-    <div className="min-h-screen bg-[#faf9f7] dark:bg-[#0d0d0d] flex items-center justify-center px-6 py-20">
+    <div className="min-h-screen bg-[#faf9f7] dark:bg-[#0d0d0d] flex items-center justify-center px-6 py-10">
       <div className="max-w-md w-full text-center space-y-6">
         {/* Icon */}
         <div className="mx-auto w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center">

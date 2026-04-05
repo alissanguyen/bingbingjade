@@ -11,6 +11,7 @@ import {
 } from "@/lib/orders";
 import { commitDiscount, normalizeEmail, buildShippingFingerprint } from "@/lib/discount";
 import { CREDIT_VALIDITY_DAYS } from "@/lib/sourcing-classification";
+import { sendDepositConfirmationEmail } from "@/lib/sourcing-emails";
 import type Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -768,6 +769,24 @@ async function handleSourcingDeposit(
       checkout_session_id:  session.id,
       notes:                `Deposit paid via Stripe session ${session.id}`,
     });
+  }
+
+  // Fetch public_token to include in confirmation email
+  const { data: updated } = await supabase
+    .from("sourcing_requests")
+    .select("public_token, customer_name, category, request_type, deposit_amount_cents")
+    .eq("id", sourcingRequestId)
+    .maybeSingle();
+
+  if (updated?.public_token) {
+    sendDepositConfirmationEmail({
+      customerName:  updated.customer_name,
+      customerEmail: existing.customer_email,
+      publicToken:   updated.public_token,
+      category:      updated.category,
+      requestType:   updated.request_type,
+      depositCents:  updated.deposit_amount_cents,
+    }).catch(() => {});
   }
 
   console.info("[webhook/sourcing] Deposit confirmed for", sourcingRequestId, "— credit:", existing.deposit_amount_cents);

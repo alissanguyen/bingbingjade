@@ -139,11 +139,11 @@ interface OptionFormState {
   color: string;
   dimensions: string;
   notes: string;
-  imageUrls: string;
+  images: string[]; // public URLs
 }
 
 const emptyForm = (): OptionFormState => ({
-  title: "", priceUsd: "", tier: "", color: "", dimensions: "", notes: "", imageUrls: "",
+  title: "", priceUsd: "", tier: "", color: "", dimensions: "", notes: "", images: [],
 });
 
 export function AttemptManager({
@@ -166,6 +166,7 @@ export function AttemptManager({
   const [optionForms, setOptionForms] = useState<Record<string, OptionFormState>>({});
   const [editingOption, setEditingOption] = useState<Record<string, OptionFormState>>({});
   const [savingOption, setSavingOption] = useState<Record<string, boolean>>({});
+  const [uploadingImages, setUploadingImages] = useState<Record<string, boolean>>({});
 
   const isDone = ["fulfilled", "cancelled", "closed"].includes(sourcingStatus);
   const isPaid = paymentStatus === "paid";
@@ -202,6 +203,30 @@ export function AttemptManager({
     return json;
   }
 
+  async function uploadImages(
+    files: FileList,
+    formKey: string,
+    getCurrentImages: () => string[],
+    setImages: (imgs: string[]) => void
+  ) {
+    setUploadingImages((p) => ({ ...p, [formKey]: true }));
+    const uploaded: string[] = [];
+    for (const file of Array.from(files)) {
+      const fd = new FormData();
+      fd.append("file", file);
+      try {
+        const res = await fetch("/api/admin/sourcing/upload-option-image", { method: "POST", body: fd });
+        const json = await res.json() as { url?: string; error?: string };
+        if (!res.ok) throw new Error(json.error ?? "Upload failed");
+        if (json.url) uploaded.push(json.url);
+      } catch (e) {
+        setGlobalError((e as Error).message);
+      }
+    }
+    if (uploaded.length) setImages([...getCurrentImages(), ...uploaded]);
+    setUploadingImages((p) => ({ ...p, [formKey]: false }));
+  }
+
   function setMsg(err: string | null, ok: string | null) {
     setGlobalError(err);
     setGlobalSuccess(ok);
@@ -228,7 +253,6 @@ export function AttemptManager({
       setMsg("Title and a valid price are required.", null);
       return;
     }
-    const images = form.imageUrls.split("\n").map((u) => u.trim()).filter(Boolean);
     setSavingOption((prev) => ({ ...prev, [attemptId]: true })); setMsg(null, null);
     try {
       const data = await apiCall(`/api/admin/sourcing/attempts/${attemptId}/options`, {
@@ -238,7 +262,7 @@ export function AttemptManager({
         color:       form.color.trim() || null,
         dimensions:  form.dimensions.trim() || null,
         notes:       form.notes.trim() || null,
-        images_json: images,
+        images_json: form.images,
       }) as { option: AttemptOption };
       setAttempts((prev) => prev.map((a) =>
         a.id === attemptId
@@ -279,7 +303,6 @@ export function AttemptManager({
       setMsg("Title and valid price required.", null);
       return;
     }
-    const images = form.imageUrls.split("\n").map((u) => u.trim()).filter(Boolean);
     setSavingOption((prev) => ({ ...prev, [optionId]: true })); setMsg(null, null);
     try {
       const data = await apiPut(`/api/admin/sourcing/attempts/${attemptId}/options/${optionId}`, {
@@ -289,7 +312,7 @@ export function AttemptManager({
         color:       form.color.trim() || null,
         dimensions:  form.dimensions.trim() || null,
         notes:       form.notes.trim() || null,
-        images_json: images,
+        images_json: form.images,
       }) as { option: AttemptOption };
       setAttempts((prev) => prev.map((a) =>
         a.id === attemptId
@@ -309,13 +332,13 @@ export function AttemptManager({
     setEditingOption((prev) => ({
       ...prev,
       [option.id]: {
-        title:     option.title,
-        priceUsd:  (option.price_cents / 100).toFixed(2),
-        tier:      option.tier ?? "",
-        color:     option.color ?? "",
+        title:      option.title,
+        priceUsd:   (option.price_cents / 100).toFixed(2),
+        tier:       option.tier ?? "",
+        color:      option.color ?? "",
         dimensions: option.dimensions ?? "",
-        notes:     option.notes ?? "",
-        imageUrls: (option.images_json ?? []).join("\n"),
+        notes:      option.notes ?? "",
+        images:     (option.images_json as string[]) ?? [],
       },
     }));
   }
@@ -458,7 +481,36 @@ export function AttemptManager({
                         <FieldInput label="Tier" value={editForm.tier} onChange={(v) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], tier: v } }))} placeholder="e.g. A-grade, commercial" />
                         <FieldInput label="Color" value={editForm.color} onChange={(v) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], color: v } }))} />
                         <FieldInput label="Dimensions" value={editForm.dimensions} onChange={(v) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], dimensions: v } }))} />
-                        <FieldTextarea label="Image URLs (one per line)" value={editForm.imageUrls} onChange={(v) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], imageUrls: v } }))} />
+                        <div>
+                          <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-400 dark:text-gray-500 mb-0.5">Images</label>
+                          <input
+                            type="file"
+                            accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf"
+                            multiple
+                            disabled={uploadingImages[opt.id]}
+                            onChange={(e) => e.target.files && uploadImages(
+                              e.target.files, opt.id,
+                              () => editingOption[opt.id]?.images ?? [],
+                              (imgs) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], images: imgs } }))
+                            )}
+                            className="block w-full text-xs text-gray-600 dark:text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-emerald-50 dark:file:bg-emerald-950/30 file:text-emerald-700 dark:file:text-emerald-300"
+                          />
+                          {uploadingImages[opt.id] && <p className="text-[10px] text-emerald-600 mt-0.5">Uploading…</p>}
+                          {editForm.images.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-1.5">
+                              {editForm.images.map((url, i) => (
+                                <div key={i} className="relative group">
+                                  <img src={url} alt="" className="h-14 w-14 object-cover rounded border border-gray-200 dark:border-gray-700" />
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], images: p[opt.id].images.filter((_, idx) => idx !== i) } }))}
+                                    className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >×</button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         <div className="sm:col-span-2">
                           <FieldTextarea label="Notes" value={editForm.notes} onChange={(v) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], notes: v } }))} />
                         </div>
@@ -540,7 +592,36 @@ export function AttemptManager({
                     <FieldInput label="Tier" value={addForm.tier} onChange={(v) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), tier: v } }))} placeholder="e.g. A-grade, commercial" />
                     <FieldInput label="Color" value={addForm.color} onChange={(v) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), color: v } }))} placeholder="e.g. Apple green" />
                     <FieldInput label="Dimensions" value={addForm.dimensions} onChange={(v) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), dimensions: v } }))} placeholder="e.g. 55mm internal diameter" />
-                    <FieldTextarea label="Image URLs (one per line)" value={addForm.imageUrls} onChange={(v) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), imageUrls: v } }))} />
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-400 dark:text-gray-500 mb-0.5">Images</label>
+                      <input
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf"
+                        multiple
+                        disabled={uploadingImages[attempt.id]}
+                        onChange={(e) => e.target.files && uploadImages(
+                          e.target.files, attempt.id,
+                          () => (optionForms[attempt.id] ?? emptyForm()).images,
+                          (imgs) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), images: imgs } }))
+                        )}
+                        className="block w-full text-xs text-gray-600 dark:text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-emerald-50 dark:file:bg-emerald-950/30 file:text-emerald-700 dark:file:text-emerald-300"
+                      />
+                      {uploadingImages[attempt.id] && <p className="text-[10px] text-emerald-600 mt-0.5">Uploading…</p>}
+                      {addForm.images.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {addForm.images.map((url, i) => (
+                            <div key={i} className="relative group">
+                              <img src={url} alt="" className="h-14 w-14 object-cover rounded border border-gray-200 dark:border-gray-700" />
+                              <button
+                                type="button"
+                                onClick={() => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), images: (p[attempt.id]?.images ?? []).filter((_, idx) => idx !== i) } }))}
+                                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              >×</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     <div className="sm:col-span-2">
                       <FieldTextarea label="Notes" value={addForm.notes} onChange={(v) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), notes: v } }))} placeholder="Any additional details about this piece..." rows={3} />
                     </div>
