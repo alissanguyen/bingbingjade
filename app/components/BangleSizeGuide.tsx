@@ -146,6 +146,14 @@ function BangleSizeGuideContent({ productSize }: { productSize?: number }) {
 
   return (
     <>
+      {/* Measurement image — shown above tabs on both modal and standalone */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/bangle-sizing.png"
+        alt="How to measure for bangle size — palm width and hand circumference"
+        className="w-full object-contain"
+      />
+
       {/* Tabs */}
       <div className="flex border-b border-gray-100 dark:border-gray-800 shrink-0">
         {(["calculator", "table"] as const).map((tab) => (
@@ -190,27 +198,6 @@ function BangleSizeGuideContent({ productSize }: { productSize?: number }) {
 
         {activeTab === "calculator" ? (
           <>
-            {/* Measurement illustration */}
-            <div className="rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/images/bangle-size-guide.jpg"
-                alt="How to measure for bangle size — palm width and hand circumference"
-                className="w-full object-contain max-h-48"
-                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-              />
-              <div className="grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700 text-center border-t border-gray-100 dark:border-gray-800">
-                <div className="px-3 py-2.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500 mb-0.5">Method 1</p>
-                  <p className="text-xs text-gray-700 dark:text-gray-300">Palm width (widest part, no thumb)</p>
-                </div>
-                <div className="px-3 py-2.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500 mb-0.5">Method 2</p>
-                  <p className="text-xs text-gray-700 dark:text-gray-300">Loose fist — around widest part</p>
-                </div>
-              </div>
-            </div>
-
             {/* Inputs */}
             <div className="space-y-3">
               <div>
