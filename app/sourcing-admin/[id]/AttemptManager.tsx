@@ -357,6 +357,22 @@ export function AttemptManager({
     }
   }
 
+  async function resendLastEmail() {
+    setGlobalLoading(true); setMsg(null, null);
+    try {
+      const data = await apiCall(`/api/admin/sourcing/${requestId}/resend-email`) as { resent: string; attemptNumber?: number };
+      const label =
+        data.resent === "checkout_offer"      ? "Checkout offer email resent." :
+        data.resent === "attempt"             ? `Round ${data.attemptNumber} options email resent.` :
+                                               "Deposit confirmation email resent.";
+      setMsg(null, label);
+    } catch (e) {
+      setMsg((e as Error).message, null);
+    } finally {
+      setGlobalLoading(false);
+    }
+  }
+
   async function closeRequest() {
     if (!confirm("Close this request? The customer will no longer be able to accept options.")) return;
     setGlobalLoading(true); setMsg(null, null);
@@ -399,6 +415,11 @@ export function AttemptManager({
           {canCreateAttempt && !hasDraftOrSent && (
             <Btn variant="primary" onClick={createAttempt} disabled={globalLoading}>
               + New Round
+            </Btn>
+          )}
+          {isPaid && (
+            <Btn variant="default" onClick={resendLastEmail} disabled={globalLoading}>
+              Resend Last Email
             </Btn>
           )}
           {!isDone && isPaid && (
