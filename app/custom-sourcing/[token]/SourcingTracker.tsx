@@ -10,13 +10,14 @@ interface AttemptOption {
   id: string;
   title: string;
   images_json: string[];
+  videos_json: string[];
   price_cents: number;
   tier: string | null;
   color: string | null;
   dimensions: string | null;
   notes: string | null;
   status: string;
-  customer_reaction: "liked" | "disliked" | "neutral" | null;
+  customer_reaction: string | null;
   customer_note: string | null;
   sort_order: number | null;
 }
@@ -121,7 +122,7 @@ export function SourcingTracker({ token, data }: Props) {
     const init: Record<string, "liked" | "disliked" | "neutral"> = {};
     for (const a of data.attempts) {
       for (const o of a.sourcing_attempt_options) {
-        if (o.customer_reaction) init[o.id] = o.customer_reaction;
+        if (o.customer_reaction) init[o.id] = o.customer_reaction as "liked" | "disliked" | "neutral";
       }
     }
     return init;
@@ -274,6 +275,21 @@ export function SourcingTracker({ token, data }: Props) {
                       </div>
                     )}
 
+                    {/* Option videos */}
+                    {(option.videos_json as string[]).length > 0 && (
+                      <div className="flex flex-col gap-3 mb-3">
+                        {(option.videos_json as string[]).map((url, i) => (
+                          <video
+                            key={i}
+                            src={url}
+                            controls
+                            playsInline
+                            className="w-full max-h-72 rounded-lg border border-gray-200 dark:border-gray-700 bg-black"
+                          />
+                        ))}
+                      </div>
+                    )}
+
                     <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                       <div>
                         <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{option.title}</h3>
@@ -346,7 +362,7 @@ export function SourcingTracker({ token, data }: Props) {
                           {option.customer_reaction === "liked" ? "You liked this" : option.customer_reaction === "disliked" ? "Not for you" : "Neutral"}
                         </span>
                         {option.customer_note && (
-                          <span className="text-xs text-gray-400 italic">"{option.customer_note}"</span>
+                          <span className="text-xs text-gray-400 italic">&quot;{option.customer_note}&quot;</span>
                         )}
                       </div>
                     )}
@@ -388,10 +404,10 @@ export function SourcingTracker({ token, data }: Props) {
           ) : (
             <div className="px-5 py-4 bg-emerald-50 dark:bg-emerald-950/20 border-t border-emerald-100 dark:border-emerald-900">
               <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
-                Thank you for your feedback! We'll review it and follow up soon.
+                Thank you for your feedback! We&apos;ll review it and follow up soon.
               </p>
               {activeAttempt.customer_feedback && (
-                <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 italic">"{activeAttempt.customer_feedback}"</p>
+                <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 italic">&quot;{activeAttempt.customer_feedback}&quot;</p>
               )}
             </div>
           )}
@@ -437,7 +453,7 @@ export function SourcingTracker({ token, data }: Props) {
                   ))}
                   {attempt.customer_feedback && (
                     <div className="px-5 py-3 bg-gray-50 dark:bg-gray-900/40">
-                      <p className="text-xs text-gray-400 dark:text-gray-500">Feedback: <em className="text-gray-600 dark:text-gray-300">"{attempt.customer_feedback}"</em></p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Feedback: <em className="text-gray-600 dark:text-gray-300">&quot;{attempt.customer_feedback}&quot;</em></p>
                     </div>
                   )}
                 </div>
@@ -454,9 +470,9 @@ export function SourcingTracker({ token, data }: Props) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">We're sourcing your options</p>
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">We&apos;re sourcing your options</p>
           <p className="text-xs text-gray-400 dark:text-gray-500 max-w-sm mx-auto">
-            You'll receive an email at {data.customer_email} when your options are ready to review.
+            You&apos;ll receive an email at {data.customer_email} when your options are ready to review.
           </p>
         </div>
       )}

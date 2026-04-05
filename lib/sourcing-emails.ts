@@ -121,13 +121,14 @@ export async function sendDepositConfirmationEmail(params: {
     <p style="margin:0 0 20px;font-size:16px;color:#111827;">Hi ${firstName},</p>
     <p style="margin:0 0 20px;font-size:15px;color:#374151;line-height:1.6;">
       Your custom sourcing request has been confirmed! We've received your ${deposit} deposit
-      and will begin sourcing your <strong>${category}</strong> (${tier} tier).
+      and will begin personally sourcing your <strong>${category}</strong> through our trusted network(${tier} tier).
     </p>
+    <p style="margin:0 0 20px;font-size:15px;color:#374151;line-height:1.6;font-weight:600">Your request is now secured and in progress.</p>
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:24px;">
       <tr><td style="padding:16px 20px;">
         <p style="margin:0 0 4px;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#059669;">What happens next</p>
         <p style="margin:0;font-size:13px;color:#374151;line-height:1.7;">
-          We'll search our network for the best options matching your preferences.
+          We'll search our trusted vendor network for carefully selected options that match your preferences.
           Once we have options ready, you'll receive another email with a link to review and respond.
           This typically takes a few business days.
         </p>
@@ -139,19 +140,19 @@ export async function sendDepositConfirmationEmail(params: {
     <table cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
       <tr><td style="background:#065f46;border-radius:999px;">
         <a href="${trackUrl}" style="display:inline-block;padding:13px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">
-          Track My Request &rarr;
+          View My Request &rarr;
         </a>
       </td></tr>
     </table>
     <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.6;">
       This link is private and tied to your request — keep it safe.
-      Questions? <a href="${SITE_URL}/contact" style="color:#059669;text-decoration:none;">Contact us</a>.
+      Have questions? We are <a href="${SITE_URL}/contact" style="color:#059669;text-decoration:none;">here</a> to help.
     </p>
   `;
 
   try {
     await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL_ORDER_CONFIRMATION ?? "BingBing Jade <orders@bingbingjade.com>",
+      from: process.env.RESEND_FORM_SOURCING_CONFIRMATION ?? "BingBing Jade <sourcing@bingbingjade.com>",
       to:   params.customerEmail,
       bcc:  ADMIN_EMAIL,
       subject: `[BingBing Jade] Your custom sourcing request is confirmed`,

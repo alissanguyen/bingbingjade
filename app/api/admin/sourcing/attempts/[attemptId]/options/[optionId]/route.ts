@@ -37,6 +37,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
   if (typeof body.dimensions === "string") updates.dimensions = body.dimensions.trim() || null;
   if (typeof body.notes === "string") updates.notes = body.notes.trim() || null;
   if (Array.isArray(body.images_json)) updates.images_json = body.images_json;
+  if (Array.isArray(body.videos_json)) updates.videos_json = body.videos_json;
   if (typeof body.sort_order === "number") updates.sort_order = Math.floor(body.sort_order);
 
   const { data: option, error: updateErr } = await supabaseAdmin

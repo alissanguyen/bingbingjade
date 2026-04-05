@@ -53,6 +53,7 @@ export async function POST(
       attempt_id:        attemptId,
       title,
       images_json:       Array.isArray(body.images_json) ? body.images_json : [],
+      videos_json:       Array.isArray(body.videos_json) ? body.videos_json : [],
       price_cents:       priceCents,
       currency:          "usd",
       tier:              typeof body.tier === "string" ? body.tier.trim() || null : null,

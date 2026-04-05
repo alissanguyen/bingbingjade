@@ -6,6 +6,7 @@
 import { supabaseAdmin } from "./supabase-admin";
 import type { RequestType } from "./sourcing-classification";
 import { computeAvailableCredit } from "./sourcing-classification";
+import { VIDEO_BUCKET } from "./storage";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -88,7 +89,7 @@ export async function getSourcingRequestByToken(token: string) {
       id, attempt_number, status,
       sent_at, response_due_at, responded_at, customer_feedback,
       sourcing_attempt_options (
-        id, title, images_json, price_cents, tier, color, dimensions, notes,
+        id, title, images_json, videos_json, price_cents, tier, color, dimensions, notes,
         status, customer_reaction, customer_note, sort_order
       )
     `)
@@ -105,12 +106,44 @@ export async function getSourcingRequestByToken(token: string) {
     ledger ?? []
   );
 
-  // Sort options by sort_order within each attempt
+  // Collect all video paths across all options and resolve to signed URLs in one batch
+  type RawOption = {
+    id: string; title: string; images_json: string[]; videos_json: string[];
+    price_cents: number; tier: string | null; color: string | null;
+    dimensions: string | null; notes: string | null; status: string;
+    customer_reaction: string | null; customer_note: string | null; sort_order: number | null;
+  };
+
+  const allVideoPaths: string[] = [];
+  for (const a of attempts ?? []) {
+    for (const o of (a.sourcing_attempt_options ?? []) as RawOption[]) {
+      for (const p of (o.videos_json ?? []) as string[]) {
+        if (p && !p.startsWith("http")) allVideoPaths.push(p);
+      }
+    }
+  }
+
+  const signedMap = new Map<string, string>();
+  if (allVideoPaths.length > 0) {
+    const { data: signed } = await supabaseAdmin.storage
+      .from(VIDEO_BUCKET)
+      .createSignedUrls(allVideoPaths, 60 * 60 * 24 * 7); // 7-day TTL
+    for (const s of signed ?? []) {
+      if (s.path && s.signedUrl) signedMap.set(s.path, s.signedUrl);
+    }
+  }
+
+  // Sort options and resolve video URLs
   const attemptsWithSortedOptions = (attempts ?? []).map((a) => ({
     ...a,
-    sourcing_attempt_options: [...(a.sourcing_attempt_options ?? [])].sort(
-      (x, y) => (x.sort_order ?? 0) - (y.sort_order ?? 0)
-    ),
+    sourcing_attempt_options: [...((a.sourcing_attempt_options ?? []) as RawOption[])]
+      .sort((x, y) => (x.sort_order ?? 0) - (y.sort_order ?? 0))
+      .map((o) => ({
+        ...o,
+        videos_json: ((o.videos_json ?? []) as string[]).map(
+          (p) => (signedMap.get(p) ?? p)
+        ),
+      })),
   }));
 
   return { ...req, attempts: attemptsWithSortedOptions, availableCreditCents };

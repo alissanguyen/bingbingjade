@@ -34,7 +34,7 @@ const REQUEST_TYPE_COLORS: Record<string, string> = {
 
 function Badge({ label, colorClass }: { label: string; colorClass: string }) {
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${colorClass}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[12px] sm:text-xs font-semibold uppercase tracking-wide ${colorClass}`}>
       {label.replace(/_/g, " ")}
     </span>
   );
@@ -130,9 +130,9 @@ export default async function SourcingAdminPage({
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">{String(req.customer_name)}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{String(req.customer_email)}</p>
+                      <p className="text-xs sm:text-sm text-emerald-600 dark:text-emerald-400">{String(req.customer_email)}</p>
                     </div>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-1.5 mt-2">
                       <Badge
                         label={String(req.payment_status)}
                         colorClass={PAYMENT_STATUS_COLORS[String(req.payment_status)] ?? "bg-gray-100 text-gray-500"}
@@ -157,7 +157,7 @@ export default async function SourcingAdminPage({
                 </div>
 
                 {/* Body */}
-                <div className="px-5 py-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                <div className="px-5 py-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs sm:text-sm">
                   <div>
                     <p className="text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Category</p>
                     <p className="font-medium text-gray-800 dark:text-gray-200 capitalize">{String(req.category)}</p>
@@ -200,18 +200,18 @@ export default async function SourcingAdminPage({
                       Strictness flags (score: {Number(req.strictness_score)})
                     </p>
                     <div className="flex flex-wrap gap-1.5">
-                      {!!prefs.close_reference_match && <span className="px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 text-[10px]">Photo match (+2)</span>}
-                      {!!prefs.exact_color_matters && <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[10px]">Exact color</span>}
-                      {!!prefs.pattern_veining_matters && <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[10px]">Pattern</span>}
-                      {!!prefs.translucency_matters && <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[10px]">Translucency</span>}
-                      {!!prefs.exact_dimensions_matters && <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[10px]">Exact dimensions</span>}
+                      {!!prefs.close_reference_match && <span className="px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 text-[12px] sm:text-xs">Photo match (+2)</span>}
+                      {!!prefs.exact_color_matters && <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[12px] sm:text-xs">Exact color</span>}
+                      {!!prefs.pattern_veining_matters && <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[12px] sm:text-xs">Pattern</span>}
+                      {!!prefs.translucency_matters && <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[12px] sm:text-xs">Translucency</span>}
+                      {!!prefs.exact_dimensions_matters && <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[12px] sm:text-xs">Exact dimensions</span>}
                     </div>
                   </div>
                 </div>
 
                 {/* Attempt + checkout timing */}
                 {(req.last_attempt_sent_at || req.credit_expires_at || req.accepted_checkout_expires_at) && (
-                  <div className="px-5 pb-3 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-gray-400 dark:text-gray-500">
+                  <div className="px-5 pb-3 flex flex-wrap gap-x-5 gap-y-1 text-gray-400 dark:text-gray-500 text-[12px] sm:text-xs">
                     {!!req.last_attempt_sent_at && (
                       <span>Last attempt: {new Date(String(req.last_attempt_sent_at)).toLocaleDateString()}{req.last_attempt_response_due_at ? ` · due ${new Date(String(req.last_attempt_response_due_at)).toLocaleDateString()}` : ""}</span>
                     )}
@@ -219,7 +219,7 @@ export default async function SourcingAdminPage({
                       <span className="text-amber-500 dark:text-amber-400">Final attempt sent {new Date(String(req.final_attempt_sent_at)).toLocaleDateString()}</span>
                     )}
                     {!!req.credit_expires_at && (
-                      <span className={new Date(String(req.credit_expires_at)) < new Date() ? "text-red-500 dark:text-red-400" : ""}>
+                      <span className={new Date(String(req.credit_expires_at)) < new Date() ? "text-red-500 dark:text-red-400 text-[12px] sm:text-xs" : "text-[12px] sm:text-xs"}>
                         Credit expires {new Date(String(req.credit_expires_at)).toLocaleDateString()}
                       </span>
                     )}

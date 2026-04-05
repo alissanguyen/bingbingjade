@@ -44,8 +44,8 @@ function PrefRow({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
   return (
     <div>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500 mb-0.5">{label}</p>
-      <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{value}</p>
+      <p className="text-[12px] sm:text-[15px] font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500 mb-0.5">{label}</p>
+      <p className="text-sm sm:text-[16px] text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{value}</p>
     </div>
   );
 }
@@ -68,18 +68,22 @@ export default async function SourcingRequestDetailPage({
 
   if (!req) notFound();
 
-  const { data: attempts } = await supabaseAdmin
+  const { data: attempts, error: attemptsError } = await supabaseAdmin
     .from("sourcing_attempts")
     .select(`
       id, attempt_number, status,
       sent_at, response_due_at, responded_at, customer_feedback, admin_notes,
       sourcing_attempt_options (
-        id, title, images_json, price_cents, tier, color, dimensions, notes,
+        id, title, images_json, videos_json, price_cents, tier, color, dimensions, notes,
         status, customer_reaction, customer_note, sort_order
       )
     `)
     .eq("sourcing_request_id", id)
     .order("attempt_number", { ascending: true });
+
+  if (attemptsError) {
+    console.error("[sourcing-admin] Failed to fetch attempts:", attemptsError.message);
+  }
 
   const { availableCents } = await getAvailableCredit(id);
 
@@ -100,7 +104,7 @@ export default async function SourcingRequestDetailPage({
 
         {/* Breadcrumb */}
         <div className="mb-6">
-          <Link href="/sourcing-admin" className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">
+          <Link href="/sourcing-admin" className="text-xs sm:text-sm text-emerald-600 dark:text-emerald-400 hover:underline">
             ← All Requests
           </Link>
         </div>
@@ -108,7 +112,7 @@ export default async function SourcingRequestDetailPage({
         {/* Header */}
         <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 mb-1">
+            <p className="text-xs sm:text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 mb-1">
               Sourcing Request
             </p>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -209,13 +213,13 @@ export default async function SourcingRequestDetailPage({
 
             {/* Strictness flags */}
             <div className="sm:col-span-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500 mb-1.5">Strictness flags (score: {Number(req.strictness_score)})</p>
+              <p className="text-[12px] sm:text-[15px] font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500 mb-1.5">Strictness flags (score: {Number(req.strictness_score)})</p>
               <div className="flex flex-wrap gap-1.5">
-                {!!prefs.close_reference_match && <span className="px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 text-[10px]">Photo match</span>}
-                {!!prefs.exact_color_matters && <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[10px]">Exact color</span>}
-                {!!prefs.pattern_veining_matters && <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[10px]">Pattern</span>}
-                {!!prefs.translucency_matters && <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[10px]">Translucency</span>}
-                {!!prefs.exact_dimensions_matters && <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[10px]">Exact dimensions</span>}
+                {!!prefs.close_reference_match && <span className="px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 text-[12px] sm:text-[14px]">Photo match</span>}
+                {!!prefs.exact_color_matters && <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[12px] sm:text-[14px]">Exact color</span>}
+                {!!prefs.pattern_veining_matters && <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[12px] sm:text-[14px]">Pattern</span>}
+                {!!prefs.translucency_matters && <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[12px] sm:text-[14px]">Translucency</span>}
+                {!!prefs.exact_dimensions_matters && <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[12px] sm:text-[14px]">Exact dimensions</span>}
               </div>
             </div>
           </div>
@@ -310,8 +314,8 @@ export default async function SourcingRequestDetailPage({
 
             {/* Status flow */}
             <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500 mb-1.5">Status flow</p>
-              <div className="flex flex-wrap items-center gap-1 text-[10px]">
+              <p className="text-[13px] sm:text-sm font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500 mb-1.5">Status flow</p>
+              <div className="flex flex-wrap items-center gap-1 text-[12px] sm:text-[14px]">
                 {[
                   { s: "queued", note: "deposit paid" },
                   { s: "in_progress", note: "round created" },
@@ -335,6 +339,15 @@ export default async function SourcingRequestDetailPage({
             </div>
           </div>
         </details>
+
+        {/* Attempt fetch error */}
+        {attemptsError && (
+          <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20 px-4 py-3 text-xs text-red-700 dark:text-red-300 mb-4">
+            <strong>DB error loading attempts:</strong> {attemptsError.message}
+            <br />
+            <span className="text-red-500">This usually means a pending migration hasn&apos;t been run. Check the server logs.</span>
+          </div>
+        )}
 
         {/* Attempt Manager */}
         <AttemptManager
