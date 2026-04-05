@@ -9,6 +9,7 @@ import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
 import type { CartItem } from "@/types/cart";
 import { getCategoryLabel } from "../categories";
 import { BangleSizeGuide } from "@/app/components/BangleSizeGuide";
+import { RingSizeGuide } from "@/app/components/RingSizeGuide";
 
 interface ProductOptionClient {
   id: string;
@@ -318,6 +319,9 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                 <p className="text-sm text-gray-700 dark:text-gray-300">{effectiveSize} mm</p>
                 {product.category === "bangle" && (
                   <BangleSizeGuide productSize={effectiveSize} />
+                )}
+                {product.category === "ring" && (
+                  <RingSizeGuide productSize={effectiveSize} />
                 )}
               </div>
             </div>
