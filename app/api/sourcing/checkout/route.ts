@@ -4,6 +4,8 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { normalizeEmail } from "@/lib/discount";
 import { classifyFromInputs, computeTotalDepositCents, CREDIT_VALIDITY_DAYS } from "@/lib/sourcing-classification";
 import type { ClassificationInputs } from "@/lib/sourcing-classification";
+import { MAX_ATTEMPTS_BY_TYPE } from "@/lib/sourcing-workflow";
+import { sendAdminNewRequestEmail } from "@/lib/sourcing-emails";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
 
@@ -214,6 +216,7 @@ export async function POST(req: NextRequest) {
       currency:             "usd",
       payment_status:       "awaiting_payment",
       sourcing_status:      "queued",
+      max_attempts:         MAX_ATTEMPTS_BY_TYPE[requestType],
     })
     .select("id")
     .single();
@@ -271,6 +274,18 @@ export async function POST(req: NextRequest) {
       updated_at: new Date().toISOString(),
     })
     .eq("id", sourcing.id);
+
+  // ── Notify admin (fire-and-forget) ────────────────────────────────────────
+  sendAdminNewRequestEmail({
+    sourcingRequestId: sourcing.id,
+    customerName:      name,
+    customerEmail:     email,
+    category,
+    requestType,
+    depositCents,
+    budgetMin,
+    budgetMax,
+  }).catch(() => {});
 
   return NextResponse.json({ url: stripeSession.url });
 }

@@ -150,6 +150,9 @@ export default async function SourcingAdminPage({
                   <div className="text-right text-xs text-gray-400 dark:text-gray-500 space-y-0.5">
                     <p className="font-mono">{String(req.id).slice(0, 8)}…</p>
                     <p>{new Date(String(req.created_at)).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</p>
+                    <Link href={`/sourcing-admin/${String(req.id)}`} className="text-emerald-600 dark:text-emerald-400 hover:underline font-medium">
+                      View Details →
+                    </Link>
                   </div>
                 </div>
 

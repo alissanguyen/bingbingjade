@@ -34,6 +34,7 @@ export function AdminBar({
     { href: "/vendors", label: "Vendors" },
     { href: "/orders-admin", label: "Orders" },
     { href: "/customers-admin", label: "Customers" },
+    { href: "/sourcing-admin", label: "Sourcing" },
     ...(showUsersLink ? [
       { href: "/approved-users", label: "Users" },
       { href: "/coupons-admin", label: "Coupons" },

@@ -38,18 +38,41 @@ export async function POST(req: NextRequest) {
 
   const supabase = supabaseAdmin;
 
-  // ── checkout.session.expired — only care about private sourcing checkouts ─────
+  // ── checkout.session.expired ──────────────────────────────────────────────────
   if (event.type === "checkout.session.expired") {
     const expired = event.data.object as Stripe.Checkout.Session;
-    if (expired.metadata?.is_sourcing_private_checkout === "true") {
+    const now = new Date().toISOString();
+
+    if (expired.metadata?.is_sourcing_offer_checkout === "true") {
+      // New structured offer checkout expired
+      const offerId = expired.metadata.sourcing_checkout_offer_id;
+      if (offerId) {
+        const { data: offer } = await supabase
+          .from("sourcing_checkout_offers")
+          .select("id, sourcing_request_id, sourcing_attempt_option_id")
+          .eq("id", offerId)
+          .eq("status", "pending_checkout")
+          .maybeSingle();
+        if (offer) {
+          await supabase.from("sourcing_checkout_offers")
+            .update({ status: "expired", updated_at: now }).eq("id", offerId);
+          await supabase.from("sourcing_attempt_options")
+            .update({ status: "active", updated_at: now })
+            .eq("id", offer.sourcing_attempt_option_id)
+            .eq("status", "converted_to_checkout");
+          await supabase.from("sourcing_requests")
+            .update({ sourcing_status: "awaiting_response", updated_at: now })
+            .eq("id", offer.sourcing_request_id)
+            .eq("sourcing_status", "accepted_pending_checkout");
+        }
+      }
+    } else if (expired.metadata?.is_sourcing_private_checkout === "true") {
+      // Legacy private checkout
       const srcId = expired.metadata.sourcing_request_id;
       if (srcId) {
         await supabase
           .from("sourcing_requests")
-          .update({
-            sourcing_status: "checkout_expired",
-            updated_at: new Date().toISOString(),
-          })
+          .update({ sourcing_status: "checkout_expired", updated_at: now })
           .eq("id", srcId)
           .eq("private_checkout_session_id", expired.id);
       }
@@ -63,9 +86,13 @@ export async function POST(req: NextRequest) {
 
   const session = event.data.object as Stripe.Checkout.Session;
 
-  // ── Route: sourcing deposit vs private checkout vs product order ──────────────
+  // ── Route: sourcing deposit vs offer checkout vs legacy private checkout vs product order ──
   if (session.metadata?.is_sourcing_deposit === "true") {
     return handleSourcingDeposit(session, supabase);
+  }
+
+  if (session.metadata?.is_sourcing_offer_checkout === "true") {
+    return handleSourcingOfferCheckout(session, supabase);
   }
 
   if (session.metadata?.is_sourcing_private_checkout === "true") {
@@ -511,6 +538,98 @@ export async function POST(req: NextRequest) {
     await fetch(`${siteUrl}/api/revalidate?secret=${secret}`, { method: "POST" }).catch(() => {});
   }
 
+  return NextResponse.json({ received: true });
+}
+
+// ── Sourcing offer checkout handler (new structured flow) ────────────────────
+async function handleSourcingOfferCheckout(
+  session: Stripe.Checkout.Session,
+  supabase: typeof supabaseAdmin
+): Promise<NextResponse> {
+  const offerId = session.metadata?.sourcing_checkout_offer_id;
+  if (!offerId) {
+    console.error("[webhook/offer] Missing sourcing_checkout_offer_id", session.id);
+    return NextResponse.json({ error: "Missing offer ID." }, { status: 400 });
+  }
+
+  // Idempotency: check if offer already paid
+  const { data: offer } = await supabase
+    .from("sourcing_checkout_offers")
+    .select("id, status, sourcing_request_id, sourcing_attempt_id, sourcing_attempt_option_id, sourcing_credit_applied_cents, customer_email, title_snapshot")
+    .eq("id", offerId)
+    .maybeSingle();
+
+  if (!offer) {
+    console.error("[webhook/offer] Offer not found:", offerId);
+    return NextResponse.json({ error: "Offer not found." }, { status: 404 });
+  }
+  if (offer.status === "paid") {
+    return NextResponse.json({ received: true }); // idempotent
+  }
+
+  const now = new Date().toISOString();
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : (session.payment_intent as { id?: string } | null)?.id ?? null;
+
+  // Mark offer paid
+  await supabase.from("sourcing_checkout_offers").update({
+    status: "paid",
+    stripe_payment_intent_id: paymentIntentId,
+    paid_at: now,
+    updated_at: now,
+  }).eq("id", offerId);
+
+  // Mark option paid
+  await supabase.from("sourcing_attempt_options").update({
+    status: "paid", updated_at: now,
+  }).eq("id", offer.sourcing_attempt_option_id);
+
+  // Mark attempt accepted
+  await supabase.from("sourcing_attempts").update({
+    status: "accepted", updated_at: now,
+  }).eq("id", offer.sourcing_attempt_id);
+
+  // Mark request fulfilled
+  await supabase.from("sourcing_requests").update({
+    sourcing_status: "fulfilled", updated_at: now,
+  }).eq("id", offer.sourcing_request_id);
+
+  // Consume credit (idempotent via unique on checkout_session_id + event_type)
+  const appliedCents = offer.sourcing_credit_applied_cents ?? 0;
+  if (appliedCents > 0) {
+    const { data: existingLedger } = await supabase
+      .from("sourcing_credit_ledger")
+      .select("id")
+      .eq("checkout_session_id", session.id)
+      .eq("event_type", "credit_consumed")
+      .maybeSingle();
+
+    if (!existingLedger) {
+      const { data: srcReq } = await supabase
+        .from("sourcing_requests")
+        .select("customer_email, user_id")
+        .eq("id", offer.sourcing_request_id)
+        .maybeSingle();
+
+      if (srcReq) {
+        await supabase.from("sourcing_credit_ledger").insert({
+          sourcing_request_id:        offer.sourcing_request_id,
+          customer_email:             srcReq.customer_email,
+          user_id:                    srcReq.user_id ?? null,
+          event_type:                 "credit_consumed",
+          amount_cents:               appliedCents,
+          currency:                   "usd",
+          checkout_session_id:        session.id,
+          sourcing_checkout_offer_id: offerId,
+          notes:                      `Applied via offer checkout ${offerId}`,
+        });
+      }
+    }
+  }
+
+  console.info("[webhook/offer] Fulfilled offer", offerId, "— credit applied:", appliedCents);
   return NextResponse.json({ received: true });
 }
 
