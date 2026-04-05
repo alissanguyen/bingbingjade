@@ -7,7 +7,7 @@ import { SourcingTracker } from "./SourcingTracker";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Your Sourcing Request — BingBing Jade",
+  title: "Your Custom Sourcing Request — BingBing Jade",
   robots: { index: false, follow: false },
 };
 
@@ -22,18 +22,11 @@ export default async function CustomerSourcingPage({
   if (!data) notFound();
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen  ">
       {/* Top bar */}
-      <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="text-sm font-semibold text-gray-800 dark:text-gray-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
-            BingBing Jade
-          </Link>
-          <span className="text-xs text-gray-400 dark:text-gray-500">Custom Sourcing Request</span>
-        </div>
-      </div>
+      <h1 className="text-2xl mx-auto max-w-3xl sm:px-6 pt-10 font-bold text-gray-900 dark:text-gray-100 mt-6">Your Custom Sourcing Request</h1>
 
-      <div className="mx-auto max-w-3xl px-4 sm:px-6 py-10">
+      <div className="mx-auto max-w-3xl px-4 py-10">
         <SourcingTracker token={token} data={data} />
       </div>
 

@@ -80,7 +80,7 @@ const STATUS_INFO: Record<SourcingStatus, { label: string; color: string; descri
   accepted_pending_checkout: {
     label: "Checkout Ready",
     color: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300",
-    description: "You've accepted an option and your private checkout link has been sent to your email.",
+    description: "You've accepted an option. Your private checkout link has been sent to your email — your sourcing deposit has been applied as a discount.",
   },
   fulfilled: {
     label: "Complete",
@@ -198,7 +198,7 @@ export function SourcingTracker({ token, data }: Props) {
   return (
     <div className="space-y-6">
       {/* Request summary */}
-      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 overflow-hidden">
+      <div className="bg-white dark:bg-gray-950 ">
         <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">Hello, {data.customer_name.split(" ")[0]}</p>
@@ -216,14 +216,9 @@ export function SourcingTracker({ token, data }: Props) {
         <div className="px-5 py-4 text-sm text-gray-600 dark:text-gray-300">
           {statusInfo.description}
         </div>
-        {data.availableCreditCents > 0 && (
+        {data.sourcing_status === "accepted_pending_checkout" && data.availableCreditCents > 0 && (
           <div className="px-5 py-3 bg-emerald-50 dark:bg-emerald-950/20 border-t border-emerald-100 dark:border-emerald-900 text-xs text-emerald-700 dark:text-emerald-300">
-            Sourcing credit available: <strong>${(data.availableCreditCents / 100).toFixed(2)}</strong> — will be applied toward your purchase.
-            {data.credit_expires_at && (
-              <span className="ml-2 text-emerald-600 dark:text-emerald-400">
-                Expires {new Date(data.credit_expires_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}.
-              </span>
-            )}
+            Your ${(data.deposit_amount_cents / 100).toFixed(0)} sourcing deposit has been applied as a discount on your checkout.
           </div>
         )}
       </div>

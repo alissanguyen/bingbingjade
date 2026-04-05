@@ -156,7 +156,7 @@ export default async function SourcingRequestDetailPage({
             },
             { label: "Deposit", value: `$${(Number(req.deposit_amount_cents) / 100).toFixed(2)}` },
             {
-              label: "Credit remaining",
+              label: "Deposit (unapplied)",
               value: `$${(availableCents / 100).toFixed(2)}`,
               highlight: availableCents > 0,
             },
