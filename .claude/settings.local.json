@@ -39,7 +39,9 @@
       "Bash(wc:*)",
       "Bash(find /Users/nouveau/Documents/workspaces/jade-shop/supabase/migrations -name *.sql)",
       "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -path */migrations/* -name *.sql)",
-      "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -name *migration* -o -name migrations)"
+      "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -name *migration* -o -name migrations)",
+      "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -name *.sql -o -name *schema* -o -name *migration*)",
+      "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -type f \\\\\\(-name *.sql -o -name *schema* -o -name *migrations* \\\\\\))"
     ]
   }
 }
