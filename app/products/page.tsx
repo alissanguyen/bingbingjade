@@ -451,9 +451,23 @@ export default async function Products({
               ))}
             </div>
           )}
-          <Suspense>
-            <Pagination currentPage={safePage} totalPages={totalPages} />
-          </Suspense>
+          <Pagination
+            currentPage={safePage}
+            totalPages={totalPages}
+            searchString={new URLSearchParams(
+              Object.entries({
+                ...(params.colors ? { colors: params.colors } : {}),
+                ...(params.status ? { status: params.status } : {}),
+                ...(params.category ? { category: params.category } : {}),
+                ...(params.origins ? { origins: params.origins } : {}),
+                ...(params.minSize ? { minSize: params.minSize } : {}),
+                ...(params.maxSize ? { maxSize: params.maxSize } : {}),
+                ...(params.minPrice ? { minPrice: params.minPrice } : {}),
+                ...(params.maxPrice ? { maxPrice: params.maxPrice } : {}),
+                ...(params.sort ? { sort: params.sort } : {}),
+              })
+            ).toString()}
+          />
         </div>
       </div>
     </div>

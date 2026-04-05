@@ -108,9 +108,9 @@ function SizeTable({ unit }: { unit: Unit }) {
       <table className="w-full text-xs sm:text-sm text-center">
         <thead>
           <tr className="bg-emerald-700 text-white">
-            <th className="px-3 py-2.5 font-semibold">Method 1 — Palm Width</th>
-            <th className="px-3 py-2.5 font-semibold">Method 2 — Circumference</th>
-            <th className="px-3 py-2.5 font-semibold">Bangle Size</th>
+            <th className="px-3 py-2.5 font-semibold"><span>Method 1</span> <span>Palm Width</span></th>
+            <th className="px-3 py-2.5 font-semibold"><span>Method 2</span> <span>Circumference</span></th>
+            <th className="px-3 py-2.5 font-semibold"><span>Bangle Size</span></th>
           </tr>
         </thead>
         <tbody>
@@ -201,10 +201,10 @@ function BangleSizeGuideContent({ productSize }: { productSize?: number }) {
             {/* Inputs */}
             <div className="space-y-3">
               <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400 mb-1.5">
+                <label className="block text-[12px] sm:text-[17px] font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">
                   Method 1 — Palm Width <span className="text-gray-400">({palmUnit})</span>
                 </label>
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-1.5">
+                <p className="text-[12px] sm:text-[16px] text-gray-400 dark:text-gray-500 mb-1.5">
                   Measure the widest horizontal part of your palm, excluding the thumb.
                 </p>
                 <input
@@ -215,15 +215,15 @@ function BangleSizeGuideContent({ productSize }: { productSize?: number }) {
                   placeholder={palmPlaceholder}
                   min={0}
                   step={0.1}
-                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2.5 text-[12px] sm:text-[16px] rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400 mb-1.5">
+                <label className="block text-[12px] sm:text-[17px] font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">
                   Method 2 — Hand Circumference <span className="text-gray-400">({circUnit})</span>
                 </label>
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-1.5">
+                <p className="text-[12px] sm:text-[16px] text-gray-400 dark:text-gray-500 mb-1.5">
                   Make a loose fist and measure around the widest part of your hand.
                 </p>
                 <input
@@ -234,7 +234,7 @@ function BangleSizeGuideContent({ productSize }: { productSize?: number }) {
                   placeholder={circPlaceholder}
                   min={0}
                   step={0.1}
-                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2.5 text-[12px] sm:text-[16px] rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
             </div>
@@ -243,8 +243,8 @@ function BangleSizeGuideContent({ productSize }: { productSize?: number }) {
             {productSize != null && (
               <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900">
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 dark:text-emerald-400 shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                  This bangle is <strong>size {productSize}</strong> — compare to your result below.
+                <p className="text-[13px] sm:text-[16px] text-emerald-700 dark:text-emerald-300">
+                  This bangle is <strong>size {productSize}</strong> based on your measurements.
                 </p>
               </div>
             )}
@@ -316,8 +316,8 @@ function BangleSizeGuideContent({ productSize }: { productSize?: number }) {
 
         {/* Disclaimer */}
         <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40 px-4 py-3 space-y-1">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">Size Guide Disclaimer</p>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
+          <p className="text-[10px] sm:text-[15px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Size Guide Disclaimer</p>
+          <p className="text-[11px] sm:text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed">
             This guide is a general recommendation only. Hand shape, knuckle width, softness of the hand, and personal fit preference can all affect the best size. If your measurements fall between sizes, or if both methods suggest different results, we generally recommend the larger size. Final size selection remains the customer&apos;s responsibility.
           </p>
         </div>
@@ -364,10 +364,10 @@ export function BangleSizeGuide({
           onClick={() => setOpen(true)}
           className="inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-400 hover:underline underline-offset-2 transition-colors"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
-          Bangle size guide
+          Find your size
         </button>
       )}
 

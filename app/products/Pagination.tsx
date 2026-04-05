@@ -1,20 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams, usePathname } from "next/navigation";
 
-function pageHref(pathname: string, params: URLSearchParams, page: number) {
-  const p = new URLSearchParams(params.toString());
+function pageHref(pathname: string, searchString: string, page: number) {
+  const p = new URLSearchParams(searchString);
   if (page === 1) p.delete("page");
   else p.set("page", String(page));
   const qs = p.toString();
   return qs ? `${pathname}?${qs}` : pathname;
 }
 
-export function Pagination({ currentPage, totalPages }: { currentPage: number; totalPages: number }) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
+export function Pagination({
+  currentPage,
+  totalPages,
+  searchString,
+}: {
+  currentPage: number;
+  totalPages: number;
+  searchString: string;
+}) {
   if (totalPages <= 1) return null;
 
   // Build page numbers to show: always first, last, current ±1, with ellipsis gaps
@@ -39,7 +43,7 @@ export function Pagination({ currentPage, totalPages }: { currentPage: number; t
       {/* Prev */}
       {currentPage > 1 ? (
         <Link
-          href={pageHref(pathname, searchParams, currentPage - 1)}
+          href={pageHref("/products", searchString, currentPage - 1)}
           className={`${btnBase} border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400`}
           aria-label="Previous page"
         >
@@ -64,7 +68,7 @@ export function Pagination({ currentPage, totalPages }: { currentPage: number; t
         ) : (
           <Link
             key={p}
-            href={pageHref(pathname, searchParams, p)}
+            href={pageHref("/products", searchString, p)}
             className={`${btnBase} border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400`}
           >
             {p}
@@ -75,7 +79,7 @@ export function Pagination({ currentPage, totalPages }: { currentPage: number; t
       {/* Next */}
       {currentPage < totalPages ? (
         <Link
-          href={pageHref(pathname, searchParams, currentPage + 1)}
+          href={pageHref("/products", searchString, currentPage + 1)}
           className={`${btnBase} border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400`}
           aria-label="Next page"
         >
