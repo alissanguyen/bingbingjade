@@ -36,8 +36,9 @@ export async function PATCH(
 
   if (body.action === "approve") {
     if (isEdit) {
-      // Apply proposed changes to live columns
-      const { options_json, ...fields } = product.pending_data as Record<string, unknown>;
+      // Apply proposed changes to live columns; exclude is_published so the
+      // product's current published state is preserved (live products stay live)
+      const { options_json, is_published: _ip, ...fields } = product.pending_data as Record<string, unknown>;
       const { error } = await supabaseAdmin
         .from("products")
         .update({ ...fields, pending_approval: false, pending_data: null })
@@ -67,10 +68,10 @@ export async function PATCH(
         } catch { /* non-fatal — options stay as-is */ }
       }
     } else {
-      // New listing — clear the flag; product stays as draft for admin to publish
+      // New listing submitted by an approved user — approve and publish it
       const { error } = await supabaseAdmin
         .from("products")
-        .update({ pending_approval: false })
+        .update({ pending_approval: false, is_published: true })
         .eq("id", id);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     }

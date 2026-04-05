@@ -36,9 +36,11 @@ const CAT_LABEL: Record<string, string> = {
 export function ProductsAdminClient({
   products: initial,
   pendingProducts: initialPending,
+  isAdmin = false,
 }: {
   products: AdminProduct[];
   pendingProducts: PendingProduct[];
+  isAdmin?: boolean;
 }) {
   const [products, setProducts] = useState<AdminProduct[]>(initial);
   const [pendingProducts, setPendingProducts] = useState<PendingProduct[]>(initialPending);
@@ -233,13 +235,15 @@ export function ProductsAdminClient({
                     >
                       Review
                     </a>
-                    <button
-                      type="button"
-                      onClick={() => handleApproval(p.id, "approve")}
-                      className="rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 text-xs font-medium transition-colors"
-                    >
-                      Approve
-                    </button>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => handleApproval(p.id, "approve")}
+                        className="rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 text-xs font-medium transition-colors"
+                      >
+                        Approve
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => {

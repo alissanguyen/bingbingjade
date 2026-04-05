@@ -55,7 +55,7 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
       imported_price_vnd: approvedUser ? 0 : Number(formData.get("imported_price_vnd")),
       vendor_id,
       is_featured: formData.get("is_featured") === "true",
-      is_published: false, // always draft — admin publishes; approved users require approval first
+      is_published: approvedUser ? false : formData.get("is_published") === "true",
       pending_approval: approvedUser,
       created_by: approvedUser ? approvedCreatedBy(approvedUserId!) : "admin",
       quick_ship: formData.get("quick_ship") === "true",

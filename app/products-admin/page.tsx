@@ -1,6 +1,7 @@
 import { AdminBarServer } from "@/app/components/AdminBarServer";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { resolveFirstImageUrl } from "@/lib/storage";
+import { getSessionUser, isAdmin } from "@/lib/approved-auth";
 import { ProductsAdminClient } from "./ProductsAdminClient";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,9 @@ export interface PendingProduct {
 }
 
 export default async function ProductsAdminPage() {
+  const session = await getSessionUser();
+  const adminUser = isAdmin(session);
+
   const [{ data: rows }, { data: pendingRows }] = await Promise.all([
     supabaseAdmin
       .from("products")
@@ -89,7 +93,7 @@ export default async function ProductsAdminPage() {
   return (
     <>
       <AdminBarServer />
-      <ProductsAdminClient products={products} pendingProducts={pendingProducts} />
+      <ProductsAdminClient products={products} pendingProducts={pendingProducts} isAdmin={adminUser} />
     </>
   );
 }

@@ -131,7 +131,6 @@ export async function updateProduct(
         sale_price_usd: formData.get("sale_price_usd") ? Number(formData.get("sale_price_usd")) : null,
         vendor_id: formData.get("vendor_id"),
         is_featured: formData.get("is_featured") === "true",
-        is_published: false,
         quick_ship: formData.get("quick_ship") === "true",
         status: productStatus,
         images: imageUrls,
