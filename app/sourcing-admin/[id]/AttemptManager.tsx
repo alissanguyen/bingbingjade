@@ -423,13 +423,8 @@ export function AttemptManager({
             </Btn>
           )}
           {!isDone && isPaid && (
-            <Btn variant="default" onClick={closeRequest} disabled={globalLoading}>
+            <Btn variant="danger" onClick={closeRequest} disabled={globalLoading}>
               Close Request
-            </Btn>
-          )}
-          {!isDone && isPaid && availableCreditCents > 0 && (
-            <Btn variant="danger" onClick={voidCredit} disabled={globalLoading}>
-              Void Credit (${(availableCreditCents / 100).toFixed(2)})
             </Btn>
           )}
         </div>

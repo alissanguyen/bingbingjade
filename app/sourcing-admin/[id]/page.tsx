@@ -154,16 +154,11 @@ export default async function SourcingRequestDetailPage({
               label: "Budget",
               value: `$${Number(req.budget_min)}${req.budget_max ? `–$${Number(req.budget_max)}` : "+"}`,
             },
-            { label: "Deposit", value: `$${(Number(req.deposit_amount_cents) / 100).toFixed(2)}` },
-            {
-              label: "Deposit (unapplied)",
-              value: `$${(availableCents / 100).toFixed(2)}`,
-              highlight: availableCents > 0,
-            },
+            { label: "Deposit paid", value: `$${(Number(req.deposit_amount_cents) / 100).toFixed(2)}` },
           ].map((item) => (
             <div key={item.label} className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-3">
               <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500 mb-0.5">{item.label}</p>
-              <p className={`text-sm font-semibold ${item.highlight ? "text-emerald-600 dark:text-emerald-400" : "text-gray-800 dark:text-gray-200"}`}>
+              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
                 {item.value}
               </p>
             </div>

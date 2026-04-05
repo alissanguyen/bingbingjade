@@ -174,12 +174,6 @@ export default async function SourcingAdminPage({
                       ${(Number(req.deposit_amount_cents) / 100).toFixed(2)}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Deposit (unapplied)</p>
-                    <p className={`font-semibold ${availableCredit > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-gray-400 dark:text-gray-600"}`}>
-                      ${(availableCredit / 100).toFixed(2)}
-                    </p>
-                  </div>
 
                   {!!prefs.preferred_color && (
                     <div>
