@@ -108,8 +108,8 @@ function SizeTable({ unit }: { unit: Unit }) {
       <table className="w-full text-xs sm:text-sm text-center">
         <thead>
           <tr className="bg-emerald-700 text-white">
-            <th className="px-3 py-2.5 font-semibold"><span>Method 1</span> <span>Palm Width</span></th>
-            <th className="px-3 py-2.5 font-semibold"><span>Method 2</span> <span>Circumference</span></th>
+            <th className="px-3 py-2.5 font-semibold"><div>Method 1</div><div>Palm Width</div></th>
+            <th className="px-3 py-2.5 font-semibold"><div>Method 2</div><div>Circumference</div></th>
             <th className="px-3 py-2.5 font-semibold"><span>Bangle Size</span></th>
           </tr>
         </thead>
