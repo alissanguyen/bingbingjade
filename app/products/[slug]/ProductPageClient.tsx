@@ -8,6 +8,7 @@ import { useCart } from "@/app/components/CartContext";
 import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
 import type { CartItem } from "@/types/cart";
 import { getCategoryLabel } from "../categories";
+import { BangleSizeGuide } from "@/app/components/BangleSizeGuide";
 
 interface ProductOptionClient {
   id: string;
@@ -313,7 +314,12 @@ export function ProductPageClient({ product, productImages, productVideos, optio
           {effectiveSize != null && (
             <div className="IndividualProduct_Size">
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">Size</p>
-              <p className="text-sm text-gray-700 dark:text-gray-300">{effectiveSize} mm</p>
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-gray-700 dark:text-gray-300">{effectiveSize} mm</p>
+                {product.category === "bangle" && (
+                  <BangleSizeGuide productSize={effectiveSize} />
+                )}
+              </div>
             </div>
           )}
 

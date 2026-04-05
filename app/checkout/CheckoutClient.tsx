@@ -622,7 +622,7 @@ export function CheckoutClient() {
                 {availableItems.length > 0 && (
                   <div className="flex items-center justify-between py-0.5">
                     <div>
-                      <p className="text-[12px] sm:text-[15px] text-stone-700 dark:text-stone-300">Shipping Insurance
+                      <p className="text-[12px] sm:text-sm text-stone-700 dark:text-stone-300">Shipping Insurance
                         <a
                           href="/faq#shipping-insurance"
                           target="_blank"
