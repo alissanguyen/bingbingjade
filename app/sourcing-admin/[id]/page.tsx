@@ -241,6 +241,101 @@ export default async function SourcingRequestDetailPage({
           )}
         </div>
 
+        {/* Admin Action Reference */}
+        <details className="mb-6 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 overflow-hidden group">
+          <summary className="px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200 transition-colors list-none flex items-center justify-between">
+            <span>Admin Action Guide</span>
+            <span className="text-gray-300 dark:text-gray-600 group-open:rotate-180 transition-transform">▾</span>
+          </summary>
+          <div className="border-t border-gray-100 dark:border-gray-800 overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/60">
+                  <th className="text-left px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400 w-36">Action</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">When available</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Sets status to</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">What it does</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {[
+                  {
+                    action: "+ New Round",
+                    when: "Deposit paid · rounds remaining · no active draft or sent round",
+                    status: "in_progress",
+                    does: "Creates a draft round. Add options, then send when ready.",
+                  },
+                  {
+                    action: "+ Add Option",
+                    when: "Round is in draft",
+                    status: "—",
+                    does: "Adds a sourcing option (title, price, images, notes) to the draft. Customer won't see it until you Send.",
+                  },
+                  {
+                    action: "Send Round N",
+                    when: "Draft round has ≥ 1 option",
+                    status: "awaiting_response",
+                    does: "Marks options active. Emails customer with 72-hour response window. Round is now locked — options cannot be edited.",
+                  },
+                  {
+                    action: "Resend Last Email",
+                    when: "Deposit paid, any status",
+                    status: "—",
+                    does: "Re-sends the most recent outbound email: deposit confirmation (queued), round notification (awaiting_response), or checkout offer (accepted_pending_checkout).",
+                  },
+                  {
+                    action: "Close Request",
+                    when: "Deposit paid · not already fulfilled or closed",
+                    status: "closed",
+                    does: "Ends the workflow. No more rounds can be created. No refund is issued — deposit is earned sourcing fee. Refund in Stripe separately if needed.",
+                  },
+                ].map((row) => (
+                  <tr key={row.action} className="align-top">
+                    <td className="px-4 py-2.5 font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">{row.action}</td>
+                    <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400">{row.when}</td>
+                    <td className="px-4 py-2.5">
+                      {row.status === "—" ? (
+                        <span className="text-gray-400 dark:text-gray-600">—</span>
+                      ) : (
+                        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+                          {row.status}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-gray-600 dark:text-gray-300">{row.does}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Status flow */}
+            <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500 mb-1.5">Status flow</p>
+              <div className="flex flex-wrap items-center gap-1 text-[10px]">
+                {[
+                  { s: "queued", note: "deposit paid" },
+                  { s: "in_progress", note: "round created" },
+                  { s: "awaiting_response", note: "round sent" },
+                  { s: "responded", note: "customer replied" },
+                  { s: "accepted_pending_checkout", note: "option accepted" },
+                  { s: "fulfilled", note: "payment received" },
+                ].map((item, i) => (
+                  <span key={item.s} className="flex items-center gap-1">
+                    {i > 0 && <span className="text-gray-300 dark:text-gray-700">→</span>}
+                    <span className="font-mono px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">{item.s}</span>
+                    <span className="text-gray-400 dark:text-gray-600">({item.note})</span>
+                  </span>
+                ))}
+                <span className="flex items-center gap-1 ml-2">
+                  <span className="text-gray-300 dark:text-gray-700">or</span>
+                  <span className="font-mono px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">closed</span>
+                  <span className="text-gray-400 dark:text-gray-600">(admin closed)</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </details>
+
         {/* Attempt Manager */}
         <AttemptManager
           requestId={id}
