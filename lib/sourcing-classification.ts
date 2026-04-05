@@ -33,7 +33,9 @@ export const TIMELINE_SURCHARGE_CENTS: Record<Timeline, number> = {
   asap:            5000,  // +$50
 };
 
-export const CREDIT_VALIDITY_DAYS = 365; // credit expires 1 year after payment (fallback)
+// Credit expiry is set dynamically when each attempt is sent (= response_due_at).
+// This constant is a safe far-future fallback set at deposit time before any round is sent.
+export const CREDIT_VALIDITY_DAYS = 3650; // 10 years — overridden by send route
 
 /**
  * Compute a strictness score from the user's preference flags.

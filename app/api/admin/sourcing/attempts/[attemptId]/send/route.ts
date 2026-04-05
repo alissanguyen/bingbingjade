@@ -68,17 +68,19 @@ export async function POST(
     })
     .eq("id", attemptId);
 
-  // Increment attempts_used on request and update status
+  // Increment attempts_used on request and update status.
+  // credit_expires_at is set to response_due_at so the deposit credit is only
+  // usable while the customer can still accept an option in this round.
   const newAttemptsUsed = (req.attempts_used ?? 0) + 1;
   await supabaseAdmin
     .from("sourcing_requests")
     .update({
-      sourcing_status: "awaiting_response",
-      attempts_used:   newAttemptsUsed,
-      // Keep backward compat fields in sync
+      sourcing_status:               "awaiting_response",
+      attempts_used:                 newAttemptsUsed,
+      credit_expires_at:             responseDueAt.toISOString(),
       last_attempt_sent_at:          now.toISOString(),
       last_attempt_response_due_at:  responseDueAt.toISOString(),
-      updated_at:      now.toISOString(),
+      updated_at:                    now.toISOString(),
     })
     .eq("id", attempt.sourcing_request_id);
 

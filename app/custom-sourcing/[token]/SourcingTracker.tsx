@@ -61,42 +61,42 @@ const STATUS_INFO: Record<SourcingStatus, { label: string; color: string; descri
   queued: {
     label: "In Queue",
     color: "bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300",
-    description: "Your request is confirmed and in our queue. We'll reach out once we've sourced options for you.",
+    description: "Your request is confirmed and queued. Our team is reviewing your preferences and will begin sourcing pieces that match your vision.",
   },
   in_progress: {
     label: "In Progress",
     color: "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300",
-    description: "We're actively sourcing options for your request. You'll receive an email when your options are ready.",
+    description: "We're actively searching our trusted vendor network for pieces that match your criteria. Every option is personally evaluated for quality, authenticity, and value before it reaches you.",
   },
   awaiting_response: {
-    label: "Options Ready",
+    label: "Options Ready — Review Now",
     color: "bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300",
-    description: "Your sourcing options are ready to review below. Please respond before the deadline.",
+    description: "Your curated options are ready below. Each piece was handpicked from our trusted vendors. Please review and respond before the deadline — you can accept a piece directly or share feedback for the next round.",
   },
   responded: {
-    label: "Responded",
+    label: "Feedback Received",
     color: "bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300",
-    description: "Thank you for your feedback! We'll review it and follow up with next steps.",
+    description: "Thank you for your feedback! Our team will review your notes and source refined options for the next round, guided by your preferences.",
   },
   accepted_pending_checkout: {
     label: "Checkout Ready",
     color: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300",
-    description: "You've accepted an option. Your private checkout link has been sent to your email — your sourcing deposit has been applied as a discount.",
+    description: "You've selected a piece — congratulations! A private checkout link has been sent to your email with your sourcing deposit applied as a discount.",
   },
   fulfilled: {
     label: "Complete",
     color: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300",
-    description: "Your order is complete! Thank you for choosing BingBing Jade.",
+    description: "Your order is complete! Thank you for trusting us to find your perfect jade piece. We hope it brings you joy for years to come.",
   },
   cancelled: {
     label: "Cancelled",
     color: "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400",
-    description: "This sourcing request has been cancelled.",
+    description: "This sourcing request has been cancelled. Please contact us if you have any questions.",
   },
   closed: {
     label: "Closed",
     color: "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400",
-    description: "This sourcing request has been closed.",
+    description: "This sourcing request has been closed. Please contact us if you'd like to start a new request.",
   },
 };
 
@@ -198,23 +198,35 @@ export function SourcingTracker({ token, data }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* Page title */}
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600 dark:text-emerald-400 mb-1">
+          Custom Sourcing
+        </p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          Hello, {data.customer_name.split(" ")[0]}
+        </h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+          Your {data.category} sourcing request is being handled by our team.
+        </p>
+      </div>
+
       {/* Request summary */}
-      <div className="bg-white dark:bg-gray-950 ">
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">Hello, {data.customer_name.split(" ")[0]}</p>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+            <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
               {data.category.charAt(0).toUpperCase() + data.category.slice(1)} Sourcing Request
-            </h1>
+            </p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              Budget: ${data.budget_min}{data.budget_max ? `–$${data.budget_max}` : "+"} &middot; {TIER_LABELS[data.request_type] ?? data.request_type} tier
+              Budget: ${data.budget_min.toLocaleString()}{data.budget_max ? `–$${data.budget_max.toLocaleString()}` : "+"} &middot; {TIER_LABELS[data.request_type] ?? data.request_type} tier
             </p>
           </div>
           <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${statusInfo.color}`}>
             {statusInfo.label}
           </span>
         </div>
-        <div className="px-5 py-4 text-sm text-gray-600 dark:text-gray-300">
+        <div className="px-5 py-4 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
           {statusInfo.description}
         </div>
         {data.sourcing_status === "accepted_pending_checkout" && data.availableCreditCents > 0 && (
@@ -223,6 +235,44 @@ export function SourcingTracker({ token, data }: Props) {
           </div>
         )}
       </div>
+
+      {/* Trust / upsell block — shown while we're still sourcing */}
+      {(status === "queued" || status === "in_progress" || status === "responded") && (
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
+          <div className="px-5 pt-4 pb-2 border-b border-gray-100 dark:border-gray-800">
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500">What we&apos;re doing for you</p>
+          </div>
+          <div className="grid sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-100 dark:divide-gray-800">
+            <div className="px-5 py-4">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-emerald-600 dark:text-emerald-400 text-base">🔍</span>
+                <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">Trusted Vendor Network</p>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                We source exclusively from vendors we&apos;ve vetted personally — many of whom aren&apos;t accessible to the general public.
+              </p>
+            </div>
+            <div className="px-5 py-4">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-emerald-600 dark:text-emerald-400 text-base">🪨</span>
+                <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">Authenticity Guaranteed</p>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                Every piece we present is natural jadeite, evaluated for quality, color, and craftsmanship before reaching you.
+              </p>
+            </div>
+            <div className="px-5 py-4">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-emerald-600 dark:text-emerald-400 text-base">🎯</span>
+                <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">Curated to Your Criteria</p>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                We match pieces to your budget, size, style, and preferences — not just whatever&apos;s available.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Active attempt */}
       {activeAttempt && (
@@ -464,15 +514,15 @@ export function SourcingTracker({ token, data }: Props) {
 
       {/* Empty state for queued/in_progress */}
       {(status === "queued" || status === "in_progress") && data.attempts.length === 0 && (
-        <div className="rounded-xl border border-dashed border-gray-200 dark:border-gray-700 px-6 py-10 text-center">
+        <div className="rounded-xl border border-dashed border-emerald-200 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/10 px-6 py-10 text-center">
           <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center mx-auto mb-3">
             <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">We&apos;re sourcing your options</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 max-w-sm mx-auto">
-            You&apos;ll receive an email at {data.customer_email} when your options are ready to review.
+          <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">Your sourcing is underway</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm mx-auto leading-relaxed">
+            We&apos;ll notify you at <span className="font-medium text-gray-700 dark:text-gray-300">{data.customer_email}</span> as soon as your curated options are ready to review. This typically takes a few days depending on your request tier.
           </p>
         </div>
       )}
