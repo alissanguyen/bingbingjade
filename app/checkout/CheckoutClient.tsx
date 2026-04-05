@@ -693,7 +693,7 @@ export function CheckoutClient() {
                           learn more
                         </a>
                       </div>
-                      <p className="text-[12px] sm:text-sm text-stone-400 dark:text-stone-500 mt-0.5">
+                      <p className="text-[10px] sm:text-[15px] text-stone-400 dark:text-stone-500 mt-0.5">
                         {prioritySourcing ? "$100 base + $10 per piece" : "$20 base + $10 per piece"}
                       </p>
                     </div>
@@ -713,9 +713,17 @@ export function CheckoutClient() {
                 {availableItems.length > 0 && (
                   <div className="flex items-center justify-between py-0.5">
                     <div>
-                      <p className="text-[12px] sm:text-sm text-stone-700 dark:text-stone-300">Shipping Insurance</p>
-                      <p className="text-[12px] sm:text-sm text-stone-400 dark:text-stone-500 mt-0.5">
-                        5% of item value · covers loss &amp; damage in transit
+                      <p className="text-[12px] sm:text-[15px] text-stone-700 dark:text-stone-300">Shipping Insurance
+                        <a
+                          href="/faq#shipping-insurance"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ml-1 text-[8px] sm:text-[12px] text-stone-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline underline-offset-2 transition-colors"
+                        >
+                          learn more
+                        </a></p>
+                      <p className="text-[10px] sm:text-[15px] text-stone-400 dark:text-stone-500 mt-0.5">
+                        5% of item value 
                       </p>
                     </div>
                     <button
@@ -747,25 +755,25 @@ export function CheckoutClient() {
                   )}
 
                   <div className="flex justify-between text-sm">
-                    <span className="text-[14px] sm:text-sm text-stone-500 dark:text-stone-400">
-                      {(prioritySourcing && hasSourcingItems) ? "Priority Sourcing" : "Standard"} Shipping
+                    <span className="text-[12px] sm:text-sm text-stone-500 dark:text-stone-400">
+                      {(prioritySourcing && hasSourcingItems) ? "Priority Shipping" : "Standard"} Shipping
                       {availableItems.length > 1 ? ` · ${availableItems.length} pieces` : ""}
                     </span>
-                    <span className="text-[14px] sm:text-sm font-medium text-stone-900 dark:text-stone-100">
+                    <span className="text-[12px] sm:text-sm font-medium text-stone-900 dark:text-stone-100">
                       {availableItems.length > 0 ? fmtPrice(shipping) : "—"}
                     </span>
                   </div>
 
                   {sourcingCreditApplied > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-[14px] sm:text-sm text-emerald-700 dark:text-emerald-400">Sourcing Credit</span>
-                      <span className="font-medium text-emerald-700 dark:text-emerald-400">−{fmtPrice(sourcingCreditApplied)}</span>
+                      <span className="text-[12px] sm:text-sm text-emerald-700 dark:text-emerald-400">Sourcing Credit</span>
+                      <span className="text-[12px] sm:text-sm font-medium text-emerald-700 dark:text-emerald-400">−{fmtPrice(sourcingCreditApplied)}</span>
                     </div>
                   )}
 
                   <div className="flex justify-between text-sm">
-                    <span className="text-[14px] sm:text-sm text-stone-500 dark:text-stone-400">Transaction Fee · 3.5%</span>
-                    <span className="text-[14px] sm:text-sm font-medium text-stone-900 dark:text-stone-100">
+                    <span className="text-[12px] sm:text-sm text-stone-500 dark:text-stone-400">Transaction Fee · 3.5%</span>
+                    <span className="text-[12px] sm:text-sm font-medium text-stone-900 dark:text-stone-100">
                       {availableItems.length > 0 ? fmtPrice(txFee) : "—"}
                     </span>
                   </div>
