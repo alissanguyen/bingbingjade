@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
   let body: {
     items: CartItem[];
     expedited?: boolean;
+    shippingInsurance?: boolean;
     customerEmail?: string;
     discountCode?: string;
     sourcingRequestId?: string;
@@ -189,10 +190,25 @@ export async function POST(req: NextRequest) {
     quantity: 1,
   });
 
-  // Transaction fee applied to (items - coupon discount + shipping)
+  // Shipping insurance: 5% of item subtotal (before discount — covers declared value)
+  const insuranceFeeCents = body.shippingInsurance
+    ? Math.round(itemsSubtotalCents * 0.05)
+    : 0;
+  if (insuranceFeeCents > 0) {
+    lineItems.push({
+      price_data: {
+        currency: "usd",
+        product_data: { name: "Shipping Insurance (5%)" },
+        unit_amount: insuranceFeeCents,
+      },
+      quantity: 1,
+    });
+  }
+
+  // Transaction fee applied to (items - coupon discount + insurance + shipping)
   const discountedItemsCents = Math.max(0, itemsSubtotalCents - discountAmountCents);
   const transactionFeeAmount = Math.round(
-    (discountedItemsCents / 100 + shippingFee) * 0.035 * 100
+    (discountedItemsCents / 100 + insuranceFeeCents / 100 + shippingFee) * 0.035 * 100
   );
   lineItems.push({
     price_data: {

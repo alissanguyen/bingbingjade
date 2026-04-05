@@ -36,6 +36,9 @@ export function CheckoutClient() {
   // Shipping — Priority Sourcing upgrade (only for sourced_for_you items)
   const [prioritySourcing, setPrioritySourcing] = useState(false);
 
+  // Shipping insurance (5% of item subtotal)
+  const [shippingInsurance, setShippingInsurance] = useState(false);
+
   // Discount
   const [discountCode, setDiscountCode] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState<{
@@ -153,10 +156,14 @@ export function CheckoutClient() {
   const shipping = availableItems.length > 0 ? shippingBase + (availableItems.length - 1) * 10 : 0;
   const discountDollars = appliedDiscount ? appliedDiscount.amountCents / 100 : 0;
   const discountedSubtotal = Math.max(0, subtotal - discountDollars);
-  const txFee = Math.round((discountedSubtotal + shipping) * 0.035 * 100) / 100;
+  // Insurance is 5% of item subtotal (before discount — covers declared item value)
+  const insuranceFee = shippingInsurance && availableItems.length > 0
+    ? Math.round(subtotal * 0.05 * 100) / 100
+    : 0;
+  const txFee = Math.round((discountedSubtotal + insuranceFee + shipping) * 0.035 * 100) / 100;
   // Sourcing credit applied against grand total (never below 0)
   const sourcingCreditAvailableDollars = appliedSourcingCredit ? appliedSourcingCredit.availableCents / 100 : 0;
-  const grandTotalBeforeCredit = Math.round((discountedSubtotal + shipping + txFee) * 100) / 100;
+  const grandTotalBeforeCredit = Math.round((discountedSubtotal + insuranceFee + shipping + txFee) * 100) / 100;
   const sourcingCreditApplied = Math.min(sourcingCreditAvailableDollars, grandTotalBeforeCredit);
   const grandTotal = Math.max(0, Math.round((grandTotalBeforeCredit - sourcingCreditApplied) * 100) / 100);
 
@@ -253,6 +260,7 @@ export function CheckoutClient() {
         body: JSON.stringify({
           items: availableItems,
           expedited: prioritySourcing && hasSourcingItems,
+          shippingInsurance,
           discountCode: discountCode.trim() || undefined,
           sourcingRequestId: appliedSourcingCredit?.requestId || undefined,
         }),
@@ -701,8 +709,43 @@ export function CheckoutClient() {
                   </div>
                 )}
 
+                {/* ── Shipping insurance toggle ────────────── */}
+                {availableItems.length > 0 && (
+                  <div className="flex items-center justify-between py-0.5">
+                    <div>
+                      <p className="text-[12px] sm:text-sm text-stone-700 dark:text-stone-300">Shipping Insurance</p>
+                      <p className="text-[12px] sm:text-sm text-stone-400 dark:text-stone-500 mt-0.5">
+                        5% of item value · covers loss &amp; damage in transit
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShippingInsurance((v) => !v)}
+                      role="switch"
+                      aria-checked={shippingInsurance}
+                      className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${shippingInsurance ? "bg-emerald-600" : "bg-stone-200 dark:bg-stone-700"}`}
+                    >
+                      <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${shippingInsurance ? "translate-x-4" : "translate-x-0"}`} />
+                    </button>
+                  </div>
+                )}
+
                 {/* ── Line items ───────────────────────────── */}
                 <div className="border-t border-stone-100 dark:border-stone-800 pt-4 space-y-2.5">
+                  {discountDollars > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-[14px] sm:text-sm text-emerald-700 dark:text-emerald-400">Discount applied</span>
+                      <span className="font-medium text-emerald-700 dark:text-emerald-400">−{fmtPrice(discountDollars)}</span>
+                    </div>
+                  )}
+
+                  {insuranceFee > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-[14px] sm:text-sm text-stone-500 dark:text-stone-400">Shipping Insurance · 5%</span>
+                      <span className="text-[14px] sm:text-sm font-medium text-stone-900 dark:text-stone-100">{fmtPrice(insuranceFee)}</span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between text-sm">
                     <span className="text-[14px] sm:text-sm text-stone-500 dark:text-stone-400">
                       {(prioritySourcing && hasSourcingItems) ? "Priority Sourcing" : "Standard"} Shipping
@@ -712,13 +755,6 @@ export function CheckoutClient() {
                       {availableItems.length > 0 ? fmtPrice(shipping) : "—"}
                     </span>
                   </div>
-
-                  {discountDollars > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-[14px] sm:text-sm text-emerald-700 dark:text-emerald-400">Discount applied</span>
-                      <span className="font-medium text-emerald-700 dark:text-emerald-400">−{fmtPrice(discountDollars)}</span>
-                    </div>
-                  )}
 
                   {sourcingCreditApplied > 0 && (
                     <div className="flex justify-between text-sm">
