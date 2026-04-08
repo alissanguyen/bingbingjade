@@ -52,16 +52,16 @@ export default function CheckoutCancelPage() {
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
-            href="/products"
+            href="/checkout"
             className="rounded-full bg-emerald-700 hover:bg-emerald-800 text-white px-7 py-3 text-sm font-medium transition-colors"
           >
-            Back to Shop
+            Return to Cart
           </Link>
           <Link
-            href="/contact"
+            href="/products"
             className="rounded-full border border-gray-300 dark:border-gray-700 hover:border-emerald-400 dark:hover:border-emerald-600 text-gray-700 dark:text-gray-300 px-7 py-3 text-sm font-medium transition-colors"
           >
-            Contact Us
+            Back to Shop
           </Link>
         </div>
       </div>

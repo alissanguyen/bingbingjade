@@ -796,7 +796,7 @@ export function CheckoutClient() {
 
                   <div className="flex justify-between text-sm">
                     <span className="text-[12px] sm:text-sm text-stone-500 dark:text-stone-400">
-                      Transaction Fee{zone === "domestic" ? " · 2.9% + $0.30" : zone != null ? " · 4.4% + $0.30" : ""}
+                      Transaction Fee
                     </span>
                     <span className="text-[12px] sm:text-sm font-medium text-stone-900 dark:text-stone-100">
                       {txFee != null ? fmtPrice(txFee) : "—"}

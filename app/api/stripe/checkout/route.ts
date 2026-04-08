@@ -232,7 +232,7 @@ export async function POST(req: NextRequest) {
   const discountedItemsCents = Math.max(0, itemsSubtotalCents - discountAmountCents);
   const subtotalForFeeCents = discountedItemsCents + insuranceFeeCents + shippingFee * 100;
   const transactionFeeAmount = calculateStripeFee(subtotalForFeeCents, zone);
-  const feeLabel = zone === "domestic" ? "Transaction Fee (2.9% + $0.30)" : "Transaction Fee (4.4% + $0.30)";
+  const feeLabel = "Transaction Fee";
   lineItems.push({
     price_data: {
       currency: "usd",
