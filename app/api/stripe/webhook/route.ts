@@ -40,11 +40,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: msg }, { status: 400 });
     }
   } else {
-    // Test mode: skip signature verification so events can be resent from Stripe Dashboard
+    // Test mode: accept either a full Stripe event object OR just { session_id: "cs_test_..." }
+    // which we'll expand into a synthetic event by fetching the session from Stripe.
+    let parsed: unknown;
     try {
-      event = JSON.parse(bodyBuffer.toString()) as Stripe.Event;
+      parsed = JSON.parse(bodyBuffer.toString());
     } catch {
       return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    }
+
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      "session_id" in parsed &&
+      typeof (parsed as Record<string, unknown>).session_id === "string"
+    ) {
+      const sessionId = (parsed as Record<string, string>).session_id;
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      event = {
+        id: `evt_test_local_${Date.now()}`,
+        object: "event",
+        type: "checkout.session.completed",
+        data: { object: session },
+        created: Math.floor(Date.now() / 1000),
+        livemode: false,
+        pending_webhooks: 0,
+        request: null,
+        api_version: "2026-02-25.clover",
+      } as unknown as Stripe.Event;
+    } else {
+      event = parsed as Stripe.Event;
     }
   }
 
