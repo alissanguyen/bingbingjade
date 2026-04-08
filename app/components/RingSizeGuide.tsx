@@ -57,16 +57,16 @@ const RING_SIZE_ROWS: RingSizeRow[] = [
 
 export type RingRecommendation =
   | {
-      status: "ok";
-      size: number;
-      source: "diameter" | "circumference" | "both_agree";
-    }
+    status: "ok";
+    size: number;
+    source: "diameter" | "circumference" | "both_agree";
+  }
   | {
-      status: "conflict";
-      size: number;
-      sizeDiam: number;
-      sizeCirc: number;
-    }
+    status: "conflict";
+    size: number;
+    sizeDiam: number;
+    sizeCirc: number;
+  }
   | { status: "below" | "above" }
   | { status: "empty" };
 
@@ -218,21 +218,19 @@ function RingSizeTable({ highlightSize }: { highlightSize?: number }) {
               }
             >
               <td
-                className={`px-3 py-2 font-semibold ${
-                  isHighlighted
+                className={`px-3 py-2 font-semibold ${isHighlighted
                     ? "text-emerald-700 dark:text-emerald-400"
                     : "text-gray-700 dark:text-gray-300"
-                }`}
+                  }`}
               >
                 {row.ukSize}
               </td>
 
               <td
-                className={`px-3 py-2 font-semibold ${
-                  isHighlighted
+                className={`px-3 py-2 font-semibold ${isHighlighted
                     ? "text-emerald-700 dark:text-emerald-400"
                     : "text-gray-700 dark:text-gray-300"
-                }`}
+                  }`}
               >
                 {row.usSize}
                 {isHighlighted && (
@@ -269,31 +267,32 @@ function RingSizeGuideContent({ productSize }: { productSize?: number }) {
   const result = recommendRingSize(diamVal, circVal);
 
   const inputBase =
-    "w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-800 dark:text-gray-100 placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition";
+    "w-full px-3 py-2.5 text-[12px] sm:text-[16px] rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500";
 
   const smallestSize = RING_SIZE_ROWS[0].usSize;
   const largestSize = RING_SIZE_ROWS[RING_SIZE_ROWS.length - 1].usSize;
 
   return (
     <>
-      <Image
-        src="/ring-sizing.png"
-        alt="How to measure your ring size — method 1: inside diameter, method 2: finger circumference"
-        className="w-full object-contain"
-        width={800}
-        height={600}
-      />
+      <div className="h-60 sm:h-115 border-b border-gray-100 dark:border-gray-800 flex items-center justify-center bg-white">
+        <Image
+          src="/ring-sizing.png"
+          alt="How to measure your ring size — method 1: inside diameter, method 2: finger circumference"
+          className="max-h-full max-w-full object-cover"
+          width={800}
+          height={600}
+        />
+      </div>
 
       <div className="flex border-b border-gray-100 dark:border-gray-800">
         {(["calculator", "chart"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
-              activeTab === tab
+            className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${activeTab === tab
                 ? "border-b-2 border-emerald-600 text-emerald-700 dark:text-emerald-400"
                 : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
-            }`}
+              }`}
           >
             {tab === "calculator" ? "Size Calculator" : "Size Chart"}
           </button>
@@ -303,135 +302,106 @@ function RingSizeGuideContent({ productSize }: { productSize?: number }) {
       <div className="px-5 py-5 space-y-5">
         {activeTab === "calculator" ? (
           <>
-            <p className="text-[11px] sm:text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900 rounded-lg px-3 py-2 leading-relaxed">
-              Best measured at room temperature. Fingers may swell in heat and shrink in cold.
-            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[12px] sm:text-[17px] font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">
+                  Method 1 — Inside Diameter <span className="text-gray-400">(mm)</span>
+                </label>
+                <p className="text-[12px] sm:text-[16px] text-gray-400 dark:text-gray-500 mb-1.5">
+                  Measure the inside diameter of a ring that fits, excluding the band thickness.
+                </p>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step={0.1}
+                  placeholder="e.g. 16.5"
+                  value={diam}
+                  onChange={(e) => setDiam(e.target.value)}
+                  className={inputBase}
+                />
+              </div>
 
-            <div className="space-y-1.5">
-              <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                Method 1 — Inside Diameter{" "}
-                <span className="text-gray-400 dark:text-gray-500 normal-case font-normal">
-                  (mm)
-                </span>
-              </p>
-              <input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                step={0.1}
-                placeholder="e.g. 16.5"
-                value={diam}
-                onChange={(e) => setDiam(e.target.value)}
-                className={inputBase}
-              />
-              <p className="text-[11px] sm:text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
-                Measure the inside diameter of a ring that fits, excluding the band thickness.
-              </p>
-            </div>
-
-            <div className="space-y-1.5">
-              <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                Method 2 — Finger Circumference{" "}
-                <span className="text-gray-400 dark:text-gray-500 normal-case font-normal">
-                  (mm)
-                </span>
-              </p>
-              <input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                step={0.1}
-                placeholder="e.g. 53"
-                value={circ}
-                onChange={(e) => setCirc(e.target.value)}
-                className={inputBase}
-              />
-              <p className="text-[11px] sm:text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
-                Wrap a strip of paper snugly around your finger, mark the overlap, then measure the
-                length in mm.
-              </p>
+              <div>
+                <label className="block text-[12px] sm:text-[17px] font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">
+                  Method 2 — Finger Circumference <span className="text-gray-400">(mm)</span>
+                </label>
+                <p className="text-[12px] sm:text-[16px] text-gray-400 dark:text-gray-500 mb-1.5">
+                  Wrap a strip of paper snugly around your finger, mark the overlap, then measure the length in mm.
+                </p>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step={0.1}
+                  placeholder="e.g. 53"
+                  value={circ}
+                  onChange={(e) => setCirc(e.target.value)}
+                  className={inputBase}
+                />
+              </div>
             </div>
 
             {result.status !== "empty" && (
-              <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900 px-4 py-4 space-y-2">
-                {result.status === "below" && (
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    Your measurement is below our smallest size ({smallestSize} US).
-                  </p>
-                )}
-
-                {result.status === "above" && (
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    Your measurement is above our largest size ({largestSize} US).
-                  </p>
-                )}
-
-                {(result.status === "ok" || result.status === "conflict") && (
+              <div className={`rounded-xl border px-4 py-4 space-y-2 ${
+                result.status === "below" || result.status === "above"
+                  ? "border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20"
+                  : "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20"
+              }`}>
+                {(result.status === "below" || result.status === "above") ? (
                   <>
-                    <div className="flex items-baseline gap-2">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                        Recommended US size
-                      </p>
-                      <p className="text-lg sm:text-xl font-bold text-emerald-700 dark:text-emerald-300">
-                        {result.size}
-                      </p>
-                    </div>
-
+                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-[0.12em]">Out of Range</p>
+                    <p className="text-sm text-amber-800 dark:text-amber-300">
+                      {result.status === "below"
+                        ? `Your measurement falls below our smallest size (US ${smallestSize}).`
+                        : `Your measurement falls above our largest size (US ${largestSize}).`}
+                      {" "}Please <a href="/contact" className="underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-200 transition-colors">contact us</a> for personalised sizing help.
+                    </p>
+                  </>
+                ) : (result.status === "ok" || result.status === "conflict") ? (
+                  <>
+                    <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-[0.12em]">
+                      Your Recommended Size
+                    </p>
+                    <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+                      US {result.size}
+                    </p>
                     {result.status === "ok" && result.source === "diameter" && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Based on inside diameter.
-                      </p>
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400">Based on inside diameter.</p>
                     )}
-
                     {result.status === "ok" && result.source === "circumference" && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Based on finger circumference.
-                      </p>
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400">Based on finger circumference.</p>
                     )}
-
                     {result.status === "ok" && result.source === "both_agree" && (
-                      <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                        Both methods agree — high confidence.
-                      </p>
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400">Both methods agree — high confidence.</p>
                     )}
-
                     {result.status === "conflict" && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        The two methods suggest slightly different sizes ({result.sizeDiam} vs{" "}
-                        {result.sizeCirc}). We recommend the larger size for comfort.
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                        Your two methods suggested different sizes — we recommend the larger for comfort.
                       </p>
                     )}
                   </>
-                )}
+                ) : null}
               </div>
             )}
 
-            {result.status !== "empty" &&
-              result.status !== "below" &&
-              result.status !== "above" && (
-                <p className="text-[11px] sm:text-xs text-gray-400 dark:text-gray-500 text-center">
-                  Between sizes? Always choose the larger size for comfort.{" "}
-                  <a
-                    href="/contact"
-                    className="underline underline-offset-2 text-black dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-                  >
-                    Ask us
-                  </a>{" "}
-                  if unsure.
-                </p>
-              )}
-
-            <p className="text-[10px] sm:text-[11px] text-gray-300 dark:text-gray-600 leading-relaxed border-t border-gray-100 dark:border-gray-800 pt-4">
-              This ring size guide is provided as a general recommendation only. Finger shape,
-              knuckle size, temperature, time of day, and personal fit preference can all affect the
-              best size for you. If your measurements fall between two sizes, we generally recommend
-              choosing the larger size for comfort. Final size selection remains the customer&apos;s
-              responsibility.
-            </p>
+            {result.status !== "empty" && result.status !== "below" && result.status !== "above" && (
+              <p className="text-[11px] sm:text-[16px] text-gray-400 dark:text-gray-500 text-center">
+                Between sizes? We recommend the larger size. <a href="/contact" className="underline underline-offset-2 text-black dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Ask us</a> if unsure.
+              </p>
+            )}
           </>
         ) : (
           <RingSizeTable highlightSize={productSize} />
         )}
+
+        {/* Disclaimer */}
+        <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40 px-4 py-3 space-y-1">
+          <p className="text-[10px] sm:text-[15px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Size Guide Disclaimer</p>
+          <p className="text-[11px] sm:text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed">
+            This ring size guide is a general recommendation only. Finger shape, knuckle size, temperature, time of day, and personal fit preference can all affect the best size. If your measurements fall between sizes, we generally recommend the larger size for comfort. Final size selection remains the customer&apos;s responsibility.
+          </p>
+        </div>
       </div>
     </>
   );
