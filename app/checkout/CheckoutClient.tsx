@@ -360,7 +360,7 @@ export function CheckoutClient() {
                     className="group bg-white dark:bg-[#141414] rounded-2xl border border-stone-200/80 dark:border-stone-800/80 p-4 sm:p-5 flex gap-4 sm:gap-5 shadow-sm shadow-stone-100 dark:shadow-none"
                   >
                     <Link href={productPath} className="shrink-0">
-                      <div className="w-25 h-25 sm:w-30 sm:h-30 rounded-xl overflow-hidden bg-stone-100 dark:bg-stone-800">
+                      <div className="w-18 h-18 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-stone-100 dark:bg-stone-800">
                         {item.thumbnail ? (
                           <Image
                             src={item.thumbnail}
@@ -383,7 +383,7 @@ export function CheckoutClient() {
                       <div>
                         <Link
                           href={productPath}
-                          className="block text-[14px] sm:text-base font-medium text-stone-900 dark:text-stone-100 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors line-clamp-2 leading-snug"
+                          className="block text-[12px] sm:text-base font-medium text-stone-900 dark:text-stone-100 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors line-clamp-2 leading-snug"
                         >
                           {item.productName}
                         </Link>
