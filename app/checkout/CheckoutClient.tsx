@@ -293,7 +293,7 @@ export function CheckoutClient() {
       <div className="bg-white dark:bg-[#0c0b12] border-b border-stone-200/70 dark:border-stone-800/70">
         {/* Thin emerald accent line */}
         <div className="bg-linear-to-r from-emerald-700 via-emerald-500 to-emerald-700 opacity-80 h-full" />
-        <div className="mx-auto max-w-6xl px-5 sm:px-8 py-7 sm:py-9">
+        <div className="mx-auto max-w-7xl px-5 sm:px-8 py-7 sm:py-9">
           <Link
             href="/products"
             className="inline-flex items-center gap-1.5 text-[12px] sm:text-[16px] tracking-widest uppercase text-stone-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors mb-6"
@@ -316,8 +316,8 @@ export function CheckoutClient() {
       </div>
 
       {/* ── Body ────────────────────────────────────────────────── */}
-      <div className="mx-auto max-w-6xl px-4 sm:px-8 py-8 sm:py-12 pb-32 lg:pb-12">
-        <div className="lg:grid lg:grid-cols-[1fr_420px] lg:gap-14 xl:gap-20 items-start">
+      <div className="mx-auto max-w-7xl px-4 sm:px-8 py-8 sm:py-12 pb-32 lg:pb-12">
+        <div className="lg:grid lg:grid-cols-[1fr_500px] lg:gap-10 xl:gap-14 items-start">
 
           {/* ── LEFT: Pure item gallery ───────────────────────── */}
           <div>
@@ -568,7 +568,7 @@ export function CheckoutClient() {
                 </p>
               </div>
 
-              <div className="p-4 sm:px-6 sm:py-5 space-y-5">
+              <div className="p-4 sm:px-5 sm:py-4 space-y-4">
 
                 {/* Subtotal row */}
                 <div className="flex items-center justify-between">
@@ -697,47 +697,49 @@ export function CheckoutClient() {
                     <p className="text-[11px] sm:text-[15px] uppercase tracking-[0.2em] font-semibold text-stone-400 dark:text-stone-500">
                       Shipping Address
                     </p>
-                    <div className="space-y-2">
-                      {/* Country */}
-                      <select
-                        value={shippingAddress.country}
-                        onChange={(e) => setShippingAddress((a) => ({ ...a, country: e.target.value }))}
-                        className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 outline-none focus:ring-2 focus:ring-emerald-500"
-                      >
-                        <option value="">Country / Region</option>
-                        {ALLOWED_COUNTRIES.map((c) => (
-                          <option key={c.code} value={c.code}>{c.name}</option>
-                        ))}
-                      </select>
-                      {/* Full name */}
-                      <input
-                        type="text"
-                        placeholder="Full name"
-                        autoComplete="name"
-                        value={shippingAddress.name}
-                        onChange={(e) => setShippingAddress((a) => ({ ...a, name: e.target.value }))}
-                        className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500"
-                      />
-                      {/* Address line 1 */}
-                      <input
-                        type="text"
-                        placeholder="Address"
-                        autoComplete="address-line1"
-                        value={shippingAddress.line1}
-                        onChange={(e) => setShippingAddress((a) => ({ ...a, line1: e.target.value }))}
-                        className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500"
-                      />
-                      {/* Address line 2 */}
-                      <input
-                        type="text"
-                        placeholder="Apt, suite, unit (optional)"
-                        autoComplete="address-line2"
-                        value={shippingAddress.line2}
-                        onChange={(e) => setShippingAddress((a) => ({ ...a, line2: e.target.value }))}
-                        className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500"
-                      />
-                      {/* City + State/Province */}
-                      <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1.5">
+                      {/* Country + Full name on same row */}
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <select
+                          value={shippingAddress.country}
+                          onChange={(e) => setShippingAddress((a) => ({ ...a, country: e.target.value }))}
+                          className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 outline-none focus:ring-2 focus:ring-emerald-500"
+                        >
+                          <option value="">Country</option>
+                          {ALLOWED_COUNTRIES.map((c) => (
+                            <option key={c.code} value={c.code}>{c.name}</option>
+                          ))}
+                        </select>
+                        <input
+                          type="text"
+                          placeholder="Full name"
+                          autoComplete="name"
+                          value={shippingAddress.name}
+                          onChange={(e) => setShippingAddress((a) => ({ ...a, name: e.target.value }))}
+                          className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+                      {/* Address lines on same row */}
+                      <div className="grid grid-cols-[1fr_auto] gap-1.5">
+                        <input
+                          type="text"
+                          placeholder="Address"
+                          autoComplete="address-line1"
+                          value={shippingAddress.line1}
+                          onChange={(e) => setShippingAddress((a) => ({ ...a, line1: e.target.value }))}
+                          className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Apt / Unit"
+                          autoComplete="address-line2"
+                          value={shippingAddress.line2}
+                          onChange={(e) => setShippingAddress((a) => ({ ...a, line2: e.target.value }))}
+                          className="w-28 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+                      {/* City + State + Postal on one row */}
+                      <div className="grid grid-cols-3 gap-1.5">
                         <input
                           type="text"
                           placeholder="City"
@@ -748,22 +750,21 @@ export function CheckoutClient() {
                         />
                         <input
                           type="text"
-                          placeholder="State / Province"
+                          placeholder="State / Prov."
                           autoComplete="address-level1"
                           value={shippingAddress.state}
                           onChange={(e) => setShippingAddress((a) => ({ ...a, state: e.target.value }))}
                           className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500"
                         />
+                        <input
+                          type="text"
+                          placeholder="ZIP / Postal"
+                          autoComplete="postal-code"
+                          value={shippingAddress.postal}
+                          onChange={(e) => setShippingAddress((a) => ({ ...a, postal: e.target.value }))}
+                          className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
                       </div>
-                      {/* Postal code */}
-                      <input
-                        type="text"
-                        placeholder="Postal / ZIP code"
-                        autoComplete="postal-code"
-                        value={shippingAddress.postal}
-                        onChange={(e) => setShippingAddress((a) => ({ ...a, postal: e.target.value }))}
-                        className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500"
-                      />
                     </div>
                   </div>
                 )}
