@@ -19,22 +19,33 @@ export const dynamic = "force-dynamic";
 
 import type { MetaItem } from "@/lib/stripe-metadata";
 
+const isLive = process.env.NEXT_PUBLIC_CHECKOUT_MODE === "live";
+
 export async function POST(req: NextRequest) {
-  const sig = req.headers.get("stripe-signature");
-
-  if (!sig || !webhookSecret) {
-    return NextResponse.json({ error: "Missing stripe-signature or webhook secret." }, { status: 400 });
-  }
-
   const rawBody = await req.arrayBuffer();
   const bodyBuffer = Buffer.from(rawBody);
 
   let event: Stripe.Event;
-  try {
-    event = stripe.webhooks.constructEvent(bodyBuffer, sig, webhookSecret);
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Webhook signature verification failed.";
-    return NextResponse.json({ error: msg }, { status: 400 });
+
+  if (isLive) {
+    // Production: require valid Stripe signature
+    const sig = req.headers.get("stripe-signature");
+    if (!sig || !webhookSecret) {
+      return NextResponse.json({ error: "Missing stripe-signature or webhook secret." }, { status: 400 });
+    }
+    try {
+      event = stripe.webhooks.constructEvent(bodyBuffer, sig, webhookSecret);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Webhook signature verification failed.";
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
+  } else {
+    // Test mode: skip signature verification so events can be resent from Stripe Dashboard
+    try {
+      event = JSON.parse(bodyBuffer.toString()) as Stripe.Event;
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    }
   }
 
   const supabase = supabaseAdmin;
