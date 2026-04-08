@@ -6,6 +6,7 @@ import { validateDiscount, normalizeEmail } from "@/lib/discount";
 import { computeAvailableCredit } from "@/lib/sourcing-classification";
 import type { LedgerRow } from "@/lib/sourcing-classification";
 import type { CartItem } from "@/types/cart";
+import { getShippingZone, calculateShipping, calculateStripeFee, ALLOWED_COUNTRIES } from "@/lib/shipping";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
 
@@ -25,6 +26,15 @@ export async function POST(req: NextRequest) {
     customerEmail?: string;
     discountCode?: string;
     sourcingRequestId?: string;
+    shippingAddress?: {
+      name: string;
+      line1: string;
+      line2?: string;
+      city: string;
+      state?: string;
+      postal: string;
+      country: string;
+    };
   };
   try {
     body = await req.json();
@@ -170,11 +180,23 @@ export async function POST(req: NextRequest) {
     // Discount validation failure is non-fatal — checkout proceeds without it
   }
 
+  // ── Validate shipping address ─────────────────────────────────────────────────
+  const addr = body.shippingAddress;
+  const allowedCountryCodes = new Set(ALLOWED_COUNTRIES.map((c) => c.code));
+  if (!addr || !addr.name || !addr.line1 || !addr.city || !addr.postal || !addr.country) {
+    return NextResponse.json({ error: "Shipping address is required." }, { status: 400 });
+  }
+  if (!allowedCountryCodes.has(addr.country)) {
+    return NextResponse.json({ error: "Shipping to that country is not supported." }, { status: 400 });
+  }
+
   // ── Build shipping + fee line items ──────────────────────────────────────────
   const hasSourcingItems = validatedItems.some((i) => (i.fulfillmentType ?? "sourced_for_you") === "sourced_for_you");
   const isPrioritySourcing = body.expedited && hasSourcingItems;
-  const shippingBase = isPrioritySourcing ? 100 : 20;
-  const shippingFee = shippingBase + (validatedItems.length - 1) * 10;
+  const zone = getShippingZone(addr.country);
+  const shippingFee = isPrioritySourcing
+    ? 100 + (validatedItems.length - 1) * 10
+    : calculateShipping(zone, validatedItems.length);
   const shippingType = isPrioritySourcing ? "Priority Sourcing" : "Shipping";
   const shippingLabel =
     validatedItems.length > 1
@@ -205,15 +227,16 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Transaction fee applied to (items - coupon discount + insurance + shipping)
+  // Transaction fee: gross-up so seller nets full amount after Stripe deducts their fee.
+  // Domestic (US): 2.9% + $0.30 | International: 4.4% + $0.30
   const discountedItemsCents = Math.max(0, itemsSubtotalCents - discountAmountCents);
-  const transactionFeeAmount = Math.round(
-    (discountedItemsCents / 100 + insuranceFeeCents / 100 + shippingFee) * 0.035 * 100
-  );
+  const subtotalForFeeCents = discountedItemsCents + insuranceFeeCents + shippingFee * 100;
+  const transactionFeeAmount = calculateStripeFee(subtotalForFeeCents, zone);
+  const feeLabel = zone === "domestic" ? "Transaction Fee (2.9% + $0.30)" : "Transaction Fee (4.4% + $0.30)";
   lineItems.push({
     price_data: {
       currency: "usd",
-      product_data: { name: "Transaction Fee (3.5%)" },
+      product_data: { name: feeLabel },
       unit_amount: transactionFeeAmount,
     },
     quantity: 1,
@@ -330,17 +353,21 @@ export async function POST(req: NextRequest) {
     sourcingMetadata.sourcing_credit_applied_cents = String(sourcingCreditApplied);
   }
 
+  // Shipping address metadata (for webhook — customer won't re-enter on Stripe)
+  const addrMetadata: Record<string, string> = {
+    ship_name: addr.name,
+    ship_line1: addr.line1,
+    ship_city: addr.city,
+    ship_postal: addr.postal,
+    ship_country: addr.country,
+    ...(addr.line2 ? { ship_line2: addr.line2 } : {}),
+    ...(addr.state ? { ship_state: addr.state } : {}),
+  };
+
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
+    currency: "usd",
     line_items: lineItems,
-    shipping_address_collection: {
-      allowed_countries: [
-        "US", "CA", "GB", "AU", "NZ",
-        "SG", "MY", "HK", "TW", "JP", "KR", "TH", "VN", "PH", "ID", "IN",
-        "DE", "FR", "IT", "ES", "NL", "BE", "AT", "CH", "SE", "NO", "DK", "FI",
-        "CN",
-      ],
-    },
     success_url: `${SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${SITE_URL}/checkout/cancel`,
     consent_collection: { terms_of_service: "required" },
@@ -350,8 +377,21 @@ export async function POST(req: NextRequest) {
           "I agree to the [Store Policy](https://www.bingbingjade.com/policy) and [FAQ](https://www.bingbingjade.com/faq).",
       },
     },
+    payment_intent_data: {
+      shipping: {
+        name: addr.name,
+        address: {
+          line1: addr.line1,
+          ...(addr.line2 ? { line2: addr.line2 } : {}),
+          city: addr.city,
+          state: addr.state ?? "",
+          postal_code: addr.postal,
+          country: addr.country,
+        },
+      },
+    },
     ...(stripeCouponId ? { discounts: [{ coupon: stripeCouponId }] } : {}),
-    metadata: { ...itemMetadata, ...discountMetadata, ...emailMetadata, ...sourcingMetadata },
+    metadata: { ...itemMetadata, ...discountMetadata, ...emailMetadata, ...sourcingMetadata, ...addrMetadata },
   });
 
   // Update the sourcing credit lock with the actual session ID

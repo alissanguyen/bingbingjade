@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useCart } from "@/app/components/CartContext";
 import { supabase } from "@/lib/supabase";
 import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
+import { ALLOWED_COUNTRIES, getShippingZone, calculateShipping, calculateStripeFee } from "@/lib/shipping";
 
 const isLiveMode = process.env.NEXT_PUBLIC_CHECKOUT_MODE === "live";
 
@@ -55,6 +56,17 @@ export function CheckoutClient() {
   const [adminUnlocked, setAdminUnlocked] = useState(isLiveMode);
   const [showAdminInput, setShowAdminInput] = useState(false);
   const [adminError, setAdminError] = useState(false);
+
+  // Shipping address
+  const [shippingAddress, setShippingAddress] = useState({
+    name: "",
+    country: "",
+    line1: "",
+    line2: "",
+    city: "",
+    state: "",
+    postal: "",
+  });
 
   // Submit
   const [loading, setLoading] = useState(false);
@@ -143,19 +155,36 @@ export function CheckoutClient() {
   const subtotal = availableItems.reduce((s, i) => s + i.price, 0);
   const originalTotal = availableItems.reduce((s, i) => s + (i.originalPrice ?? i.price), 0);
   const totalSavings = originalTotal - subtotal;
-  // Priority Sourcing ($100 base) only applies when there are sourced_for_you items
-  const shippingBase = (prioritySourcing && hasSourcingItems) ? 100 : 20;
-  const shipping = availableItems.length > 0 ? shippingBase + (availableItems.length - 1) * 10 : 0;
+  const zone = shippingAddress.country ? getShippingZone(shippingAddress.country) : null;
+  const isPriority = prioritySourcing && hasSourcingItems;
+  const shipping = availableItems.length > 0 && zone != null
+    ? (isPriority ? 100 + (availableItems.length - 1) * 10 : calculateShipping(zone, availableItems.length))
+    : null;
   const discountDollars = appliedDiscount ? appliedDiscount.amountCents / 100 : 0;
   const discountedSubtotal = Math.max(0, subtotal - discountDollars);
   // Insurance is 5% of item subtotal (before discount — covers declared item value)
   const insuranceFee = shippingInsurance && availableItems.length > 0
     ? Math.round(subtotal * 0.05 * 100) / 100
     : 0;
-  const txFee = Math.round((discountedSubtotal + insuranceFee + shipping) * 0.035 * 100) / 100;
-  const grandTotal = Math.round((discountedSubtotal + insuranceFee + shipping + txFee) * 100) / 100;
+  const subtotalForFeeCents = shipping != null
+    ? Math.round((discountedSubtotal + insuranceFee + shipping) * 100)
+    : null;
+  const txFeeCents = subtotalForFeeCents != null && zone != null
+    ? calculateStripeFee(subtotalForFeeCents, zone)
+    : null;
+  const txFee = txFeeCents != null ? txFeeCents / 100 : null;
+  const grandTotal = shipping != null && txFee != null
+    ? Math.round((discountedSubtotal + insuranceFee + shipping + txFee) * 100) / 100
+    : null;
 
-  const canCheckout = availableItems.length > 0 && adminUnlocked;
+  const addressComplete =
+    shippingAddress.country !== "" &&
+    shippingAddress.name.trim() !== "" &&
+    shippingAddress.line1.trim() !== "" &&
+    shippingAddress.city.trim() !== "" &&
+    shippingAddress.postal.trim() !== "";
+
+  const canCheckout = availableItems.length > 0 && adminUnlocked && addressComplete;
 
   function handleRemove(productId: string, optionId: string | null) {
     removeFromCart(productId, optionId);
@@ -222,6 +251,15 @@ export function CheckoutClient() {
           expedited: prioritySourcing && hasSourcingItems,
           shippingInsurance,
           discountCode: discountCode.trim() || undefined,
+          shippingAddress: {
+            name: shippingAddress.name.trim(),
+            line1: shippingAddress.line1.trim(),
+            ...(shippingAddress.line2.trim() ? { line2: shippingAddress.line2.trim() } : {}),
+            city: shippingAddress.city.trim(),
+            ...(shippingAddress.state.trim() ? { state: shippingAddress.state.trim() } : {}),
+            postal: shippingAddress.postal.trim(),
+            country: shippingAddress.country,
+          },
         }),
       });
       const data = await res.json();
@@ -603,7 +641,13 @@ export function CheckoutClient() {
                         </a>
                       </div>
                       <p className="text-[10px] sm:text-[15px] text-stone-400 dark:text-stone-500 mt-0.5">
-                        {prioritySourcing ? "$100 base + $10 per piece" : "$20 base + $10 per piece"}
+                        {isPriority
+                          ? "$100 base + $10 per piece"
+                          : zone === "far"
+                          ? "$75 first piece + $20 per additional"
+                          : zone === "canada"
+                          ? "$35 base + $10 per piece"
+                          : "$20 base + $10 per piece"}
                       </p>
                     </div>
                     <button
@@ -647,6 +691,83 @@ export function CheckoutClient() {
                   </div>
                 )}
 
+                {/* ── Shipping address ─────────────────────── */}
+                {availableItems.length > 0 && (
+                  <div className="rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/40 p-2.5 sm:p-3.5 space-y-2.5">
+                    <p className="text-[11px] sm:text-[15px] uppercase tracking-[0.2em] font-semibold text-stone-400 dark:text-stone-500">
+                      Shipping Address
+                    </p>
+                    <div className="space-y-2">
+                      {/* Country */}
+                      <select
+                        value={shippingAddress.country}
+                        onChange={(e) => setShippingAddress((a) => ({ ...a, country: e.target.value }))}
+                        className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 outline-none focus:ring-2 focus:ring-emerald-500"
+                      >
+                        <option value="">Country / Region</option>
+                        {ALLOWED_COUNTRIES.map((c) => (
+                          <option key={c.code} value={c.code}>{c.name}</option>
+                        ))}
+                      </select>
+                      {/* Full name */}
+                      <input
+                        type="text"
+                        placeholder="Full name"
+                        autoComplete="name"
+                        value={shippingAddress.name}
+                        onChange={(e) => setShippingAddress((a) => ({ ...a, name: e.target.value }))}
+                        className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                      {/* Address line 1 */}
+                      <input
+                        type="text"
+                        placeholder="Address"
+                        autoComplete="address-line1"
+                        value={shippingAddress.line1}
+                        onChange={(e) => setShippingAddress((a) => ({ ...a, line1: e.target.value }))}
+                        className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                      {/* Address line 2 */}
+                      <input
+                        type="text"
+                        placeholder="Apt, suite, unit (optional)"
+                        autoComplete="address-line2"
+                        value={shippingAddress.line2}
+                        onChange={(e) => setShippingAddress((a) => ({ ...a, line2: e.target.value }))}
+                        className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                      {/* City + State/Province */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          placeholder="City"
+                          autoComplete="address-level2"
+                          value={shippingAddress.city}
+                          onChange={(e) => setShippingAddress((a) => ({ ...a, city: e.target.value }))}
+                          className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="State / Province"
+                          autoComplete="address-level1"
+                          value={shippingAddress.state}
+                          onChange={(e) => setShippingAddress((a) => ({ ...a, state: e.target.value }))}
+                          className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+                      {/* Postal code */}
+                      <input
+                        type="text"
+                        placeholder="Postal / ZIP code"
+                        autoComplete="postal-code"
+                        value={shippingAddress.postal}
+                        onChange={(e) => setShippingAddress((a) => ({ ...a, postal: e.target.value }))}
+                        className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* ── Line items ───────────────────────────── */}
                 <div className="border-t border-stone-100 dark:border-stone-800 pt-4 space-y-2.5">
                   {discountDollars > 0 && (
@@ -665,19 +786,20 @@ export function CheckoutClient() {
 
                   <div className="flex justify-between text-sm">
                     <span className="text-[12px] sm:text-sm text-stone-500 dark:text-stone-400">
-                      {(prioritySourcing && hasSourcingItems) ? "Priority Shipping" : "Standard"} Shipping
+                      {isPriority ? "Priority Sourcing" : "Shipping"}
                       {availableItems.length > 1 ? ` · ${availableItems.length} pieces` : ""}
                     </span>
                     <span className="text-[12px] sm:text-sm font-medium text-stone-900 dark:text-stone-100">
-                      {availableItems.length > 0 ? fmtPrice(shipping) : "—"}
+                      {shipping != null ? fmtPrice(shipping) : "—"}
                     </span>
                   </div>
 
-
                   <div className="flex justify-between text-sm">
-                    <span className="text-[12px] sm:text-sm text-stone-500 dark:text-stone-400">Transaction Fee · 3.5%</span>
+                    <span className="text-[12px] sm:text-sm text-stone-500 dark:text-stone-400">
+                      Transaction Fee{zone === "domestic" ? " · 2.9% + $0.30" : zone != null ? " · 4.4% + $0.30" : ""}
+                    </span>
                     <span className="text-[12px] sm:text-sm font-medium text-stone-900 dark:text-stone-100">
-                      {availableItems.length > 0 ? fmtPrice(txFee) : "—"}
+                      {txFee != null ? fmtPrice(txFee) : "—"}
                     </span>
                   </div>
                 </div>
@@ -686,7 +808,7 @@ export function CheckoutClient() {
                 <div className="border-t-2 border-stone-900 dark:border-stone-200 pt-4 flex items-center justify-between">
                   <span className="text-[13px] sm:text-[16px] uppercase tracking-[0.15em] font-semibold text-stone-500 dark:text-stone-400">Total</span>
                   <span className="text-[16px] sm:text-lg font-semibold tracking-tight text-emerald-600 dark:text-emerald-500">
-                    {availableItems.length > 0 ? fmtPrice(grandTotal) : "—"}
+                    {grandTotal != null ? fmtPrice(grandTotal) : "—"}
                   </span>
                 </div>
 
@@ -795,7 +917,7 @@ export function CheckoutClient() {
             <div className="flex-1 min-w-0">
               <p className="text-[10px] uppercase tracking-[0.2em] text-stone-400 dark:text-stone-500">Total</p>
               <p className="text-lg font-bold text-stone-900 dark:text-stone-100 tracking-tight">
-                {fmtPrice(grandTotal)}
+                {grandTotal != null ? fmtPrice(grandTotal) : "—"}
               </p>
             </div>
             <button

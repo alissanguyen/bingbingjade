@@ -223,25 +223,43 @@ export async function POST(req: NextRequest) {
   }
 
   let shippingAddressId: string | null = null;
-  const shippingDetails = session.collected_information?.shipping_details ?? null;
 
-  if (customerId && shippingDetails?.address) {
-    const addr = shippingDetails.address;
-    if (addr.line1 && addr.city && addr.postal_code && addr.country) {
-      try {
-        shippingAddressId = await saveShippingAddress({
-          customerId,
-          recipientName: shippingDetails.name ?? null,
-          line1: addr.line1,
-          line2: addr.line2 ?? null,
-          city: addr.city,
-          state: addr.state ?? "",
-          postal: addr.postal_code,
-          country: addr.country,
-        });
-      } catch (err) {
-        console.error("[webhook] Address save failed (non-fatal):", err);
-      }
+  // Prefer address from our metadata (collected pre-Stripe); fall back to Stripe-collected shipping.
+  const metaAddr = session.metadata?.ship_line1 ? {
+    name: session.metadata.ship_name ?? null,
+    line1: session.metadata.ship_line1,
+    line2: session.metadata.ship_line2 ?? null,
+    city: session.metadata.ship_city ?? null,
+    state: session.metadata.ship_state ?? null,
+    postal: session.metadata.ship_postal ?? null,
+    country: session.metadata.ship_country ?? null,
+  } : null;
+
+  const stripeShipping = session.collected_information?.shipping_details ?? null;
+  const resolvedAddr = metaAddr ?? (stripeShipping?.address ? {
+    name: stripeShipping.name ?? null,
+    line1: stripeShipping.address.line1 ?? null,
+    line2: stripeShipping.address.line2 ?? null,
+    city: stripeShipping.address.city ?? null,
+    state: stripeShipping.address.state ?? null,
+    postal: stripeShipping.address.postal_code ?? null,
+    country: stripeShipping.address.country ?? null,
+  } : null);
+
+  if (customerId && resolvedAddr?.line1 && resolvedAddr.city && resolvedAddr.postal && resolvedAddr.country) {
+    try {
+      shippingAddressId = await saveShippingAddress({
+        customerId,
+        recipientName: resolvedAddr.name ?? null,
+        line1: resolvedAddr.line1,
+        line2: resolvedAddr.line2 ?? null,
+        city: resolvedAddr.city,
+        state: resolvedAddr.state ?? "",
+        postal: resolvedAddr.postal,
+        country: resolvedAddr.country,
+      });
+    } catch (err) {
+      console.error("[webhook] Address save failed (non-fatal):", err);
     }
   }
 
@@ -330,10 +348,9 @@ export async function POST(req: NextRequest) {
   if (discountMeta && customerEmail) {
     try {
       // Build shipping fingerprint for abuse detection on welcome coupons
-      const addr = shippingDetails?.address ?? null;
       const shippingFingerprint =
         discountMeta.source === "welcome"
-          ? buildShippingFingerprint(customerPhone, addr?.city, addr?.postal_code, addr?.country)
+          ? buildShippingFingerprint(customerPhone, resolvedAddr?.city, resolvedAddr?.postal, resolvedAddr?.country)
           : null;
 
       const committed = await commitDiscount({
