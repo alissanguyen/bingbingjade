@@ -61,7 +61,7 @@ export default async function RootLayout({
   const headersList = await headers();
   const pathname = headersList.get("x-pathname") ?? "";
   const isAdmin = ADMIN_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
-  const isStudio = pathname === "/studio" || pathname.startsWith("/studio/");
+  const isStudio = headersList.get("x-is-studio") === "1";
 
   return (
     <html lang="en" suppressHydrationWarning style={{ scrollbarGutter: "stable" }}>

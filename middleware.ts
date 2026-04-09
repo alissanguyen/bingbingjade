@@ -29,6 +29,7 @@ export function middleware(request: NextRequest) {
     }
     const res = NextResponse.next();
     res.headers.set("x-pathname", pathname);
+    res.headers.set("x-is-studio", "1");
     return res;
   }
 
