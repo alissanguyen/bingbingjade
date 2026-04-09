@@ -14,10 +14,11 @@ A production e-commerce application for an authentic jade jewelry business, buil
 | Language | TypeScript 5 |
 | Database | Supabase (PostgreSQL) |
 | Storage | Supabase Storage (private buckets, signed URLs) |
-| Payments | Stripe Checkout + Webhooks |
+| Payments | Stripe Checkout + Webhooks + Stripe Tax |
 | Transactional Email | Resend (branded HTML templates) |
 | AI / LLM | Anthropic Claude API (claude-opus-4-6, vision + text) |
 | Image Processing | Sharp (native Node.js) |
+| CMS | Sanity (headless, embedded Studio at `/studio`) |
 | Styling | Tailwind CSS 4 |
 | Testing | Vitest |
 | Deployment | Vercel (with ISR and serverless functions) |
@@ -57,8 +58,11 @@ The application is split into a **customer storefront** and a **password-protect
 - **Product catalog** with multi-faceted filtering (category, availability status, origin, color, price range, size) and sorting (newest, price ascending/descending)
 - **Product detail pages** with full image gallery (lightbox), inline video preview, variant selection (product options with per-option pricing), and add-to-cart
 - **Persistent cart** stored in localStorage with a slide-out cart drawer
-- **Shipping & fee breakdown** — base shipping $20 ($100 expedited), +$10 per additional piece; 3.5% transaction fee applied after discount; discount shown as a negative line item; all fees mirrored exactly in the Stripe session
-- **Expedited shipping toggle** in cart drawer with link to `/faq#expedited-shipping` policy
+- **Zone-based international shipping** — US $20 / Canada+Europe $35 / Asia-Pacific $75 base, +$10–$20 per additional piece; shipping address collected in the storefront UI before redirecting to Stripe so customers never re-enter it; address passed to `payment_intent_data.shipping` for Stripe records
+- **Stripe fee gross-up** — transaction fee is computed as `⌈(subtotal + 30) / (1 − rate)⌉ − subtotal` (domestic 2.9%, international 4.4%) so the seller nets exactly the item price after Stripe deducts their cut; displayed as a single "Transaction Fee" line with no formula exposed to customers
+- **Automatic WA sales tax** — Stripe Tax (`automatic_tax: { enabled: true }`) with `tax_behavior: "exclusive"` on all line items; triggers only for Washington-state shipping addresses where business nexus is registered; WA customers see an in-cart notice before checkout
+- **Shipping insurance option** — 5% of item subtotal (before discount), covers declared value; opt-in toggle in checkout
+- **Expedited / Priority Sourcing toggle** in cart drawer with link to `/faq#expedited-shipping` policy
 - **Discount code entry** in cart drawer — validated live against `/api/validate-discount`; supports welcome, referral, campaign, and store credit sources
 - **Stripe Checkout** integration — cart contents are re-validated server-side before the Stripe session is created, preventing price manipulation; discount is re-validated server-side too
 - **Subscribe popup** — appears 2.5 seconds after first visit to homepage; localStorage-gated (shows once per browser); auto-dismisses 1.8s after successful subscription
@@ -68,6 +72,15 @@ The application is split into a **customer storefront** and a **password-protect
 - **Fully responsive** design with dark mode support (next-themes)
 - **SEO-optimised** product pages with dynamic `<meta>` tags, OpenGraph images, and structured keywords
 
+### Educational Blog (Sanity CMS)
+
+- **Headless CMS integration** — Sanity Studio embedded at `/studio` (localhost-only; middleware redirects all non-localhost traffic to `/`; full site chrome stripped so the Studio renders full-screen without navbar interference)
+- **Blog listing page** (`/blog`) — featured post rendered as a large split-panel hero; remaining posts in a responsive card grid with 16:9 cover images, category pills, author name, and subtle hover animations; cover images resolved via `urlFor()` builder against Sanity CDN
+- **Post detail page** (`/blog/[slug]`) — category badges, author avatar + name + date, full-bleed hero image (rounded on desktop, edge-to-edge on mobile), portable text body, numbered sources section, author bio, "Continue Reading" recommended posts strip, related products grid
+- **Portable text renderer** — custom components for `h2`/`h3`/`h4`, paragraphs, blockquotes, bullet/numbered lists, inline code, internal and external links; plus rich content blocks: `articleImage` (inline / wide / full-width layouts with caption), `pullQuote` (left emerald border + optional attribution), `callout` (info / tip / warning / luxury tones), `productReference` (linked product card with thumbnail + price)
+- **Rich post schema** — title, slug, excerpt, hero image (with alt + caption + hotspot), portable text body, author reference, categories, related products, **recommended posts** (up to 3 cross-links to other articles), sources (label + URL), SEO object (metaTitle, metaDescription, OG image, canonical URL, noIndex), featured flag
+- **Full SEO** — `generateMetadata()` per post using Sanity SEO fields; `generateStaticParams()` for build-time static generation; `revalidate: 3600` for hourly ISR refresh
+
 ### Admin CMS (Password-Protected)
 
 - **Add product** — rich form with media upload, image crop (react-easy-crop), video trim, category/origin/color/tier tagging, pricing, and vendor attribution
@@ -75,7 +88,7 @@ The application is split into a **customer storefront** and a **password-protect
 - **Edit product** — same full-featured form, pre-populated with existing data; includes lightbox for existing images and inline video preview
 - **Draft/publish workflow** — products default to draft and are hidden from the storefront until explicitly published
 - **Bulk operations** — select multiple products to batch-update status (available / on sale / sold) or bulk delete
-- **Order management** — admin panel at `/admin/orders` lists all orders with search, status filtering, and pagination; each order has a full detail/edit page supporting:
+- **Order management** — admin panel at `/orders-admin` lists all orders sorted by order number descending; two-column amount display separates "Items" (sum of `order_items.price_usd × quantity`) from "Total" (full `amount_total` including shipping/fees/tax); search, status filtering, and pagination; each order has a full detail/edit page supporting:
   - Status updates with optional email notification to customer
   - Estimated delivery date (triggers automatic delivery-date email)
   - Inline editing of order items (price, quantity) with auto-recalculated total
@@ -83,11 +96,17 @@ The application is split into a **customer storefront** and a **password-protect
   - Fee breakdown editor (shipping, tax, PayPal, insurance, discount, custom line)
   - Customer info edit (name, email, phone, order number, order date)
   - Notes field
+- **Accounting dashboard** (`/accounting-admin`) — financial reporting page with:
+  - **KPI cards** — Total Collected (all payments including shipping/fees/tax), Item Revenue (jade product prices only), COGS, and Gross Profit with margin %
+  - **Pure SVG bar chart** — no chart library dependencies; dual-series (emerald for revenue, rose for COGS) with year filter; overflow-scroll on mobile
+  - **Annual summary table** — Total Collected / Item Revenue / COGS / Gross Profit / Margin % per year
+  - **By payment source breakdown** — horizontal progress bars showing revenue split across Stripe, PayPal, Cash, Zelle, Wire, Manual
+  - **COGS tracking** — `imported_price_vnd` captured at webhook time (frozen to the price at time of sale), converted at a fixed 1 USD = 26,000 VND rate, stored as `cogs_cents` on the order; profit columns gracefully hidden for orders without COGS data (`hasCogs` flag)
 - **Custom order entry** — admin can create manual orders (Cash/Zelle/PayPal/Stripe/Wire Transfer source); order numbers prefixed `BBJ-` with a minimum value enforced; customer and address records created or linked automatically
 - **Vendor management** — CRUD for supplier records
 - **Coupon campaign management** (`/coupons-admin`) — create seasonal/promotional codes with configurable discount type (fixed, percent, or tiered $10/$20), active date window, minimum order amount, per-customer and global redemption caps, and new-customer restriction; toggle active/inactive; live redemption count per campaign
 - **Subscriber management** (`/subscribers-admin`) — view all email subscribers with their coupon code, expiry, and status (Active / Used / Expired / No code); filter tabs; resend welcome coupon email to individual subscriber; bulk email with custom subject and message body targeting all or unused-coupon subscribers; backfill coupon codes for pre-migration subscribers
-- **Admin profile** (`/admin`) — at-a-glance action items: pending product approvals and pending partner token requests with inline approve/deny and adjustable grant amount
+- **Admin profile** (`/profile`) — at-a-glance action items: pending product approvals and pending partner token requests with inline approve/deny and adjustable grant amount
 - **Beta checkout mode** — checkout locked to admin during soft-launch; toggle to public with `NEXT_PUBLIC_CHECKOUT_MODE=live`
 
 ### Partner Portal (Approved Users)
@@ -205,19 +224,25 @@ jade-shop/
 │   │   └── cancel/page.tsx
 │   ├── contact/
 │   │
-│   ├── admin/
-│   │   ├── orders/
-│   │   │   ├── page.tsx                # Order list with search + filters
-│   │   │   └── [id]/page.tsx           # Order detail / edit
-│   │   ├── orders/new/page.tsx         # Create manual order
-│   │   └── customers/
+│   ├── orders-admin/
+│   │   ├── page.tsx                    # Order list — sorted by order number, Items+Total split
+│   │   ├── [id]/page.tsx               # Order detail / edit (strips cogs_cents before client)
+│   │   └── new/page.tsx                # Create manual order
+│   ├── accounting-admin/
+│   │   ├── page.tsx                    # Server wrapper (force-dynamic)
+│   │   └── AccountingClient.tsx        # KPI cards, SVG chart, annual table, source breakdown
+│   ├── customers-admin/
+│   ├── studio/
+│   │   └── [[...tool]]/page.tsx        # Sanity Studio (force-dynamic; localhost-only via middleware)
 │   │
 │   ├── api/
 │   │   ├── stripe/
 │   │   │   ├── checkout/route.ts       # Cart + discount validation → Stripe session
-│   │   │   └── webhook/route.ts        # Order creation + inventory + discount commit
+│   │   │   └── webhook/route.ts        # Order creation + COGS capture + inventory + discount commit
 │   │   ├── admin/
-│   │   │   └── orders/[id]/route.ts    # Order CRUD + email triggers + delivery flows
+│   │   │   ├── orders/route.ts         # Order list — joins order_items for item_subtotal
+│   │   │   ├── orders/[id]/route.ts    # Order CRUD + email triggers + delivery flows
+│   │   │   └── accounting/route.ts     # Monthly/annual revenue, COGS, by-source aggregation
 │   │   ├── subscribe/route.ts          # Email list signup + welcome email
 │   │   ├── validate-discount/route.ts  # Read-only discount preview for cart drawer
 │   │   ├── unsubscribe/route.ts        # One-click unsubscribe (base64 email param)
@@ -248,13 +273,20 @@ jade-shop/
 │   ├── supabase.ts
 │   ├── supabase-admin.ts
 │   ├── slug.ts
-│   └── price.ts
+│   ├── price.ts
+│   └── sanity/
+│       ├── client.ts                   # Sanity client + urlFor image builder
+│       └── queries.ts                  # GROQ queries (post list, post by slug, related posts)
+│
+├── sanity/
+│   ├── schemaTypes/                    # Post, Author, Category, Product Reference schemas
+│   └── sanity.config.ts
 │
 ├── __tests__/
 │   └── discount.test.ts                # 34 Vitest tests — logic, abuse, flow
 │
 ├── supabase/
-│   └── migration_001.sql → migration_030.sql
+│   └── migration_001.sql → migration_048.sql
 │
 ├── middleware.ts
 └── next.config.ts
@@ -372,6 +404,8 @@ Page renders (RSC) → resolveImageUrl("wm/abc123.jpg")
 | `/api/approved/logout` | POST | — | Partner logout |
 | `/api/approved/token-request` | POST | `approved_session` cookie | Submit token request to admin |
 | `/api/admin/products/[id]/approve` | PATCH | `admin_session` cookie | Approve or dismiss a pending product submission |
+| `/api/admin/accounting` | GET | `admin_session` cookie | Monthly/annual revenue + COGS aggregation; by-source breakdown; `hasCogs` flag |
+| `/api/admin/orders` | GET | `admin_session` cookie | Paginated order list with joined `item_subtotal` (sum of `price_usd × quantity`) |
 
 ---
 
@@ -451,6 +485,8 @@ All schema changes are tracked as numbered SQL files in `/supabase/`. Run them i
 | 033 | Rejection tracking: `products.rejected_at`, `products.rejection_note` |
 | 034 | Partner token system: `approved_users.generation_tokens` (default 10); `token_requests` table (user_id, message, requested_amount, status, granted_amount, admin_note, resolved_at) |
 | 035 | Subscriber coupon codes: `email_subscribers.welcome_coupon_code` (CHAR 6, unique), `welcome_coupon_expires_at`, `used_fingerprint`; `coupon_campaigns.created_by`, `coupon_campaigns.notes` |
+| 036–047 | Partner portal refinements, sourcing workflow, approved-user access controls, shipment tracking, token request improvements |
+| 048 | Add `cogs_cents integer` to `orders` — stores cost of goods sold in USD cents, captured at webhook time from `imported_price_vnd` at a fixed 1 USD = 26,000 VND rate |
 
 ---
 
@@ -521,6 +557,18 @@ The generate-copy endpoint includes up to three product photos as base64 image b
 
 **Why obfuscate prices above $20,000?**
 High-value jade pieces attract buyers who expect a personal relationship before committing. Showing an exact price publicly invites comparison shopping and low-ball offers. The obfuscated format (`$2X,XXX`) communicates the price range for self-qualification while directing buyers toward an inquiry flow. "Contact for price" alone tends to be ignored; a visible but inexact price is more informative and still encourages contact.
+
+**Why capture COGS at webhook time rather than reading it from the products table on demand?**
+`imported_price_vnd` on a product record can change at any time — the vendor's price fluctuates, we re-negotiate, or the product is deleted after it sells. Storing `cogs_cents` on the order at the moment of sale creates an immutable snapshot of what the piece actually cost us for that transaction. Historical profit calculations then remain accurate regardless of how the product record changes afterward. This mirrors how Stripe captures the price on each PaymentIntent rather than re-reading the price table later.
+
+**Why use a fixed VND/USD rate (26,000) rather than a live exchange API?**
+Importing costs are negotiated and recorded in VND weeks before products sell. The actual FX rate on any given sale date introduces noise that doesn't reflect the economics of the specific batch. A fixed operational rate also means the accounting dashboard stays deterministic — reloading the page always produces the same profit figure. If the rate drifts significantly, a single migration updating the constant is cheaper than debugging time-varying P&L.
+
+**Why strip `cogs_cents` in the server component before passing to the client, rather than relying on RLS?**
+RLS governs database-level access; it does not prevent an authenticated server component from leaking data to a client component via props. The orders admin page used `select('*')` which included `cogs_cents` in the serialised order object sent to `<OrderDetailClient>` — and client component props are visible in React DevTools and the Next.js RSC payload. Destructuring the field on the server before passing `orderForClient` to the client component ensures it never appears in the network payload, regardless of what future wildcard selects might add to the table.
+
+**Why detect `/studio` with a dedicated middleware header (`x-is-studio`) instead of reading `x-pathname` in the root layout?**
+The initial implementation conditionally rendered the navbar by checking `pathname.startsWith("/studio")` from `x-pathname`. This worked in development but broke in production: the studio page had `export const dynamic = "force-static"`, so Next.js served it from the build cache without re-running middleware on each request. The root layout's `headers()` call then received stale headers from the last non-studio request, and the navbar rendered over the Sanity UI. The fix has two parts: (1) change the studio page to `force-dynamic` so middleware always runs, and (2) set a dedicated `x-is-studio: "1"` header in middleware so the signal is unambiguous and does not depend on pathname string parsing in the layout.
 
 **Why subject-line prefixes for Gmail sorting instead of custom headers?**
 Custom email headers (`X-BBJ-Category: Order Update`) are not surfaced in Gmail's filter UI and cannot be used to create label rules without raw message parsing. Subject-line prefixes (`[Order Update]`, `[Order Placed]`, `[Subscriber]`) work with Gmail's built-in filter UI — create a filter for `Subject contains [Order Update]` and apply a label. Simple, reliable, no tooling required.
