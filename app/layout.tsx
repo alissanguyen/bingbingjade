@@ -61,60 +61,67 @@ export default async function RootLayout({
   const headersList = await headers();
   const pathname = headersList.get("x-pathname") ?? "";
   const isAdmin = ADMIN_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  const isStudio = pathname === "/studio" || pathname.startsWith("/studio/");
 
   return (
     <html lang="en" suppressHydrationWarning style={{ scrollbarGutter: "stable" }}>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100`}>
         <ThemeProvider>
           <CartProvider>
-          <header className="sticky top-0 z-40 bg-white dark:bg-gray-950">
-            {/* Beta banner — only shown in beta mode */}
-            {process.env.NEXT_PUBLIC_CHECKOUT_MODE !== "live" && (
-              <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800 px-4 py-2 text-center text-[12px] sm:text-xs text-amber-800 dark:text-amber-300">
-                <span className="font-semibold">Site under beta testing.</span>
-                {" "}Online checkout is temporarily disabled — to purchase, please inquire directly via{" "}
-                <a
-                  href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? ""}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline underline-offset-2 font-semibold hover:text-amber-900 dark:hover:text-amber-200 transition-colors"
-                >
-                  WhatsApp
-                </a>
-                .
-              </div>
-            )}
-            <div className="border-b border-gray-200 dark:border-gray-800">
-              <Navbar />
-            </div>
-            {!isAdmin && <CategoryBar />}
-          </header>
+          {isStudio ? (
+            <>{children}</>
+          ) : (
+            <>
+              <header className="sticky top-0 z-40 bg-white dark:bg-gray-950">
+                {/* Beta banner — only shown in beta mode */}
+                {process.env.NEXT_PUBLIC_CHECKOUT_MODE !== "live" && (
+                  <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800 px-4 py-2 text-center text-[12px] sm:text-xs text-amber-800 dark:text-amber-300">
+                    <span className="font-semibold">Site under beta testing.</span>
+                    {" "}Online checkout is temporarily disabled — to purchase, please inquire directly via{" "}
+                    <a
+                      href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? ""}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline underline-offset-2 font-semibold hover:text-amber-900 dark:hover:text-amber-200 transition-colors"
+                    >
+                      WhatsApp
+                    </a>
+                    .
+                  </div>
+                )}
+                <div className="border-b border-gray-200 dark:border-gray-800">
+                  <Navbar />
+                </div>
+                {!isAdmin && <CategoryBar />}
+              </header>
 
-          {/* CartDrawer must be outside the header so it sits in the root stacking context,
-              allowing the sticky header (z-40) to always render above it (z-30) */}
-          <CartDrawer />
+              {/* CartDrawer must be outside the header so it sits in the root stacking context,
+                  allowing the sticky header (z-40) to always render above it (z-30) */}
+              <CartDrawer />
 
-          <main className="flex-1">{children}</main>
+              <main className="flex-1">{children}</main>
 
-          <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 py-8">
-            <div className="mx-auto max-w-5xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs sm:text-sm text-gray-400 dark:text-gray-500">
-              <span>© {new Date().getFullYear()} BingBing Jade. All rights reserved.</span>
-              <div className="flex gap-6 text-xs sm:text-sm">
-                <Link href="/size-guide" className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
-                  Size Guide
-                </Link>
-                <Link href="/faq" className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
-                  FAQ
-                </Link>
-                <Link href="/policy" className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
-                  Store Policy
-                </Link>
-                <Link href="/privacy-policy" className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
-                  Privacy Policy
-                </Link>
-              </div>
-            </div>
-          </footer>
+              <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 py-8">
+                <div className="mx-auto max-w-5xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs sm:text-sm text-gray-400 dark:text-gray-500">
+                  <span>© {new Date().getFullYear()} BingBing Jade. All rights reserved.</span>
+                  <div className="flex gap-6 text-xs sm:text-sm">
+                    <Link href="/size-guide" className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
+                      Size Guide
+                    </Link>
+                    <Link href="/faq" className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
+                      FAQ
+                    </Link>
+                    <Link href="/policy" className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
+                      Store Policy
+                    </Link>
+                    <Link href="/privacy-policy" className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
+                      Privacy Policy
+                    </Link>
+                  </div>
+                </div>
+              </footer>
+            </>
+          )}
           </CartProvider>
         </ThemeProvider>
       </body>

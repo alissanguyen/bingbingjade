@@ -1,9 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const PROTECTED = ["/add", "/addvendor", "/edit", "/editvendor", "/vendors", "/orders-admin", "/products-admin", "/customers-admin", "/approved-users", "/sourcing-admin"];
+const PROTECTED = [
+  "/add",
+  "/addvendor",
+  "/edit",
+  "/editvendor",
+  "/vendors",
+  "/orders-admin",
+  "/products-admin",
+  "/customers-admin",
+  "/approved-users",
+  "/sourcing-admin"
+];
+
+function isLocalhost(hostname: string) {
+  return (
+    hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1"
+  );
+}
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, hostname } = request.nextUrl;
+
+  // Block /studio outside localhost
+  if (pathname === "/studio" || pathname.startsWith("/studio/")) {
+    if (!isLocalhost(hostname)) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    const res = NextResponse.next();
+    res.headers.set("x-pathname", pathname);
+    return res;
+  }
 
   const isProtected = PROTECTED.some(
     (p) => pathname === p || pathname.startsWith(p + "/")
@@ -27,7 +54,9 @@ export function middleware(request: NextRequest) {
   // Also allow approved users: cookie format is "{uuid}.{64-hex-chars}"
   const approvedSession = request.cookies.get("approved_session")?.value;
   const isApprovedFormat = approvedSession
-    ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[0-9a-f]{64}$/.test(approvedSession)
+    ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[0-9a-f]{64}$/.test(
+        approvedSession
+      )
     : false;
 
   if (isApprovedFormat) {
@@ -42,5 +71,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"]
 };
