@@ -19,6 +19,39 @@ export const dynamic = "force-dynamic";
 
 import type { MetaItem } from "@/lib/stripe-metadata";
 
+// ── Shared helper: mark product options + parent products as sold ─────────────
+async function markItemsAsSold(
+  supabase: typeof supabaseAdmin,
+  metaItems: MetaItem[]
+): Promise<void> {
+  // Mark affected options sold first
+  await Promise.all(
+    metaItems.map((item) =>
+      item.optionId
+        ? supabase.from("product_options").update({ status: "sold" }).eq("id", item.optionId)
+        : supabase.from("product_options").update({ status: "sold" }).eq("product_id", item.productId)
+    )
+  );
+
+  // Mark parent product sold when all options are sold (or it has no options)
+  const affectedProductIds = [...new Set(metaItems.map((i) => i.productId))];
+  await Promise.all(
+    affectedProductIds.map(async (productId) => {
+      const { data: allOptions } = await supabase
+        .from("product_options")
+        .select("status")
+        .eq("product_id", productId);
+
+      const hasOptions = (allOptions?.length ?? 0) > 0;
+      const allSold = hasOptions && allOptions!.every((o) => o.status === "sold");
+
+      if (!hasOptions || allSold) {
+        await supabase.from("products").update({ status: "sold" }).eq("id", productId);
+      }
+    })
+  );
+}
+
 const isLive = process.env.NEXT_PUBLIC_CHECKOUT_MODE === "live";
 
 export async function POST(req: NextRequest) {
@@ -136,14 +169,27 @@ export async function POST(req: NextRequest) {
     return handleSourcingPrivateCheckout(session, supabase);
   }
 
-  // ── Idempotency: check if this session was already processed ──────────────────
+  // ── Resolve payment intent ID early (needed for idempotency + insert) ──────────
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : (session.payment_intent as Stripe.PaymentIntent | null)?.id ?? null;
+
+  // ── Idempotency: check by session_id OR payment_intent_id ────────────────────
+  // The orders table has unique constraints on both columns. Checking only one
+  // would miss cases where the production webhook already processed the same PI.
+  const idempotencyFilter = paymentIntentId
+    ? `stripe_session_id.eq.${session.id},stripe_payment_intent_id.eq.${paymentIntentId}`
+    : `stripe_session_id.eq.${session.id}`;
+
   const { data: existing } = await supabase
     .from("orders")
     .select("id")
-    .eq("stripe_session_id", session.id)
+    .or(idempotencyFilter)
     .maybeSingle();
 
   if (existing) {
+    console.info("[webhook] Already processed (order exists), skipping session", session.id);
     return NextResponse.json({ received: true });
   }
 
@@ -307,11 +353,6 @@ export async function POST(req: NextRequest) {
     console.error("[webhook] Order number generation failed (non-fatal):", err);
   }
 
-  const paymentIntentId =
-    typeof session.payment_intent === "string"
-      ? session.payment_intent
-      : (session.payment_intent as Stripe.PaymentIntent | null)?.id ?? null;
-
   // ── Fetch Stripe line items to extract shipping + fee breakdown ──────────────
   let feeBreakdown: Record<string, number | string> | null = null;
   try {
@@ -370,7 +411,14 @@ export async function POST(req: NextRequest) {
 
   if (orderErr || !order) {
     if ((orderErr as { code?: string })?.code === "23505") {
-      console.info("[webhook] Duplicate delivery ignored for session", session.id);
+      const { message, details } = orderErr as { message?: string; details?: string };
+      console.info(
+        "[webhook] Duplicate insert for session", session.id,
+        "| constraint:", message,
+        "| details:", details
+      );
+      // Still mark products as sold — order already exists from a prior run
+      await markItemsAsSold(supabase, metaItems);
       return NextResponse.json({ received: true });
     }
     console.error("[webhook] Failed to create order for session", session.id, orderErr);
@@ -536,31 +584,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Mark options and products as sold ─────────────────────────────────────────
-  const affectedProductIds = new Set<string>(metaItems.map((i) => i.productId));
-
-  await Promise.all(
-    metaItems.map((item) =>
-      item.optionId
-        ? supabase.from("product_options").update({ status: "sold" }).eq("id", item.optionId)
-        : supabase.from("product_options").update({ status: "sold" }).eq("product_id", item.productId)
-    )
-  );
-
-  await Promise.all(
-    [...affectedProductIds].map(async (productId) => {
-      const { data: allOptions } = await supabase
-        .from("product_options")
-        .select("status")
-        .eq("product_id", productId);
-
-      const hasOptions = (allOptions?.length ?? 0) > 0;
-      const allSold = hasOptions && allOptions!.every((o) => o.status === "sold");
-
-      if (!hasOptions || allSold) {
-        await supabase.from("products").update({ status: "sold" }).eq("id", productId);
-      }
-    })
-  );
+  await markItemsAsSold(supabase, metaItems);
 
   console.info(
     "[webhook] Order created",
