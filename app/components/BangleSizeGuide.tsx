@@ -146,13 +146,16 @@ function BangleSizeGuideContent({ productSize }: { productSize?: number }) {
 
   return (
     <>
-      {/* Measurement image — shown above tabs on both modal and standalone */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/bangle-sizing.png"
-        alt="How to measure for bangle size — palm width and hand circumference"
-        className="w-full object-contain"
-      />
+      <div className="h-60 sm:h-115 border-b border-gray-100 dark:border-gray-800 flex items-center justify-center bg-white">
+        {/* Measurement image — shown above tabs on both modal and standalone */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/bangle-sizing.png"
+          alt="How to measure for bangle size — palm width and hand circumference"
+          className="max-h-full max-w-full object-contain"
+        />
+      </div>
+
 
       {/* Tabs */}
       <div className="flex border-b border-gray-100 dark:border-gray-800 shrink-0">
@@ -161,11 +164,10 @@ function BangleSizeGuideContent({ productSize }: { productSize?: number }) {
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] transition-colors ${
-              activeTab === tab
+            className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] transition-colors ${activeTab === tab
                 ? "text-emerald-700 dark:text-emerald-400 border-b-2 border-emerald-600"
                 : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
-            }`}
+              }`}
           >
             {tab === "calculator" ? "Size Calculator" : "Size Chart"}
           </button>
@@ -184,11 +186,10 @@ function BangleSizeGuideContent({ productSize }: { productSize?: number }) {
                 key={u}
                 type="button"
                 onClick={() => { setUnit(u); setPalm(""); setCirc(""); }}
-                className={`px-3 py-1.5 transition-colors ${
-                  unit === u
+                className={`px-3 py-1.5 transition-colors ${unit === u
                     ? "bg-emerald-700 text-white"
                     : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-                }`}
+                  }`}
               >
                 {u === "metric" ? "mm / cm" : "inches"}
               </button>
@@ -242,7 +243,7 @@ function BangleSizeGuideContent({ productSize }: { productSize?: number }) {
             {/* Product size context */}
             {productSize != null && (
               <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900">
-                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 dark:text-emerald-400 shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 dark:text-emerald-400 shrink-0"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                 <p className="text-[13px] sm:text-[16px] text-emerald-700 dark:text-emerald-300">
                   This bangle is <strong>size {productSize}</strong> based on your measurements.
                 </p>
@@ -251,11 +252,10 @@ function BangleSizeGuideContent({ productSize }: { productSize?: number }) {
 
             {/* Result */}
             {result && (
-              <div className={`rounded-xl border px-4 py-4 space-y-2 ${
-                result.status === "below" || result.status === "above"
+              <div className={`rounded-xl border px-4 py-4 space-y-2 ${result.status === "below" || result.status === "above"
                   ? "border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20"
                   : "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20"
-              }`}>
+                }`}>
                 {(result.status === "below" || result.status === "above") ? (
                   <>
                     <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-[0.12em]">Out of Range</p>

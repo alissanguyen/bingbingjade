@@ -249,7 +249,7 @@ export function Navbar() {
             href="/blog"
             className={`hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors ${pathname.startsWith("/blog") ? "text-emerald-700 dark:text-emerald-400 font-semibold" : ""}`}
           >
-            Journal
+            Educational Blog
           </Link>
         </li>
         <li>
@@ -389,7 +389,7 @@ export function Navbar() {
                 onClick={() => setOpen(false)}
                 className={`block py-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors ${pathname.startsWith("/blog") ? "text-emerald-700 dark:text-emerald-400 font-semibold" : ""}`}
               >
-                Journal
+                Educational Blog
               </Link>
             </li>
             <li>

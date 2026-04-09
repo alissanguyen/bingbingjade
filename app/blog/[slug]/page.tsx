@@ -111,7 +111,7 @@ export default async function BlogPostPage({
             fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5M12 5l-7 7 7 7" />
           </svg>
-          The Jade Journal
+          The Jade Blog
         </Link>
       </div>
 
@@ -335,7 +335,7 @@ export default async function BlogPostPage({
           href="/blog"
           className="inline-flex items-center gap-2 rounded-full border border-gray-200 dark:border-gray-700 px-6 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:border-emerald-400 dark:hover:border-emerald-600 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
         >
-          ← Back to the Journal
+          ← Back to Blog page
         </Link>
       </div>
     </div>

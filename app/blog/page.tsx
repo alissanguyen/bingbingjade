@@ -48,7 +48,7 @@ export default async function BlogPage() {
             From the Studio
           </p>
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-gray-900 dark:text-white mb-4">
-            The Jade Journal
+            The BingBing Jade Educational Blog
           </h1>
           <p className="max-w-xl mx-auto text-base text-gray-500 dark:text-gray-400 leading-relaxed">
             Guides, collector insights, and stories about natural jadeite from BingBing Jade.
