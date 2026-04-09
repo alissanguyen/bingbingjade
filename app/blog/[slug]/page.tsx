@@ -38,6 +38,15 @@ type Post = {
     price?: number;
     thumbnail?: { asset: unknown; alt?: string };
   }[];
+  relatedPosts?: {
+    _id: string;
+    title: string;
+    slug: string;
+    excerpt?: string;
+    publishedAt: string;
+    heroImage?: { asset: unknown; alt?: string };
+    categories?: { title: string; slug: string }[];
+  }[];
   sources?: { label: string; url: string }[];
 };
 
@@ -224,15 +233,61 @@ export default async function BlogPostPage({
                   {post.author.name}
                 </p>
                 {post.author.bio && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                  <div className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed [&_p]:my-1">
                     <PortableTextRenderer value={post.author.bio as Parameters<typeof PortableTextRenderer>[0]["value"]} />
-                  </p>
+                  </div>
                 )}
               </div>
             </div>
           </section>
         )}
       </article>
+
+      {/* Recommended posts */}
+      {post.relatedPosts && post.relatedPosts.length > 0 && (
+        <section className="border-t border-gray-100 dark:border-gray-800 py-14">
+          <div className="mx-auto max-w-3xl px-4 sm:px-6">
+            <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500 mb-6">
+              Continue Reading
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {post.relatedPosts.map((p) => (
+                <Link
+                  key={p._id}
+                  href={`/blog/${p.slug}`}
+                  className="group flex flex-col overflow-hidden rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 transition hover:border-emerald-200 dark:hover:border-emerald-800"
+                >
+                  {p.heroImage?.asset ? (
+                    <div className="relative aspect-[16/9] overflow-hidden">
+                      <Image
+                        src={urlFor(p.heroImage.asset).width(600).height(340).quality(80).url()}
+                        alt={p.heroImage.alt ?? p.title}
+                        fill
+                        className="object-cover transition duration-300 group-hover:scale-[1.02]"
+                      />
+                    </div>
+                  ) : (
+                    <div className="aspect-[16/9] bg-emerald-50 dark:bg-emerald-950/20" />
+                  )}
+                  <div className="p-4 flex flex-col flex-1">
+                    {p.categories?.[0] && (
+                      <span className="text-[11px] font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">
+                        {p.categories[0].title}
+                      </span>
+                    )}
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white leading-snug mb-1 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors line-clamp-2">
+                      {p.title}
+                    </h3>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-auto pt-2">
+                      {fmtDate(p.publishedAt)}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Related products */}
       {post.relatedProducts && post.relatedProducts.length > 0 && (

@@ -6,7 +6,7 @@ import { urlFor } from "@/lib/sanity/image";
 import { postsQuery } from "@/lib/sanity/queries";
 
 export const metadata: Metadata = {
-  title: "Journal — BingBing Jade",
+  title: "Blog — The BingBing Jade Educational Corner",
   description: "Educational articles, jade guides, and collector insights from BingBing Jade.",
 };
 
