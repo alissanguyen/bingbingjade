@@ -33,6 +33,7 @@ export function AdminBar({
     { href: "/products-admin", label: "Products" },
     { href: "/vendors", label: "Vendors" },
     { href: "/orders-admin", label: "Orders" },
+    { href: "/accounting-admin", label: "Accounting" },
     { href: "/customers-admin", label: "Customers" },
     { href: "/sourcing-admin", label: "Custom Sourcing" },
     ...(showUsersLink ? [

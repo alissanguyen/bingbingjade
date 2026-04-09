@@ -252,7 +252,7 @@ export function CustomersAdminClient() {
                         {/* Orders */}
                         <td className="px-4 py-3">
                           <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                            {c.number_of_orders} order{c.number_of_orders !== 1 ? "s" : ""}
+                            {c.orders.length} order{c.orders.length !== 1 ? "s" : ""}
                           </p>
                           {c.orders.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1">

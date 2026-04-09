@@ -813,6 +813,13 @@ export function CheckoutClient() {
                   </span>
                 </div>
 
+                {/* WA Sales Tax notice */}
+                {shippingAddress.country === "US" && shippingAddress.state.trim().toUpperCase() === "WA" && (
+                  <p className="text-[11px] sm:text-[13px] text-stone-500 dark:text-stone-400">
+                    Washington sales tax will be calculated and added at checkout.
+                  </p>
+                )}
+
                 {/* Notes */}
                 <div className="text-[12px] sm:text-[16px] text-amber-600 dark:text-amber-500 space-y-1 leading-relaxed bg-amber-500/15 p-2 sm:p-4 rounded-lg border-1">
                   <p>Item might sell while in cart. Availability confirmed at time of purchase.</p>

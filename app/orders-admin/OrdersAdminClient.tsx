@@ -12,6 +12,7 @@ interface OrderListItem {
   customer_name: string | null;
   customer_email: string | null;
   amount_total: number | null;
+  item_subtotal: number;
   currency: string;
   status: string;
   order_status: OrderStatus;
@@ -530,7 +531,8 @@ export function OrdersAdminClient() {
                     <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Order</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Customer</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Date</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Amount</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Items</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Total</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Status</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Source</th>
                   </tr>
@@ -551,6 +553,11 @@ export function OrdersAdminClient() {
                         <p className="truncate text-xs text-gray-400">{order.customer_email ?? ""}</p>
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{fmtDate(order.created_at)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="font-medium text-sm text-emerald-600 dark:text-emerald-400">
+                          {order.item_subtotal > 0 ? `$${order.item_subtotal.toFixed(2)} USD` : "—"}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className={`font-medium text-sm ${PAID_STATUS_COLORS[order.status] ?? "text-gray-700"}`}>
                           {fmtAmount(order.amount_total, order.currency)}

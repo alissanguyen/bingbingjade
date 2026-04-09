@@ -20,10 +20,10 @@ export async function GET(req: NextRequest) {
     .select(
       `id, order_number, customer_name, customer_email, customer_phone_snapshot,
        amount_total, currency, status, order_status, source, created_at, notes,
-       order_items(id)`,
+       order_items(id, price_usd, quantity)`,
       { count: "exact" }
     )
-    .order("created_at", { ascending: false })
+    .order("order_number", { ascending: false, nullsFirst: false })
     .range(from, from + limit - 1);
 
   // Approved users see only their own orders
@@ -45,11 +45,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const orders = (data ?? []).map((o) => ({
-    ...o,
-    item_count: Array.isArray(o.order_items) ? o.order_items.length : 0,
-    order_items: undefined,
-  }));
+  const orders = (data ?? []).map((o) => {
+    const items = Array.isArray(o.order_items)
+      ? (o.order_items as { id: string; price_usd: number; quantity: number }[])
+      : [];
+    const item_subtotal = items.reduce((s, i) => s + (i.price_usd ?? 0) * (i.quantity ?? 1), 0);
+    return {
+      ...o,
+      item_count: items.length,
+      item_subtotal,
+      order_items: undefined,
+    };
+  });
 
   return NextResponse.json({ orders, total: count ?? 0, page, limit });
 }

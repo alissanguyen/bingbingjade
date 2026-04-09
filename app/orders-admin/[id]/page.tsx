@@ -30,6 +30,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   if (!order) notFound();
 
+  // Strip server-only profit fields before serializing to the client component
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { cogs_cents: _cogs, ...orderForClient } = order as typeof order & { cogs_cents?: unknown };
+
   // Fetch shipments separately — safe to fail before migration_042 is run
   let shipments: unknown[] = [];
   try {
@@ -71,7 +75,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   return (
     <>
       <AdminBarServer />
-      <OrderDetailClient order={{ ...order, shipments }} productImages={productImages} />
+      <OrderDetailClient order={{ ...orderForClient, shipments }} productImages={productImages} />
     </>
   );
 }

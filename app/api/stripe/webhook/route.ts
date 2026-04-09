@@ -215,7 +215,7 @@ export async function POST(req: NextRequest) {
   const optionIds = metaItems.map((i) => i.optionId).filter(Boolean) as string[];
 
   const [productsResult, optionsResult] = await Promise.all([
-    supabase.from("products").select("id, name").in("id", productIds),
+    supabase.from("products").select("id, name, imported_price_vnd").in("id", productIds),
     optionIds.length > 0
       ? supabase.from("product_options").select("id, label").in("id", optionIds)
       : Promise.resolve({ data: [], error: null }),
@@ -227,6 +227,17 @@ export async function POST(req: NextRequest) {
   const optionLabelMap = new Map(
     (optionsResult.data ?? []).map((o) => [o.id, o.label as string | null])
   );
+
+  // ── Compute COGS at time of sale (server-side only, never exposed to clients) ─
+  // Fixed exchange rate: 1 USD = 26,000 VND
+  const VND_PER_USD = 26000;
+  const productCostMap = new Map(
+    (productsResult.data ?? []).map((p) => [p.id, (p.imported_price_vnd as number) ?? 0])
+  );
+  const cogsCents = metaItems.reduce((sum, item) => {
+    const vnd = productCostMap.get(item.productId) ?? 0;
+    return sum + Math.round((vnd / VND_PER_USD) * 100);
+  }, 0);
 
   // ── Customer & address ────────────────────────────────────────────────────────
   // Prefer the email we stored in metadata (normalized, from our cart UI),
@@ -405,6 +416,8 @@ export async function POST(req: NextRequest) {
         ? parseInt(session.metadata.sourcing_credit_applied_cents, 10)
         : 0,
       sourcing_request_id: session.metadata?.sourcing_request_id ?? null,
+      // COGS: imported cost converted from VND at fixed rate (server-side only)
+      cogs_cents: cogsCents > 0 ? cogsCents : null,
     })
     .select("id")
     .single();

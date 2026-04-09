@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
       currency: string;
       product_data: { name: string; images?: string[] };
       unit_amount: number;
+      tax_behavior: "exclusive";
     };
     quantity: number;
   }[] = [];
@@ -136,6 +137,7 @@ export async function POST(req: NextRequest) {
         currency: "usd",
         product_data: { name: displayLabel, ...(images.length > 0 ? { images } : {}) },
         unit_amount: unitAmount,
+        tax_behavior: "exclusive",
       },
       quantity: 1,
     });
@@ -208,6 +210,7 @@ export async function POST(req: NextRequest) {
       currency: "usd",
       product_data: { name: shippingLabel },
       unit_amount: shippingFee * 100,
+      tax_behavior: "exclusive",
     },
     quantity: 1,
   });
@@ -222,6 +225,7 @@ export async function POST(req: NextRequest) {
         currency: "usd",
         product_data: { name: "Shipping Insurance (5%)" },
         unit_amount: insuranceFeeCents,
+        tax_behavior: "exclusive",
       },
       quantity: 1,
     });
@@ -238,6 +242,7 @@ export async function POST(req: NextRequest) {
       currency: "usd",
       product_data: { name: feeLabel },
       unit_amount: transactionFeeAmount,
+      tax_behavior: "exclusive",
     },
     quantity: 1,
   });
@@ -367,6 +372,7 @@ export async function POST(req: NextRequest) {
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
     currency: "usd",
+    automatic_tax: { enabled: true },
     line_items: lineItems,
     success_url: `${SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${SITE_URL}/checkout/cancel`,
