@@ -179,7 +179,7 @@ export function Navbar() {
       </Link>
 
       {/* Desktop links */}
-      <ul className="hidden sm:flex items-center gap-8 text-sm font-medium text-gray-600 dark:text-gray-300">
+      <ul className="hidden sm:flex items-center gap-6 text-[13px] font-medium text-gray-600 dark:text-gray-300">
         <li>
           <Link
             href="/"
