@@ -6,7 +6,7 @@ import { validateDiscount, normalizeEmail } from "@/lib/discount";
 import { computeAvailableCredit } from "@/lib/sourcing-classification";
 import type { LedgerRow } from "@/lib/sourcing-classification";
 import type { CartItem } from "@/types/cart";
-import { getShippingZone, calculateShipping, calculateStripeFee, calculateBnplFee, ALLOWED_COUNTRIES } from "@/lib/shipping";
+import { getShippingZone, calculateShipping, calculateStripeFee, calculateBnplFee, ALLOWED_COUNTRIES, ACTIVE_BNPL_METHODS } from "@/lib/shipping";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
 
@@ -406,7 +406,7 @@ export async function POST(req: NextRequest) {
       mode: "payment",
       currency: "usd",
       payment_method_types: paymentMethod === "bnpl"
-        ? ["klarna", "afterpay_clearpay", "affirm"]
+        ? ACTIVE_BNPL_METHODS
         : ["card"],
       line_items: lineItems,
       success_url: `${SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,

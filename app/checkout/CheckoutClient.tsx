@@ -872,7 +872,7 @@ export function CheckoutClient() {
                         <input type="radio" name="paymentMethod" value="bnpl" checked={paymentMethod === "bnpl"} onChange={() => setPaymentMethod("bnpl")} className="mt-0.5 accent-emerald-600" />
                         <div>
                           <p className="text-[13px] sm:text-sm font-semibold text-stone-800 dark:text-stone-200">Pay in installments</p>
-                          <p className="text-[11px] sm:text-[13px] text-stone-500 dark:text-stone-400 mt-0.5">Klarna, Afterpay, Affirm — subject to eligibility at checkout</p>
+                          <p className="text-[11px] sm:text-[13px] text-stone-500 dark:text-stone-400 mt-0.5">Klarna, Afterpay — subject to eligibility at checkout</p>
                         </div>
                       </label>
                     ) : (
