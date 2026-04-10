@@ -11,6 +11,22 @@ import OrderTimeline from "./OrderTimeline";
 // Revalidate every 5 minutes so status updates surface quickly
 export const revalidate = 300;
 
+// ── Tracking URL helper ────────────────────────────────────────────────────
+
+function buildTrackingUrl(
+  carrier: string | null,
+  trackingNumber: string | null,
+  customUrl: string | null,
+): string | null {
+  if (customUrl) return customUrl;
+  if (!trackingNumber) return null;
+  const c = (carrier ?? "").toLowerCase();
+  if (c === "ups") return `https://www.ups.com/track?tracknum=${trackingNumber}`;
+  if (c === "fedex") return `https://www.fedex.com/fedextrack/?trknbr=${trackingNumber}`;
+  if (c === "usps") return `https://tools.usps.com/go/TrackAction?tLabels=${trackingNumber}`;
+  return null;
+}
+
 // ── Status timeline ────────────────────────────────────────────────────────
 
 type StatusStep = { key: OrderStatus; label: string; description: string };
@@ -347,26 +363,6 @@ export default async function TrackOrderPage({
                       </p>
                     )}
                   </div>
-                  {shipment.tracking_number && (
-                    <div className="text-right">
-                      <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider">Tracking</p>
-                      {shipment.tracking_url ? (
-                        <a
-                          href={shipment.tracking_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs font-mono font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
-                        >
-                          {shipment.tracking_number}
-                        </a>
-                      ) : (
-                        <p className="text-xs font-mono text-gray-600 dark:text-gray-300">{shipment.tracking_number}</p>
-                      )}
-                      {shipment.carrier && (
-                        <p className="text-[10px] text-gray-400 dark:text-gray-500">{shipment.carrier}</p>
-                      )}
-                    </div>
-                  )}
                 </div>
 
                 {/* Estimated delivery window */}
@@ -384,6 +380,31 @@ export default async function TrackOrderPage({
                     </p>
                   </div>
                 )}
+
+                {/* Tracking banner — shown when shipped or delivered */}
+                {shipment.tracking_number && (() => {
+                  const trackUrl = buildTrackingUrl(shipment.carrier, shipment.tracking_number, shipment.tracking_url);
+                  if (!trackUrl) return null;
+                  return (
+                    <div className="px-5 py-3 border-b border-emerald-100 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-950/20 flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-500 mb-0.5">
+                          {shipment.carrier ?? "Tracking"}
+                        </p>
+                        <p className="text-xs font-mono text-gray-500 dark:text-gray-400 truncate">{shipment.tracking_number}</p>
+                      </div>
+                      <a
+                        href={trackUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold px-3.5 py-1.5 transition-colors"
+                      >
+                        Track package
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                      </a>
+                    </div>
+                  );
+                })()}
 
                 {/* Events timeline */}
                 <div className="px-5 py-4">

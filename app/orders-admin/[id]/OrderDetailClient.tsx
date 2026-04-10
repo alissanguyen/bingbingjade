@@ -135,6 +135,16 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+function buildTrackingUrl(carrier: string | null, trackingNumber: string | null, customUrl: string | null): string | null {
+  if (customUrl) return customUrl;
+  if (!trackingNumber) return null;
+  const c = (carrier ?? "").toLowerCase();
+  if (c === "ups") return `https://www.ups.com/track?tracknum=${trackingNumber}`;
+  if (c === "fedex") return `https://www.fedex.com/fedextrack/?trknbr=${trackingNumber}`;
+  if (c === "usps") return `https://tools.usps.com/go/TrackAction?tLabels=${trackingNumber}`;
+  return null;
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function OrderDetailClient({
@@ -925,7 +935,9 @@ export function OrderDetailClient({
                             </div>
                           ))}
                           <div className="col-span-2">
-                            <label className="block text-[10px] font-medium text-gray-400 dark:text-gray-500 mb-0.5">Tracking URL</label>
+                            <label className="block text-[10px] font-medium text-gray-400 dark:text-gray-500 mb-0.5">
+                              Custom Tracking URL <span className="font-normal">(optional — leave blank to auto-generate from carrier)</span>
+                            </label>
                             <input
                               type="url"
                               value={draft.tracking_url}
@@ -933,9 +945,27 @@ export function OrderDetailClient({
                                 ...prev,
                                 [shipment.id]: { ...draft, tracking_url: e.target.value },
                               }))}
-                              placeholder="https://..."
+                              placeholder="https://… (only needed for non-standard carriers)"
                               className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs px-2.5 py-1.5 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                             />
+                            {(() => {
+                              const resolvedUrl = buildTrackingUrl(
+                                draft.carrier || shipment.carrier,
+                                draft.tracking_number || shipment.tracking_number,
+                                draft.tracking_url || null,
+                              );
+                              if (!resolvedUrl) return null;
+                              return (
+                                <a
+                                  href={resolvedUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 hover:underline mt-1"
+                                >
+                                  Preview tracking link ↗
+                                </a>
+                              );
+                            })()}
                           </div>
                           {hasDraft && (
                             <div className="col-span-2 flex justify-end">
