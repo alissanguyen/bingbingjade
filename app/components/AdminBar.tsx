@@ -41,7 +41,7 @@ export function AdminBar({
       { href: "/approved-users", label: "Users" },
       { href: "/coupons-admin", label: "Coupons" },
       { href: "/subscribers-admin", label: "Subscribers" },
-      { href: "/product-email-admin", label: "Product Email" },
+      { href: "/custom-emails-admin", label: "Custom Emails" },
     ] : []),
     ...(profileHref ? [{ href: profileHref, label: "Profile" }] : []),
   ];
@@ -74,7 +74,7 @@ export function AdminBar({
                 <a href="/approved-users" className={linkCls}>Users</a>
                 <a href="/coupons-admin" className={linkCls}>Coupons</a>
                 <a href="/subscribers-admin" className={linkCls}>Subscribers</a>
-                <a href="/product-email-admin" className={linkCls}>Product Email</a>
+                <a href="/custom-emails-admin" className={linkCls}>Custom Emails</a>
               </>
             )}
 

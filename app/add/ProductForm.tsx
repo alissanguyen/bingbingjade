@@ -317,7 +317,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
-  const [images, setImages] = useState<{ file: File; preview: string | null }[]>([]);
+  const [images, setImages] = useState<{ file: File; preview: string | null; broken?: boolean }[]>([]);
   const [videos, setVideos] = useState<File[]>([]);
   const [imageDragging, setImageDragging] = useState(false);
   const [videoDragging, setVideoDragging] = useState(false);
@@ -530,9 +530,8 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
   const addImages = (files: FileList | null) => {
     if (!files) return;
     Array.from(files).forEach((file) => {
-      const isHeic = file.name.toLowerCase().endsWith(".heic");
       const isPdf = file.name.toLowerCase().endsWith(".pdf");
-      const preview = (isHeic || isPdf) ? null : URL.createObjectURL(file);
+      const preview = isPdf ? null : URL.createObjectURL(file);
       setImages((prev) => [...prev, { file, preview }]);
     });
   };
@@ -823,10 +822,15 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
 
           {images.length > 0 && (
             <div className="mt-3 grid grid-cols-4 gap-3 sm:grid-cols-6">
-              {images.map(({ file, preview }, i) => (
+              {images.map(({ file, preview, broken }, i) => (
                 <div key={i} className="relative group aspect-square">
-                  {preview ? (
-                    <img src={preview} alt={file.name} className="w-full h-full rounded-lg object-cover" />
+                  {preview && !broken ? (
+                    <img
+                      src={preview}
+                      alt={file.name}
+                      className="w-full h-full rounded-lg object-cover"
+                      onError={() => setImages((prev) => prev.map((img, idx) => idx === i ? { ...img, broken: true } : img))}
+                    />
                   ) : (
                     <div className="w-full h-full rounded-lg bg-gray-100 dark:bg-gray-800 flex flex-col items-center justify-center gap-1 p-1">
                       <span className="text-lg">{file.name.toLowerCase().endsWith(".pdf") ? "📄" : "🪨"}</span>
@@ -838,15 +842,15 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); removeImage(i); }}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow"
                   >
                     <XIcon />
                   </button>
-                  {preview && (
+                  {preview && !broken && (
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setCropTarget({ index: i, src: preview, fileName: file.name }); }}
-                      className="absolute bottom-1 right-1 w-6 h-6 rounded-md bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-emerald-600"
+                      className="absolute bottom-1 right-1 w-6 h-6 rounded-md bg-black/60 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-emerald-600"
                       title="Crop image"
                     >
                       <CropIcon />
