@@ -18,7 +18,7 @@ export interface EmailableProduct {
 const CATEGORY_LABELS: Record<string, string> = {
   bracelet: "Bracelets", bangle: "Bangles", ring: "Rings",
   pendant: "Pendants", necklace: "Necklaces", set: "Sets",
-  custom_order: "Custom Orders", other: "Other",
+  earring: "Earrings", raw_material: "Raw Material",
 };
 
 function catLabel(v: string) { return CATEGORY_LABELS[v] ?? v; }

@@ -31,7 +31,7 @@ const CAT_LABEL: Record<string, string> = {
   pendant: "Pendant",
   necklace: "Necklace",
   other: "Other",
-  custom_order: "Custom Order",
+  raw_material: "Raw Material",
 };
 
 function fmt(iso: string) {

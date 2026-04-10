@@ -439,11 +439,11 @@ export function ProductPageClient({ product, productImages, productVideos, optio
           </div>
 
           <p className="italic text-xs sm:text-sm text-emerald-600 font-semibold mt-4">** We can provide more pictures and videos of different lighting upon request.</p>
-          {product.category === 'bangle' || product.category === 'custom_order' ? (<div className="text-sm">
+          {product.category === 'bangle' || product.category === 'raw_material' ? (<div className="text-sm">
 
             <p className="text-gray-400 dark:text-gray-500 mt-2"><span className="mr-2 text-emerald-600">Not your styles?</span>Some pieces can be <span className="font-semibold text-gray-500">reshaped</span> or <span className="font-semibold text-gray-500">widened</span>, contact us for more details.</p>
           </div>) : null}
-          {product.category === 'custom_order' ? (<div className="text-xs italic text-gray-500 mt-4">
+          {product.category === 'raw_material' ? (<div className="text-xs italic text-gray-500 mt-4">
             <p>*** Please note that custom made orders are not refundable nor returnable per our <a href="/policy" target="_blank" className="text-emerald-500 hover:underlined">policy</a>. </p>
           </div>) : null}
 

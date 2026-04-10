@@ -5,8 +5,8 @@ export const PRODUCTCARD_CATEGORIES = [
   { value: "pendant",      label: "Pendants" },
   { value: "necklace",     label: "Necklaces" },
   { value: "set",          label: "Sets" },
-  { value: "custom_order", label: "Custom Orders" },
-  { value: "other",        label: "Other" },
+  { value: "earring",      label: "Earrings" },
+  { value: "raw_material", label: "Raw Material" },
 ];
 
 export function getCategoryLabel(value: string): string {

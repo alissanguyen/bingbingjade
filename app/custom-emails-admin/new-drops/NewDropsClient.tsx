@@ -27,7 +27,7 @@ const SUBJECT_OPTIONS = [
 const CATEGORY_LABELS: Record<string, string> = {
   bracelet: "Bracelets", bangle: "Bangles", ring: "Rings",
   pendant: "Pendants", necklace: "Necklaces", set: "Sets",
-  custom_order: "Custom Orders", other: "Other",
+  earring: "Earrings", raw_material: "Raw Material",
 };
 
 export interface DropsProduct {

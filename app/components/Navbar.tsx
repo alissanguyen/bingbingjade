@@ -15,8 +15,8 @@ const NAV_CATEGORIES = [
   { value: "pendant", label: "Pendants" },
   { value: "necklace", label: "Necklaces" },
   { value: "set", label: "Sets" },
-  { value: "custom_order", label: "Custom Orders" },
-  { value: "other", label: "Other" },
+  { value: "earring", label: "Earrings" },
+  { value: "raw_material", label: "Raw Material" },
 ];
 
 export function Navbar() {
@@ -179,7 +179,7 @@ export function Navbar() {
       </Link>
 
       {/* Desktop links */}
-      <ul className="hidden sm:flex items-center gap-6 text-[13px] font-medium text-gray-600 dark:text-gray-300">
+      <ul className="hidden sm:flex items-center gap-7 text-[16px] font-medium text-gray-600 dark:text-gray-300">
         <li>
           <Link
             href="/"
