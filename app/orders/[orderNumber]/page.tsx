@@ -18,7 +18,11 @@ function buildTrackingUrl(
   trackingNumber: string | null,
   customUrl: string | null,
 ): string | null {
-  if (customUrl) return customUrl;
+  if (customUrl) {
+    return customUrl.startsWith("http://") || customUrl.startsWith("https://")
+      ? customUrl
+      : `https://${customUrl}`;
+  }
   if (!trackingNumber) return null;
   const c = (carrier ?? "").toLowerCase();
   if (c === "ups") return `https://www.ups.com/track?tracknum=${trackingNumber}`;
