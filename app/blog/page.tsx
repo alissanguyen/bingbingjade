@@ -44,13 +44,13 @@ export default async function BlogPage() {
 
         {/* Page header */}
         <div className="mb-12 text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 mb-3">
+          <p className="text-[14px] sm:text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 mb-3">
             From the Studio
           </p>
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-gray-900 dark:text-white mb-4">
+          <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-gray-900 dark:text-white mb-4">
             The BingBing Jade Educational Blog
           </h1>
-          <p className="max-w-xl mx-auto text-base text-gray-500 dark:text-gray-400 leading-relaxed">
+          <p className="max-w-xl mx-auto text-[15px] sm:text-base text-gray-500 dark:text-gray-400 leading-relaxed">
             Guides, collector insights, and stories about natural jadeite from BingBing Jade.
           </p>
         </div>
@@ -63,7 +63,7 @@ export default async function BlogPage() {
           >
             <div className="grid sm:grid-cols-2 gap-0">
               {featured.heroImage?.asset ? (
-                <div className="relative aspect-[4/3] sm:aspect-auto sm:min-h-[380px]">
+                <div className="relative aspect-4/3 sm:aspect-auto sm:min-h-95">
                   <Image
                     src={urlFor(featured.heroImage.asset).width(1000).height(700).quality(85).url()}
                     alt={featured.heroImage.alt ?? featured.title}
@@ -73,32 +73,32 @@ export default async function BlogPage() {
                   />
                 </div>
               ) : (
-                <div className="aspect-[4/3] sm:aspect-auto sm:min-h-[380px] bg-emerald-50 dark:bg-emerald-950/30" />
+                <div className="aspect-4/3 sm:aspect-auto sm:min-h-95 bg-emerald-50 dark:bg-emerald-950/30" />
               )}
 
-              <div className="flex flex-col justify-center px-8 py-10 sm:px-10 sm:py-12">
+              <div className="flex flex-col justify-center px-4 py-6 sm:px-10 sm:py-12">
                 <div className="flex items-center gap-3 mb-4">
                   <span className="inline-block rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
                     Featured
                   </span>
                   {featured.categories?.[0] && (
-                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                    <span className="text-[12px] sm:text-xs text-gray-400 dark:text-gray-500">
                       {featured.categories[0].title}
                     </span>
                   )}
                 </div>
 
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-snug mb-3 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
+                <h2 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-snug mb-3 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
                   {featured.title}
                 </h2>
 
                 {featured.excerpt && (
-                  <p className="text-gray-500 dark:text-gray-400 leading-relaxed mb-6 line-clamp-3">
+                  <p className="text-[15px] sm:text-base text-gray-500 dark:text-gray-400 leading-relaxed mb-6 line-clamp-3">
                     {featured.excerpt}
                   </p>
                 )}
 
-                <div className="flex items-center gap-3 text-sm text-gray-400 dark:text-gray-500">
+                <div className="flex items-center gap-3 text-[12px] sm:text-sm text-gray-400 dark:text-gray-500">
                   {featured.author && (
                     <>
                       <span>{featured.author.name}</span>
@@ -137,7 +137,7 @@ export default async function BlogPage() {
                       />
                     </div>
                   ) : (
-                    <div className="aspect-[16/9] w-full bg-emerald-50 dark:bg-emerald-950/20" />
+                    <div className="aspect-video w-full bg-emerald-50 dark:bg-emerald-950/20" />
                   )}
 
                   <div className="flex flex-col flex-1 p-5">
@@ -154,17 +154,17 @@ export default async function BlogPage() {
                       </div>
                     )}
 
-                    <h2 className="text-base font-semibold text-gray-900 dark:text-white leading-snug mb-2 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
+                    <h2 className="text-[16px] sm:text-base font-semibold text-gray-900 dark:text-white leading-snug mb-2 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
                       {post.title}
                     </h2>
 
                     {post.excerpt && (
-                      <p className="text-sm leading-relaxed text-gray-500 dark:text-gray-400 line-clamp-2 flex-1">
+                      <p className="text-[13px] sm:text-sm leading-relaxed text-gray-500 dark:text-gray-400 line-clamp-3 flex-1">
                         {post.excerpt}
                       </p>
                     )}
 
-                    <div className="flex items-center gap-2 mt-4 text-xs text-gray-400 dark:text-gray-500">
+                    <div className="flex items-center gap-2 mt-4 text-[12px] sm:text-xs text-gray-400 dark:text-gray-500">
                       {post.author && (
                         <>
                           <span>{post.author.name}</span>

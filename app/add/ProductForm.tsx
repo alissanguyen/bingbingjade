@@ -676,7 +676,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
     <form onSubmit={handleSubmit} className="space-y-6">
 
       {/* Basic Info */}
-      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 sm:px-6 sm:py-6">
+      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-4 sm:px-6 sm:py-6">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Basic Info</h2>
         <div className="space-y-4">
           <div>
@@ -1024,7 +1024,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
         <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center justify-between mb-1">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Variants</h2>
           <label className="flex items-center gap-2 cursor-pointer select-none">
-            <span className="text-xs text-gray-400 dark:text-gray-500">This product has variants</span>
+            <span className="text-[12px] text-xs text-gray-400 dark:text-gray-500">This product has variants</span>
             <button
               type="button"
               onClick={() => setHasVariants((v) => !v)}
@@ -1035,7 +1035,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
           </label>
         </div>
         {!hasVariants && (
-          <p className="text-xs text-gray-400 dark:text-gray-500">Single one-of-a-kind piece. Enable variants if this product comes in multiple sizes or styles.</p>
+          <p className="text-[12px] sm:text-xs text-gray-400 dark:text-gray-500">Single one-of-a-kind piece. Enable variants if this product comes in multiple sizes or styles.</p>
         )}
         {hasVariants && (<>
         <div className="space-y-2">

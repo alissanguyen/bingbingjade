@@ -31,7 +31,7 @@ export function BlogImage({ value }: BlogImageProps) {
                 className="h-auto w-full rounded-2xl object-cover"
             />
             {value.caption ? (
-                <figcaption className="mt-3 text-sm text-gray-500 dark:text-gray-400">
+                <figcaption className="mt-3 text-xs sm:text-sm text-gray-500 dark:text-gray-400 italic">
                     {value.caption}
                 </figcaption>
             ) : null}

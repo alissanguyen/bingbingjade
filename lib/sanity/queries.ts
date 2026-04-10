@@ -78,7 +78,16 @@ export const postBySlugQuery = groq`
         asset,
         alt
       },
-      bio
+      bio[]{
+        ...,
+        markDefs[]{
+          ...,
+          _type == "link" => {
+            href,
+            openInNewTab
+          }
+        }
+      }
     },
     categories[]->{
       title,

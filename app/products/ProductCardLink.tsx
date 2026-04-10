@@ -7,10 +7,12 @@ const STORAGE_KEY = "products_back_url";
 export function ProductCardLink({
   href,
   className,
+  style,
   children,
 }: {
   href: string;
   className?: string;
+  style?: React.CSSProperties;
   children: React.ReactNode;
 }) {
   function handleClick() {
@@ -18,7 +20,7 @@ export function ProductCardLink({
   }
 
   return (
-    <Link href={href} className={className} onClick={handleClick}>
+    <Link href={href} className={className} style={style} onClick={handleClick}>
       {children}
     </Link>
   );

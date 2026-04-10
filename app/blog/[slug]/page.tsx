@@ -111,7 +111,7 @@ export default async function BlogPostPage({
             fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5M12 5l-7 7 7 7" />
           </svg>
-          The Jade Blog
+          Return to Blog Corner
         </Link>
       </div>
 
@@ -132,38 +132,9 @@ export default async function BlogPostPage({
         )}
 
         {/* Title */}
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900 dark:text-white leading-snug mb-4">
+        <h1 className="text-[2rem] sm:text-4xl font-bold tracking-tight text-gray-900 dark:text-white leading-snug mb-4 pb-2 border-b border-gray-100 dark:border-gray-800">
           {post.title}
         </h1>
-
-        {/* Excerpt */}
-        {post.excerpt && (
-          <p className="text-lg leading-relaxed text-gray-500 dark:text-gray-400 mb-6">
-            {post.excerpt}
-          </p>
-        )}
-
-        {/* Author + date row */}
-        <div className="flex items-center gap-3 pb-8 border-b border-gray-100 dark:border-gray-800">
-          {post.author?.image?.asset != null && (
-            <Image
-              src={urlFor(post.author.image.asset).width(80).height(80).quality(85).url()}
-              alt={post.author.image.alt ?? post.author.name}
-              width={36}
-              height={36}
-              className="rounded-full object-cover w-9 h-9"
-            />
-          )}
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            {post.author && (
-              <span className="font-medium text-gray-700 dark:text-gray-300">
-                {post.author.name}
-              </span>
-            )}
-            {post.author && <span className="mx-2">·</span>}
-            <span>{fmtDate(post.publishedAt)}</span>
-          </div>
-        </div>
 
         {/* Hero image */}
         {post.heroImage?.asset != null && (
@@ -185,7 +156,7 @@ export default async function BlogPostPage({
         )}
 
         {/* Body */}
-        <div className="mt-10 space-y-0">
+        <div className="mt-4 sm:mt-10 space-y-0">
           <PortableTextRenderer value={(post.body ?? []) as Parameters<typeof PortableTextRenderer>[0]["value"]} />
         </div>
 
@@ -232,8 +203,8 @@ export default async function BlogPostPage({
                 <p className="font-semibold text-gray-900 dark:text-white mb-1">
                   {post.author.name}
                 </p>
-                {post.author.bio && (
-                  <div className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed [&_p]:my-1">
+                {Array.isArray(post.author.bio) && post.author.bio.length > 0 && (
+                  <div className="[&_p]:my-1 [&_p]:!text-sm [&_p]:!leading-relaxed [&_p]:!text-gray-500 dark:[&_p]:!text-gray-400">
                     <PortableTextRenderer value={post.author.bio as Parameters<typeof PortableTextRenderer>[0]["value"]} />
                   </div>
                 )}
@@ -329,28 +300,28 @@ export default async function BlogPostPage({
         </section>
       )}
 
-      {/* Shop CTA */}
-      <div className="py-10 text-center border-t border-gray-100 dark:border-gray-800">
-        <p className="text-sm text-gray-400 dark:text-gray-500 mb-4">Ready to find your piece?</p>
+      {/* Footer — shop CTA + back link */}
+      <div className="border-t border-gray-100 dark:border-gray-800 py-16 text-center">
+        <p className="text-[11px] uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500 mb-5">
+          Explore our collection
+        </p>
         <Link
           href="/products"
-          className="inline-flex items-center gap-2 rounded-full bg-emerald-700 hover:bg-emerald-800 px-7 py-3 text-sm font-semibold text-white transition-colors shadow-sm"
+          className="inline-flex items-center gap-2 rounded-full border border-emerald-200 dark:border-emerald-800 px-6 py-2.5 text-sm font-medium text-emerald-800 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:border-emerald-400 dark:hover:border-emerald-600 transition-colors"
         >
-          Browse our collection of natural Type A jadeite pieces
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          Browse natural Type A jadeite pieces
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>
         </Link>
-      </div>
-
-      {/* Back to journal */}
-      <div className="pb-12 text-center">
-        <Link
-          href="/blog"
-          className="inline-flex items-center gap-2 rounded-full border border-gray-200 dark:border-gray-700 px-6 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:border-emerald-400 dark:hover:border-emerald-600 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
-        >
-          ← Back to Blog page
-        </Link>
+        <div className="mt-8">
+          <Link
+            href="/blog"
+            className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          >
+            ← The Jade Blog
+          </Link>
+        </div>
       </div>
     </div>
   );

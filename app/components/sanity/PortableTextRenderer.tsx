@@ -17,22 +17,22 @@ const components: PortableTextComponents = {
     },
     block: {
         h2: ({ children }) => (
-            <h2 className="mt-12 mb-4 text-3xl font-semibold text-gray-900 dark:text-white">
+            <h2 className="mt-12 mb-4 text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white">
                 {children}
             </h2>
         ),
         h3: ({ children }) => (
-            <h3 className="mt-10 mb-4 text-2xl font-semibold text-gray-900 dark:text-white">
+            <h3 className="mt-10 sm:mb-4 text-xl sm:text-2xl font-semibold text-emerald-700 dark:text-emerald-600">
                 {children}
             </h3>
         ),
         h4: ({ children }) => (
-            <h4 className="mt-8 mb-3 text-xl font-semibold text-gray-900 dark:text-white">
+            <h4 className="mt-8 mb-3 text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
                 {children}
             </h4>
         ),
         normal: ({ children }) => (
-            <p className="my-5 leading-8 text-gray-700 dark:text-gray-300">{children}</p>
+            <p className="text-[16px] sm:text-base my-5 leading-6.5 sm:leading-8 text-gray-700 dark:text-gray-300">{children}</p>
         ),
         blockquote: ({ children }) => (
             <blockquote className="my-8 border-l-4 border-emerald-700 pl-5 italic text-gray-700 dark:text-gray-300">
@@ -75,12 +75,12 @@ const components: PortableTextComponents = {
     },
     list: {
         bullet: ({ children }) => (
-            <ul className="my-5 ml-6 list-disc space-y-2 text-gray-700 dark:text-gray-300">
+            <ul className="text-[16px] sm:text-base my-5 ml-6 list-disc space-y-2 text-gray-700 dark:text-gray-300">
                 {children}
             </ul>
         ),
         number: ({ children }) => (
-            <ol className="my-5 ml-6 list-decimal space-y-2 text-gray-700 dark:text-gray-300">
+            <ol className="text-[16px] sm:text-base my-5 ml-6 list-decimal space-y-2 text-gray-700 dark:text-gray-300">
                 {children}
             </ol>
         ),
