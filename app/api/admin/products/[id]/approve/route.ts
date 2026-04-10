@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser, isAdmin } from "@/lib/approved-auth";
 
@@ -23,7 +24,7 @@ export async function PATCH(
 
   const { data: product } = await supabaseAdmin
     .from("products")
-    .select("pending_approval, pending_data")
+    .select("pending_approval, pending_data, slug")
     .eq("id", id)
     .single();
 
@@ -44,6 +45,9 @@ export async function PATCH(
         .update({ ...fields, pending_approval: false, pending_data: null })
         .eq("id", id);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+      // Bust the product detail page so approved changes appear immediately
+      if (product.slug) revalidatePath(`/products/${product.slug}`);
 
       // Replace options if included in pending_data
       if (options_json && typeof options_json === "string") {
@@ -74,6 +78,8 @@ export async function PATCH(
         .update({ pending_approval: false, is_published: true })
         .eq("id", id);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      // New product is now live — bust products listing cache
+      revalidatePath("/products");
     }
   } else {
     // dismiss — mark as rejected so the partner can see it in their profile

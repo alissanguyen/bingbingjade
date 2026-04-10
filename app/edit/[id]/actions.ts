@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { toStoragePath } from "@/lib/storage";
-import { getSessionUser, isApproved } from "@/lib/approved-auth";
+import { getSessionUser, isAdmin, isApproved } from "@/lib/approved-auth";
 import type { ProductCategory } from "@/types/product";
 
 interface OptionInput {
@@ -55,6 +55,7 @@ export async function updateProduct(
   formData: FormData
 ): Promise<{ error?: string; success?: boolean; pendingApproval?: boolean }> {
   const session = await getSessionUser();
+  const adminUser = isAdmin(session);
   const approvedUser = isApproved(session);
 
   const imageUrls = (formData.getAll("imageUrls") as string[]).map(toStoragePath);
@@ -170,7 +171,8 @@ export async function updateProduct(
       ...(!approvedUser && formData.has("imported_price_vnd") ? { imported_price_vnd: Number(formData.get("imported_price_vnd")) } : {}),
       vendor_id: formData.get("vendor_id") as string,
       is_featured: formData.get("is_featured") === "true",
-      is_published: formData.get("is_published") === "true",
+      // Admin: respect the published toggle. Non-admin path is handled above and never reaches here.
+      is_published: adminUser ? formData.get("is_published") === "true" : false,
       quick_ship: formData.get("quick_ship") === "true",
       status: productStatus,
       images: imageUrls,

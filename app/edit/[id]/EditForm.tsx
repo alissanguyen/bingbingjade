@@ -947,7 +947,8 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
             )}
           </div>
 
-          {/* Published */}
+          {/* Published — admin only; approved-user edits go to pending_data, publish state unchanged */}
+          {!isApprovedUser && (
           <button type="button" onClick={() => setIsPublished((v) => !v)} className="flex items-center gap-3 group">
             <div className={`relative w-10 h-6 rounded-full transition-colors ${isPublished ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"}`}>
               <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${isPublished ? "translate-x-4" : ""}`} />
@@ -956,6 +957,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
               {isPublished ? "Published — visible on storefront" : "Draft — hidden from storefront"}
             </span>
           </button>
+          )}
 
           {/* Featured */}
           <button type="button" onClick={() => setIsFeatured((v) => !v)} className="flex items-center gap-3 group">

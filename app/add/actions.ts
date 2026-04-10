@@ -1,8 +1,9 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { slugify, generatePublicId } from "@/lib/slug";
-import { getSessionUser, isApproved, approvedCreatedBy, SessionUser } from "@/lib/approved-auth";
+import { getSessionUser, isAdmin, isApproved, approvedCreatedBy, SessionUser } from "@/lib/approved-auth";
 import type { ProductCategory } from "@/types/product";
 
 interface OptionInput {
@@ -17,6 +18,7 @@ interface OptionInput {
 
 export async function createProduct(formData: FormData): Promise<{ error?: string; success?: boolean; pendingApproval?: boolean }> {
   const session = await getSessionUser();
+  const adminUser = isAdmin(session);
   const approvedUser = isApproved(session);
   const approvedUserId = approvedUser
     ? (session as Extract<SessionUser, { type: "approved" }>).user.id
@@ -55,7 +57,8 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
       imported_price_vnd: approvedUser ? 0 : Number(formData.get("imported_price_vnd")),
       vendor_id,
       is_featured: formData.get("is_featured") === "true",
-      is_published: approvedUser ? false : formData.get("is_published") === "true",
+      // Admin: respect the published toggle. Approved user: always draft + pending approval.
+      is_published: adminUser ? formData.get("is_published") === "true" : false,
       pending_approval: approvedUser,
       created_by: approvedUser ? approvedCreatedBy(approvedUserId!) : "admin",
       quick_ship: formData.get("quick_ship") === "true",
@@ -67,6 +70,11 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
     .single();
 
   if (error) return { error: error.message };
+
+  // Bust the products listing cache so a newly published product appears immediately
+  if (adminUser && formData.get("is_published") === "true") {
+    revalidatePath("/products");
+  }
 
   // Insert product options
   const optionsJson = formData.get("options_json") as string | null;

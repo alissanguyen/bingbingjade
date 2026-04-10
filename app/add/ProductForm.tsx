@@ -1248,7 +1248,8 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
             )}
           </div>
 
-          {/* Published */}
+          {/* Published — admin only; approved-user listings always go to pending approval */}
+          {!isApprovedUser && (
           <button
             type="button"
             onClick={() => setIsPublished((v) => !v)}
@@ -1261,6 +1262,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
               {isPublished ? "Published — visible on storefront" : "Draft — hidden from storefront"}
             </span>
           </button>
+          )}
 
           {/* Featured */}
           <button
