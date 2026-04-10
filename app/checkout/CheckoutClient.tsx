@@ -8,6 +8,9 @@ import { useCart } from "@/app/components/CartContext";
 import { supabase } from "@/lib/supabase";
 import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
 import { ALLOWED_COUNTRIES, getShippingZone, calculateShipping, calculateStripeFee } from "@/lib/shipping";
+import { Elements, AddressElement } from "@stripe/react-stripe-js";
+import type { StripeAddressElementChangeEvent } from "@stripe/stripe-js";
+import { stripePromise } from "@/lib/stripe-client";
 
 const isLiveMode = process.env.NEXT_PUBLIC_CHECKOUT_MODE === "live";
 
@@ -57,16 +60,11 @@ export function CheckoutClient() {
   const [showAdminInput, setShowAdminInput] = useState(false);
   const [adminError, setAdminError] = useState(false);
 
-  // Shipping address
-  const [shippingAddress, setShippingAddress] = useState({
-    name: "",
-    country: "",
-    line1: "",
-    line2: "",
-    city: "",
-    state: "",
-    postal: "",
-  });
+  // Shipping address (Stripe Address Element)
+  const [addressValue, setAddressValue] = useState<StripeAddressElementChangeEvent["value"] | null>(null);
+  const [taxAmountCents, setTaxAmountCents] = useState(0);
+  const [taxCalculationId, setTaxCalculationId] = useState<string | null>(null);
+  const [taxLoading, setTaxLoading] = useState(false);
 
   // Submit
   const [loading, setLoading] = useState(false);
@@ -151,6 +149,19 @@ export function CheckoutClient() {
   const isMixedCart = availableNowItems.length > 0 && sourcedForYouItems.length > 0;
   const hasSourcingItems = sourcedForYouItems.length > 0;
 
+  // Derive shippingAddress from Address Element value
+  const shippingAddress = addressValue
+    ? {
+        name: addressValue.name,
+        country: addressValue.address.country,
+        line1: addressValue.address.line1,
+        line2: addressValue.address.line2 ?? "",
+        city: addressValue.address.city,
+        state: addressValue.address.state ?? "",
+        postal: addressValue.address.postal_code,
+      }
+    : { name: "", country: "", line1: "", line2: "", city: "", state: "", postal: "" };
+
   // Pricing
   const subtotal = availableItems.reduce((s, i) => s + i.price, 0);
   const originalTotal = availableItems.reduce((s, i) => s + (i.originalPrice ?? i.price), 0);
@@ -166,25 +177,67 @@ export function CheckoutClient() {
   const insuranceFee = shippingInsurance && availableItems.length > 0
     ? Math.round(subtotal * 0.05 * 100) / 100
     : 0;
+  const taxAmount = taxAmountCents / 100;
   const subtotalForFeeCents = shipping != null
-    ? Math.round((discountedSubtotal + insuranceFee + shipping) * 100)
+    ? Math.round((discountedSubtotal + insuranceFee + shipping + taxAmount) * 100)
     : null;
   const txFeeCents = subtotalForFeeCents != null && zone != null
     ? calculateStripeFee(subtotalForFeeCents, zone)
     : null;
   const txFee = txFeeCents != null ? txFeeCents / 100 : null;
   const grandTotal = shipping != null && txFee != null
-    ? Math.round((discountedSubtotal + insuranceFee + shipping + txFee) * 100) / 100
+    ? Math.round((discountedSubtotal + insuranceFee + shipping + taxAmount + txFee) * 100) / 100
     : null;
 
-  const addressComplete =
-    shippingAddress.country !== "" &&
-    shippingAddress.name.trim() !== "" &&
-    shippingAddress.line1.trim() !== "" &&
-    shippingAddress.city.trim() !== "" &&
-    shippingAddress.postal.trim() !== "";
+  const addressComplete = addressValue !== null;
 
   const canCheckout = availableItems.length > 0 && adminUnlocked && addressComplete;
+
+  // Auto-calculate WA tax when address changes
+  useEffect(() => {
+    const isWA =
+      addressValue?.address.country === "US" &&
+      addressValue?.address.state?.toUpperCase() === "WA";
+
+    if (!isWA || availableItems.length === 0) {
+      setTaxAmountCents(0);
+      setTaxCalculationId(null);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setTaxLoading(true);
+      try {
+        const res = await fetch("/api/stripe/calculate-tax", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: availableItems.map((i) => ({ price: i.price })),
+            shippingAddress: {
+              line1: addressValue!.address.line1,
+              city: addressValue!.address.city,
+              state: "WA",
+              postal_code: addressValue!.address.postal_code,
+              country: "US",
+            },
+          }),
+        });
+        const data = await res.json();
+        if (!cancelled) {
+          setTaxAmountCents(data.taxAmountCents ?? 0);
+          setTaxCalculationId(data.calculationId ?? null);
+        }
+      } catch {
+        if (!cancelled) { setTaxAmountCents(0); setTaxCalculationId(null); }
+      } finally {
+        if (!cancelled) setTaxLoading(false);
+      }
+    }, 600);
+
+    return () => { cancelled = true; clearTimeout(timer); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addressValue, availableItems]);
 
   function handleRemove(productId: string, optionId: string | null) {
     removeFromCart(productId, optionId);
@@ -251,6 +304,8 @@ export function CheckoutClient() {
           expedited: prioritySourcing && hasSourcingItems,
           shippingInsurance,
           discountCode: discountCode.trim() || undefined,
+          taxAmountCents: taxAmountCents > 0 ? taxAmountCents : undefined,
+          taxCalculationId: taxCalculationId || undefined,
           shippingAddress: {
             name: shippingAddress.name.trim(),
             line1: shippingAddress.line1.trim(),
@@ -691,81 +746,22 @@ export function CheckoutClient() {
                   </div>
                 )}
 
-                {/* ── Shipping address ─────────────────────── */}
+                {/* ── Shipping address (Stripe Address Element) ─── */}
                 {availableItems.length > 0 && (
                   <div className="rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/40 p-2.5 sm:p-3.5 space-y-2.5">
                     <p className="text-[11px] sm:text-[15px] uppercase tracking-[0.2em] font-semibold text-stone-400 dark:text-stone-500">
                       Shipping Address
                     </p>
-                    <div className="space-y-1.5">
-                      {/* Country + Full name on same row */}
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <select
-                          value={shippingAddress.country}
-                          onChange={(e) => setShippingAddress((a) => ({ ...a, country: e.target.value }))}
-                          className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 outline-none focus:ring-2 focus:ring-emerald-500"
-                        >
-                          <option value="">Country</option>
-                          {ALLOWED_COUNTRIES.map((c) => (
-                            <option key={c.code} value={c.code}>{c.name}</option>
-                          ))}
-                        </select>
-                        <input
-                          type="text"
-                          placeholder="Full name"
-                          autoComplete="name"
-                          value={shippingAddress.name}
-                          onChange={(e) => setShippingAddress((a) => ({ ...a, name: e.target.value }))}
-                          className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500"
-                        />
-                      </div>
-                      {/* Address lines on same row */}
-                      <div className="grid grid-cols-[1fr_auto] gap-1.5">
-                        <input
-                          type="text"
-                          placeholder="Address"
-                          autoComplete="address-line1"
-                          value={shippingAddress.line1}
-                          onChange={(e) => setShippingAddress((a) => ({ ...a, line1: e.target.value }))}
-                          className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Apt / Unit"
-                          autoComplete="address-line2"
-                          value={shippingAddress.line2}
-                          onChange={(e) => setShippingAddress((a) => ({ ...a, line2: e.target.value }))}
-                          className="w-28 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500"
-                        />
-                      </div>
-                      {/* City + State + Postal on one row */}
-                      <div className="grid grid-cols-3 gap-1.5">
-                        <input
-                          type="text"
-                          placeholder="City"
-                          autoComplete="address-level2"
-                          value={shippingAddress.city}
-                          onChange={(e) => setShippingAddress((a) => ({ ...a, city: e.target.value }))}
-                          className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500"
-                        />
-                        <input
-                          type="text"
-                          placeholder="State / Prov."
-                          autoComplete="address-level1"
-                          value={shippingAddress.state}
-                          onChange={(e) => setShippingAddress((a) => ({ ...a, state: e.target.value }))}
-                          className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500"
-                        />
-                        <input
-                          type="text"
-                          placeholder="ZIP / Postal"
-                          autoComplete="postal-code"
-                          value={shippingAddress.postal}
-                          onChange={(e) => setShippingAddress((a) => ({ ...a, postal: e.target.value }))}
-                          className="w-full rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-[12px] sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500"
-                        />
-                      </div>
-                    </div>
+                    <Elements stripe={stripePromise}>
+                      <AddressElement
+                        options={{
+                          mode: "shipping",
+                          allowedCountries: ALLOWED_COUNTRIES.map((c) => c.code),
+                          fields: { phone: "never" },
+                        }}
+                        onChange={(e) => setAddressValue(e.complete ? e.value : null)}
+                      />
+                    </Elements>
                   </div>
                 )}
 
@@ -803,6 +799,23 @@ export function CheckoutClient() {
                       {txFee != null ? fmtPrice(txFee) : "—"}
                     </span>
                   </div>
+
+                  {taxAmountCents > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-[12px] sm:text-sm text-stone-500 dark:text-stone-400">
+                        Washington State Tax {taxLoading && <span className="text-stone-400">(updating…)</span>}
+                      </span>
+                      <span className="text-[12px] sm:text-sm font-medium text-stone-900 dark:text-stone-100">
+                        {fmtPrice(taxAmountCents / 100)}
+                      </span>
+                    </div>
+                  )}
+                  {taxLoading && taxAmountCents === 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-[12px] sm:text-sm text-stone-500 dark:text-stone-400">Washington State Tax</span>
+                      <span className="text-[12px] sm:text-sm text-stone-400">Calculating…</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* ── Grand total ──────────────────────────── */}
@@ -812,13 +825,6 @@ export function CheckoutClient() {
                     {grandTotal != null ? fmtPrice(grandTotal) : "—"}
                   </span>
                 </div>
-
-                {/* WA Sales Tax notice */}
-                {shippingAddress.country === "US" && shippingAddress.state.trim().toUpperCase() === "WA" && (
-                  <p className="text-[11px] sm:text-[13px] text-stone-500 dark:text-stone-400">
-                    Washington sales tax will be calculated and added at checkout.
-                  </p>
-                )}
 
                 {/* Notes */}
                 <div className="text-[12px] sm:text-[16px] text-amber-600 dark:text-amber-500 space-y-1 leading-relaxed bg-amber-500/15 p-2 sm:p-4 rounded-lg border-1">

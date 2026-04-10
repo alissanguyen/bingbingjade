@@ -26,6 +26,8 @@ export async function POST(req: NextRequest) {
     customerEmail?: string;
     discountCode?: string;
     sourcingRequestId?: string;
+    taxAmountCents?: number;
+    taxCalculationId?: string;
     shippingAddress?: {
       name: string;
       line1: string;
@@ -234,7 +236,22 @@ export async function POST(req: NextRequest) {
   // Transaction fee: gross-up so seller nets full amount after Stripe deducts their fee.
   // Domestic (US): 2.9% + $0.30 | International: 4.4% + $0.30
   const discountedItemsCents = Math.max(0, itemsSubtotalCents - discountAmountCents);
-  const subtotalForFeeCents = discountedItemsCents + insuranceFeeCents + shippingFee * 100;
+
+  // Tax (WA state only, pre-calculated via stripe.tax.calculations)
+  const taxAmountCents = typeof body.taxAmountCents === "number" ? body.taxAmountCents : 0;
+  if (taxAmountCents > 0) {
+    lineItems.push({
+      price_data: {
+        currency: "usd",
+        product_data: { name: "Washington State Sales Tax" },
+        unit_amount: taxAmountCents,
+        tax_behavior: "exclusive",
+      },
+      quantity: 1,
+    });
+  }
+
+  const subtotalForFeeCents = discountedItemsCents + insuranceFeeCents + shippingFee * 100 + taxAmountCents;
   const transactionFeeAmount = calculateStripeFee(subtotalForFeeCents, zone);
   const feeLabel = "Transaction Fee";
   lineItems.push({
@@ -371,10 +388,14 @@ export async function POST(req: NextRequest) {
 
   let session: Awaited<ReturnType<typeof stripe.checkout.sessions.create>>;
   try {
+    const taxMeta: Record<string, string> = {};
+    if (body.taxCalculationId) {
+      taxMeta.tax_calculation_id = body.taxCalculationId;
+    }
+
     session = await stripe.checkout.sessions.create({
       mode: "payment",
       currency: "usd",
-      automatic_tax: { enabled: true },
       line_items: lineItems,
       success_url: `${SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${SITE_URL}/checkout/cancel`,
@@ -386,7 +407,7 @@ export async function POST(req: NextRequest) {
         },
       },
       ...(stripeCouponId ? { discounts: [{ coupon: stripeCouponId }] } : {}),
-      metadata: { ...itemMetadata, ...discountMetadata, ...emailMetadata, ...sourcingMetadata, ...addrMetadata },
+      metadata: { ...itemMetadata, ...discountMetadata, ...emailMetadata, ...sourcingMetadata, ...addrMetadata, ...taxMeta },
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
