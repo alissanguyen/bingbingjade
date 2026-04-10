@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -65,6 +65,16 @@ export function CheckoutClient() {
   const [taxAmountCents, setTaxAmountCents] = useState(0);
   const [taxCalculationId, setTaxCalculationId] = useState<string | null>(null);
   const [taxLoading, setTaxLoading] = useState(false);
+
+  // Dark mode detection for Stripe Elements appearance
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    const update = () => setIsDark(document.documentElement.classList.contains("dark"));
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
 
   // Submit
   const [loading, setLoading] = useState(false);
@@ -193,51 +203,79 @@ export function CheckoutClient() {
 
   const canCheckout = availableItems.length > 0 && adminUnlocked && addressComplete;
 
-  // Auto-calculate WA tax when address changes
-  useEffect(() => {
+  // Stable key — only changes when the address or item prices genuinely differ.
+  // Avoids the re-render loop caused by availableItems being a new array ref each render.
+  const taxKey = useMemo(() => {
     const isWA =
       addressValue?.address.country === "US" &&
       addressValue?.address.state?.toUpperCase() === "WA";
+    if (!isWA || !addressValue) return null;
+    const available = items.filter(
+      (i) =>
+        !soldKeys.has(`${i.productId}-${i.optionId}`) &&
+        !staleKeys.has(`${i.productId}-${i.optionId}`)
+    );
+    if (available.length === 0) return null;
+    const priceKey = available.map((i) => `${i.productId}:${i.price}`).join(",");
+    return `${addressValue.address.postal_code}|${priceKey}`;
+  }, [addressValue, items, soldKeys, staleKeys]);
 
-    if (!isWA || availableItems.length === 0) {
+  // Track the last key we successfully fetched — prevents duplicate calls.
+  const lastFetchedKeyRef = useRef<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (taxKey === null) {
       setTaxAmountCents(0);
       setTaxCalculationId(null);
+      lastFetchedKeyRef.current = null;
       return;
     }
+    // Already fetched for this exact combination — skip.
+    if (taxKey === lastFetchedKeyRef.current) return;
+    lastFetchedKeyRef.current = taxKey;
 
     let cancelled = false;
-    const timer = setTimeout(async () => {
-      setTaxLoading(true);
-      try {
-        const res = await fetch("/api/stripe/calculate-tax", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            items: availableItems.map((i) => ({ price: i.price })),
-            shippingAddress: {
-              line1: addressValue!.address.line1,
-              city: addressValue!.address.city,
-              state: "WA",
-              postal_code: addressValue!.address.postal_code,
-              country: "US",
-            },
-          }),
-        });
-        const data = await res.json();
+    setTaxLoading(true);
+
+    fetch("/api/stripe/calculate-tax", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: items
+          .filter(
+            (i) =>
+              !soldKeys.has(`${i.productId}-${i.optionId}`) &&
+              !staleKeys.has(`${i.productId}-${i.optionId}`)
+          )
+          .map((i) => ({ price: i.price })),
+        shippingAddress: {
+          line1: addressValue!.address.line1,
+          city: addressValue!.address.city,
+          state: "WA",
+          postal_code: addressValue!.address.postal_code,
+          country: "US",
+        },
+      }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
         if (!cancelled) {
           setTaxAmountCents(data.taxAmountCents ?? 0);
           setTaxCalculationId(data.calculationId ?? null);
         }
-      } catch {
-        if (!cancelled) { setTaxAmountCents(0); setTaxCalculationId(null); }
-      } finally {
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTaxAmountCents(0);
+          setTaxCalculationId(null);
+        }
+      })
+      .finally(() => {
         if (!cancelled) setTaxLoading(false);
-      }
-    }, 600);
+      });
 
-    return () => { cancelled = true; clearTimeout(timer); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addressValue, availableItems]);
+    return () => { cancelled = true; };
+  }, [taxKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleRemove(productId: string, optionId: string | null) {
     removeFromCart(productId, optionId);
@@ -752,7 +790,46 @@ export function CheckoutClient() {
                     <p className="text-[11px] sm:text-[15px] uppercase tracking-[0.2em] font-semibold text-stone-400 dark:text-stone-500">
                       Shipping Address
                     </p>
-                    <Elements stripe={stripePromise}>
+                    <Elements
+                      stripe={stripePromise}
+                      options={{
+                        appearance: isDark
+                          ? {
+                              variables: {
+                                colorPrimary: "#34d399",
+                                colorBackground: "#1c1917",
+                                colorText: "#f5f5f4",
+                                colorDanger: "#f87171",
+                                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
+                                borderRadius: "8px",
+                                fontSizeBase: "13px",
+                              },
+                              rules: {
+                                ".Input": { border: "1px solid #44403c", boxShadow: "none", backgroundColor: "#1c1917", color: "#f5f5f4" },
+                                ".Input:focus": { border: "1px solid #34d399", boxShadow: "0 0 0 2px rgba(52,211,153,0.2)", outline: "none" },
+                                ".Label": { color: "#a8a29e", fontSize: "11px", fontWeight: "600", letterSpacing: "0.1em", textTransform: "uppercase" },
+                                ".Error": { color: "#f87171" },
+                              },
+                            }
+                          : {
+                              variables: {
+                                colorPrimary: "#059669",
+                                colorBackground: "#ffffff",
+                                colorText: "#1c1917",
+                                colorDanger: "#ef4444",
+                                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
+                                borderRadius: "8px",
+                                fontSizeBase: "13px",
+                              },
+                              rules: {
+                                ".Input": { border: "1px solid #e7e5e4", boxShadow: "none", backgroundColor: "#ffffff", color: "#1c1917" },
+                                ".Input:focus": { border: "1px solid #059669", boxShadow: "0 0 0 2px rgba(5,150,105,0.2)", outline: "none" },
+                                ".Label": { color: "#78716c", fontSize: "11px", fontWeight: "600", letterSpacing: "0.1em", textTransform: "uppercase" },
+                                ".Error": { color: "#ef4444" },
+                              },
+                            },
+                      }}
+                    >
                       <AddressElement
                         options={{
                           mode: "shipping",
