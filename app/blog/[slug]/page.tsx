@@ -329,8 +329,22 @@ export default async function BlogPostPage({
         </section>
       )}
 
+      {/* Shop CTA */}
+      <div className="py-10 text-center border-t border-gray-100 dark:border-gray-800">
+        <p className="text-sm text-gray-400 dark:text-gray-500 mb-4">Ready to find your piece?</p>
+        <Link
+          href="/products"
+          className="inline-flex items-center gap-2 rounded-full bg-emerald-700 hover:bg-emerald-800 px-7 py-3 text-sm font-semibold text-white transition-colors shadow-sm"
+        >
+          Browse our collection of natural Type A jadeite pieces
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+        </Link>
+      </div>
+
       {/* Back to journal */}
-      <div className="py-12 text-center">
+      <div className="pb-12 text-center">
         <Link
           href="/blog"
           className="inline-flex items-center gap-2 rounded-full border border-gray-200 dark:border-gray-700 px-6 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:border-emerald-400 dark:hover:border-emerald-600 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
