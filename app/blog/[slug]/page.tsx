@@ -222,7 +222,7 @@ export default async function BlogPostPage({
                   alt={post.author.image.alt ?? post.author.name}
                   width={56}
                   height={56}
-                  className="rounded-full object-cover w-14 h-14 flex-shrink-0"
+                  className="rounded-full object-cover w-14 h-14 shrink-0"
                 />
               )}
               <div>

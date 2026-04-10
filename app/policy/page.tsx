@@ -9,17 +9,17 @@ const sections = [
   {
     id: "authenticity-guarantee",
     title: "Authenticity Guarantee",
-    body: "All jade offered on this website is natural, untreated Jadeite (Type A) and guaranteed authentic. No dye, bleaching, polymer infusion, or chemical treatment is used in the production process.",
+    body: "All jade offered on this website is natural, untreated Jadeite (Type A) and is backed by our lifetime authenticity guarantee. No dye, bleaching, polymer infusion, or chemical treatment is used in the production process.",
   },
   {
     id: "certification",
     title: "Certification",
-    body: "Every piece includes certification, verifying that your jade is natural Type A jadeite — untreated and genuine. Certificates are issued by recognized Vietnamese or Chinese gemological centers, providing full transparency and confidence in your purchase.",
+    body: "We offer certification from trusted independent gemological laboratories, and every piece is backed by our lifetime authenticity guarantee. GIA or NGTC certification may also be requested at additional cost. Please contact us for more details.",
   },
   {
     id: "sizing-responsibility",
     title: "Sizing Responsibility",
-    body: "We are happy to offer sizing guidance whenever possible, but the final sizing decision remains the buyer's responsibility. Please confirm your size carefully before purchasing, as pieces selected in the wrong size are not eligible for return or refund.",
+    body: "We are happy to provide sizing guidance whenever possible, and a sizing guide is available in the footer as well as on individual bangle and ring product pages. Final size selection remains the buyer’s responsibility, and we recommend confirming your fit carefully before purchase.",
   },
   {
     id: "natural-variation",
@@ -34,7 +34,7 @@ const sections = [
   {
     id: "returns-exchanges",
     title: "Returns & Exchanges",
-    body: "Returns or exchanges may be considered for eligible pieces if requested within 24–48 hours of confirmed delivery. All requests are subject to review. Approved returns may be subject to a 10% restocking fee, along with original and return shipping costs. Items must be returned in original, unworn condition.",
+    body: "Returns or exchanges may be considered for eligible pieces if requested within 24–48 hours of confirmed delivery. All requests are subject to review. Approved returns may be subject to a restocking fee, along with original and return shipping costs. Items must be returned in original, unworn condition.",
   },
   {
     id: "claims",
@@ -44,17 +44,17 @@ const sections = [
   {
     id: "item-representation",
     title: "Item Representation",
-    body: "If you believe an item differs materially from what was shown, you must notify us within 24 hours of delivery. A refund will only be considered if the item is determined to be significantly different, at approximately 20% or more, from the listing, photos, or videos provided. Minor differences and natural variation do not qualify for refund.",
+    body: "If you believe an item differs materially from what was shown, you must notify us within 24 hours of delivery. Minor differences and natural variation do not qualify for return or refund.",
   },
   {
     id: "refund-processing",
     title: "Refund Processing",
-    body: "Refunds are issued only after the returned item has been received, re-verified, and inspected. Returned items may be reviewed for certification again to confirm authenticity and ensure the same piece has been returned. This process may take approximately 2–4 weeks. For approved non-custom returns or exchanges, a 10% restocking fee, original shipping charges, and return shipping costs apply. Shipping charges in both directions are non-refundable.",
+    body: "Refunds are issued only after the returned item has been received, re-examined, and confirmed to qualify under our shop terms. In certain cases, additional verification or re-certification may be required to confirm authenticity and ensure the same piece has been returned.",
   },
   {
     id: "lifetime-type-a-guarantee",
     title: "Lifetime Type A Guarantee",
-    body: "All jade sold on this website is backed by a lifetime Type A Jadeite guarantee. If a client has a piece professionally tested at any time and believes it may be Type B, they may submit a claim and return the item for re-certification and verification. If the returned certification confirms the piece is Type B, a refund will be issued. This process may take approximately 3–4 weeks. This is the only circumstance in which shipping charges are refundable in full.",
+    body: "All jade sold on this website is backed by a lifetime Type A Jadeite guarantee. If a client has a piece professionally tested at any time and believes it may not be Type A, they may contact us and submit the item for review, re-certification, and verification. If the returned results confirm otherwise, a refund will be issued.",
   },
   {
     id: "shipping-delivery",
@@ -64,17 +64,17 @@ const sections = [
   {
     id: "expedited-shipping",
     title: "Expedited Sourcing & Shipping",
-    body: `Expedited shipping is available for "Sourced for You" items for $100 (plus $10 per additional item). With this option, your piece is prioritized and dispatched without delay. This is recommended for time-sensitive orders, high-value pieces, or special occasions.`,
+    body: "Expedited shipping is available for “Sourced for You” items for $100 (plus $10 per additional item). With this option, your piece is prioritized and dispatched without delay. This is recommended for time-sensitive orders, high-value pieces, or special occasions.",
   },
   {
     id: "shipping-insurance",
     title: "Shipping Insurance",
-    body: "Optional shipping insurance is available for an additional 5% of the item price and must be requested before shipment. While shipping issues are rare, buyers who decline insurance accept responsibility for any loss, theft, or damage that may occur in transit once the package has been shipped.",
+    body: "Optional shipping insurance is available for an additional fee and must be requested before shipment. While shipping issues are rare, buyers who decline insurance accept responsibility for any loss, theft, or damage that may occur in transit once the package has been shipped.",
   },
   {
     id: "payment-tax",
     title: "Payment & Tax",
-    body: "We accept payment via our website or PayPal Goods & Services (a 3.5% processing fee applies), as well as PayPal Friends & Family, Zelle, Venmo, and wire transfer. Sales tax, if applicable, will be charged based on the delivery destination and in accordance with applicable law.",
+    body: "We accept payment via Stripe through our website or through manual Stripe invoices, as well as Zelle and wire transfer. Payments processed through our website may be subject to transaction fees. No other payment methods are accepted. Sales tax, if applicable, will be charged based on the delivery destination and in accordance with applicable law.",
   },
   {
     id: "buyer-acknowledgment",

@@ -5,31 +5,57 @@ const faqs = [
     id: "jade-type",
     question: "What type of jade do you sell?",
     answer:
-      "All jade offered on this website is natural Jadeite. We specialize in Type A jadeite sourced from Myanmar (Burmese) and Guatemala. Every piece comes with certification of authenticity to give you confidence when purchasing with us. Unless otherwise specified, pieces are Myanmar jadeite.",
+      "All jade offered on this website is natural Jadeite. We specialize in Type A jadeite sourced from Myanmar (Burmese) and Guatemala. Every piece is backed by our lifetime authenticity guarantee. Unless otherwise specified, pieces are Myanmar jadeite.",
   },
   {
     id: "authenticity",
     question: "Is your jade authentic and untreated?",
     answer: (
       <>
-        Yes. All jade sold on this website is
-        <strong className="text-emerald-600 dark:text-emerald-500"> natural, untreated Jadeite (Type A)</strong> and <strong className="text-emerald-600 dark:text-emerald-500">guaranteed authentic</strong>. No dye, bleaching, polymer infusion, or chemical treatment is used in the production process.
+        Yes. All jade sold on this website is{" "}
+        <strong className="text-emerald-600 dark:text-emerald-500">
+          natural, untreated Jadeite (Type A)
+        </strong>{" "}
+        and{" "}
+        <strong className="text-emerald-600 dark:text-emerald-500">
+          guaranteed authentic for life
+        </strong>
+        . No dye, bleaching, polymer infusion, or chemical treatment is used in the production process.
       </>
-    )
+    ),
   },
   {
     id: "certification",
     question: "Does every piece come with certification?",
-    answer:
-      "Yes — every piece includes certification. Each item is authenticated and verified as natural Type A jadeite, untreated and genuine. Certificates may be issued by recognized Vietnamese or Chinese gemological centers, ensuring full transparency and confidence in your purchase.",
+    answer: (
+      <>
+        We offer certification from{" "}
+        <strong className="text-emerald-600 dark:text-emerald-500">
+          trusted independent laboratories
+        </strong>
+        , and every piece is backed by our{" "}
+        <strong className="text-emerald-600 dark:text-emerald-500">
+          lifetime authenticity guarantee
+        </strong>
+        .{" "}
+        <strong className="text-emerald-600 dark:text-emerald-500">GIA</strong> or{" "}
+        <strong className="text-emerald-600 dark:text-emerald-500">NGTC</strong>{" "}
+        certification may also be requested at additional cost. Please contact us for more details.
+      </>
+    ),
   },
   {
     id: "type-a-guarantee",
     question: "Do you guarantee your jade is Type A?",
     answer: (
-      <>Yes. All pieces are backed by a <strong className="text-emerald-700 dark:text-emerald-500 italic">lifetime Type A Jadeite guarantee</strong>. If a piece is professionally tested at any time and believed to be Type B, it may be returned to us for re-certification and verification. If the returned certification confirms it is Type B, a refund will be issued. This is the only circumstance in which shipping charges are refundable in full.
+      <>
+        Yes. All pieces are backed by a{" "}
+        <strong className="text-emerald-700 dark:text-emerald-500 italic">
+          lifetime Type A Jadeite guarantee
+        </strong>
+        . If a piece is professionally tested at any time and believed not to be Type A, it may be returned to us for review, re-certification, and verification. If the returned results confirm otherwise, a refund will be issued.
       </>
-    )
+    ),
   },
   {
     id: "inventory-types",
@@ -47,7 +73,7 @@ const faqs = [
     id: "payment-methods",
     question: "What payment methods do you accept?",
     answer:
-      "We accept PayPal Goods & Services (a 3.5% processing fee applies), PayPal Friends & Family, Zelle, and wire transfer. Applicable sales tax may apply based on the delivery destination.",
+      "We accept payment via Stripe through our website or through manual Stripe invoices, as well as Zelle and wire transfer. Payments processed through our website may be subject to transaction fees. No other payment methods are accepted. Applicable sales tax may apply based on the delivery destination.",
   },
   {
     id: "standard-shipping",
@@ -58,19 +84,20 @@ const faqs = [
   {
     id: "expedited-sourcing",
     question: "Priority Sourcing / Expedited Shipping: What is it and how does it work?",
-    answer: "For pieces labeled “Sourced for You,” priority sourcing is available for $100 (plus $10 per additional item). With this option, your order is prioritized at every stage — including sourcing, preparation, and dispatch — to reduce overall processing time. This is recommended for time-sensitive orders or special occasions. Priority sourcing does not apply to items labeled “Available Now,” which are already ready for immediate shipment from our U.S. inventory.",
+    answer:
+      "For pieces labeled “Sourced for You,” priority sourcing is available for $100 (plus $10 per additional item). With this option, your order is prioritized at every stage — including sourcing, preparation, and dispatch — to reduce overall processing time. This is recommended for time-sensitive orders or special occasions. Priority sourcing does not apply to items labeled “Available Now,” which are already ready for immediate shipment from our U.S. inventory.",
   },
   {
     id: "shipping-insurance",
     question: "Do you offer shipping insurance?",
     answer:
-      "Yes. Optional shipping insurance is available for an additional 5% of the item price and must be requested before shipment. If insurance is declined, the buyer accepts responsibility for any loss, theft, or damage in transit once the package has been shipped.",
+      "Yes. Optional shipping insurance is available for an additional fee and must be requested before shipment. If insurance is declined, the buyer accepts responsibility for any loss, theft, or damage in transit once the package has been shipped.",
   },
   {
     id: "returns-exchanges",
     question: "Can I return or exchange an item if I change my mind?",
     answer:
-      "Returns or exchanges may be considered for eligible pieces if requested within 24–48 hours of confirmed delivery. All requests are subject to review. Approved returns may be subject to a 10% restocking fee, along with original and return shipping costs.",
+      "Returns or exchanges may be considered for eligible pieces if requested within 24–48 hours of confirmed delivery. All requests are subject to review. Approved returns may be subject to a restocking fee, along with original and return shipping costs.",
   },
   {
     id: "custom-final-sale",
@@ -88,46 +115,60 @@ const faqs = [
     id: "refund-timeline",
     question: "How long do refunds take?",
     answer:
-      "Refunds are processed after the returned item has been received, re-verified, and inspected. In some cases, re-certification may be required to confirm authenticity. This process typically takes approximately 2–4 weeks.",
+      "Refunds are issued only after the returned item has been received, re-examined, and confirmed to qualify under our shop terms. In certain cases, additional verification or re-certification may be required.",
   },
   {
     id: "shipping-refundable",
     question: "Is shipping refundable?",
     answer:
-      "Shipping charges are non-refundable except in the case of a confirmed Type B authenticity result after return and re-certification. In that case, both the product price and shipping charges will be refunded in full.",
+      "Shipping charges are generally non-refundable unless otherwise determined as part of an approved claim review.",
   },
   {
     id: "how-to-buy",
     question: "How do I buy a piece?",
     answer: (
       <>
-        You can purchase directly through our website for a seamless checkout experience (a 3.5% processing fee applies).{" "}
-        Alternatively, you may reach out to us for payment via{" "}
-        <strong className="text-green-500">Zelle</strong> or{" "}
-        <strong className="text-blue-500">Wire Transfer</strong>.{" "}
-        <br /><br />
+        You can purchase directly through our website for a seamless checkout experience via{" "}
+        <strong className="text-emerald-600 dark:text-emerald-500">Stripe</strong>.{" "}
+        We also accept payment through{" "}
+        <strong className="text-emerald-600 dark:text-emerald-500">manual Stripe invoices</strong>,{" "}
+        <strong className="text-emerald-600 dark:text-emerald-500">Zelle</strong>, and{" "}
+        <strong className="text-emerald-600 dark:text-emerald-500">Wire Transfer</strong>.{" "}
+        Payments processed through our website may be subject to transaction fees.
+        <br />
+        <br />
         To proceed, please visit the{" "}
         <a
           href="/contact"
           target="_blank"
           rel="noopener noreferrer"
-          className="font-semibold underline hover:text-black dark:hover:text-white"
+          className="font-medium underline underline-offset-4 decoration-emerald-500/60 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
         >
           Contact
         </a>{" "}
-        page and message us via{" "}
-        <strong className="text-green-500">WhatsApp</strong>,{" "}
-        <strong className="text-purple-500">Instagram</strong>, or email at{" "}
-        <strong className="text-blue-500">bingbing.jade2@gmail.com</strong>.
+        page and message us via WhatsApp, Instagram, or email.
       </>
     ),
   },
   {
     id: "custom-sourcing",
     question: "Can I ask you to source a specific piece for me?",
-    answer:
-      "Yes. We accept sourcing requests for specific pieces and may assist in sourcing other jade or stones upon request. Please contact us with details of what you are looking for.",
-  },
+    answer: (
+      <>
+        Yes — we offer a dedicated custom sourcing service for clients seeking something truly specific or rare. Each request is handled with care by our team, who search extensively across trusted networks to find pieces that meet your criteria.
+        <br /><br />
+        This is an intensive and selective process designed to deliver exceptional results. To begin, please submit your request here:{" "}
+        <a
+          href="/custom-sourcing"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium underline underline-offset-4 decoration-emerald-500/60 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+        >
+          Custom Sourcing Request
+        </a>.
+      </>
+    ),
+  }
 ];
 
 export default function FAQ() {

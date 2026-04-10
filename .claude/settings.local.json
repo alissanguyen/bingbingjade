@@ -41,7 +41,11 @@
       "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -path */migrations/* -name *.sql)",
       "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -name *migration* -o -name migrations)",
       "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -name *.sql -o -name *schema* -o -name *migration*)",
-      "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -type f \\\\\\(-name *.sql -o -name *schema* -o -name *migrations* \\\\\\))"
+      "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -type f \\\\\\(-name *.sql -o -name *schema* -o -name *migrations* \\\\\\))",
+      "Bash(grep -n select\\\\\\(*\\\\\\) /Users/nouveau/Documents/workspaces/jade-shop/app/api/**/*.ts)",
+      "Bash(cat /Users/nouveau/Documents/workspaces/jade-shop/app/orders-admin/[id]/OrderDetailClient.tsx)",
+      "Bash(grep -r \"select\\(\\\\`\\\\s*\\\\*\" /Users/nouveau/Documents/workspaces/jade-shop/app --include=\"*.ts\" --include=\"*.tsx\" -A 1)",
+      "Bash(grep -A 10 \"from\\(\"\"orders\"\"\\)\" /Users/nouveau/Documents/workspaces/jade-shop/app/orders-admin/[id]/page.tsx)"
     ]
   }
 }
