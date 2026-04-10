@@ -52,36 +52,36 @@ function productCard(product: EmailProduct, siteUrl: string): string {
   const catLabel = categoryLabel(product.category);
 
   const priceHtml = displayPrice != null
-    ? `<span style="font-size:15px;font-weight:700;color:${isOnSale ? "#d97706" : "#065f46"};">${fmtPrice(displayPrice)}</span>${
+    ? `<span style="font-size:20px;font-weight:700;color:${isOnSale ? "#d97706" : "#065f46"};">${fmtPrice(displayPrice)}</span>${
         isOnSale && product.price_display_usd != null
-          ? ` <span style="font-size:12px;color:#9ca3af;text-decoration:line-through;">${fmtPrice(product.price_display_usd)}</span>`
+          ? ` <span style="font-size:16px;color:#9ca3af;text-decoration:line-through;">${fmtPrice(product.price_display_usd)}</span>`
           : ""
       }`
-    : `<span style="font-size:14px;color:#6b7280;">Contact for price</span>`;
+    : `<span style="font-size:16px;color:#6b7280;">Contact for price</span>`;
 
   const imageHtml = product.imageUrl
-    ? `<img src="${product.imageUrl}" alt="${product.name.replace(/"/g, "&quot;")}" width="260" height="220" style="display:block;width:100%;height:220px;object-fit:cover;" />`
-    : `<div style="width:100%;height:220px;background:#f0fdf4;text-align:center;line-height:220px;font-size:32px;">&#129704;</div>`;
+    ? `<img src="${product.imageUrl}" alt="${product.name.replace(/"/g, "&quot;")}" width="560" height="380" style="display:block;width:100%;height:380px;object-fit:cover;" />`
+    : `<div style="width:100%;height:380px;background:#f0fdf4;text-align:center;line-height:380px;font-size:48px;">&#129704;</div>`;
 
   return `
-    <td width="50%" style="padding:0 6px 14px;vertical-align:top;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
+    <td width="50%" style="padding:0 10px 20px;vertical-align:top;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;">
         <tr>
-          <td style="padding:0;overflow:hidden;border-radius:10px 10px 0 0;">
+          <td style="padding:0;overflow:hidden;border-radius:14px 14px 0 0;">
             <a href="${href}" style="display:block;text-decoration:none;">
               ${imageHtml}
             </a>
           </td>
         </tr>
         <tr>
-          <td style="padding:12px 12px 16px;">
-            <p style="margin:0 0 3px;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#059669;">${catLabel}</p>
-            <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#111827;line-height:1.35;">${product.name}</p>
-            <p style="margin:0 0 12px;">${priceHtml}</p>
+          <td class="card-inner" style="padding:20px 20px 26px;">
+            <p style="margin:0 0 5px;font-size:13px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#059669;">${catLabel}</p>
+            <p class="card-name" style="margin:0 0 12px;font-size:18px;font-weight:600;color:#111827;line-height:1.35;">${product.name}</p>
+            <p style="margin:0 0 18px;">${priceHtml}</p>
             <table cellpadding="0" cellspacing="0">
               <tr>
                 <td style="background:#1a3d35;border-radius:999px;">
-                  <a href="${href}" class="btn-shop" style="display:inline-block;padding:7px 14px;font-size:11px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.02em;white-space:nowrap;">Shop This Piece &rarr;</a>
+                  <a href="${href}" class="btn-shop" style="display:inline-block;padding:11px 22px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.02em;white-space:nowrap;">Shop This Piece &rarr;</a>
                 </td>
               </tr>
             </table>
@@ -168,24 +168,24 @@ export function buildProductShowcaseHtml(params: {
         <tr>
           <td style="padding:0;margin:0;">
             <!--[if mso]>
-            <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:700px;height:300px;">
+            <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:1200px;height:520px;">
               <v:fill type="frame" src="${BANNER_IMAGE}" color="#1a3d35"/>
               <v:textbox inset="0,0,0,0">
             <![endif]-->
-            <div style="background-image:url('${BANNER_IMAGE}');background-size:cover;background-position:center;min-height:300px;position:relative;background-color:#1a3d35;">
+            <div style="background-image:url('${BANNER_IMAGE}');background-size:cover;background-position:center;min-height:520px;position:relative;background-color:#1a3d35;">
               <!-- Dark overlay table -->
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="background:linear-gradient(to bottom,rgba(8,24,18,0.60) 0%,rgba(8,24,18,0.80) 100%);padding:60px 40px 56px;text-align:center;">
-                    ${captionLine1 ? `<p class="banner-eyebrow" style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#6ee7b7!important;-webkit-text-fill-color:#6ee7b7!important;"><font color="#6ee7b7">${captionLine1}</font></p>` : ""}
+                  <td style="background:linear-gradient(to bottom,rgba(8,24,18,0.60) 0%,rgba(8,24,18,0.80) 100%);padding:100px 80px 96px;text-align:center;">
+                    ${captionLine1 ? `<p class="banner-eyebrow" style="margin:0 0 16px;font-size:16px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#6ee7b7!important;-webkit-text-fill-color:#6ee7b7!important;"><font color="#6ee7b7">${captionLine1}</font></p>` : ""}
                     ${captionLine2
-                      ? `<h1 class="banner-heading" style="margin:0;font-size:32px;font-weight:700;color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;letter-spacing:-0.01em;line-height:1.2;"><font color="#ffffff">${captionLine2}</font></h1>`
-                      : `<h1 class="banner-heading" style="margin:0;font-size:32px;font-weight:700;color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;letter-spacing:-0.01em;line-height:1.2;"><font color="#ffffff">BingBing Jade</font></h1>`}
-                    <p class="banner-body" style="margin:18px auto 0;max-width:420px;font-size:14px;color:rgba(255,255,255,0.85)!important;-webkit-text-fill-color:rgba(255,255,255,0.85)!important;line-height:1.7;"><font color="#e5e7eb">${introText}</font></p>
-                    <table cellpadding="0" cellspacing="0" style="margin:28px auto 0;">
+                      ? `<h1 class="banner-heading" style="margin:0;font-size:52px;font-weight:700;color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;letter-spacing:-0.01em;line-height:1.2;"><font color="#ffffff">${captionLine2}</font></h1>`
+                      : `<h1 class="banner-heading" style="margin:0;font-size:52px;font-weight:700;color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;letter-spacing:-0.01em;line-height:1.2;"><font color="#ffffff">BingBing Jade</font></h1>`}
+                    <p class="banner-body" style="margin:24px auto 0;max-width:680px;font-size:18px;color:rgba(255,255,255,0.85)!important;-webkit-text-fill-color:rgba(255,255,255,0.85)!important;line-height:1.7;"><font color="#e5e7eb">${introText}</font></p>
+                    <table cellpadding="0" cellspacing="0" style="margin:40px auto 0;">
                       <tr>
                         <td style="background:#ffffff;border-radius:999px;">
-                          <a href="${siteUrl}/products" style="display:inline-block;padding:11px 28px;font-size:13px;font-weight:600;color:#1a3d35;text-decoration:none;letter-spacing:0.02em;white-space:nowrap;">Browse Full Collection &rarr;</a>
+                          <a href="${siteUrl}/products" style="display:inline-block;padding:16px 48px;font-size:17px;font-weight:600;color:#1a3d35;text-decoration:none;letter-spacing:0.02em;white-space:nowrap;">Browse Full Collection &rarr;</a>
                         </td>
                       </tr>
                     </table>
@@ -202,15 +202,15 @@ export function buildProductShowcaseHtml(params: {
 
         <!-- ═══ SECTION LABEL ═══ -->
         <tr>
-          <td style="padding:32px 32px 8px;text-align:center;">
-            <p style="margin:0 0 4px;font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#6b7280;">Latest Pieces</p>
-            <h2 style="margin:0;font-size:20px;font-weight:700;color:#111827;">${subject}</h2>
+          <td style="padding:52px 48px 12px;text-align:center;">
+            <p style="margin:0 0 6px;font-size:13px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#6b7280;">Latest Pieces</p>
+            <h2 style="margin:0;font-size:30px;font-weight:700;color:#111827;">${subject}</h2>
           </td>
         </tr>
 
         <!-- ═══ PRODUCTS GRID ═══ -->
         <tr>
-          <td style="padding:20px 20px 8px;">
+          <td style="padding:28px 22px 8px;">
             <table width="100%" cellpadding="0" cellspacing="0">
               ${productRowsHtml}
             </table>
