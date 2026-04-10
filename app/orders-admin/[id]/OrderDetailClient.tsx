@@ -204,6 +204,10 @@ export function OrderDetailClient({
   // Shipments state
   const [shipments, setShipments] = useState<Shipment[]>((initialOrder.shipments ?? []) as Shipment[]);
   const [shipmentDrafts, setShipmentDrafts] = useState<Record<string, { carrier: string; tracking_number: string; tracking_url: string; estimated_delivery_start: string; estimated_delivery_end: string }>>({});
+
+  // Add tracking (no-shipment orders)
+  const [newTracking, setNewTracking] = useState({ carrier: "UPS", tracking_number: "", tracking_url: "", estimated_delivery_start: "", estimated_delivery_end: "" });
+  const [savingNewShipment, setSavingNewShipment] = useState(false);
   const [savingShipment, setSavingShipment] = useState<string | null>(null);
   const [advancingShipment, setAdvancingShipment] = useState<string | null>(null);
   const [revertingShipment, setRevertingShipment] = useState<string | null>(null);
@@ -290,6 +294,30 @@ export function OrderDetailClient({
       }
     } finally {
       setRevertingShipment(null);
+    }
+  }
+
+  async function handleCreateShipment() {
+    if (!newTracking.tracking_number.trim()) { showToast("err", "Tracking number is required."); return; }
+    setSavingNewShipment(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/shipments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          carrier: newTracking.carrier || null,
+          tracking_number: newTracking.tracking_number.trim() || null,
+          tracking_url: newTracking.tracking_url.trim() || null,
+          estimated_delivery_start: newTracking.estimated_delivery_start || null,
+          estimated_delivery_end: newTracking.estimated_delivery_end || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast("err", data.error ?? "Failed to add tracking"); return; }
+      setShipments((prev) => [...prev, { ...data.shipment, shipment_events: [], shipment_items: [] }]);
+      showToast("ok", "Tracking added");
+    } finally {
+      setSavingNewShipment(false);
     }
   }
 
@@ -824,6 +852,90 @@ export function OrderDetailClient({
                 </div>
               </div>
             </div>
+
+            {/* Add tracking — for orders with no shipments yet */}
+            {shipments.length === 0 && (
+              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+                  <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Add Tracking</h2>
+                </div>
+                <div className="px-4 py-4 space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-medium text-gray-400 dark:text-gray-500 mb-0.5">Carrier</label>
+                      <select
+                        value={newTracking.carrier}
+                        onChange={(e) => setNewTracking((p) => ({ ...p, carrier: e.target.value }))}
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs px-2.5 py-1.5 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      >
+                        <option value="UPS">UPS</option>
+                        <option value="FedEx">FedEx</option>
+                        <option value="USPS">USPS</option>
+                        <option value="">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-medium text-gray-400 dark:text-gray-500 mb-0.5">Tracking #</label>
+                      <input
+                        type="text"
+                        value={newTracking.tracking_number}
+                        onChange={(e) => setNewTracking((p) => ({ ...p, tracking_number: e.target.value }))}
+                        placeholder="Tracking number"
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs px-2.5 py-1.5 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-medium text-gray-400 dark:text-gray-500 mb-0.5">Est. Delivery From</label>
+                      <input
+                        type="date"
+                        value={newTracking.estimated_delivery_start}
+                        onChange={(e) => setNewTracking((p) => ({ ...p, estimated_delivery_start: e.target.value }))}
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs px-2.5 py-1.5 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-medium text-gray-400 dark:text-gray-500 mb-0.5">Est. Delivery To</label>
+                      <input
+                        type="date"
+                        value={newTracking.estimated_delivery_end}
+                        onChange={(e) => setNewTracking((p) => ({ ...p, estimated_delivery_end: e.target.value }))}
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs px-2.5 py-1.5 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-[10px] font-medium text-gray-400 dark:text-gray-500 mb-0.5">
+                        Custom URL <span className="font-normal">(optional — auto-generated for UPS/FedEx/USPS)</span>
+                      </label>
+                      <input
+                        type="url"
+                        value={newTracking.tracking_url}
+                        onChange={(e) => setNewTracking((p) => ({ ...p, tracking_url: e.target.value }))}
+                        placeholder="https://… (only needed for other carriers)"
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs px-2.5 py-1.5 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                      {(() => {
+                        const resolvedUrl = buildTrackingUrl(newTracking.carrier, newTracking.tracking_number, newTracking.tracking_url || null);
+                        if (!resolvedUrl) return null;
+                        return (
+                          <a href={resolvedUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 hover:underline mt-1">
+                            Preview tracking link ↗
+                          </a>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                  <div className="flex justify-end pt-1">
+                    <button
+                      onClick={handleCreateShipment}
+                      disabled={savingNewShipment || !newTracking.tracking_number.trim()}
+                      className="text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:underline disabled:opacity-50"
+                    >
+                      {savingNewShipment ? "Saving…" : "Save tracking info"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Shipments */}
             {shipments.length > 0 && (
