@@ -463,7 +463,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [form, setForm] = useState({
     name: "",
-    category: "other" as ProductCategory,
+    category: "bracelet" as ProductCategory,
     origin: "Myanmar",
     size: "",
     description: "",
@@ -652,7 +652,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
       } else {
         setResult({ success: true, pendingApproval: res.pendingApproval });
         setSelectedTiers([]);
-        setForm({ name: "", category: "other", origin: "Myanmar", size: "", description: "", blemishes: "", price_display_usd: "", sale_price_usd: "", imported_price_vnd: "" });
+        setForm({ name: "", category: "bracelet", origin: "Myanmar", size: "", description: "", blemishes: "", price_display_usd: "", sale_price_usd: "", imported_price_vnd: "" });
         setVendorId("");
         setSelectedColors([]);
         setImages([]);
