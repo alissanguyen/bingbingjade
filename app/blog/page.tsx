@@ -59,7 +59,7 @@ export default async function BlogPage() {
         {featured && (
           <Link
             href={`/blog/${featured.slug}`}
-            className="group block mb-14 overflow-hidden rounded-3xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 transition hover:border-emerald-200 dark:hover:border-emerald-800"
+            className="group block mb-14 overflow-hidden rounded-3xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 transition hover:border-emerald-200 dark:hover:border-emerald-800"
           >
             <div className="grid sm:grid-cols-2 gap-0">
               {featured.heroImage?.asset ? (
@@ -120,12 +120,12 @@ export default async function BlogPage() {
                 More Articles
               </h2>
             )}
-            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {rest.map((post) => (
                 <Link
                   key={post._id}
                   href={`/blog/${post.slug}`}
-                  className="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 transition hover:border-emerald-200 dark:hover:border-emerald-800 hover:shadow-sm"
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition hover:border-emerald-200 dark:hover:border-emerald-800 hover:shadow-sm"
                 >
                   {post.heroImage?.asset ? (
                     <div className="relative aspect-[16/9] w-full overflow-hidden">
@@ -146,7 +146,7 @@ export default async function BlogPage() {
                         {post.categories.map((cat) => (
                           <span
                             key={cat.slug}
-                            className="rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5 text-[11px] font-medium text-gray-500 dark:text-gray-400"
+                            className="rounded-full bg-emerald-100 dark:bg-green-400/30 px-2.5 py-0.5 text-[11px] sm:text-[17px] font-medium text-green-600 dark:text-green-400"
                           >
                             {cat.title}
                           </span>
