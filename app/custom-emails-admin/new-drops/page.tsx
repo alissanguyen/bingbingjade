@@ -9,8 +9,9 @@ export default async function NewDropsPage() {
       .from("products")
       .select("id, name, category, slug, public_id, price_display_usd, sale_price_usd, status, images, created_at")
       .eq("is_published", true)
+      .eq("status", "available")
       .order("created_at", { ascending: false })
-      .limit(40),
+      .limit(60),
     supabaseAdmin
       .from("email_subscribers")
       .select("id, email, subscribed_at")

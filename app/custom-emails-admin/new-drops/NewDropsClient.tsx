@@ -106,7 +106,6 @@ export function NewDropsClient({
     finally { setSending(false); }
   }
 
-  const isSold = (p: DropsProduct) => p.status === "sold";
   const displayPrice = (p: DropsProduct) => p.sale_price_usd ?? p.price_display_usd;
 
   return (
@@ -118,7 +117,7 @@ export function NewDropsClient({
       </Link>
 
       <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-1">New Drops</h1>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">Feature new products in a showcase email.</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">Feature available products in a showcase email. Only available pieces are shown.</p>
 
       <div className="space-y-6">
         {/* Email details */}
@@ -135,7 +134,7 @@ export function NewDropsClient({
                 Intro <span className="text-gray-400 font-normal">(optional)</span>
               </label>
               <textarea rows={2} value={intro} onChange={(e) => setIntro(e.target.value)}
-                placeholder="Short message shown above the product grid…"
+                placeholder="Leave blank to use default: &quot;Discover our latest selection of natural jadeite pieces…&quot;"
                 className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
             </div>
           </div>
@@ -150,7 +149,6 @@ export function NewDropsClient({
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {products.map((p) => {
               const isSelected = selectedProducts.has(p.id);
-              const sold = isSold(p);
               const price = displayPrice(p);
               return (
                 <button key={p.id} type="button" onClick={() => toggleProduct(p.id)}
@@ -159,7 +157,6 @@ export function NewDropsClient({
                     {p.imageUrl
                       ? <Image src={p.imageUrl} alt={p.name} fill unoptimized className="object-cover" sizes="160px" />
                       : <div className="w-full h-full flex items-center justify-center text-2xl">🪨</div>}
-                    {sold && <div className="absolute top-1.5 left-1.5 bg-black text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">Sold</div>}
                     <div className={`absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center transition-all ${isSelected ? "bg-emerald-500 text-white" : "bg-white/80 border border-gray-300"}`}>
                       {isSelected && <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>}
                     </div>
@@ -169,7 +166,7 @@ export function NewDropsClient({
                       {CATEGORY_LABELS[p.category] ?? p.category}
                     </p>
                     <p className="text-[11px] font-semibold text-gray-900 dark:text-white leading-snug line-clamp-2 mb-0.5">{p.name}</p>
-                    {price != null && <p className={`text-[11px] font-medium ${sold ? "text-gray-400" : "text-emerald-700 dark:text-emerald-400"}`}>${price.toFixed(2)}</p>}
+                    {price != null && <p className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400">${price.toFixed(2)}</p>}
                   </div>
                 </button>
               );
