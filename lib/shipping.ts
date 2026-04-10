@@ -69,3 +69,17 @@ export function calculateStripeFee(subtotalCents: number, zone: ShippingZone): n
   const grossCents = Math.ceil((subtotalCents + 30) / (1 - rate));
   return grossCents - subtotalCents;
 }
+
+/**
+ * BNPL fee in cents (Math.round).
+ * Uses gross-up formula so the seller nets the full subtotal after BNPL provider deducts their fee.
+ *
+ * BNPL (Klarna / Afterpay / Affirm): 6.0% + $0.30
+ * gross = (targetNet + 0.30) / (1 - 0.06)
+ */
+export function calculateBnplFee(targetNetCents: number): number {
+  return Math.round((targetNetCents + 30) / (1 - 0.06)) - targetNetCents;
+}
+
+export const BNPL_METHODS = ["klarna", "afterpay_clearpay", "affirm", "zip"] as const;
+export type BnplMethod = typeof BNPL_METHODS[number];

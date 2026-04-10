@@ -6,7 +6,7 @@ import { validateDiscount, normalizeEmail } from "@/lib/discount";
 import { computeAvailableCredit } from "@/lib/sourcing-classification";
 import type { LedgerRow } from "@/lib/sourcing-classification";
 import type { CartItem } from "@/types/cart";
-import { getShippingZone, calculateShipping, calculateStripeFee, ALLOWED_COUNTRIES } from "@/lib/shipping";
+import { getShippingZone, calculateShipping, calculateStripeFee, calculateBnplFee, ALLOWED_COUNTRIES } from "@/lib/shipping";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
 
@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
       postal: string;
       country: string;
     };
+    paymentMethod?: "standard" | "bnpl";
   };
   try {
     body = await req.json();
@@ -194,6 +195,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Shipping to that country is not supported." }, { status: 400 });
   }
 
+  const paymentMethod = body.paymentMethod ?? "standard";
+  // BNPL only allowed for US shipping
+  if (paymentMethod === "bnpl" && addr.country !== "US") {
+    return NextResponse.json({ error: "Installment payments are only available for US shipping addresses." }, { status: 400 });
+  }
+
   // ── Build shipping + fee line items ──────────────────────────────────────────
   const hasSourcingItems = validatedItems.some((i) => (i.fulfillmentType ?? "sourced_for_you") === "sourced_for_you");
   const isPrioritySourcing = body.expedited && hasSourcingItems;
@@ -252,8 +259,10 @@ export async function POST(req: NextRequest) {
   }
 
   const subtotalForFeeCents = discountedItemsCents + insuranceFeeCents + shippingFee * 100 + taxAmountCents;
-  const transactionFeeAmount = calculateStripeFee(subtotalForFeeCents, zone);
-  const feeLabel = "Transaction Fee";
+  const transactionFeeAmount = paymentMethod === "bnpl"
+    ? calculateBnplFee(subtotalForFeeCents)
+    : calculateStripeFee(subtotalForFeeCents, zone);
+  const feeLabel = paymentMethod === "bnpl" ? "Installment Fee" : "Transaction Fee";
   lineItems.push({
     price_data: {
       currency: "usd",
@@ -396,6 +405,9 @@ export async function POST(req: NextRequest) {
     session = await stripe.checkout.sessions.create({
       mode: "payment",
       currency: "usd",
+      payment_method_types: paymentMethod === "bnpl"
+        ? ["klarna", "afterpay_clearpay", "affirm"]
+        : ["card"],
       line_items: lineItems,
       success_url: `${SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${SITE_URL}/checkout/cancel`,
@@ -407,11 +419,28 @@ export async function POST(req: NextRequest) {
         },
       },
       ...(stripeCouponId ? { discounts: [{ coupon: stripeCouponId }] } : {}),
-      metadata: { ...itemMetadata, ...discountMetadata, ...emailMetadata, ...sourcingMetadata, ...addrMetadata, ...taxMeta },
+      metadata: {
+        ...itemMetadata,
+        ...discountMetadata,
+        ...emailMetadata,
+        ...sourcingMetadata,
+        ...addrMetadata,
+        ...taxMeta,
+        payment_method: paymentMethod,
+      },
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[stripe/checkout] session creation failed:", message);
+    if (
+      message.includes("payment_method_types") ||
+      message.includes("not supported")
+    ) {
+      return NextResponse.json(
+        { error: "One or more installment payment methods are not available in your region. Please use Standard payment." },
+        { status: 400 }
+      );
+    }
     return NextResponse.json({ error: `Stripe error: ${message}` }, { status: 500 });
   }
 

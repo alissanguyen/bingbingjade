@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useCart } from "@/app/components/CartContext";
 import { supabase } from "@/lib/supabase";
 import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
-import { ALLOWED_COUNTRIES, getShippingZone, calculateShipping, calculateStripeFee } from "@/lib/shipping";
+import { ALLOWED_COUNTRIES, getShippingZone, calculateShipping, calculateStripeFee, calculateBnplFee } from "@/lib/shipping";
 import { Elements, AddressElement } from "@stripe/react-stripe-js";
 import type { StripeAddressElementChangeEvent } from "@stripe/stripe-js";
 import { stripePromise } from "@/lib/stripe-client";
@@ -42,6 +42,9 @@ export function CheckoutClient() {
 
   // Shipping insurance (5% of item subtotal)
   const [shippingInsurance, setShippingInsurance] = useState(false);
+
+  // Payment method selection
+  const [paymentMethod, setPaymentMethod] = useState<"standard" | "bnpl" | null>(null);
 
   // Discount
   const [discountCode, setDiscountCode] = useState("");
@@ -172,6 +175,12 @@ export function CheckoutClient() {
       }
     : { name: "", country: "", line1: "", line2: "", city: "", state: "", postal: "" };
 
+  // BNPL eligibility (US-only); if user changes country away from US, reset to standard
+  const bnplEligible = shippingAddress.country === "US";
+  useEffect(() => {
+    if (paymentMethod === "bnpl" && !bnplEligible) setPaymentMethod("standard");
+  }, [bnplEligible, paymentMethod]);
+
   // Pricing
   const subtotal = availableItems.reduce((s, i) => s + i.price, 0);
   const originalTotal = availableItems.reduce((s, i) => s + (i.originalPrice ?? i.price), 0);
@@ -192,7 +201,7 @@ export function CheckoutClient() {
     ? Math.round((discountedSubtotal + insuranceFee + shipping + taxAmount) * 100)
     : null;
   const txFeeCents = subtotalForFeeCents != null && zone != null
-    ? calculateStripeFee(subtotalForFeeCents, zone)
+    ? (paymentMethod === "bnpl" ? calculateBnplFee(subtotalForFeeCents) : calculateStripeFee(subtotalForFeeCents, zone))
     : null;
   const txFee = txFeeCents != null ? txFeeCents / 100 : null;
   const grandTotal = shipping != null && txFee != null
@@ -201,7 +210,7 @@ export function CheckoutClient() {
 
   const addressComplete = addressValue !== null;
 
-  const canCheckout = availableItems.length > 0 && adminUnlocked && addressComplete;
+  const canCheckout = availableItems.length > 0 && adminUnlocked && addressComplete && paymentMethod !== null;
 
   // Stable key — only changes when the address or item prices genuinely differ.
   // Avoids the re-render loop caused by availableItems being a new array ref each render.
@@ -344,6 +353,7 @@ export function CheckoutClient() {
           discountCode: discountCode.trim() || undefined,
           taxAmountCents: taxAmountCents > 0 ? taxAmountCents : undefined,
           taxCalculationId: taxCalculationId || undefined,
+          paymentMethod: paymentMethod ?? "standard",
           shippingAddress: {
             name: shippingAddress.name.trim(),
             line1: shippingAddress.line1.trim(),
@@ -842,6 +852,41 @@ export function CheckoutClient() {
                   </div>
                 )}
 
+                {/* ── Payment method selection ───────────────────────── */}
+                {availableItems.length > 0 && (
+                  <div className="rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/40 p-2.5 sm:p-3.5 space-y-2">
+                    <p className="text-[11px] sm:text-[15px] uppercase tracking-[0.2em] font-semibold text-stone-400 dark:text-stone-500">
+                      Payment Method
+                    </p>
+                    {/* Standard */}
+                    <label className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${paymentMethod === "standard" ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30" : "border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600"}`}>
+                      <input type="radio" name="paymentMethod" value="standard" checked={paymentMethod === "standard"} onChange={() => setPaymentMethod("standard")} className="mt-0.5 accent-emerald-600" />
+                      <div>
+                        <p className="text-[13px] sm:text-sm font-semibold text-stone-800 dark:text-stone-200">Standard</p>
+                        <p className="text-[11px] sm:text-[13px] text-stone-500 dark:text-stone-400 mt-0.5">Pay in full via credit or debit card</p>
+                      </div>
+                    </label>
+                    {/* BNPL */}
+                    {bnplEligible ? (
+                      <label className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${paymentMethod === "bnpl" ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30" : "border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600"}`}>
+                        <input type="radio" name="paymentMethod" value="bnpl" checked={paymentMethod === "bnpl"} onChange={() => setPaymentMethod("bnpl")} className="mt-0.5 accent-emerald-600" />
+                        <div>
+                          <p className="text-[13px] sm:text-sm font-semibold text-stone-800 dark:text-stone-200">Pay in installments</p>
+                          <p className="text-[11px] sm:text-[13px] text-stone-500 dark:text-stone-400 mt-0.5">Klarna, Afterpay, Affirm — subject to eligibility at checkout</p>
+                        </div>
+                      </label>
+                    ) : (
+                      <div className="flex items-start gap-3 p-3 rounded-lg border-2 border-stone-100 dark:border-stone-800 opacity-50">
+                        <input type="radio" disabled className="mt-0.5" />
+                        <div>
+                          <p className="text-[13px] sm:text-sm font-semibold text-stone-500 dark:text-stone-500">Pay in installments</p>
+                          <p className="text-[11px] sm:text-[13px] text-stone-400 dark:text-stone-600 mt-0.5">Only available for US shipping addresses</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* ── Line items ───────────────────────────── */}
                 <div className="border-t border-stone-100 dark:border-stone-800 pt-4 space-y-2.5">
                   {discountDollars > 0 && (
@@ -870,7 +915,7 @@ export function CheckoutClient() {
 
                   <div className="flex justify-between text-sm">
                     <span className="text-[12px] sm:text-sm text-stone-500 dark:text-stone-400">
-                      Transaction Fee
+                      {paymentMethod === "bnpl" ? "Installment Fee" : "Transaction Fee"}
                     </span>
                     <span className="text-[12px] sm:text-sm font-medium text-stone-900 dark:text-stone-100">
                       {txFee != null ? fmtPrice(txFee) : "—"}
