@@ -162,7 +162,7 @@ export function buildProductShowcaseHtml(params: {
     <tr><td align="center" style="padding:0;">
 
       <!-- Email container — wider for desktop impact -->
-      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:700px;background:#ffffff;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:1200px;background:#ffffff;">
 
         <!-- ═══ HERO BANNER ═══ -->
         <tr>
