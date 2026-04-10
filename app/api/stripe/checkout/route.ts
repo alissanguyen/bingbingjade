@@ -385,19 +385,6 @@ export async function POST(req: NextRequest) {
             "I agree to the [Store Policy](https://www.bingbingjade.com/policy) and [FAQ](https://www.bingbingjade.com/faq).",
         },
       },
-      payment_intent_data: {
-        shipping: {
-          name: addr.name,
-          address: {
-            line1: addr.line1,
-            ...(addr.line2 ? { line2: addr.line2 } : {}),
-            city: addr.city,
-            state: addr.state ?? "",
-            postal_code: addr.postal,
-            country: addr.country,
-          },
-        },
-      },
       ...(stripeCouponId ? { discounts: [{ coupon: stripeCouponId }] } : {}),
       metadata: { ...itemMetadata, ...discountMetadata, ...emailMetadata, ...sourcingMetadata, ...addrMetadata },
     });
