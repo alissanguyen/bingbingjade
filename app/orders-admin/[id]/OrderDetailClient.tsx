@@ -192,6 +192,7 @@ export function OrderDetailClient({
   const [shipmentDrafts, setShipmentDrafts] = useState<Record<string, { carrier: string; tracking_number: string; tracking_url: string; estimated_delivery_start: string; estimated_delivery_end: string }>>({});
   const [savingShipment, setSavingShipment] = useState<string | null>(null);
   const [advancingShipment, setAdvancingShipment] = useState<string | null>(null);
+  const [revertingShipment, setRevertingShipment] = useState<string | null>(null);
 
   // Cancel modal state
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -247,8 +248,34 @@ export function OrderDetailClient({
             : s
         )
       );
+      if (data.newOrderStatus) {
+        setOrder((prev) => ({ ...prev, order_status: data.newOrderStatus }));
+        setEditStatus(data.newOrderStatus);
+      }
     } finally {
       setAdvancingShipment(null);
+    }
+  }
+
+  async function handleRevertEvent(shipmentId: string) {
+    setRevertingShipment(shipmentId);
+    try {
+      const res = await fetch(`/api/admin/shipments/${shipmentId}/revert-event`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { showToast("err", data.error ?? "Revert failed"); return; }
+      setShipments((prev) =>
+        prev.map((s) =>
+          s.id === shipmentId
+            ? { ...s, ...data.shipment, shipment_events: data.events, shipment_items: s.shipment_items }
+            : s
+        )
+      );
+      if (data.newOrderStatus) {
+        setOrder((prev) => ({ ...prev, order_status: data.newOrderStatus }));
+        setEditStatus(data.newOrderStatus);
+      }
+    } finally {
+      setRevertingShipment(null);
     }
   }
 
@@ -791,8 +818,9 @@ export function OrderDetailClient({
                   const draft = getShipmentDraft(shipment.id, shipment);
                   const hasDraft = !!shipmentDrafts[shipment.id];
                   const sortedEvents = [...(shipment.shipment_events ?? [])].sort((a, b) => a.sort_order - b.sort_order);
-                  const currentEvent = sortedEvents.find((e) => e.is_current);
-                  const isLastEvent = currentEvent && sortedEvents.indexOf(currentEvent) === sortedEvents.length - 1;
+                  const currentIdx = sortedEvents.findIndex((e) => e.is_current);
+                  const currentEvent = currentIdx >= 0 ? sortedEvents[currentIdx] : undefined;
+                  const isLastEvent = currentIdx >= 0 && currentIdx === sortedEvents.length - 1;
                   const itemNames = (shipment.shipment_items ?? [])
                     .map((si) => {
                       const oi = order.order_items.find((i) => i.id === si.order_item_id);
@@ -815,24 +843,27 @@ export function OrderDetailClient({
                           }`}>
                             {shipment.fulfillment_type === "available_now" ? "Available Now" : "Sourced for You"}
                           </span>
-                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                            shipment.status === "delivered" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" :
-                            shipment.status === "shipped"   ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" :
-                            shipment.status === "processing"? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
-                            "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-                          }`}>
-                            {shipment.status}
-                          </span>
                         </div>
-                        {!isLastEvent && (
-                          <button
-                            onClick={() => handleAdvanceEvent(shipment.id)}
-                            disabled={advancingShipment === shipment.id}
-                            className="text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:underline disabled:opacity-50"
-                          >
-                            {advancingShipment === shipment.id ? "Advancing…" : "Advance →"}
-                          </button>
-                        )}
+                        <div className="flex items-center gap-3">
+                          {currentEvent && currentIdx > 0 && (
+                            <button
+                              onClick={() => handleRevertEvent(shipment.id)}
+                              disabled={revertingShipment === shipment.id}
+                              className="text-xs font-medium text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 hover:underline disabled:opacity-50"
+                            >
+                              {revertingShipment === shipment.id ? "Reverting…" : "← Revert"}
+                            </button>
+                          )}
+                          {!isLastEvent && (
+                            <button
+                              onClick={() => handleAdvanceEvent(shipment.id)}
+                              disabled={advancingShipment === shipment.id}
+                              className="text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:underline disabled:opacity-50"
+                            >
+                              {advancingShipment === shipment.id ? "Advancing…" : "Advance →"}
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       <div className="px-4 py-3 space-y-4">

@@ -31,7 +31,6 @@ export async function POST(
 
   const { id } = await params;
 
-  // Fetch all events for this shipment, ordered by sort_order
   const { data: events, error: evErr } = await supabaseAdmin
     .from("shipment_events")
     .select("*")
@@ -45,49 +44,43 @@ export async function POST(
   if (currentIdx === -1)
     return NextResponse.json({ error: "No current event found" }, { status: 400 });
 
+  if (currentIdx === 0)
+    return NextResponse.json({ error: "Already at first event" }, { status: 400 });
+
   const currentEvent = events[currentIdx];
-  const nextEvent = events[currentIdx + 1] ?? null;
+  const prevEvent = events[currentIdx - 1];
 
-  if (!nextEvent)
-    return NextResponse.json({ error: "Already at final event" }, { status: 400 });
-
-  const now = new Date().toISOString();
-
-  // Mark current as completed
+  // Un-complete current
   await supabaseAdmin
     .from("shipment_events")
-    .update({ is_current: false, is_completed: true, event_time: now })
+    .update({ is_current: false, is_completed: false, event_time: null })
     .eq("id", currentEvent.id);
 
-  // Mark next as current
+  // Make previous current again
   await supabaseAdmin
     .from("shipment_events")
-    .update({ is_current: true })
-    .eq("id", nextEvent.id);
+    .update({ is_current: true, is_completed: false })
+    .eq("id", prevEvent.id);
 
-  // Update shipment status + timestamps
+  // Revert shipment status + clear timestamps if reverting delivered/shipped
   const shipmentUpdates: Record<string, unknown> = {
-    status: eventKeyToShipmentStatus(nextEvent.event_key),
-    updated_at: now,
+    status: eventKeyToShipmentStatus(prevEvent.event_key),
+    updated_at: new Date().toISOString(),
   };
-  if (nextEvent.event_key === "shipped")   shipmentUpdates.shipped_at = now;
-  if (nextEvent.event_key === "delivered") shipmentUpdates.delivered_at = now;
+  if (currentEvent.event_key === "delivered") shipmentUpdates.delivered_at = null;
+  if (currentEvent.event_key === "shipped") shipmentUpdates.shipped_at = null;
 
-  await supabaseAdmin
-    .from("shipments")
-    .update(shipmentUpdates)
-    .eq("id", id);
+  await supabaseAdmin.from("shipments").update(shipmentUpdates).eq("id", id);
 
-  // Sync order_status to match the new shipment event
+  // Sync order_status if we can determine it
   const { data: shipment } = await supabaseAdmin
     .from("shipments")
     .select("order_id")
     .eq("id", id)
     .single();
 
-  let newOrderStatus: string | null = null;
   if (shipment?.order_id) {
-    newOrderStatus = eventKeyToOrderStatus(nextEvent.event_key);
+    const newOrderStatus = eventKeyToOrderStatus(prevEvent.event_key);
     if (newOrderStatus) {
       await supabaseAdmin
         .from("orders")
@@ -96,7 +89,6 @@ export async function POST(
     }
   }
 
-  // Return updated events + shipment
   const { data: updatedEvents } = await supabaseAdmin
     .from("shipment_events")
     .select("*")
@@ -109,5 +101,9 @@ export async function POST(
     .eq("id", id)
     .single();
 
-  return NextResponse.json({ events: updatedEvents, shipment: updatedShipment, newOrderStatus });
+  return NextResponse.json({
+    events: updatedEvents,
+    shipment: updatedShipment,
+    newOrderStatus: shipment?.order_id ? eventKeyToOrderStatus(prevEvent.event_key) : null,
+  });
 }
