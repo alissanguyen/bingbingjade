@@ -64,7 +64,7 @@ function productCard(product: EmailProduct, siteUrl: string): string {
     : `<div style="width:100%;height:220px;background:#f0fdf4;text-align:center;line-height:220px;font-size:32px;">&#129704;</div>`;
 
   return `
-    <td width="50%" style="padding:0 8px 16px;vertical-align:top;">
+    <td width="50%" style="padding:0 6px 14px;vertical-align:top;">
       <table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
         <tr>
           <td style="padding:0;overflow:hidden;border-radius:10px 10px 0 0;">
@@ -74,14 +74,14 @@ function productCard(product: EmailProduct, siteUrl: string): string {
           </td>
         </tr>
         <tr>
-          <td style="padding:14px 14px 18px;">
-            <p style="margin:0 0 4px;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#059669;">${catLabel}</p>
-            <p style="margin:0 0 10px;font-size:14px;font-weight:600;color:#111827;line-height:1.4;">${product.name}</p>
-            <p style="margin:0 0 14px;">${priceHtml}</p>
+          <td style="padding:12px 12px 16px;">
+            <p style="margin:0 0 3px;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#059669;">${catLabel}</p>
+            <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#111827;line-height:1.35;">${product.name}</p>
+            <p style="margin:0 0 12px;">${priceHtml}</p>
             <table cellpadding="0" cellspacing="0">
               <tr>
                 <td style="background:#1a3d35;border-radius:999px;">
-                  <a href="${href}" style="display:inline-block;padding:8px 18px;font-size:12px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.02em;">Shop This Piece &rarr;</a>
+                  <a href="${href}" class="btn-shop" style="display:inline-block;padding:7px 14px;font-size:11px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.02em;white-space:nowrap;">Shop This Piece &rarr;</a>
                 </td>
               </tr>
             </table>
@@ -118,43 +118,74 @@ export function buildProductShowcaseHtml(params: {
       (row) => `
       <tr>
         ${productCard(row[0], siteUrl)}
-        ${row[1] ? productCard(row[1], siteUrl) : `<td width="50%" style="padding:0 8px 16px;"></td>`}
+        ${row[1] ? productCard(row[1], siteUrl) : `<td width="50%" style="padding:0 6px 14px;"></td>`}
       </tr>`
     )
     .join("\n");
 
   return `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <style>
+    /* Force light-only rendering — prevents Gmail dark mode from inverting banner text */
+    :root { color-scheme: light only; }
+
+    /* Banner text: always white/light-green regardless of dark mode */
+    .banner-eyebrow { color: #6ee7b7 !important; -webkit-text-fill-color: #6ee7b7 !important; }
+    .banner-heading { color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; }
+    .banner-body    { color: rgba(255,255,255,0.85) !important; -webkit-text-fill-color: rgba(255,255,255,0.85) !important; }
+
+    /* Gmail dark mode overrides (data-ogsc / data-ogsb selectors) */
+    [data-ogsc] .banner-eyebrow,
+    [data-ogsb] .banner-eyebrow { color: #6ee7b7 !important; -webkit-text-fill-color: #6ee7b7 !important; }
+    [data-ogsc] .banner-heading,
+    [data-ogsb] .banner-heading { color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; }
+    [data-ogsc] .banner-body,
+    [data-ogsb] .banner-body    { color: rgba(255,255,255,0.85) !important; -webkit-text-fill-color: rgba(255,255,255,0.85) !important; }
+
+    /* Mobile: tighter cards so "Shop This Piece" fits on one line */
+    @media only screen and (max-width: 480px) {
+      .card-inner { padding: 10px 10px 14px !important; }
+      .btn-shop   { font-size: 10px !important; padding: 6px 12px !important; }
+      .card-name  { font-size: 12px !important; }
+    }
+  </style>
+</head>
 <body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
 
-  <!-- Outer wrapper -->
+  <!-- Outer wrapper — no side padding so banner hits full width -->
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;">
     <tr><td align="center" style="padding:0;">
 
-      <!-- Email container — full width up to 640px -->
-      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#ffffff;">
+      <!-- Email container — wider for desktop impact -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:700px;background:#ffffff;">
 
         <!-- ═══ HERO BANNER ═══ -->
         <tr>
           <td style="padding:0;margin:0;">
             <!--[if mso]>
-            <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:640px;height:280px;">
+            <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:700px;height:300px;">
               <v:fill type="frame" src="${BANNER_IMAGE}" color="#1a3d35"/>
               <v:textbox inset="0,0,0,0">
             <![endif]-->
-            <div style="background-image:url('${BANNER_IMAGE}');background-size:cover;background-position:center;min-height:280px;position:relative;">
-              <!-- Dark overlay -->
+            <div style="background-image:url('${BANNER_IMAGE}');background-size:cover;background-position:center;min-height:300px;position:relative;background-color:#1a3d35;">
+              <!-- Dark overlay table -->
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="background:linear-gradient(to bottom,rgba(10,30,22,0.55) 0%,rgba(10,30,22,0.75) 100%);padding:56px 40px 52px;text-align:center;">
-                    ${captionLine1 ? `<p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#6ee7b7;">${captionLine1}</p>` : ""}
-                    ${captionLine2 ? `<h1 style="margin:0;font-size:30px;font-weight:700;color:#ffffff;letter-spacing:-0.01em;line-height:1.2;">${captionLine2}</h1>` : `<h1 style="margin:0;font-size:30px;font-weight:700;color:#ffffff;letter-spacing:-0.01em;line-height:1.2;">BingBing Jade</h1>`}
-                    <p style="margin:18px auto 0;max-width:400px;font-size:14px;color:rgba(255,255,255,0.82);line-height:1.65;">${introText}</p>
+                  <td style="background:linear-gradient(to bottom,rgba(8,24,18,0.60) 0%,rgba(8,24,18,0.80) 100%);padding:60px 40px 56px;text-align:center;">
+                    ${captionLine1 ? `<p class="banner-eyebrow" style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#6ee7b7!important;-webkit-text-fill-color:#6ee7b7!important;"><font color="#6ee7b7">${captionLine1}</font></p>` : ""}
+                    ${captionLine2
+                      ? `<h1 class="banner-heading" style="margin:0;font-size:32px;font-weight:700;color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;letter-spacing:-0.01em;line-height:1.2;"><font color="#ffffff">${captionLine2}</font></h1>`
+                      : `<h1 class="banner-heading" style="margin:0;font-size:32px;font-weight:700;color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;letter-spacing:-0.01em;line-height:1.2;"><font color="#ffffff">BingBing Jade</font></h1>`}
+                    <p class="banner-body" style="margin:18px auto 0;max-width:420px;font-size:14px;color:rgba(255,255,255,0.85)!important;-webkit-text-fill-color:rgba(255,255,255,0.85)!important;line-height:1.7;"><font color="#e5e7eb">${introText}</font></p>
                     <table cellpadding="0" cellspacing="0" style="margin:28px auto 0;">
                       <tr>
                         <td style="background:#ffffff;border-radius:999px;">
-                          <a href="${siteUrl}/products" style="display:inline-block;padding:11px 26px;font-size:13px;font-weight:600;color:#1a3d35;text-decoration:none;letter-spacing:0.02em;">Browse Full Collection &rarr;</a>
+                          <a href="${siteUrl}/products" style="display:inline-block;padding:11px 28px;font-size:13px;font-weight:600;color:#1a3d35;text-decoration:none;letter-spacing:0.02em;white-space:nowrap;">Browse Full Collection &rarr;</a>
                         </td>
                       </tr>
                     </table>
@@ -179,7 +210,7 @@ export function buildProductShowcaseHtml(params: {
 
         <!-- ═══ PRODUCTS GRID ═══ -->
         <tr>
-          <td style="padding:20px 24px 8px;">
+          <td style="padding:20px 20px 8px;">
             <table width="100%" cellpadding="0" cellspacing="0">
               ${productRowsHtml}
             </table>

@@ -8,9 +8,9 @@ import { ReviewsCarousel } from "@/app/components/ReviewsCarousel";
 import { SubscribePopup } from "@/app/components/SubscribePopup";
 
 export const metadata: Metadata = {
-  title: "BingBing Jade | Natural Type A Jadeite Jewelry (Certified)",
+  title: "BingBing Jade | Natural Type A Jadeite Jewelry with Certification and Transparent Pricing | US Based",
   description:
-    "100% natural Type A jadeite jewelry — no dye, no heat, no polymer. Shop bangles, bracelets, rings, and pendants with transparent pricing and certification available.",
+    "100% natural Type A jadeite jewelry — no dye, no heat, no polymer. Lifetime guarantee Jadeite Type A. Shop bangles, bracelets, rings, pendants, and more with confidence. Support our small business, minority and women owned (MWBEs).",
   keywords: [
     "jadeite jewelry",
     "natural jadeite",

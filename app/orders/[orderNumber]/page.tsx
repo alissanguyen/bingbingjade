@@ -392,10 +392,10 @@ export default async function TrackOrderPage({
                   return (
                     <div className="px-5 py-3 border-b border-emerald-100 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-950/20 flex items-center justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-500 mb-0.5">
+                        <p className="text-[14px] sm:text-[16px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-500 mb-0.5">
                           {shipment.carrier ?? "Tracking"}
                         </p>
-                        <p className="text-xs font-mono text-gray-500 dark:text-gray-400 truncate">{shipment.tracking_number}</p>
+                        <p className="text-[12px] sm:text-[15px] font-mono text-gray-500 dark:text-gray-400 truncate">{shipment.tracking_number}</p>
                       </div>
                       <a
                         href={trackUrl}
