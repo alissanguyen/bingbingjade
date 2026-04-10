@@ -40,6 +40,7 @@ export function AdminBar({
       { href: "/approved-users", label: "Users" },
       { href: "/coupons-admin", label: "Coupons" },
       { href: "/subscribers-admin", label: "Subscribers" },
+      { href: "/product-email-admin", label: "Product Email" },
     ] : []),
     ...(profileHref ? [{ href: profileHref, label: "Profile" }] : []),
   ];

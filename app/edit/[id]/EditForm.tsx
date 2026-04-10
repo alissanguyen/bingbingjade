@@ -204,7 +204,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
   const [existingVideos, setExistingVideos] = useState<string[]>(product.videos ?? []);
 
   // New files to upload
-  const [newImages, setNewImages] = useState<{ file: File; preview: string | null }[]>([]);
+  const [newImages, setNewImages] = useState<{ file: File; preview: string | null; broken?: boolean }[]>([]);
   const [newVideos, setNewVideos] = useState<File[]>([]);
 
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
@@ -338,8 +338,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
   const addImages = (files: FileList | null) => {
     if (!files) return;
     Array.from(files).forEach((file) => {
-      const isHeic = file.name.toLowerCase().endsWith(".heic");
-      const preview = isHeic ? null : URL.createObjectURL(file);
+      const preview = URL.createObjectURL(file);
       setNewImages((prev) => [...prev, { file, preview }]);
     });
   };
@@ -598,7 +597,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
                 <div key={url} className="relative group aspect-square cursor-zoom-in" onClick={() => setLightboxSrc(url)}>
                   <Image src={url} alt="" fill unoptimized className="rounded-lg object-cover" sizes="120px" loading="lazy" />
                   <button type="button" onClick={(e) => { e.stopPropagation(); removeExistingImage(i); }}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow">
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow">
                     <XIcon />
                   </button>
                 </div>
@@ -620,20 +619,27 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
           </div>
           {newImages.length > 0 && (
             <div className="mt-3 grid grid-cols-4 gap-3 sm:grid-cols-6">
-              {newImages.map(({ file, preview }, i) => (
+              {newImages.map(({ file, preview, broken }, i) => (
                 <div key={i} className="relative group aspect-square">
-                  {preview ? <img src={preview} alt={file.name} className="w-full h-full rounded-lg object-cover" /> : (
+                  {preview && !broken ? (
+                    <img
+                      src={preview}
+                      alt={file.name}
+                      className="w-full h-full rounded-lg object-cover"
+                      onError={() => setNewImages((prev) => prev.map((img, idx) => idx === i ? { ...img, broken: true } : img))}
+                    />
+                  ) : (
                     <div className="w-full h-full rounded-lg bg-gray-100 dark:bg-gray-800 flex flex-col items-center justify-center gap-1"><span className="text-lg">🪨</span><span className="text-[10px] text-gray-400">HEIC</span></div>
                   )}
                   <button type="button" onClick={() => removeNewImage(i)}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow">
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow">
                     <XIcon />
                   </button>
-                  {preview && (
+                  {preview && !broken && (
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setCropTarget({ index: i, src: preview, fileName: file.name }); }}
-                      className="absolute bottom-1 right-1 w-6 h-6 rounded-md bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-emerald-600"
+                      className="absolute bottom-1 right-1 w-6 h-6 rounded-md bg-black/60 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-emerald-600"
                       title="Crop image"
                     >
                       <CropIcon />
