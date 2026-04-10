@@ -145,7 +145,7 @@ export default async function BlogPostPage({
 
         {/* Author + date row */}
         <div className="flex items-center gap-3 pb-8 border-b border-gray-100 dark:border-gray-800">
-          {post.author?.image?.asset && (
+          {post.author?.image?.asset != null && (
             <Image
               src={urlFor(post.author.image.asset).width(80).height(80).quality(85).url()}
               alt={post.author.image.alt ?? post.author.name}
@@ -166,7 +166,7 @@ export default async function BlogPostPage({
         </div>
 
         {/* Hero image */}
-        {post.heroImage?.asset && (
+        {post.heroImage?.asset != null && (
           <figure className="mt-8 -mx-4 sm:mx-0">
             <Image
               src={urlFor(post.heroImage.asset).width(1400).height(800).quality(85).url()}
@@ -216,7 +216,7 @@ export default async function BlogPostPage({
         {post.author && (
           <section className="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800">
             <div className="flex items-start gap-4">
-              {post.author.image?.asset && (
+              {post.author.image?.asset != null && (
                 <Image
                   src={urlFor(post.author.image.asset).width(120).height(120).quality(85).url()}
                   alt={post.author.image.alt ?? post.author.name}
