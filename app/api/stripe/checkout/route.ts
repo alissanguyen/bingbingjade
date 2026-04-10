@@ -369,36 +369,43 @@ export async function POST(req: NextRequest) {
     ...(addr.state ? { ship_state: addr.state } : {}),
   };
 
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    currency: "usd",
-    automatic_tax: { enabled: true },
-    line_items: lineItems,
-    success_url: `${SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${SITE_URL}/checkout/cancel`,
-    consent_collection: { terms_of_service: "required" },
-    custom_text: {
-      terms_of_service_acceptance: {
-        message:
-          "I agree to the [Store Policy](https://www.bingbingjade.com/policy) and [FAQ](https://www.bingbingjade.com/faq).",
-      },
-    },
-    payment_intent_data: {
-      shipping: {
-        name: addr.name,
-        address: {
-          line1: addr.line1,
-          ...(addr.line2 ? { line2: addr.line2 } : {}),
-          city: addr.city,
-          state: addr.state ?? "",
-          postal_code: addr.postal,
-          country: addr.country,
+  let session: Awaited<ReturnType<typeof stripe.checkout.sessions.create>>;
+  try {
+    session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      currency: "usd",
+      automatic_tax: { enabled: true },
+      line_items: lineItems,
+      success_url: `${SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${SITE_URL}/checkout/cancel`,
+      consent_collection: { terms_of_service: "required" },
+      custom_text: {
+        terms_of_service_acceptance: {
+          message:
+            "I agree to the [Store Policy](https://www.bingbingjade.com/policy) and [FAQ](https://www.bingbingjade.com/faq).",
         },
       },
-    },
-    ...(stripeCouponId ? { discounts: [{ coupon: stripeCouponId }] } : {}),
-    metadata: { ...itemMetadata, ...discountMetadata, ...emailMetadata, ...sourcingMetadata, ...addrMetadata },
-  });
+      payment_intent_data: {
+        shipping: {
+          name: addr.name,
+          address: {
+            line1: addr.line1,
+            ...(addr.line2 ? { line2: addr.line2 } : {}),
+            city: addr.city,
+            state: addr.state ?? "",
+            postal_code: addr.postal,
+            country: addr.country,
+          },
+        },
+      },
+      ...(stripeCouponId ? { discounts: [{ coupon: stripeCouponId }] } : {}),
+      metadata: { ...itemMetadata, ...discountMetadata, ...emailMetadata, ...sourcingMetadata, ...addrMetadata },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[stripe/checkout] session creation failed:", message);
+    return NextResponse.json({ error: `Stripe error: ${message}` }, { status: 500 });
+  }
 
   // Update the sourcing credit lock with the actual session ID
   if (sourcingRequestId && sourcingCreditApplied > 0) {
