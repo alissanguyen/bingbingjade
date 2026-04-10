@@ -8,6 +8,22 @@ import { SubscriberPicker } from "../SubscriberPicker";
 
 export type { PickerSubscriber } from "../SubscriberPicker";
 
+const SUBJECT_OPTIONS = [
+  "New Jadeite Arrivals — One of One at BingBing Jade",
+  "New In: Natural Jadeite, Just Released at BingBing Jade",
+  "Our Latest Jadeite Pieces Are Live at BingBing Jade",
+  "A New Selection of Jadeite Has Arrived at BingBing Jade",
+  "Freshly Curated Jadeite Pieces at BingBing Jade",
+  "New Season, New Jadeite at BingBing Jade",
+  "Just Dropped — New Jadeite Pieces at BingBing Jade",
+  "New Jadeite — Before It's Gone at BingBing Jade",
+  "New Arrivals Are Selling Fast at BingBing Jade",
+  "Just Released: One-of-a-Kind Jadeite at BingBing Jade",
+  "These Won't Last — New Jadeite In at BingBing Jade",
+  "You Might Fall in Love With These New Pieces at BingBing Jade",
+  "Your Next Jade Piece Might Be Here at BingBing Jade",
+];
+
 const CATEGORY_LABELS: Record<string, string> = {
   bracelet: "Bracelets", bangle: "Bangles", ring: "Rings",
   pendant: "Pendants", necklace: "Necklaces", set: "Sets",
@@ -37,7 +53,7 @@ export function NewDropsClient({
 }) {
   const defaultSelected = new Set(products.slice(0, 4).map((p) => p.id));
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(defaultSelected);
-  const [subject, setSubject] = useState("New arrivals at BingBing Jade");
+  const [subject, setSubject] = useState(() => SUBJECT_OPTIONS[Math.floor(Math.random() * SUBJECT_OPTIONS.length)]);
   const [intro, setIntro] = useState("");
   const [targetMode, setTargetMode] = useState<"all" | "selected">("all");
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
@@ -125,9 +141,28 @@ export function NewDropsClient({
           <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-4">Email Details</h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Subject</label>
-              <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Subject</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const others = SUBJECT_OPTIONS.filter((s) => s !== subject);
+                    setSubject(others[Math.floor(Math.random() * others.length)]);
+                  }}
+                  className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline"
+                >
+                  Shuffle
+                </button>
+              </div>
+              <select
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                {SUBJECT_OPTIONS.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
