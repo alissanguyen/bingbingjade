@@ -1,10 +1,13 @@
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { publicIdFromSlug, productSlug } from "@/lib/slug";
 import { resolveImageUrls, resolveVideoUrls, resolveFirstImageUrl, isStoragePath } from "@/lib/storage";
 import { ProductPageClient } from "./ProductPageClient";
 import { BackToProductsLink } from "./BackToProductsLink";
+import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
 
 interface Product {
   id: string;
@@ -27,6 +30,21 @@ interface Product {
   status: string;
   slug: string;
   public_id: string;
+}
+
+interface RelatedProduct {
+  id: string;
+  name: string;
+  slug: string;
+  public_id: string;
+  category: string;
+  color: string[] | null;
+  price_display_usd: number | null;
+  sale_price_usd: number | null;
+  status: string;
+  images: string[];
+  thumbnailUrl: string | null;
+  colorOverlap: number; // how many colors match, for sorting
 }
 
 interface ProductOptionRaw {
@@ -158,6 +176,43 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     })
   );
 
+  // Fetch related products: same category, exclude current, published only
+  const currentColors = product.color ?? [];
+  const { data: relatedRaw } = await supabase
+    .from("products")
+    .select("id, name, slug, public_id, category, color, price_display_usd, sale_price_usd, status, images")
+    .eq("category", product.category)
+    .eq("is_published", true)
+    .neq("id", product.id)
+    .limit(12);
+
+  const relatedWithThumbnails: RelatedProduct[] = await Promise.all(
+    (relatedRaw ?? []).map(async (p) => {
+      const pColors = (p.color as string[] | null) ?? [];
+      const overlap = pColors.filter((c) => currentColors.includes(c)).length;
+      const thumbnailUrl = await resolveFirstImageUrl((p.images as string[]) ?? []);
+      return {
+        id: p.id as string,
+        name: p.name as string,
+        slug: p.slug as string,
+        public_id: p.public_id as string,
+        category: p.category as string,
+        color: p.color as string[] | null,
+        price_display_usd: p.price_display_usd as number | null,
+        sale_price_usd: p.sale_price_usd as number | null,
+        status: p.status as string,
+        images: (p.images as string[]) ?? [],
+        thumbnailUrl,
+        colorOverlap: overlap,
+      };
+    })
+  );
+
+  // Sort: color-matching first, then by name; cap at 4
+  const related = relatedWithThumbnails
+    .sort((a, b) => b.colorOverlap - a.colorOverlap || a.name.localeCompare(b.name))
+    .slice(0, 4);
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
       {/* Back */}
@@ -169,6 +224,61 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         productVideos={productVideos}
         options={optionsWithResolvedImages}
       />
+
+      {/* Related products */}
+      {related.length > 0 && (
+        <section className="mt-16 pt-10 border-t border-gray-100 dark:border-gray-800">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500 mb-6">
+            You Might Also Like
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {related.map((p) => {
+              const slug = productSlug(p);
+              const isSold = p.status === "sold";
+              const displayPrice = p.sale_price_usd ?? p.price_display_usd;
+              const needsInquiry = displayPrice != null && requiresInquiry(displayPrice);
+              return (
+                <Link
+                  key={p.id}
+                  href={`/products/${slug}`}
+                  className="group flex flex-col overflow-hidden rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 transition hover:border-emerald-200 dark:hover:border-emerald-800 hover:shadow-sm"
+                >
+                  <div className="relative aspect-square overflow-hidden bg-gray-50 dark:bg-gray-800">
+                    {p.thumbnailUrl ? (
+                      <Image
+                        src={p.thumbnailUrl}
+                        alt={p.name}
+                        fill
+                        sizes="(max-width: 640px) 50vw, 25vw"
+                        className={`object-cover transition duration-300 group-hover:scale-[1.03] ${isSold ? "opacity-60" : ""}`}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-emerald-50 dark:bg-emerald-950/20" />
+                    )}
+                    {isSold && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="rounded-full bg-black/60 px-3 py-1 text-[11px] font-semibold text-white">Sold</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3 flex flex-col flex-1">
+                    <p className="text-xs font-medium text-gray-800 dark:text-gray-200 leading-snug line-clamp-2 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
+                      {p.name}
+                    </p>
+                    <p className="mt-auto pt-2 text-xs text-gray-400 dark:text-gray-500">
+                      {needsInquiry
+                        ? obfuscatedPrice(displayPrice!)
+                        : displayPrice != null
+                        ? `$${displayPrice.toLocaleString()}`
+                        : null}
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
