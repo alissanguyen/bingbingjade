@@ -390,10 +390,10 @@ export function CheckoutClient() {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf9f7] dark:bg-[#0c0b12]">
+    <div className="min-h-screen bg-[#faf9f7] dark:bg-gray-950">
 
       {/* ── Brand header ────────────────────────────────────────── */}
-      <div className="bg-white dark:bg-[#0c0b12] border-b border-stone-200/70 dark:border-stone-800/70">
+      <div className="bg-white dark:bg-gray-950 border-b border-stone-200/70 dark:border-gray-800/70">
         {/* Thin emerald accent line */}
         <div className="bg-linear-to-r from-emerald-700 via-emerald-500 to-emerald-700 opacity-80 h-full" />
         <div className="mx-auto max-w-7xl px-5 sm:px-8 py-7 sm:py-9">
@@ -409,10 +409,10 @@ export function CheckoutClient() {
           <p className="text-[14px] sm:text-sm uppercase tracking-[0.3em] text-emerald-700 dark:text-emerald-500 font-semibold mb-3 sm:mb-6">
             Secure Checkout
           </p>
-          <h1 className="text-2xl sm:text-[2rem] font-semibold tracking-tight text-stone-900 dark:text-stone-100 leading-tight">
+          <h1 className="text-2xl sm:text-[2rem] font-semibold tracking-tight text-stone-900 dark:text-gray-100 leading-tight">
             Review Your Order
           </h1>
-          <p className="mt-2 text-[12px] sm:text-sm text-stone-400 dark:text-stone-500">
+          <p className="mt-2 text-[12px] sm:text-sm text-stone-400 dark:text-gray-500">
             Confirm your selection before completing your purchase.
           </p>
         </div>
@@ -426,7 +426,7 @@ export function CheckoutClient() {
           <div>
             {/* Section label */}
             <div className="flex items-center justify-between mb-6 text-[12px] sm:text-sm">
-              <p className="text-[12px] sm:text-sm uppercase tracking-[0.25em] font-semibold text-stone-400 dark:text-stone-500">
+              <p className="text-[12px] sm:text-sm uppercase tracking-[0.25em] font-semibold text-stone-400 dark:text-gray-500">
                 Your Selection
                 {availableItems.length > 0 && (
                   <span className="ml-1.5 font-normal">· {availableItems.length} {availableItems.length === 1 ? "piece" : "pieces"}</span>
@@ -435,7 +435,7 @@ export function CheckoutClient() {
               {items.length > 0 && (
                 <button
                   onClick={() => { clearCart(); router.push("/products"); }}
-                  className="text-stone-400 dark:text-stone-500 hover:text-red-500 dark:hover:text-red-400 transition-colors tracking-wide"
+                  className="text-stone-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors tracking-wide"
                 >
                   Clear all
                 </button>
@@ -460,10 +460,10 @@ export function CheckoutClient() {
                 return (
                   <div
                     key={`${item.productId}-${item.optionId}`}
-                    className="group bg-white dark:bg-[#141414] rounded-2xl border border-stone-200/80 dark:border-stone-800/80 p-4 sm:p-5 flex gap-4 sm:gap-5 shadow-sm shadow-stone-100 dark:shadow-none"
+                    className="group bg-white dark:bg-gray-900 rounded-2xl border border-stone-200/80 dark:border-gray-800/80 p-4 sm:p-5 flex gap-4 sm:gap-5 shadow-sm shadow-stone-100 dark:shadow-none"
                   >
                     <Link href={productPath} className="shrink-0">
-                      <div className="w-18 h-18 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-stone-100 dark:bg-stone-800">
+                      <div className="w-18 h-18 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-stone-100 dark:bg-gray-800">
                         {item.thumbnail ? (
                           <Image
                             src={item.thumbnail}
@@ -474,7 +474,7 @@ export function CheckoutClient() {
                             unoptimized
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-stone-300 dark:text-stone-600">
+                          <div className="w-full h-full flex items-center justify-center text-stone-300 dark:text-gray-600">
                             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                               <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
                             </svg>
@@ -486,12 +486,12 @@ export function CheckoutClient() {
                       <div>
                         <Link
                           href={productPath}
-                          className="block text-[12px] sm:text-base font-medium text-stone-900 dark:text-stone-100 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors line-clamp-2 leading-snug"
+                          className="block text-[12px] sm:text-base font-medium text-stone-900 dark:text-gray-100 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors line-clamp-2 leading-snug"
                         >
                           {item.productName}
                         </Link>
                         {item.optionLabel && (
-                          <p className="text-[12px] sm:text-[16px] text-stone-400 dark:text-stone-500 mt-1 tracking-wide">{item.optionLabel}</p>
+                          <p className="text-[12px] sm:text-[16px] text-stone-400 dark:text-gray-500 mt-1 tracking-wide">{item.optionLabel}</p>
                         )}
                         {isAvailableNow && (
                           <div
@@ -520,7 +520,7 @@ export function CheckoutClient() {
                     <button
                       onClick={() => handleRemove(item.productId, item.optionId)}
                       aria-label={`Remove ${item.productName}`}
-                      className="self-start mt-1 p-1.5 rounded-lg text-stone-300 dark:text-stone-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors shrink-0"
+                      className="self-start mt-1 p-1.5 rounded-lg text-stone-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors shrink-0"
                     >
                       <XIcon />
                     </button>
@@ -555,14 +555,14 @@ export function CheckoutClient() {
             {soldItems.length > 0 && (
               <div className="mt-3 space-y-2">
                 {soldItems.map((item) => (
-                  <div key={`sold-${item.productId}-${item.optionId}`} className="bg-white dark:bg-[#141414] rounded-2xl border border-red-200 dark:border-red-900/60 p-4 flex gap-4 opacity-75">
-                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-stone-100 dark:bg-stone-800 shrink-0">
+                  <div key={`sold-${item.productId}-${item.optionId}`} className="bg-white dark:bg-gray-900 rounded-2xl border border-red-200 dark:border-red-900/60 p-4 flex gap-4 opacity-75">
+                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-stone-100 dark:bg-gray-800 shrink-0">
                       {item.thumbnail && (
                         <Image src={item.thumbnail} alt={item.productName} width={64} height={64} className="w-full h-full object-cover grayscale opacity-40" unoptimized />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-stone-500 dark:text-stone-400 line-clamp-1">{item.productName}</p>
+                      <p className="text-sm font-medium text-stone-500 dark:text-gray-400 line-clamp-1">{item.productName}</p>
                       {item.optionLabel && <p className="text-[12px] sm:text-[16px] text-stone-400 mt-0.5">{item.optionLabel}</p>}
                       <p className="text-[12px] sm:text-[16px] text-red-500 dark:text-red-400 mt-1.5">This piece is no longer available.</p>
                     </div>
@@ -582,14 +582,14 @@ export function CheckoutClient() {
                     ? `/products/${item.productSlug}-${item.productPublicId}`
                     : `/products/${item.productPublicId}`;
                   return (
-                    <div key={`stale-${item.productId}-${item.optionId}`} className="bg-white dark:bg-[#141414] rounded-2xl border border-amber-200 dark:border-amber-800/60 p-4 flex gap-4">
-                      <div className="w-16 h-16 rounded-xl overflow-hidden bg-stone-100 dark:bg-stone-800 shrink-0">
+                    <div key={`stale-${item.productId}-${item.optionId}`} className="bg-white dark:bg-gray-900 rounded-2xl border border-amber-200 dark:border-amber-800/60 p-4 flex gap-4">
+                      <div className="w-16 h-16 rounded-xl overflow-hidden bg-stone-100 dark:bg-gray-800 shrink-0">
                         {item.thumbnail && (
                           <Image src={item.thumbnail} alt={item.productName} width={64} height={64} className="w-full h-full object-cover opacity-50" unoptimized />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-stone-500 dark:text-stone-400 line-clamp-1">{item.productName}</p>
+                        <p className="text-sm font-medium text-stone-500 dark:text-gray-400 line-clamp-1">{item.productName}</p>
                         {item.optionLabel && <p className="text-[12px] sm:text-[16px] text-stone-400 mt-0.5">{item.optionLabel}</p>}
                         <p className="text-[12px] sm:text-[16px] text-amber-600 dark:text-amber-400 mt-1.5">
                           Updated —{" "}
@@ -607,7 +607,7 @@ export function CheckoutClient() {
 
             {/* Admin unlock — only in beta mode */}
             {!isLiveMode && (
-              <div className="mt-6 rounded-2xl border border-dashed border-stone-200 dark:border-stone-700 bg-white dark:bg-[#141414] px-5 py-4">
+              <div className="mt-6 rounded-2xl border border-dashed border-stone-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-5 py-4">
                 {adminUnlocked ? (
                   <p className="text-[12px] sm:text-base text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
@@ -616,7 +616,7 @@ export function CheckoutClient() {
                 ) : !showAdminInput ? (
                   <button
                     onClick={() => setShowAdminInput(true)}
-                    className="text-[12px] sm:text-[16px] text-stone-300 dark:text-stone-700 hover:text-stone-400 transition-colors"
+                    className="text-[12px] sm:text-[16px] text-stone-300 dark:text-gray-700 hover:text-stone-400 transition-colors"
                   >
                     Admin access
                   </button>
@@ -630,7 +630,7 @@ export function CheckoutClient() {
                         onChange={(e) => { setAdminPassword(e.target.value); setAdminError(false); }}
                         onKeyDown={(e) => { if (e.key === "Enter") handleAdminUnlock(); }}
                         placeholder="Password"
-                        className={`flex-1 rounded-xl border px-4 py-2.5 text-sm bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 outline-none focus:ring-2 focus:ring-emerald-500 ${adminError ? "border-red-400" : "border-stone-200 dark:border-stone-700"}`}
+                        className={`flex-1 rounded-xl border px-4 py-2.5 text-sm bg-white dark:bg-gray-900 text-stone-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-emerald-500 ${adminError ? "border-red-400" : "border-stone-200 dark:border-gray-700"}`}
                       />
                       <button
                         onClick={handleAdminUnlock}
@@ -662,11 +662,11 @@ export function CheckoutClient() {
 
           {/* ── RIGHT: Summary + action ───────────────────────── */}
           <div className="mt-8 lg:mt-0 lg:sticky lg:top-24">
-            <div className="rounded-2xl border border-stone-200/80 dark:border-stone-800/80 bg-white dark:bg-[#141414] overflow-hidden shadow-lg shadow-stone-100/80 dark:shadow-none">
+            <div className="rounded-2xl border border-stone-200/80 dark:border-gray-800/80 bg-white dark:bg-gray-900 overflow-hidden shadow-lg shadow-stone-100/80 dark:shadow-none">
 
               {/* Card header */}
-              <div className="p-4 pb-0 sm:p-6 border-b border-stone-100 dark:border-stone-800">
-                <p className="text-[14px] sm:text-base uppercase tracking-[0.25em] font-semibold text-stone-400 dark:text-stone-500">
+              <div className="p-4 pb-0 sm:p-6 border-b border-stone-100 dark:border-gray-800">
+                <p className="text-[14px] sm:text-base uppercase tracking-[0.25em] font-semibold text-stone-400 dark:text-gray-500">
                   Order Summary
                 </p>
               </div>
@@ -675,7 +675,7 @@ export function CheckoutClient() {
 
                 {/* Subtotal row */}
                 <div className="flex items-center justify-between">
-                  <span className="text-[13px] sm:text-sm text-stone-500 dark:text-stone-400">
+                  <span className="text-[13px] sm:text-sm text-stone-500 dark:text-gray-400">
                     Subtotal{availableItems.length > 0 ? ` · ${availableItems.length} ${availableItems.length === 1 ? "piece" : "pieces"}` : ""}
                   </span>
                   <div className="flex items-center gap-2">
@@ -689,8 +689,8 @@ export function CheckoutClient() {
                 </div>
 
                 {/* ── Discount field ──────────────────────── */}
-                <div className="rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/40 p-2.5 sm:p-3.5 space-y-2.5">
-                  <p className="text-[11px] sm:text-[15px] uppercase tracking-[0.2em] font-semibold text-stone-400 dark:text-stone-500">
+                <div className="rounded-xl border border-stone-200 dark:border-gray-700 bg-stone-50 dark:bg-gray-900/40 p-2.5 sm:p-3.5 space-y-2.5">
+                  <p className="text-[11px] sm:text-[15px] uppercase tracking-[0.2em] font-semibold text-stone-400 dark:text-gray-500">
                     Discount or Referral Code
                   </p>
                   <div className="flex gap-2">
@@ -706,7 +706,7 @@ export function CheckoutClient() {
                       }}
                       onKeyDown={(e) => { if (e.key === "Enter") applyDiscount(); }}
                       placeholder="Enter code"
-                      className="text-[11px] sm:text-[14px] flex-1 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-2 sm:px-3 py-2 text-sm font-mono text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:ring-2 focus:ring-emerald-500 transition-shadow w-full"
+                      className="text-[11px] sm:text-[14px] flex-1 rounded-lg border border-stone-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 sm:px-3 py-2 text-sm font-mono text-stone-900 dark:text-gray-100 placeholder-stone-400 dark:placeholder-gray-600 outline-none focus:ring-2 focus:ring-emerald-500 transition-shadow w-full"
                     />
                     <button
                       type="button"
@@ -733,7 +733,7 @@ export function CheckoutClient() {
                   <div className="flex items-center justify-between py-0.5">
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[12px] sm:text-sm text-stone-700 dark:text-stone-300">Priority Sourcing</span>
+                        <span className="text-[12px] sm:text-sm text-stone-700 dark:text-gray-300">Priority Sourcing</span>
                         <a
                           href="/faq#expedited-sourcing"
                           target="_blank"
@@ -743,7 +743,7 @@ export function CheckoutClient() {
                           learn more
                         </a>
                       </div>
-                      <p className="text-[10px] sm:text-[15px] text-stone-400 dark:text-stone-500 mt-0.5">
+                      <p className="text-[10px] sm:text-[15px] text-stone-400 dark:text-gray-500 mt-0.5">
                         {isPriority
                           ? "$100 base + $10 per piece"
                           : zone === "far"
@@ -758,7 +758,7 @@ export function CheckoutClient() {
                       onClick={() => setPrioritySourcing((v) => !v)}
                       role="switch"
                       aria-checked={prioritySourcing}
-                      className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${prioritySourcing ? "bg-emerald-600" : "bg-stone-200 dark:bg-stone-700"}`}
+                      className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${prioritySourcing ? "bg-emerald-600" : "bg-stone-200 dark:bg-gray-700"}`}
                     >
                       <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${prioritySourcing ? "translate-x-4" : "translate-x-0"}`} />
                     </button>
@@ -769,7 +769,7 @@ export function CheckoutClient() {
                 {availableItems.length > 0 && (
                   <div className="flex items-center justify-between py-0.5">
                     <div>
-                      <p className="text-[12px] sm:text-sm text-stone-700 dark:text-stone-300">Shipping Insurance
+                      <p className="text-[12px] sm:text-sm text-stone-700 dark:text-gray-300">Shipping Insurance
                         <a
                           href="/faq#shipping-insurance"
                           target="_blank"
@@ -778,7 +778,7 @@ export function CheckoutClient() {
                         >
                           learn more
                         </a></p>
-                      <p className="text-[10px] sm:text-[15px] text-stone-400 dark:text-stone-500 mt-0.5">
+                      <p className="text-[10px] sm:text-[15px] text-stone-400 dark:text-gray-500 mt-0.5">
                         5% of item value 
                       </p>
                     </div>
@@ -787,7 +787,7 @@ export function CheckoutClient() {
                       onClick={() => setShippingInsurance((v) => !v)}
                       role="switch"
                       aria-checked={shippingInsurance}
-                      className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${shippingInsurance ? "bg-emerald-600" : "bg-stone-200 dark:bg-stone-700"}`}
+                      className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${shippingInsurance ? "bg-emerald-600" : "bg-stone-200 dark:bg-gray-700"}`}
                     >
                       <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${shippingInsurance ? "translate-x-4" : "translate-x-0"}`} />
                     </button>
@@ -796,8 +796,8 @@ export function CheckoutClient() {
 
                 {/* ── Shipping address (Stripe Address Element) ─── */}
                 {availableItems.length > 0 && (
-                  <div className="rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/40 p-2.5 sm:p-3.5 space-y-2.5">
-                    <p className="text-[11px] sm:text-[15px] uppercase tracking-[0.2em] font-semibold text-stone-400 dark:text-stone-500">
+                  <div className="rounded-xl border border-stone-200 dark:border-gray-700 bg-stone-50 dark:bg-gray-900/40 p-2.5 sm:p-3.5 space-y-2.5">
+                    <p className="text-[11px] sm:text-[15px] uppercase tracking-[0.2em] font-semibold text-stone-400 dark:text-gray-500">
                       Shipping Address
                     </p>
                     <Elements
@@ -807,17 +807,17 @@ export function CheckoutClient() {
                           ? {
                               variables: {
                                 colorPrimary: "#34d399",
-                                colorBackground: "#1c1917",
-                                colorText: "#f5f5f4",
+                                colorBackground: "#111827",
+                                colorText: "#f3f4f6",
                                 colorDanger: "#f87171",
                                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
                                 borderRadius: "8px",
                                 fontSizeBase: "13px",
                               },
                               rules: {
-                                ".Input": { border: "1px solid #44403c", boxShadow: "none", backgroundColor: "#1c1917", color: "#f5f5f4" },
+                                ".Input": { border: "1px solid #374151", boxShadow: "none", backgroundColor: "#111827", color: "#f3f4f6" },
                                 ".Input:focus": { border: "1px solid #34d399", boxShadow: "0 0 0 2px rgba(52,211,153,0.2)", outline: "none" },
-                                ".Label": { color: "#a8a29e", fontSize: "11px", fontWeight: "600", letterSpacing: "0.1em", textTransform: "uppercase" },
+                                ".Label": { color: "#9ca3af", fontSize: "11px", fontWeight: "600", letterSpacing: "0.1em", textTransform: "uppercase" },
                                 ".Error": { color: "#f87171" },
                               },
                             }
@@ -854,33 +854,33 @@ export function CheckoutClient() {
 
                 {/* ── Payment method selection ───────────────────────── */}
                 {availableItems.length > 0 && (
-                  <div className="rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/40 p-2.5 sm:p-3.5 space-y-2">
-                    <p className="text-[11px] sm:text-[15px] uppercase tracking-[0.2em] font-semibold text-stone-400 dark:text-stone-500">
+                  <div className="rounded-xl border border-stone-200 dark:border-gray-700 bg-stone-50 dark:bg-gray-900/40 p-2.5 sm:p-3.5 space-y-2">
+                    <p className="text-[11px] sm:text-[15px] uppercase tracking-[0.2em] font-semibold text-stone-400 dark:text-gray-500">
                       Payment Method
                     </p>
                     {/* Standard */}
-                    <label className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${paymentMethod === "standard" ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30" : "border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600"}`}>
+                    <label className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${paymentMethod === "standard" ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30" : "border-stone-200 dark:border-gray-700 hover:border-stone-300 dark:hover:border-gray-600"}`}>
                       <input type="radio" name="paymentMethod" value="standard" checked={paymentMethod === "standard"} onChange={() => setPaymentMethod("standard")} className="mt-0.5 accent-emerald-600" />
                       <div>
-                        <p className="text-[13px] sm:text-sm font-semibold text-stone-800 dark:text-stone-200">Standard</p>
-                        <p className="text-[11px] sm:text-[13px] text-stone-500 dark:text-stone-400 mt-0.5">Pay in full via credit or debit card</p>
+                        <p className="text-[13px] sm:text-sm font-semibold text-stone-800 dark:text-gray-200">Standard</p>
+                        <p className="text-[11px] sm:text-[13px] text-stone-500 dark:text-gray-400 mt-0.5">Pay in full via credit or debit card</p>
                       </div>
                     </label>
                     {/* BNPL */}
                     {bnplEligible ? (
-                      <label className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${paymentMethod === "bnpl" ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30" : "border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600"}`}>
+                      <label className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${paymentMethod === "bnpl" ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30" : "border-stone-200 dark:border-gray-700 hover:border-stone-300 dark:hover:border-gray-600"}`}>
                         <input type="radio" name="paymentMethod" value="bnpl" checked={paymentMethod === "bnpl"} onChange={() => setPaymentMethod("bnpl")} className="mt-0.5 accent-emerald-600" />
                         <div>
-                          <p className="text-[13px] sm:text-sm font-semibold text-stone-800 dark:text-stone-200">Pay in installments</p>
-                          <p className="text-[11px] sm:text-[13px] text-stone-500 dark:text-stone-400 mt-0.5">Klarna, Afterpay — subject to eligibility at checkout</p>
+                          <p className="text-[13px] sm:text-sm font-semibold text-stone-800 dark:text-gray-200">Pay in installments</p>
+                          <p className="text-[11px] sm:text-[13px] text-stone-500 dark:text-gray-400 mt-0.5">Klarna, Afterpay — subject to eligibility at checkout</p>
                         </div>
                       </label>
                     ) : (
-                      <div className="flex items-start gap-3 p-3 rounded-lg border-2 border-stone-100 dark:border-stone-800 opacity-50">
+                      <div className="flex items-start gap-3 p-3 rounded-lg border-2 border-stone-100 dark:border-gray-800 opacity-50">
                         <input type="radio" disabled className="mt-0.5" />
                         <div>
-                          <p className="text-[13px] sm:text-sm font-semibold text-stone-500 dark:text-stone-500">Pay in installments</p>
-                          <p className="text-[11px] sm:text-[13px] text-stone-400 dark:text-stone-600 mt-0.5">Only available for US shipping addresses</p>
+                          <p className="text-[13px] sm:text-sm font-semibold text-stone-500 dark:text-gray-500">Pay in installments</p>
+                          <p className="text-[11px] sm:text-[13px] text-stone-400 dark:text-gray-600 mt-0.5">Only available for US shipping addresses</p>
                         </div>
                       </div>
                     )}
@@ -888,7 +888,7 @@ export function CheckoutClient() {
                 )}
 
                 {/* ── Line items ───────────────────────────── */}
-                <div className="border-t border-stone-100 dark:border-stone-800 pt-4 space-y-2.5">
+                <div className="border-t border-stone-100 dark:border-gray-800 pt-4 space-y-2.5">
                   {discountDollars > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-[14px] sm:text-sm text-emerald-700 dark:text-emerald-400">Discount applied</span>
@@ -898,51 +898,51 @@ export function CheckoutClient() {
 
                   {insuranceFee > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-[14px] sm:text-sm text-stone-500 dark:text-stone-400">Shipping Insurance · 5%</span>
-                      <span className="text-[14px] sm:text-sm font-medium text-stone-900 dark:text-stone-100">{fmtPrice(insuranceFee)}</span>
+                      <span className="text-[14px] sm:text-sm text-stone-500 dark:text-gray-400">Shipping Insurance · 5%</span>
+                      <span className="text-[14px] sm:text-sm font-medium text-stone-900 dark:text-gray-100">{fmtPrice(insuranceFee)}</span>
                     </div>
                   )}
 
                   <div className="flex justify-between text-sm">
-                    <span className="text-[12px] sm:text-sm text-stone-500 dark:text-stone-400">
+                    <span className="text-[12px] sm:text-sm text-stone-500 dark:text-gray-400">
                       {isPriority ? "Priority Sourcing" : "Shipping"}
                       {availableItems.length > 1 ? ` · ${availableItems.length} pieces` : ""}
                     </span>
-                    <span className="text-[12px] sm:text-sm font-medium text-stone-900 dark:text-stone-100">
+                    <span className="text-[12px] sm:text-sm font-medium text-stone-900 dark:text-gray-100">
                       {shipping != null ? fmtPrice(shipping) : "—"}
                     </span>
                   </div>
 
                   <div className="flex justify-between text-sm">
-                    <span className="text-[12px] sm:text-sm text-stone-500 dark:text-stone-400">
+                    <span className="text-[12px] sm:text-sm text-stone-500 dark:text-gray-400">
                       {paymentMethod === "bnpl" ? "Installment Fee" : "Transaction Fee"}
                     </span>
-                    <span className="text-[12px] sm:text-sm font-medium text-stone-900 dark:text-stone-100">
+                    <span className="text-[12px] sm:text-sm font-medium text-stone-900 dark:text-gray-100">
                       {txFee != null ? fmtPrice(txFee) : "—"}
                     </span>
                   </div>
 
                   {taxAmountCents > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-[12px] sm:text-sm text-stone-500 dark:text-stone-400">
+                      <span className="text-[12px] sm:text-sm text-stone-500 dark:text-gray-400">
                         Washington State Tax {taxLoading && <span className="text-stone-400">(updating…)</span>}
                       </span>
-                      <span className="text-[12px] sm:text-sm font-medium text-stone-900 dark:text-stone-100">
+                      <span className="text-[12px] sm:text-sm font-medium text-stone-900 dark:text-gray-100">
                         {fmtPrice(taxAmountCents / 100)}
                       </span>
                     </div>
                   )}
                   {taxLoading && taxAmountCents === 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-[12px] sm:text-sm text-stone-500 dark:text-stone-400">Washington State Tax</span>
+                      <span className="text-[12px] sm:text-sm text-stone-500 dark:text-gray-400">Washington State Tax</span>
                       <span className="text-[12px] sm:text-sm text-stone-400">Calculating…</span>
                     </div>
                   )}
                 </div>
 
                 {/* ── Grand total ──────────────────────────── */}
-                <div className="border-t-2 border-stone-900 dark:border-stone-200 pt-4 flex items-center justify-between">
-                  <span className="text-[13px] sm:text-[16px] uppercase tracking-[0.15em] font-semibold text-stone-500 dark:text-stone-400">Total</span>
+                <div className="border-t-2 border-stone-900 dark:border-gray-700 pt-4 flex items-center justify-between">
+                  <span className="text-[13px] sm:text-[16px] uppercase tracking-[0.15em] font-semibold text-stone-500 dark:text-gray-400">Total</span>
                   <span className="text-[16px] sm:text-lg font-semibold tracking-tight text-emerald-600 dark:text-emerald-500">
                     {grandTotal != null ? fmtPrice(grandTotal) : "—"}
                   </span>
@@ -978,7 +978,7 @@ export function CheckoutClient() {
                 ) : (
                   <div
                     ref={ctaRef as React.RefObject<HTMLDivElement & HTMLButtonElement>}
-                    className="text-[14px] sm:text-sm w-full rounded-full bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-500 py-4 text-sm font-semibold text-center cursor-not-allowed"
+                    className="text-[14px] sm:text-sm w-full rounded-full bg-stone-200 dark:bg-gray-800 text-stone-400 dark:text-gray-500 py-4 text-sm font-semibold text-center cursor-not-allowed"
                   >
                     Checkout Unavailable
                   </div>
@@ -986,7 +986,7 @@ export function CheckoutClient() {
 
                 <Link
                   href="/products"
-                  className="block text-center text-[12px] sm:text-sm text-stone-400 dark:text-stone-500 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                  className="block text-center text-[12px] sm:text-sm text-stone-400 dark:text-gray-500 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
                 >
                   ← Continue Shopping
                 </Link>
@@ -994,7 +994,7 @@ export function CheckoutClient() {
               </div>{/* end card body */}
 
               {/* Trust badges */}
-              <div className="border-t border-stone-100 dark:border-stone-800 px-6 py-5 space-y-4 bg-stone-50/50 dark:bg-stone-900/20">
+              <div className="border-t border-stone-100 dark:border-gray-800 px-6 py-5 space-y-4 bg-stone-50/50 dark:bg-gray-900/20">
                 {[
                   {
                     icon: (
@@ -1027,8 +1027,8 @@ export function CheckoutClient() {
                   <div key={badge.title} className="flex items-start gap-3">
                     <span className="text-emerald-600 dark:text-emerald-500 shrink-0 mt-1">{badge.icon}</span>
                     <div>
-                      <p className="text-[12px] sm:text-[17px] font-semibold text-stone-700 dark:text-stone-300">{badge.title}</p>
-                      <p className="text-[11px] sm:text-[15px] text-stone-400 dark:text-stone-500 mt-0.5">{badge.body}</p>
+                      <p className="text-[12px] sm:text-[17px] font-semibold text-stone-700 dark:text-gray-300">{badge.title}</p>
+                      <p className="text-[11px] sm:text-[15px] text-stone-400 dark:text-gray-500 mt-0.5">{badge.body}</p>
                     </div>
                   </div>
                 ))}
@@ -1048,11 +1048,11 @@ export function CheckoutClient() {
       >
         {/* Gradient fade above the bar */}
         <div className="h-8 bg-gradient-to-t from-[#faf9f7] dark:from-[#0d0d0d] to-transparent pointer-events-none" />
-        <div className="bg-white/95 dark:bg-[#141414]/95 backdrop-blur-md border-t border-stone-200 dark:border-stone-800 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-stone-200 dark:border-gray-800 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           <div className="flex items-center gap-3">
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-stone-400 dark:text-stone-500">Total</p>
-              <p className="text-lg font-bold text-stone-900 dark:text-stone-100 tracking-tight">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-stone-400 dark:text-gray-500">Total</p>
+              <p className="text-lg font-bold text-stone-900 dark:text-gray-100 tracking-tight">
                 {grandTotal != null ? fmtPrice(grandTotal) : "—"}
               </p>
             </div>
