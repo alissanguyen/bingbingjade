@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
+import { FooterSubscribeForm } from "./components/FooterSubscribeForm";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { Navbar } from "./components/Navbar";
 import { headers } from "next/headers";
@@ -101,22 +102,74 @@ export default async function RootLayout({
 
               <main className="flex-1">{children}</main>
 
-              <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 py-8">
-                <div className="mx-auto max-w-5xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs sm:text-sm text-gray-400 dark:text-gray-500">
-                  <span>© {new Date().getFullYear()} BingBing Jade. All rights reserved.</span>
-                  <div className="flex gap-6 text-xs sm:text-sm">
-                    <Link href="/size-guide" className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
-                      Size Guide
-                    </Link>
-                    <Link href="/faq" className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
-                      FAQ
-                    </Link>
-                    <Link href="/policy" className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
-                      Store Policy
-                    </Link>
-                    <Link href="/privacy-policy" className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
-                      Privacy Policy
-                    </Link>
+              <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
+                {/* ── Main footer body ── */}
+                <div className="mx-auto max-w-6xl px-6 pt-14 pb-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+
+                  {/* Brand */}
+                  <div className="lg:col-span-1">
+                    <p className="text-sm font-bold tracking-widest uppercase text-gray-900 dark:text-gray-100 mb-3">BingBing Jade</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed max-w-[200px]">
+                      Natural Type A jadeite jewelry — no dye, no heat, no polymer. Certified &amp; guaranteed.
+                    </p>
+                  </div>
+
+                  {/* Shop */}
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">Shop</p>
+                    <ul className="space-y-2.5">
+                      {[
+                        { href: "/products", label: "All Pieces" },
+                        { href: "/products?category=bracelet", label: "Bracelets" },
+                        { href: "/products?category=bangle", label: "Bangles" },
+                        { href: "/products?category=pendant", label: "Pendants" },
+                        { href: "/products?category=ring", label: "Rings" },
+                        { href: "/custom-sourcing", label: "Custom Sourcing" },
+                      ].map(({ href, label }) => (
+                        <li key={href}>
+                          <Link href={href} className="text-xs text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
+                            {label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Help */}
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">Help</p>
+                    <ul className="space-y-2.5">
+                      {[
+                        { href: "/faq", label: "FAQ & Shipping" },
+                        { href: "/size-guide", label: "Size Guide" },
+                        { href: "/policy", label: "Store Policy" },
+                        { href: "/privacy-policy", label: "Privacy Policy" },
+                      ].map(({ href, label }) => (
+                        <li key={href}>
+                          <Link href={href} className="text-xs text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
+                            {label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Newsletter */}
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">Newsletter</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-4">
+                      New arrivals, restocks, and a welcome discount for first-time subscribers.
+                    </p>
+                    <FooterSubscribeForm />
+                    <p className="text-[10px] text-gray-400 dark:text-gray-600 mt-2.5">No spam. Unsubscribe anytime.</p>
+                  </div>
+                </div>
+
+                {/* ── Bottom bar ── */}
+                <div className="border-t border-gray-100 dark:border-gray-800">
+                  <div className="mx-auto max-w-6xl px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-gray-400 dark:text-gray-600">
+                    <span>© {new Date().getFullYear()} BingBing Jade. All rights reserved.</span>
+                    <span className="hidden sm:block">Natural Type A Jadeite · Certified · US Based</span>
                   </div>
                 </div>
               </footer>
