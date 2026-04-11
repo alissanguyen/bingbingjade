@@ -384,7 +384,7 @@ export default async function Products({
                         ? (product.sale_price_usd ?? product.price_display_usd)
                         : product.price_display_usd;
                       if (!bnplPrice || requiresInquiry(bnplPrice)) return null;
-                      return <PaymentMessaging price={bnplPrice} className="mt-2" />;
+                      return <PaymentMessaging price={bnplPrice} compact className="mt-1.5" />;
                     })()}
                   </div>
 
