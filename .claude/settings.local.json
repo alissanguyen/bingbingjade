@@ -53,7 +53,9 @@
       "Bash(__NEW_LINE_ab00fae4e299700e__ sed:*)",
       "Bash(node -e \"require\\(''''@stripe/react-stripe-js''''\\)\")",
       "Bash(npm view:*)",
-      "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -type f -path */supabase/* -name *.sql)"
+      "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -type f -path */supabase/* -name *.sql)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(claude plugin:*)"
     ]
   }
 }

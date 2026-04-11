@@ -66,7 +66,7 @@ export function FooterSubscribeForm() {
           placeholder="your@email.com"
           required
           disabled={status === "loading"}
-          className="flex-1 min-w-0 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60"
+          className="flex-1 min-w-0 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-[14px] sm:text-[17px] text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60"
         />
         <button
           type="submit"

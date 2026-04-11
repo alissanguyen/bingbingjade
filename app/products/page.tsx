@@ -454,6 +454,13 @@ export default async function Products({
                         </span>
                       )}
                     </div>
+                    {product.status !== "sold" && (() => {
+                      const bnplPrice = product.status === "on_sale"
+                        ? (product.sale_price_usd ?? product.price_display_usd)
+                        : product.price_display_usd;
+                      if (!bnplPrice || requiresInquiry(bnplPrice)) return null;
+                      return <PaymentMessaging price={bnplPrice} compact className="mt-1.5" />;
+                    })()}
                   </div>
                 </ProductCardLink>
               ))}

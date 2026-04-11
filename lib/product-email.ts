@@ -172,11 +172,11 @@ export function buildProductShowcaseHtml(params: {
               <v:fill type="frame" src="${BANNER_IMAGE}" color="#1a3d35"/>
               <v:textbox inset="0,0,0,0">
             <![endif]-->
-            <div style="background-image:url('${BANNER_IMAGE}');background-size:cover;background-position:center;min-height:520px;position:relative;background-color:#1a3d35;">
+            <div style="background-image:url('${BANNER_IMAGE}');background-size:cover;background-position:center;background-color:#1a3d35;">
               <!-- Dark overlay table -->
-              <table width="100%" cellpadding="0" cellspacing="0">
+              <table width="100%" cellpadding="0" cellspacing="0" style="min-height:520px;">
                 <tr>
-                  <td style="background:linear-gradient(to bottom,rgba(8,24,18,0.60) 0%,rgba(8,24,18,0.80) 100%);padding:100px 80px 96px;text-align:center;">
+                  <td height="520" style="background:linear-gradient(to bottom,rgba(8,24,18,0.60) 0%,rgba(8,24,18,0.14) 100%);padding:100px 80px 96px;text-align:center;vertical-align:middle;">
                     ${captionLine1 ? `<p class="banner-eyebrow" style="margin:0 0 16px;font-size:16px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#6ee7b7!important;-webkit-text-fill-color:#6ee7b7!important;"><font color="#6ee7b7">${captionLine1}</font></p>` : ""}
                     ${captionLine2
                       ? `<h1 class="banner-heading" style="margin:0;font-size:52px;font-weight:700;color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;letter-spacing:-0.01em;line-height:1.2;"><font color="#ffffff">${captionLine2}</font></h1>`

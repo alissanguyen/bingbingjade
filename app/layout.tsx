@@ -144,6 +144,7 @@ export default async function RootLayout({
                         { href: "/size-guide", label: "Size Guide" },
                         { href: "/policy", label: "Store Policy" },
                         { href: "/privacy-policy", label: "Privacy Policy" },
+                        
                       ].map(({ href, label }) => (
                         <li key={href}>
                           <Link href={href} className="text-xs text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
@@ -161,13 +162,13 @@ export default async function RootLayout({
                       New arrivals, restocks, and a welcome discount for first-time subscribers.
                     </p>
                     <FooterSubscribeForm />
-                    <p className="text-[10px] text-gray-400 dark:text-gray-600 mt-2.5">No spam. Unsubscribe anytime.</p>
+                    <p className="text-[11px] sm:text-[14px] text-gray-400 dark:text-gray-600 mt-2.5">No spam. Unsubscribe anytime.</p>
                   </div>
                 </div>
 
                 {/* ── Bottom bar ── */}
                 <div className="border-t border-gray-100 dark:border-gray-800">
-                  <div className="mx-auto max-w-6xl px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-gray-400 dark:text-gray-600">
+                  <div className="mx-auto max-w-6xl px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] sm:text-[15px] text-gray-400 dark:text-gray-600">
                     <span>© {new Date().getFullYear()} BingBing Jade. All rights reserved.</span>
                     <span className="hidden sm:block">Natural Type A Jadeite · Certified · US Based</span>
                   </div>
