@@ -45,7 +45,15 @@
       "Bash(grep -n select\\\\\\(*\\\\\\) /Users/nouveau/Documents/workspaces/jade-shop/app/api/**/*.ts)",
       "Bash(cat /Users/nouveau/Documents/workspaces/jade-shop/app/orders-admin/[id]/OrderDetailClient.tsx)",
       "Bash(grep -r \"select\\(\\\\`\\\\s*\\\\*\" /Users/nouveau/Documents/workspaces/jade-shop/app --include=\"*.ts\" --include=\"*.tsx\" -A 1)",
-      "Bash(grep -A 10 \"from\\(\"\"orders\"\"\\)\" /Users/nouveau/Documents/workspaces/jade-shop/app/orders-admin/[id]/page.tsx)"
+      "Bash(grep -A 10 \"from\\(\"\"orders\"\"\\)\" /Users/nouveau/Documents/workspaces/jade-shop/app/orders-admin/[id]/page.tsx)",
+      "Bash(\"/Users/nouveau/Documents/workspaces/jade-shop/supabase/migration_038.sql\":*)",
+      "Bash(sed -i '' 's/\\\\[\"\"bracelet\"\", \"\"bangle\"\", \"\"ring\"\", \"\"pendant\"\", \"\"necklace\"\", \"\"set\"\", \"\"other\"\", \"\"custom_order\"\"\\\\] as const/[\"\"bracelet\"\", \"\"bangle\"\", \"\"ring\"\", \"\"pendant\"\", \"\"necklace\"\", \"\"set\"\", \"\"earring\"\", \"\"raw_material\"\"] as const/g' \"/Users/nouveau/Documents/workspaces/jade-shop/app/products-admin/ProductsAdminClient.tsx\")",
+      "Bash(__NEW_LINE_ab0dc3d886a542c3__ sed:*)",
+      "Bash(sed -i '' 's/custom_order: \"\"Custom Order\"\",/raw_material: \"\"Raw Material\"\",/' \"/Users/nouveau/Documents/workspaces/jade-shop/app/profile/page.tsx\" \"/Users/nouveau/Documents/workspaces/jade-shop/app/admin/AdminProfileClient.tsx\")",
+      "Bash(__NEW_LINE_ab00fae4e299700e__ sed:*)",
+      "Bash(node -e \"require\\(''''@stripe/react-stripe-js''''\\)\")",
+      "Bash(npm view:*)",
+      "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -type f -path */supabase/* -name *.sql)"
     ]
   }
 }
