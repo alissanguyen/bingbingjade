@@ -24,7 +24,7 @@ export function getPaymentMessaging(price: number): MessagingResult | null {
 function AffirmLogo() {
   return (
     <svg
-      viewBox="0 8 429 163"
+      viewBox="0 63 429 108"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-label="Affirm"
@@ -48,7 +48,7 @@ function AffirmLogo() {
 function AfterpayLogo() {
   return (
     <svg
-      viewBox="130 30 1320 490"
+      viewBox="185 0 1215 550.4"
       xmlns="http://www.w3.org/2000/svg"
       aria-label="Afterpay"
       className="h-4 w-auto shrink-0"
@@ -87,7 +87,7 @@ export function PaymentMessaging({
 
   const amount = (
     <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-      ${info.monthly}/mo
+      ${info.monthly}<span className="text-gray-400 dark:text-gray-500">/mo</span>
     </span>
   );
 
