@@ -6,11 +6,11 @@ export default async function CareTipsPage() {
 
   const { data } = await supabaseAdmin
     .from("orders")
-    .select("id, order_number, customer_name, customer_email, delivered_at, created_at")
+    .select("id, order_number, customer_name, customer_email, created_at")
     .eq("order_status", "delivered")
     .not("customer_email", "is", null)
-    .gte("updated_at", since)
-    .order("delivered_at", { ascending: false, nullsFirst: false });
+    .gte("created_at", since)
+    .order("created_at", { ascending: false });
 
   return <CareTipsClient orders={(data ?? []) as DeliveredOrder[]} />;
 }

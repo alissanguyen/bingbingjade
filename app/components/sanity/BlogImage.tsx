@@ -12,6 +12,7 @@ type BlogImageProps = {
 }
 
 export function BlogImage({ value }: BlogImageProps) {
+    if (!value?.asset) return null
     const layout = value.layout ?? 'wide'
 
     const className =

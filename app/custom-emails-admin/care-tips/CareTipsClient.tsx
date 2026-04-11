@@ -9,7 +9,6 @@ export interface DeliveredOrder {
   order_number: string | null;
   customer_name: string | null;
   customer_email: string | null;
-  delivered_at: string | null;
   created_at: string;
 }
 
@@ -114,7 +113,7 @@ export function CareTipsClient({ orders }: { orders: DeliveredOrder[] }) {
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-                      {o.customer_email ?? "No email"} · {o.delivered_at ? fmt(o.delivered_at) : fmt(o.created_at)}
+                      {o.customer_email ?? "No email"} · {fmt(o.created_at)}
                     </p>
                   </div>
                 </label>

@@ -28,7 +28,7 @@ export function ProductReferenceCard({ value }: ProductReferenceCardProps) {
                 href={`/products/${product.slug}`}
                 className="grid gap-4 p-4 sm:grid-cols-[120px_1fr]"
             >
-                {product.thumbnail?.asset ? (
+                {product.thumbnail?.asset != null ? (
                     <Image
                         src={urlFor(product.thumbnail.asset).width(240).height(240).quality(85).url()}
                         alt={product.thumbnail.alt || product.title}

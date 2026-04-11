@@ -33,7 +33,7 @@ export function NewBlogClient({
   subscriberCount: number;
 }) {
   const [selectedPostId, setSelectedPostId] = useState<string | null>(posts[0]?.id ?? null);
-  const [subject, setSubject] = useState(posts[0] ? `From our journal — ${posts[0].title}` : "");
+  const [subject, setSubject] = useState(posts[0] ? `BingBing Educational Blog — ${posts[0].title}` : "");
   const [targetMode, setTargetMode] = useState<"all" | "selected">("all");
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
@@ -46,7 +46,7 @@ export function NewBlogClient({
 
   function selectPost(p: BlogPost) {
     setSelectedPostId(p.id);
-    setSubject(`From our journal — ${p.title}`);
+    setSubject(`BingBing Educational Blog — ${p.title}`);
   }
 
   function validate() {

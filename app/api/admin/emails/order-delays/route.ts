@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   // Preview uses the first order as sample
   if (preview) {
     const first = orders[0];
-    const html = buildOrderDelayHtml({ customerName: first.customer_name, customMessage: body.customMessage });
+    const html = buildOrderDelayHtml({ customerName: first.customer_name, orderNumber: first.order_number, customMessage: body.customMessage });
     return NextResponse.json({ html });
   }
 
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
           from,
           to: o.customer_email!,
           subject,
-          html: buildOrderDelayHtml({ customerName: o.customer_name, customMessage: body.customMessage }),
+          html: buildOrderDelayHtml({ customerName: o.customer_name, orderNumber: o.order_number, customMessage: body.customMessage }),
         }))
       );
       sent += chunk.length;
