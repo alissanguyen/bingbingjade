@@ -247,6 +247,116 @@ export function buildBroadcastHtml(params: {
 </html>`;
 }
 
+// ── Customer coupon email (admin-issued) ─────────────────────────────────────
+
+/**
+ * Sent by admin when issuing a personal coupon to a specific customer.
+ * Purpose: "thank_you" (Thank You Note) or "retention" (We Miss You).
+ */
+export async function sendCustomerCouponEmail(params: {
+  customerEmail: string;
+  couponCode: string;
+  purpose: "thank_you" | "retention";
+  discountLabel: string; // e.g. "$15 off" or "10% off"
+  expiresAt?: Date | null;
+}): Promise<void> {
+  const resend = getResend();
+  if (!resend) return;
+
+  const siteUrl = getSiteUrl();
+  const from = "BingBing Jade <notification@bingbingjade.com>";
+  const { customerEmail, couponCode, purpose, discountLabel, expiresAt } = params;
+
+  const isThankYou = purpose === "thank_you";
+  const eyebrow = isThankYou ? "Thank You" : "We Miss You";
+  const headline = isThankYou
+    ? "A little gift, just for you"
+    : "It's been a while — here's something special";
+  const body = isThankYou
+    ? `Thank you so much for your order — it means the world to us. As a small token of our appreciation, we've put together a personal discount, just for you. We hope to see you again soon!`
+    : `We noticed it's been a while since your last visit, and we've been thinking of you. Here's a personal discount code to welcome you back — we'd love to have you shop with us again.`;
+  const expiryStr = expiresAt
+    ? expiresAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+    : null;
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+
+        <tr>
+          <td style="background:#065f46;padding:32px 40px;text-align:center;">
+            <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:#6ee7b7;">${eyebrow}</p>
+            <h1 style="margin:8px 0 0;font-size:26px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">BingBing Jade</h1>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:36px 40px;">
+            <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:#111827;">${headline}</p>
+            <p style="margin:0 0 28px;font-size:15px;color:#374151;line-height:1.65;">${body}</p>
+
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:28px;">
+              <tr>
+                <td style="padding:24px;text-align:center;">
+                  <p style="margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:#059669;">Your Personal Coupon</p>
+                  <p style="margin:0;font-size:36px;font-weight:800;color:#065f46;letter-spacing:0.16em;">${couponCode}</p>
+                  <p style="margin:10px 0 0;font-size:14px;font-weight:600;color:#065f46;">${discountLabel}</p>
+                  ${expiryStr ? `<p style="margin:6px 0 0;font-size:12px;color:#6b7280;">Valid until ${expiryStr}</p>` : ""}
+                </td>
+              </tr>
+            </table>
+
+            <table cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+              <tr>
+                <td style="background:#065f46;border-radius:999px;">
+                  <a href="${siteUrl}/products" style="display:inline-block;padding:13px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">
+                    Browse Our Collection &rarr;
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.6;">
+              Enter code <strong>${couponCode}</strong> at checkout. This coupon is personal and cannot be shared.
+            </p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:20px 40px 28px;border-top:1px solid #f3f4f6;text-align:center;">
+            <p style="margin:0;font-size:12px;color:#9ca3af;">
+              &copy; ${new Date().getFullYear()} BingBing Jade &middot;
+              <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  try {
+    await resend.emails.send({
+      from,
+      to: customerEmail,
+      bcc: "bingbing.jade2@gmail.com",
+      subject: isThankYou
+        ? `A thank-you gift from BingBing Jade: ${couponCode}`
+        : `We miss you — here's ${discountLabel} on us: ${couponCode}`,
+      html,
+    });
+  } catch (err) {
+    console.error("[discount-emails] Failed to send customer coupon email:", err);
+    throw err;
+  }
+}
+
 // ── Referral invite email ─────────────────────────────────────────────────────
 
 /**

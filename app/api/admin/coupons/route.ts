@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser, isAdmin } from "@/lib/approved-auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { sendCustomerCouponEmail } from "@/lib/discount-emails";
 
 // GET /api/admin/coupons — list all campaigns with redemption counts
 export async function GET(req: NextRequest) {
@@ -55,6 +56,8 @@ export async function POST(req: NextRequest) {
     max_redemptions_per_customer?: number;
     max_total_redemptions?: number | null;
     notes?: string | null;
+    customer_email?: string | null;
+    coupon_purpose?: "thank_you" | "retention" | null;
   };
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
@@ -68,6 +71,9 @@ export async function POST(req: NextRequest) {
   if (body.discount_type !== "tiered" && (body.discount_value == null || body.discount_value <= 0)) {
     return NextResponse.json({ error: "discount_value is required for fixed/percent types." }, { status: 400 });
   }
+
+  const customerEmail = body.customer_email?.trim().toLowerCase() || null;
+  const couponPurpose = body.coupon_purpose ?? null;
 
   const { data, error } = await supabaseAdmin
     .from("coupon_campaigns")
@@ -85,6 +91,8 @@ export async function POST(req: NextRequest) {
       max_total_redemptions: body.max_total_redemptions ?? null,
       notes: body.notes?.trim() || null,
       created_by: "admin",
+      customer_email: customerEmail,
+      coupon_purpose: couponPurpose,
     })
     .select("*")
     .single();
@@ -94,6 +102,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "A campaign with this code already exists." }, { status: 409 });
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Send email if this is a personal customer coupon
+  if (customerEmail && couponPurpose && data) {
+    const discountType = body.discount_type!;
+    const discountValue = body.discount_value;
+    const discountLabel =
+      discountType === "tiered"
+        ? "$10/$20 off"
+        : discountType === "percent"
+        ? `${discountValue}% off`
+        : `$${discountValue} off`;
+
+    const expiresAt = body.ends_at ? new Date(body.ends_at) : null;
+
+    // Fire-and-forget — don't fail the create if email fails
+    sendCustomerCouponEmail({
+      customerEmail,
+      couponCode: code,
+      purpose: couponPurpose,
+      discountLabel,
+      expiresAt,
+    }).catch((err) => console.error("[coupons] Failed to send customer coupon email:", err));
   }
 
   return NextResponse.json(data, { status: 201 });

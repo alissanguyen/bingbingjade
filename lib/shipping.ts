@@ -86,6 +86,5 @@ export const BNPL_METHODS = ["klarna", "afterpay_clearpay", "affirm", "zip"] as 
 export type BnplMethod = typeof BNPL_METHODS[number];
 
 // Currently active BNPL methods sent to Stripe.
-// affirm: disabled — business not yet eligible
 // zip: disabled — not yet integrated
-export const ACTIVE_BNPL_METHODS: BnplMethod[] = ["klarna", "afterpay_clearpay"];
+export const ACTIVE_BNPL_METHODS: BnplMethod[] = ["klarna", "afterpay_clearpay", "affirm"];

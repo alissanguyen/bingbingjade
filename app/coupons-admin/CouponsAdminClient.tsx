@@ -18,6 +18,8 @@ export type Campaign = {
   notes: string | null;
   created_at: string;
   redemption_count: number;
+  customer_email: string | null;
+  coupon_purpose: "thank_you" | "retention" | null;
 };
 
 function fmt(iso: string) {
@@ -47,6 +49,23 @@ const EMPTY_FORM = {
 
 const EMPTY_REDEEM = { code: "", customerEmail: "", orderRef: "" };
 
+function genCode() {
+  const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  let out = "";
+  for (let i = 0; i < 8; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+}
+
+const EMPTY_CUSTOMER_FORM = {
+  customerEmail: "",
+  purpose: "thank_you" as "thank_you" | "retention",
+  code: "",
+  name: "",
+  discount_type: "fixed" as "fixed" | "percent",
+  discount_value: "",
+  ends_at: "",
+};
+
 export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign[] }) {
   const [campaigns, setCampaigns] = useState(initial);
   const [showForm, setShowForm] = useState(false);
@@ -58,6 +77,10 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
   const [redeemForm, setRedeemForm] = useState(EMPTY_REDEEM);
   const [redeemSubmitting, setRedeemSubmitting] = useState(false);
   const [redeemResult, setRedeemResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [showCustomerForm, setShowCustomerForm] = useState(false);
+  const [customerForm, setCustomerForm] = useState(EMPTY_CUSTOMER_FORM);
+  const [customerSubmitting, setCustomerSubmitting] = useState(false);
+  const [customerError, setCustomerError] = useState<string | null>(null);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -140,6 +163,48 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
     }
   }
 
+  async function handleCustomerCoupon(e: React.FormEvent) {
+    e.preventDefault();
+    setCustomerSubmitting(true);
+    setCustomerError(null);
+    try {
+      const code = customerForm.code.trim().toUpperCase() || genCode();
+      const purposeLabel = customerForm.purpose === "thank_you" ? "Thank You" : "Retention";
+      const name = `${purposeLabel} — ${customerForm.customerEmail}`;
+      const res = await fetch("/api/admin/coupons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          name,
+          discount_type: customerForm.discount_type,
+          discount_value: Number(customerForm.discount_value) || null,
+          active: true,
+          starts_at: null,
+          ends_at: customerForm.ends_at || null,
+          new_customers_only: false,
+          minimum_order_amount: null,
+          max_redemptions_per_customer: 1,
+          max_total_redemptions: 1,
+          notes: null,
+          customer_email: customerForm.customerEmail,
+          coupon_purpose: customerForm.purpose,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCustomerError(data.error ?? "Something went wrong.");
+      } else {
+        setCampaigns((prev) => [{ ...data, redemption_count: 0 }, ...prev]);
+        setCustomerForm(EMPTY_CUSTOMER_FORM);
+        setShowCustomerForm(false);
+        showToast("Coupon created & email sent.");
+      }
+    } finally {
+      setCustomerSubmitting(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-10 space-y-8">
       {toast && (
@@ -154,17 +219,24 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
           <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Coupon Campaigns</h1>
           <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">Seasonal and promotional discount codes</p>
         </div>
-        <div className="flex gap-2 self-start sm:self-auto">
+        <div className="flex flex-wrap gap-2 self-start sm:self-auto">
           <button
             type="button"
-            onClick={() => { setShowRedeem((v) => !v); setRedeemResult(null); }}
+            onClick={() => { setShowRedeem((v) => !v); setRedeemResult(null); setShowForm(false); setShowCustomerForm(false); }}
             className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             {showRedeem ? "Cancel" : "Manual Redemption"}
           </button>
           <button
             type="button"
-            onClick={() => { setShowForm((v) => !v); setError(null); }}
+            onClick={() => { setShowCustomerForm((v) => !v); setCustomerError(null); setShowForm(false); setShowRedeem(false); if (!showCustomerForm) setCustomerForm({ ...EMPTY_CUSTOMER_FORM, code: genCode() }); }}
+            className="text-sm font-medium px-4 py-2 rounded-lg border border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors"
+          >
+            {showCustomerForm ? "Cancel" : "Customer Coupon"}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setShowForm((v) => !v); setError(null); setShowRedeem(false); setShowCustomerForm(false); }}
             className="text-sm font-medium px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
           >
             {showForm ? "Cancel" : "New Campaign"}
@@ -215,6 +287,89 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
           )}
           <button type="submit" disabled={redeemSubmitting} className="text-sm font-medium px-5 py-2 rounded-lg bg-gray-800 hover:bg-gray-900 dark:bg-gray-100 dark:hover:bg-gray-200 text-white dark:text-gray-900 disabled:opacity-50 transition-colors">
             {redeemSubmitting ? "Marking…" : "Mark as Used"}
+          </button>
+        </form>
+      )}
+
+      {/* Customer coupon form */}
+      {showCustomerForm && (
+        <form onSubmit={handleCustomerCoupon} className="bg-white dark:bg-gray-900 rounded-xl border border-violet-200 dark:border-violet-800 p-6 space-y-5">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Personal Customer Coupon</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Creates a one-time coupon tied to a specific customer and sends it to their email immediately.</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Customer email">
+              <input
+                type="email"
+                value={customerForm.customerEmail}
+                onChange={(e) => setCustomerForm((f) => ({ ...f, customerEmail: e.target.value }))}
+                placeholder="customer@example.com"
+                required
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Purpose">
+              <select
+                value={customerForm.purpose}
+                onChange={(e) => setCustomerForm((f) => ({ ...f, purpose: e.target.value as "thank_you" | "retention" }))}
+                className={inputCls}
+              >
+                <option value="thank_you">Thank You Note</option>
+                <option value="retention">Retention Encourage</option>
+              </select>
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Field label="Discount type">
+              <select
+                value={customerForm.discount_type}
+                onChange={(e) => setCustomerForm((f) => ({ ...f, discount_type: e.target.value as "fixed" | "percent" }))}
+                className={inputCls}
+              >
+                <option value="fixed">Fixed ($)</option>
+                <option value="percent">Percent (%)</option>
+              </select>
+            </Field>
+            <Field label={customerForm.discount_type === "percent" ? "Percentage off" : "Amount off ($)"}>
+              <input
+                type="number"
+                min={1}
+                value={customerForm.discount_value}
+                onChange={(e) => setCustomerForm((f) => ({ ...f, discount_value: e.target.value }))}
+                required
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Expiry date (optional)">
+              <input
+                type="datetime-local"
+                value={customerForm.ends_at}
+                onChange={(e) => setCustomerForm((f) => ({ ...f, ends_at: e.target.value }))}
+                className={inputCls}
+              />
+            </Field>
+          </div>
+
+          <Field label="Coupon code (auto-generated if blank)">
+            <input
+              value={customerForm.code}
+              onChange={(e) => setCustomerForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
+              placeholder={customerForm.code || "Leave blank to auto-generate"}
+              className={inputCls}
+            />
+          </Field>
+
+          {customerError && <p className="text-sm text-red-600 dark:text-red-400">{customerError}</p>}
+
+          <button
+            type="submit"
+            disabled={customerSubmitting}
+            className="text-sm font-medium px-5 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-50 transition-colors"
+          >
+            {customerSubmitting ? "Creating & Sending…" : "Create & Send Email"}
           </button>
         </form>
       )}
@@ -315,7 +470,14 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
                   <td className="px-5 py-4">
                     <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">{c.code}</span>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{c.name}</p>
-                    {c.new_customers_only && <span className="text-xs text-amber-600 dark:text-amber-400">New customers only</span>}
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {c.new_customers_only && <span className="text-xs text-amber-600 dark:text-amber-400">New customers only</span>}
+                      {c.customer_email && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 font-medium">
+                          {c.coupon_purpose === "thank_you" ? "Thank You" : "Retention"} · {c.customer_email}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-4 text-gray-700 dark:text-gray-300">{discountLabel(c)}</td>
                   <td className="px-4 py-4 text-xs text-gray-500 dark:text-gray-400">
