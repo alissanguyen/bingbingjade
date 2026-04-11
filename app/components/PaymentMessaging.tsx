@@ -1,37 +1,28 @@
 type MessagingResult = {
-  text: string;
   monthly: number;
+  showAfterpay: boolean;
 };
 
 /**
- * Returns BNPL payment messaging for a given price, or null if not applicable.
+ * Returns BNPL payment estimate for a given price, or null if not applicable.
  * Monthly estimate uses a 5% buffer rounded up to the nearest dollar.
- * Month counts are internal only — never displayed to the user.
+ * Month counts are internal only — never exposed to users.
  */
 export function getPaymentMessaging(price: number): MessagingResult | null {
   if (typeof price !== "number" || !isFinite(price) || price < 50) return null;
 
   if (price < 500) {
-    const monthly = Math.ceil((price * 1.05) / 4);
-    return {
-      text: `Flexible payments with Afterpay or Affirm — from $${monthly}/mo`,
-      monthly,
-    };
+    return { monthly: Math.ceil((price * 1.05) / 4), showAfterpay: true };
   }
   if (price < 2000) {
-    const monthly = Math.ceil((price * 1.05) / 12);
-    return { text: `From $${monthly}/mo with Affirm`, monthly };
+    return { monthly: Math.ceil((price * 1.05) / 12), showAfterpay: false };
   }
-  const monthly = Math.ceil((price * 1.05) / 24);
-  return {
-    text: `From $${monthly}/mo with Affirm (extended plans available)`,
-    monthly,
-  };
+  return { monthly: Math.ceil((price * 1.05) / 24), showAfterpay: false };
 }
 
 /**
- * Renders subtle BNPL payment messaging below a price.
- * Returns null if price is < $50, null/undefined, or not a finite number.
+ * One-line BNPL payment messaging with inline provider logo(s).
+ * Returns null for sold items, inquiry-required prices, and prices under $50.
  */
 export function PaymentMessaging({
   price,
@@ -45,9 +36,33 @@ export function PaymentMessaging({
   if (!info) return null;
 
   return (
-    <div className={className}>
-      <p className="text-xs text-gray-500 dark:text-gray-400">{info.text}</p>
-      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Subject to eligibility.</p>
+    <div className={`flex items-center flex-wrap gap-x-1.5 gap-y-0.5 ${className ?? ""}`}>
+      <span className="text-[11px] sm:text-xs text-gray-400 dark:text-gray-500">
+        From ${info.monthly}/mo with
+      </span>
+
+      {info.showAfterpay && (
+        <>
+          {/* Afterpay badge — has its own background, works in both modes */}
+          <img
+            src="/afterpay.svg"
+            alt="Afterpay"
+            className="h-4 w-auto inline-block"
+          />
+          <span className="text-[11px] sm:text-xs text-gray-400 dark:text-gray-500">or</span>
+        </>
+      )}
+
+      {/* Affirm wordmark — black SVG, inverted in dark mode */}
+      <img
+        src="/affirm.svg"
+        alt="Affirm"
+        className="h-3 w-auto inline-block dark:invert"
+      />
+
+      <span className="text-[11px] sm:text-xs text-gray-400 dark:text-gray-500">
+        · See if you qualify
+      </span>
     </div>
   );
 }
