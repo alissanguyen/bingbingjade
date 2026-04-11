@@ -7,6 +7,7 @@ import { FilterSidebar } from "./FilterSidebar";
 import { SortSelect } from "./SortSelect";
 import { Pagination } from "./Pagination";
 import { ProductCardImage } from "./ProductCardImage";
+import { PaymentMessaging } from "@/app/components/PaymentMessaging";
 
 /** Format a card price, obfuscating high-value amounts. */
 function fmtCardPrice(price: number): string {
@@ -378,6 +379,13 @@ export default async function Products({
                         {product.origin && <span className={ORIGIN_TEXT[product.origin] ?? ""}>{product.origin}</span>}
                       </span>
                     </div>
+                    {product.status !== "sold" && (() => {
+                      const bnplPrice = product.status === "on_sale"
+                        ? (product.sale_price_usd ?? product.price_display_usd)
+                        : product.price_display_usd;
+                      if (!bnplPrice || requiresInquiry(bnplPrice)) return null;
+                      return <PaymentMessaging price={bnplPrice} className="mt-2" />;
+                    })()}
                   </div>
 
                   {/* Info — mobile only */}

@@ -10,6 +10,7 @@ import type { CartItem } from "@/types/cart";
 import { getCategoryLabel } from "../categories";
 import { BangleSizeGuide } from "@/app/components/BangleSizeGuide";
 import { RingSizeGuide } from "@/app/components/RingSizeGuide";
+import { PaymentMessaging } from "@/app/components/PaymentMessaging";
 
 interface ProductOptionClient {
   id: string;
@@ -291,6 +292,11 @@ export function ProductPageClient({ product, productImages, productVideos, optio
             </>
           )}
         </div>
+
+        {/* BNPL payment messaging */}
+        {!isEffectivelySold && !needsInquiry && checkoutPrice != null && (
+          <PaymentMessaging price={checkoutPrice} className="mt-2" />
+        )}
 
         <div className="mt-6 space-y-5">
           {/* Color tags */}
