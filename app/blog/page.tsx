@@ -158,15 +158,13 @@ export default async function BlogPage() {
                       {post.title}
                     </h2>
 
-                    <div className="flex-1 min-h-0">
-                      {post.excerpt && (
-                        <p className="text-[13px] sm:text-sm leading-relaxed text-gray-500 dark:text-gray-400 line-clamp-3">
-                          {post.excerpt}
-                        </p>
-                      )}
-                    </div>
+                    {post.excerpt && (
+                      <p className="text-[13px] sm:text-sm leading-relaxed text-gray-500 dark:text-gray-400 line-clamp-3">
+                        {post.excerpt}
+                      </p>
+                    )}
 
-                    <div className="flex items-center gap-2 mt-4 text-[12px] sm:text-xs text-gray-400 dark:text-gray-500">
+                    <div className="flex items-center gap-2 mt-auto pt-4 text-[12px] sm:text-xs text-gray-400 dark:text-gray-500">
                       {post.author && (
                         <>
                           <span>{post.author.name}</span>
