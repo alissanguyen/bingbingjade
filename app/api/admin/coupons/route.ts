@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
     notes?: string | null;
     customer_email?: string | null;
     coupon_purpose?: "thank_you" | "retention" | null;
+    scheduled_send_at?: string | null;
   };
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
@@ -74,6 +75,13 @@ export async function POST(req: NextRequest) {
 
   const customerEmail = body.customer_email?.trim().toLowerCase() || null;
   const couponPurpose = body.coupon_purpose ?? null;
+  const scheduledSendAt = body.scheduled_send_at || null;
+  const sendImmediately = !scheduledSendAt || new Date(scheduledSendAt) <= new Date();
+
+  // All customer coupons are valid for exactly 3 months
+  const endsAt = customerEmail
+    ? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString()
+    : (body.ends_at || null);
 
   const { data, error } = await supabaseAdmin
     .from("coupon_campaigns")
@@ -84,7 +92,7 @@ export async function POST(req: NextRequest) {
       discount_value: body.discount_type === "tiered" ? null : (body.discount_value ?? null),
       active: body.active ?? true,
       starts_at: body.starts_at || null,
-      ends_at: body.ends_at || null,
+      ends_at: endsAt,
       new_customers_only: body.new_customers_only ?? false,
       minimum_order_amount: body.minimum_order_amount ?? null,
       max_redemptions_per_customer: body.max_redemptions_per_customer ?? 1,
@@ -93,6 +101,7 @@ export async function POST(req: NextRequest) {
       created_by: "admin",
       customer_email: customerEmail,
       coupon_purpose: couponPurpose,
+      scheduled_send_at: scheduledSendAt,
     })
     .select("*")
     .single();
@@ -104,8 +113,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Send email if this is a personal customer coupon
-  if (customerEmail && couponPurpose && data) {
+  // Send email now only if no future schedule
+  if (customerEmail && couponPurpose && data && sendImmediately) {
     const discountType = body.discount_type!;
     const discountValue = body.discount_value;
     const discountLabel =
@@ -124,7 +133,11 @@ export async function POST(req: NextRequest) {
       purpose: couponPurpose,
       discountLabel,
       expiresAt,
-    }).catch((err) => console.error("[coupons] Failed to send customer coupon email:", err));
+    })
+      .then(() =>
+        supabaseAdmin.from("coupon_campaigns").update({ email_sent_at: new Date().toISOString() }).eq("id", data.id)
+      )
+      .catch((err) => console.error("[coupons] Failed to send customer coupon email:", err));
   }
 
   return NextResponse.json(data, { status: 201 });

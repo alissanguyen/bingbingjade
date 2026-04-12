@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export type Campaign = {
   id: string;
@@ -20,10 +20,22 @@ export type Campaign = {
   redemption_count: number;
   customer_email: string | null;
   coupon_purpose: "thank_you" | "retention" | null;
+  scheduled_send_at: string | null;
+  email_sent_at: string | null;
+};
+
+type CustomerResult = {
+  id: string;
+  customer_name: string;
+  customer_email: string;
 };
 
 function fmt(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function fmtDateTime(iso: string) {
+  return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 function discountLabel(c: Campaign) {
@@ -58,13 +70,119 @@ function genCode() {
 
 const EMPTY_CUSTOMER_FORM = {
   customerEmail: "",
+  customerName: "",
   purpose: "thank_you" as "thank_you" | "retention",
   code: "",
   name: "",
   discount_type: "fixed" as "fixed" | "percent",
   discount_value: "",
-  ends_at: "",
+  send_at: "",
 };
+
+// ── Customer search combobox ──────────────────────────────────────────────────
+
+function CustomerSearchField({
+  value,
+  displayName,
+  onSelect,
+  onClear,
+}: {
+  value: string;
+  displayName: string;
+  onSelect: (email: string, name: string) => void;
+  onClear: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<CustomerResult[]>([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  function handleChange(q: string) {
+    setQuery(q);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (!q.trim()) { setResults([]); setOpen(false); return; }
+    timerRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/admin/customers?search=${encodeURIComponent(q)}&limit=8`);
+        const data = await res.json();
+        setResults((data.customers ?? []).filter((c: CustomerResult) => c.customer_email));
+        setOpen(true);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+  }
+
+  function select(c: CustomerResult) {
+    onSelect(c.customer_email, c.customer_name);
+    setQuery("");
+    setResults([]);
+    setOpen(false);
+  }
+
+  if (value) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{displayName || value}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{value}</p>
+        </div>
+        <button type="button" onClick={onClear} className="text-xs text-gray-400 hover:text-red-500 transition-colors shrink-0">✕</button>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => handleChange(e.target.value)}
+        onFocus={() => { if (results.length > 0) setOpen(true); }}
+        placeholder="Search by name or email…"
+        required
+        className={inputCls}
+      />
+      {loading && (
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">Searching…</span>
+      )}
+      {open && results.length > 0 && (
+        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden">
+          {results.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onMouseDown={() => select(c)}
+              className="w-full text-left px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-0"
+            >
+              <p className="text-sm font-medium text-gray-900 dark:text-white">{c.customer_name || "—"}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{c.customer_email}</p>
+            </button>
+          ))}
+        </div>
+      )}
+      {open && !loading && results.length === 0 && query.trim() && (
+        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-3 py-2.5">
+          <p className="text-sm text-gray-400">No customers found</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign[] }) {
   const [campaigns, setCampaigns] = useState(initial);
@@ -170,7 +288,11 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
     try {
       const code = customerForm.code.trim().toUpperCase() || genCode();
       const purposeLabel = customerForm.purpose === "thank_you" ? "Thank You" : "Retention";
-      const name = `${purposeLabel} — ${customerForm.customerEmail}`;
+      const name = `${purposeLabel} — ${customerForm.customerName || customerForm.customerEmail}`;
+      const scheduledSendAt = customerForm.send_at
+        ? new Date(customerForm.send_at).toISOString()
+        : null;
+
       const res = await fetch("/api/admin/coupons", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -181,7 +303,6 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
           discount_value: Number(customerForm.discount_value) || null,
           active: true,
           starts_at: null,
-          ends_at: customerForm.ends_at || null,
           new_customers_only: false,
           minimum_order_amount: null,
           max_redemptions_per_customer: 1,
@@ -189,6 +310,7 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
           notes: null,
           customer_email: customerForm.customerEmail,
           coupon_purpose: customerForm.purpose,
+          scheduled_send_at: scheduledSendAt,
         }),
       });
       const data = await res.json();
@@ -198,7 +320,8 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
         setCampaigns((prev) => [{ ...data, redemption_count: 0 }, ...prev]);
         setCustomerForm(EMPTY_CUSTOMER_FORM);
         setShowCustomerForm(false);
-        showToast("Coupon created & email sent.");
+        const isScheduled = scheduledSendAt && new Date(scheduledSendAt) > new Date();
+        showToast(isScheduled ? `Coupon created. Email scheduled for ${fmtDateTime(scheduledSendAt!)}` : "Coupon created & email sent.");
       }
     } finally {
       setCustomerSubmitting(false);
@@ -296,18 +419,16 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
         <form onSubmit={handleCustomerCoupon} className="bg-white dark:bg-gray-900 rounded-xl border border-violet-200 dark:border-violet-800 p-6 space-y-5">
           <div>
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Personal Customer Coupon</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Creates a one-time coupon tied to a specific customer and sends it to their email immediately.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Creates a one-time coupon tied to a specific customer. Email is sent immediately or at the scheduled time.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Customer email">
-              <input
-                type="email"
+            <Field label="Customer">
+              <CustomerSearchField
                 value={customerForm.customerEmail}
-                onChange={(e) => setCustomerForm((f) => ({ ...f, customerEmail: e.target.value }))}
-                placeholder="customer@example.com"
-                required
-                className={inputCls}
+                displayName={customerForm.customerName}
+                onSelect={(email, name) => setCustomerForm((f) => ({ ...f, customerEmail: email, customerName: name }))}
+                onClear={() => setCustomerForm((f) => ({ ...f, customerEmail: "", customerName: "" }))}
               />
             </Field>
             <Field label="Purpose">
@@ -322,7 +443,7 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
             </Field>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Discount type">
               <select
                 value={customerForm.discount_type}
@@ -343,24 +464,27 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
                 className={inputCls}
               />
             </Field>
-            <Field label="Expiry date (optional)">
+          </div>
+          <p className="text-xs text-gray-400 dark:text-gray-500 -mt-2">Coupon is valid for 3 months. Reminder emails sent at 1 and 2 months if unused.</p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Coupon code (auto-generated if blank)">
+              <input
+                value={customerForm.code}
+                onChange={(e) => setCustomerForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
+                placeholder={customerForm.code || "Leave blank to auto-generate"}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Schedule send (optional — blank = send now)">
               <input
                 type="datetime-local"
-                value={customerForm.ends_at}
-                onChange={(e) => setCustomerForm((f) => ({ ...f, ends_at: e.target.value }))}
+                value={customerForm.send_at}
+                onChange={(e) => setCustomerForm((f) => ({ ...f, send_at: e.target.value }))}
                 className={inputCls}
               />
             </Field>
           </div>
-
-          <Field label="Coupon code (auto-generated if blank)">
-            <input
-              value={customerForm.code}
-              onChange={(e) => setCustomerForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
-              placeholder={customerForm.code || "Leave blank to auto-generate"}
-              className={inputCls}
-            />
-          </Field>
 
           {customerError && <p className="text-sm text-red-600 dark:text-red-400">{customerError}</p>}
 
@@ -369,7 +493,11 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
             disabled={customerSubmitting}
             className="text-sm font-medium px-5 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-50 transition-colors"
           >
-            {customerSubmitting ? "Creating & Sending…" : "Create & Send Email"}
+            {customerSubmitting
+              ? "Creating…"
+              : customerForm.send_at && new Date(customerForm.send_at) > new Date()
+              ? "Create & Schedule Email"
+              : "Create & Send Email"}
           </button>
         </form>
       )}
@@ -475,6 +603,16 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
                       {c.customer_email && (
                         <span className="text-xs px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 font-medium">
                           {c.coupon_purpose === "thank_you" ? "Thank You" : "Retention"} · {c.customer_email}
+                        </span>
+                      )}
+                      {c.scheduled_send_at && !c.email_sent_at && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400">
+                          ⏰ Scheduled {fmtDateTime(c.scheduled_send_at)}
+                        </span>
+                      )}
+                      {c.email_sent_at && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                          ✓ Sent {fmtDateTime(c.email_sent_at)}
                         </span>
                       )}
                     </div>
