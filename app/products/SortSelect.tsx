@@ -4,7 +4,8 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
 
 const SORT_OPTIONS = [
-  { value: "",           label: "Default" },
+  { value: "",           label: "Mixed (Default)" },
+  { value: "newest",     label: "Newest First" },
   { value: "price_asc",  label: "Price: Low to High" },
   { value: "price_desc", label: "Price: High to Low" },
   { value: "size_asc",   label: "Size: Small to Big" },

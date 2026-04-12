@@ -175,8 +175,10 @@ export default async function Products({
     return true;
   }) ?? [];
 
-  // Sort
-  if (sort) {
+  // Sort / arrange
+  if (sort === "newest") {
+    // Already ordered by created_at DESC from the DB — no-op
+  } else if (sort) {
     products.sort((a, b) => {
       if (sort === "price_asc" || sort === "price_desc") {
         const pa = effectiveSortPrice(a);
@@ -190,6 +192,24 @@ export default async function Products({
       }
       return 0;
     });
+  } else {
+    // Default: round-robin interleave across categories so bulk uploads of one
+    // type don't flood the first page. Within each category, newest-first order
+    // is preserved (products arrived from the DB in created_at DESC order).
+    const groups = new Map<string, ProductCard[]>();
+    for (const p of products) {
+      const key = p.category ?? "other";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(p);
+    }
+    const queues = [...groups.values()];
+    const interleaved: ProductCard[] = [];
+    while (queues.some((q) => q.length > 0)) {
+      for (const q of queues) {
+        if (q.length > 0) interleaved.push(q.shift()!);
+      }
+    }
+    products.splice(0, products.length, ...interleaved);
   }
 
   // Compute counts from the full unfiltered product list for the filter sidebar
