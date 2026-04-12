@@ -69,6 +69,7 @@ The application is split into a **customer storefront** and a **password-protect
 - **Order tracking page** at `/orders/[orderNumber]` — animated timeline with staggered fade-in, ping ripple on the current step, shimmer flowing down connector lines
 - **Hash-based accordion navigation** on `/faq` and `/policy` — clicking an accordion section updates the URL hash; sharing a hash link auto-opens and scrolls to that section
 - **WhatsApp inquiry** links that auto-compose a message with product details and a deep link
+- **BNPL payment messaging** — `PaymentMessaging` component shows estimated monthly payments using Afterpay (orders < $500) and Affirm, with tiered calculation (4 payments at 5% APR / 12 / 24 months depending on order size); compact one-line variant on product cards, full logo row on product detail pages; hides for inquiry-priced and sold items
 - **Fully responsive** design with dark mode support (next-themes)
 - **SEO-optimised** product pages with dynamic `<meta>` tags, OpenGraph images, and structured keywords
 
@@ -175,6 +176,13 @@ A production-hardened discount engine with no stacking (exactly one discount sou
 
 **Campaign coupons:** `coupon_campaigns` table supports fixed/percent/tiered discount types, active date windows, new-customer restrictions, per-customer and global redemption caps. Created and managed from `/coupons-admin`.
 
+**Personal customer coupons:** admin can issue one-time coupons to specific customers from `/coupons-admin` → "Customer Coupon":
+- Customer field is a live search combobox (debounced, searches by name or email via `/api/admin/customers`)
+- Purpose: "Thank You Note" or "Retention Encourage" — each generates distinct email copy
+- Auto 3-month validity — `ends_at` is always set to 90 days from creation; no manual expiry input
+- Optional scheduled send — leave blank to send immediately, or pick a future datetime; a Vercel cron job picks up pending sends hourly
+- **Automatic reminder emails** — sent at 30 days ("still waiting", green) and 60 days ("expires soon", amber warning) after the original send, only if the coupon hasn't been redeemed and is still valid; tracked via `reminder1_sent_at` / `reminder2_sent_at` columns
+
 **Email subscribers (`/api/subscribe`):**
 - Upserts email into `email_subscribers`; returns `{ alreadySubscribed: true }` for duplicates (idempotent, handles `23505` race)
 - Generates and assigns a 6-digit coupon code with 30-day expiry (non-blocking; email failure does not fail subscription)
@@ -200,6 +208,13 @@ All transactional emails use custom branded HTML templates and are BCC'd to `bin
 | `[Order Placed]` | Order confirmation |
 | `[Order Update]` | Status change, delivery date update, referral invite, referral reward |
 | `[Subscriber]` | Welcome newsletter email |
+
+**Admin broadcast email templates** (all with branded hero banners — full-bleed jade background image, dark gradient overlay, emerald eyebrow + white heading):
+- **New Drops** (`/custom-emails-admin/new-drops`) — 1200px wide product showcase with photo grid; hero auto-cycles through caption variants
+- **Blog Announcement** (`/custom-emails-admin/new-blog`) — 1200px wide; blog thumbnail used as hero background; title displayed as large h1 in the banner
+- **Order Delay** (`/custom-emails-admin/order-delays`) — 600px transactional email with jade hero banner, order number displayed in banner, "Track My Order" button linking to customer's `/orders/[orderNumber]` page; supports multi-order batch send
+- **Care Tips** (`/custom-emails-admin/care-tips`) — 600px transactional email with jade hero banner "Caring Tips for Your New Piece"; sent to customers with recently delivered orders (last 90 days by `created_at`)
+- **Customer coupon emails** — initial send (thank you / retention copy), plus automated reminders at 30 and 60 days
 
 **Unsubscribe:** `/api/unsubscribe?e=<base64-email>` removes the subscriber record and renders a confirmation page. A subtle 10px light-gray link is embedded in welcome email footers (CAN-SPAM compliant, intentionally unobtrusive).
 
