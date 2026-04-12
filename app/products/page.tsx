@@ -175,27 +175,27 @@ export default async function Products({
     return true;
   }) ?? [];
 
-  // Sort / arrange
+  // Sort / arrange into the final display order
+  let sorted: ProductCard[];
   if (sort === "newest") {
-    // Already ordered by created_at DESC from the DB — no-op
-  } else if (sort) {
-    products.sort((a, b) => {
-      if (sort === "price_asc" || sort === "price_desc") {
-        const pa = effectiveSortPrice(a);
-        const pb = effectiveSortPrice(b);
-        return sort === "price_asc" ? pa - pb : pb - pa;
-      }
-      if (sort === "size_asc" || sort === "size_desc") {
-        const sa = a.size ?? Infinity;
-        const sb = b.size ?? Infinity;
-        return sort === "size_asc" ? sa - sb : sb - sa;
-      }
-      return 0;
+    // Already ordered by created_at DESC from the DB
+    sorted = products;
+  } else if (sort === "price_asc" || sort === "price_desc") {
+    sorted = [...products].sort((a, b) => {
+      const pa = effectiveSortPrice(a);
+      const pb = effectiveSortPrice(b);
+      return sort === "price_asc" ? pa - pb : pb - pa;
+    });
+  } else if (sort === "size_asc" || sort === "size_desc") {
+    sorted = [...products].sort((a, b) => {
+      const sa = a.size ?? Infinity;
+      const sb = b.size ?? Infinity;
+      return sort === "size_asc" ? sa - sb : sb - sa;
     });
   } else {
-    // Default: round-robin interleave across categories so bulk uploads of one
-    // type don't flood the first page. Within each category, newest-first order
-    // is preserved (products arrived from the DB in created_at DESC order).
+    // Default: round-robin interleave across categories so a bulk upload of
+    // one type doesn't flood the first page. Within each group, newest-first
+    // order is preserved (DB returns created_at DESC).
     const groups = new Map<string, ProductCard[]>();
     for (const p of products) {
       const key = p.category ?? "other";
@@ -203,13 +203,12 @@ export default async function Products({
       groups.get(key)!.push(p);
     }
     const queues = [...groups.values()];
-    const interleaved: ProductCard[] = [];
+    sorted = [];
     while (queues.some((q) => q.length > 0)) {
       for (const q of queues) {
-        if (q.length > 0) interleaved.push(q.shift()!);
+        if (q.length > 0) sorted.push(q.shift()!);
       }
     }
-    products.splice(0, products.length, ...interleaved);
   }
 
   // Compute counts from the full unfiltered product list for the filter sidebar
@@ -225,10 +224,10 @@ export default async function Products({
     }
   }
 
-  const totalCount = products.length;
+  const totalCount = sorted.length;
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
   const safePage = Math.min(currentPage, Math.max(1, totalPages));
-  const paginated = products.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const paginated = sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   // Resolve public URLs for the first two images of each paginated product
   // (ProductCardImage uses images[0] and images[1] for the hover slide effect).
@@ -277,7 +276,7 @@ export default async function Products({
             </p>
             <SortSelect initialSort={sort} />
           </div>
-          {products.length === 0 ? (
+          {sorted.length === 0 ? (
             <p className="text-gray-400 dark:text-gray-600">
               No products match your filters.
             </p>
