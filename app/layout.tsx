@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
+import Script from "next/script";
 import { FooterSubscribeForm } from "./components/FooterSubscribeForm";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { Navbar } from "./components/Navbar";
@@ -8,6 +9,7 @@ import { headers } from "next/headers";
 import { CategoryBar } from "./components/CategoryBar";
 import { CartProvider } from "./components/CartContext";
 import { CartDrawer } from "./components/CartDrawer";
+import { AnalyticsPageView } from "./components/analytics/AnalyticsPageView";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -53,6 +55,9 @@ export const metadata: Metadata = {
 };
 
 const ADMIN_PREFIXES = ["/orders-admin", "/customers-admin", "/edit", "/add", "/admin", "/products-admin", "/vendors", "/profile", "/coupons-admin", "/subscribers-admin"];
+
+const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
 
 export default async function RootLayout({
   children,
@@ -178,6 +183,32 @@ export default async function RootLayout({
           )}
           </CartProvider>
         </ThemeProvider>
+
+        {/* ── Analytics — loaded only when env vars are set ── */}
+        {GA_ID && (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+              strategy="afterInteractive"
+            />
+            <Script id="ga4-init" strategy="afterInteractive">{`
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', '${GA_ID}', { send_page_view: true });
+            `}</Script>
+          </>
+        )}
+        {CLARITY_ID && (
+          <Script id="clarity-init" strategy="afterInteractive">{`
+            (function(c,l,a,r,i,t,y){
+              c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+              t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+              y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+            })(window,document,"clarity","script","${CLARITY_ID}");
+          `}</Script>
+        )}
+        <AnalyticsPageView />
       </body>
     </html>
   );
