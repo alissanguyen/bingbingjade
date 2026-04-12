@@ -37,6 +37,12 @@ export const seoType = defineType({
       type: 'url',
     }),
     defineField({
+      name: 'keywords',
+      title: 'Meta keywords',
+      type: 'string',
+      description: 'Comma-separated keywords, e.g. "jade pendant, natural jadeite, Myanmar jade"',
+    }),
+    defineField({
       name: 'noIndex',
       title: 'No index',
       type: 'boolean',

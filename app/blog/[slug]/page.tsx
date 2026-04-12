@@ -20,6 +20,7 @@ type Post = {
   seo?: {
     metaTitle?: string;
     metaDescription?: string;
+    keywords?: string;
     ogImage?: { asset: unknown; alt?: string };
     canonicalUrl?: string;
     noIndex?: boolean;
@@ -67,10 +68,12 @@ export async function generateMetadata({
   const title = post.seo?.metaTitle ?? post.title;
   const description = post.seo?.metaDescription ?? post.excerpt;
   const ogImage = post.seo?.ogImage?.asset ?? post.heroImage?.asset;
+  const keywords = post.seo?.keywords?.trim() || undefined;
 
   return {
     title: `${title} — BingBing Jade`,
     description,
+    ...(keywords ? { keywords } : {}),
     ...(post.seo?.noIndex ? { robots: { index: false } } : {}),
     ...(post.seo?.canonicalUrl ? { alternates: { canonical: post.seo.canonicalUrl } } : {}),
     openGraph: (() => {

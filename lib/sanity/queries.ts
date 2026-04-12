@@ -64,6 +64,7 @@ export const postBySlugQuery = groq`
     seo{
       metaTitle,
       metaDescription,
+      keywords,
       canonicalUrl,
       noIndex,
       ogImage{
