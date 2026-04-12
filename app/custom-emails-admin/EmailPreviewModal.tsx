@@ -5,9 +5,11 @@ import { useEffect, useRef } from "react";
 export function EmailPreviewModal({
   html,
   onClose,
+  maxWidth = "max-w-2xl",
 }: {
   html: string;
   onClose: () => void;
+  maxWidth?: string;
 }) {
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -23,7 +25,7 @@ export function EmailPreviewModal({
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-8 overflow-y-auto"
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
-      <div className="relative w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-2xl my-auto">
+      <div className={`relative w-full ${maxWidth} bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-2xl my-auto`}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-gray-800">
           <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Email Preview</span>

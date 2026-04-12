@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { EmailPreviewModal } from "@/app/custom-emails-admin/EmailPreviewModal";
 
 export type Campaign = {
   id: string;
@@ -199,6 +200,8 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
   const [customerForm, setCustomerForm] = useState(EMPTY_CUSTOMER_FORM);
   const [customerSubmitting, setCustomerSubmitting] = useState(false);
   const [customerError, setCustomerError] = useState<string | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewing, setPreviewing] = useState(false);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -325,6 +328,27 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
       }
     } finally {
       setCustomerSubmitting(false);
+    }
+  }
+
+  async function handlePreview(reminderNumber?: 1 | 2) {
+    setPreviewing(true);
+    try {
+      const res = await fetch("/api/admin/coupons/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          purpose: customerForm.purpose,
+          discount_type: customerForm.discount_type,
+          discount_value: Number(customerForm.discount_value) || null,
+          coupon_code: customerForm.code || undefined,
+          reminder_number: reminderNumber ?? null,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) setPreviewHtml(data.html);
+    } finally {
+      setPreviewing(false);
     }
   }
 
@@ -488,17 +512,43 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
 
           {customerError && <p className="text-sm text-red-600 dark:text-red-400">{customerError}</p>}
 
-          <button
-            type="submit"
-            disabled={customerSubmitting}
-            className="text-sm font-medium px-5 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-50 transition-colors"
-          >
-            {customerSubmitting
-              ? "Creating…"
-              : customerForm.send_at && new Date(customerForm.send_at) > new Date()
-              ? "Create & Schedule Email"
-              : "Create & Send Email"}
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="submit"
+              disabled={customerSubmitting}
+              className="text-sm font-medium px-5 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-50 transition-colors"
+            >
+              {customerSubmitting
+                ? "Creating…"
+                : customerForm.send_at && new Date(customerForm.send_at) > new Date()
+                ? "Create & Schedule Email"
+                : "Create & Send Email"}
+            </button>
+            <button
+              type="button"
+              disabled={previewing}
+              onClick={() => handlePreview()}
+              className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
+            >
+              {previewing ? "Loading…" : "Preview Email"}
+            </button>
+            <button
+              type="button"
+              disabled={previewing}
+              onClick={() => handlePreview(1)}
+              className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
+            >
+              Preview Reminder 1
+            </button>
+            <button
+              type="button"
+              disabled={previewing}
+              onClick={() => handlePreview(2)}
+              className="text-sm font-medium px-4 py-2 rounded-lg border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 disabled:opacity-50 transition-colors"
+            >
+              Preview Reminder 2
+            </button>
+          </div>
         </form>
       )}
 
@@ -576,6 +626,10 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
       )}
 
       {/* Campaigns table */}
+      {previewHtml && (
+        <EmailPreviewModal html={previewHtml} onClose={() => setPreviewHtml(null)} maxWidth="max-w-5xl" />
+      )}
+
       {campaigns.length === 0 ? (
         <p className="text-sm text-gray-400 dark:text-gray-500">No campaigns yet.</p>
       ) : (
