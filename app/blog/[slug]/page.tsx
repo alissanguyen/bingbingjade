@@ -73,11 +73,15 @@ export async function generateMetadata({
     description,
     ...(post.seo?.noIndex ? { robots: { index: false } } : {}),
     ...(post.seo?.canonicalUrl ? { alternates: { canonical: post.seo.canonicalUrl } } : {}),
-    openGraph: ogImage
-      ? {
-          images: [{ url: urlFor(ogImage).width(1200).height(630).quality(85).url() }],
-        }
-      : undefined,
+    openGraph: (() => {
+      if (!ogImage) return undefined;
+      try {
+        const imgUrl = urlFor(ogImage).width(1200).height(630).quality(85).url();
+        return imgUrl ? { images: [{ url: imgUrl }] } : undefined;
+      } catch {
+        return undefined;
+      }
+    })(),
   };
 }
 
