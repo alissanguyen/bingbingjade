@@ -259,6 +259,28 @@ export async function POST(req: NextRequest) {
     // Order was created — log and continue (don't fail the whole request)
   }
 
+  // ── Mark sold products / options ──────────────────────────────────────────
+  // Items with an optionId → mark that specific option as sold.
+  // Items with only a productId → mark the product itself as sold.
+  const optionIdsToSell = body.items.filter((i) => i.optionId).map((i) => i.optionId!);
+  const productIdsToSell = body.items.filter((i) => i.productId && !i.optionId).map((i) => i.productId!);
+
+  if (optionIdsToSell.length > 0) {
+    const { error: optErr } = await supabaseAdmin
+      .from("product_options")
+      .update({ status: "sold" })
+      .in("id", optionIdsToSell);
+    if (optErr) console.error("[create-order] Failed to mark options as sold:", optErr);
+  }
+
+  if (productIdsToSell.length > 0) {
+    const { error: prodErr } = await supabaseAdmin
+      .from("products")
+      .update({ status: "sold" })
+      .in("id", productIdsToSell);
+    if (prodErr) console.error("[create-order] Failed to mark products as sold:", prodErr);
+  }
+
   // ── Send confirmation email ───────────────────────────────────────────────
   const emailRecipient = body.customerEmail?.trim().toLowerCase();
   const emailName = body.customerName?.trim();
