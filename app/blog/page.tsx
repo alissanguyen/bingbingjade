@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { client } from "@/lib/sanity/client";
 import { urlFor } from "@/lib/sanity/image";
 import { postsQuery } from "@/lib/sanity/queries";
+import { BlogCategoryFilter } from "./BlogCategoryFilter";
 
 export const metadata: Metadata = {
   title: "Blog — The BingBing Jade Educational Corner",
@@ -32,11 +33,34 @@ function fmtDate(date: string) {
   });
 }
 
-export default async function BlogPage() {
+export default async function BlogPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string }>;
+}) {
+  const { category: selectedCategory = "" } = await searchParams;
   const posts: Post[] = await client.fetch(postsQuery);
 
-  const featured = posts.find((p) => p.featured) ?? posts[0] ?? null;
-  const rest = posts.filter((p) => p._id !== featured?._id);
+  // Derive unique categories from all posts, preserving first-seen order
+  const seenSlugs = new Set<string>();
+  const allCategories: { title: string; slug: string }[] = [];
+  for (const p of posts) {
+    for (const cat of p.categories ?? []) {
+      if (!seenSlugs.has(cat.slug)) {
+        seenSlugs.add(cat.slug);
+        allCategories.push(cat);
+      }
+    }
+  }
+
+  // Filter posts by selected category
+  const filtered = selectedCategory
+    ? posts.filter((p) => p.categories?.some((c) => c.slug === selectedCategory))
+    : posts;
+
+  // Only show the featured hero when browsing all posts
+  const featured = !selectedCategory ? (filtered.find((p) => p.featured) ?? filtered[0] ?? null) : null;
+  const rest = filtered.filter((p) => p._id !== featured?._id);
 
   return (
     <main className="min-h-screen bg-white dark:bg-gray-950">
@@ -54,6 +78,20 @@ export default async function BlogPage() {
             Guides, collector insights, and stories about natural jadeite from BingBing Jade.
           </p>
         </div>
+
+        {/* Category filter */}
+        {allCategories.length > 0 && (
+          <div className="mb-10">
+            <BlogCategoryFilter categories={allCategories} selected={selectedCategory} />
+          </div>
+        )}
+
+        {/* Filtered heading */}
+        {selectedCategory && (
+          <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500 mb-6">
+            {allCategories.find((c) => c.slug === selectedCategory)?.title ?? selectedCategory}
+          </h2>
+        )}
 
         {/* Featured post */}
         {featured && (
@@ -115,7 +153,7 @@ export default async function BlogPage() {
         {/* Post grid */}
         {rest.length > 0 && (
           <>
-            {featured && (
+            {featured && !selectedCategory && (
               <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500 mb-6">
                 More Articles
               </h2>
@@ -180,9 +218,9 @@ export default async function BlogPage() {
           </>
         )}
 
-        {posts.length === 0 && (
+        {filtered.length === 0 && (
           <div className="text-center py-24 text-gray-400 dark:text-gray-600">
-            <p className="text-lg">No articles published yet.</p>
+            <p className="text-lg">No articles in this category yet.</p>
           </div>
         )}
       </div>
