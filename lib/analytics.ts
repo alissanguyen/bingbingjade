@@ -1,9 +1,12 @@
 // Augment the global Window type so TypeScript knows about gtag everywhere.
 declare global {
   interface Window {
-    gtag?: (...args: unknown[]) => void;
-    dataLayer?: unknown[];
-    clarity?: (...args: unknown[]) => void;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    gtag?: (...args: any[]) => void;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    dataLayer?: any[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    clarity?: (...args: any[]) => void;
   }
 }
 
@@ -24,7 +27,7 @@ export function trackProductView(params: {
   price?: number;
   origin?: string;
 }): void {
-  trackEvent("product_view", {
+  trackEvent("view_product", {
     product_id: params.productId,
     product_name: params.productName,
     category: params.category,
@@ -33,16 +36,61 @@ export function trackProductView(params: {
   });
 }
 
+export function trackSelectItem(params: {
+  productId: string;
+  productName: string;
+  category?: string;
+  price?: number;
+}): void {
+  trackEvent("view_item", {
+    currency: "USD",
+    value: params.price ?? 0,
+    items: [
+      {
+        item_id: params.productId,
+        item_name: params.productName,
+        item_category: params.category,
+        price: params.price,
+        quantity: 1,
+      },
+    ],
+  });
+}
+
+export function trackPurchase(params: {
+  orderId?: string;
+  value: number;
+  currency?: string;
+  items: {
+    itemId: string;
+    itemName: string;
+    price: number;
+    quantity?: number;
+  }[];
+}): void {
+  trackEvent("purchase", {
+    transaction_id: params.orderId,
+    value: params.value,
+    currency: params.currency ?? "USD",
+    items: params.items.map((i) => ({
+      item_id: i.itemId,
+      item_name: i.itemName,
+      price: i.price,
+      quantity: i.quantity ?? 1,
+    })),
+  });
+}
+
 export function trackContactClick(channel: "whatsapp" | "instagram" | "email" | string): void {
-  trackEvent("contact_click", { channel });
+  trackEvent("click_contact", { channel });
 }
 
 export function trackWhatsAppClick(productName?: string): void {
-  trackEvent("whatsapp_click", { product_name: productName });
+  trackEvent("click_whatsapp", { product_name: productName });
 }
 
 export function trackInstagramClick(): void {
-  trackEvent("instagram_click");
+  trackEvent("click_instagram");
 }
 
 export function trackBeginCheckout(params: {
@@ -62,7 +110,7 @@ export function trackSearch(searchTerm: string): void {
 }
 
 export function trackSizeGuideView(): void {
-  trackEvent("size_guide_view");
+  trackEvent("view_size_guide");
 }
 
 // Satisfy the module requirement for the global augmentation to be picked up.

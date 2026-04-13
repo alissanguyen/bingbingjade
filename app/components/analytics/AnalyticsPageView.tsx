@@ -20,7 +20,7 @@ export function AnalyticsPageView() {
       return;
     }
     if (!GA_ID || typeof window === "undefined" || !window.gtag) return;
-    window.gtag("config", GA_ID, { page_path: pathname });
+    window.gtag("event", "page_view", { page_path: pathname });
   }, [pathname]);
 
   return null;

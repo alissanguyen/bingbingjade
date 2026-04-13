@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ClearCartOnSuccess } from "./ClearCartOnSuccess";
+import { TrackPurchaseOnSuccess } from "./TrackPurchaseOnSuccess";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export const metadata = {
@@ -9,13 +10,24 @@ export const metadata = {
 
 const BANNER_IMG = "https://images.unsplash.com/photo-1705931396849-93822983c1dc?q=80&w=1624&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
 
-async function getOrderNumber(sessionId: string): Promise<string | null> {
+type OrderData = {
+  order_number: string;
+  total_price_usd: number | null;
+  order_items: { product_name: string | null; price_usd: number; quantity: number }[];
+};
+
+async function getOrderData(sessionId: string): Promise<OrderData | null> {
   const { data } = await supabaseAdmin
     .from("orders")
-    .select("order_number")
+    .select("order_number, total_price_usd, order_items(product_name, price_usd, quantity)")
     .eq("stripe_session_id", sessionId)
     .maybeSingle();
-  return data?.order_number ?? null;
+  if (!data) return null;
+  return {
+    order_number: data.order_number,
+    total_price_usd: data.total_price_usd ?? null,
+    order_items: Array.isArray(data.order_items) ? (data.order_items as OrderData["order_items"]) : [],
+  };
 }
 
 export default async function CheckoutSuccessPage({
@@ -25,16 +37,30 @@ export default async function CheckoutSuccessPage({
 }) {
   const { session_id } = await searchParams;
 
-  // Try to fetch the order number from DB — may be null if webhook hasn't fired yet.
+  // Try to fetch order data from DB — may be null if webhook hasn't fired yet.
   // The confirmation email contains the order number as the authoritative reference.
   let orderNumber: string | null = null;
+  let orderData: OrderData | null = null;
   if (session_id) {
-    orderNumber = await getOrderNumber(session_id).catch(() => null);
+    orderData = await getOrderData(session_id).catch(() => null);
+    orderNumber = orderData?.order_number ?? null;
   }
 
   return (
     <div>
       <ClearCartOnSuccess />
+      {orderData && orderData.total_price_usd != null && orderData.order_items.length > 0 && (
+        <TrackPurchaseOnSuccess
+          orderId={orderData.order_number}
+          value={orderData.total_price_usd}
+          items={orderData.order_items.map((item, i) => ({
+            itemId: `${orderData!.order_number}-${i}`,
+            itemName: item.product_name ?? "Jade Piece",
+            price: item.price_usd,
+            quantity: item.quantity,
+          }))}
+        />
+      )}
 
       {/* Banner */}
       <div className="relative w-full h-[55vh] min-h-96 overflow-hidden">
