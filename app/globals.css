@@ -8,11 +8,26 @@
   --foreground: #171717;
 }
 
+@media (max-width: 1440px) {
+  :root {
+    font-size: 112.5% !important;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-montserrat);
+
+  /* Shift Tailwind weight scale down by one step */
+  --font-weight-extralight: 100;
+  --font-weight-light: 200;
+  --font-weight-normal: 300;
+  --font-weight-medium: 400;
+  --font-weight-semibold: 500;
+  --font-weight-bold: 600;
+  --font-weight-extrabold: 700;
+  --font-weight-black: 800;
 }
 
 .dark {
@@ -23,7 +38,8 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-montserrat), sans-serif;
+  font-weight: 400;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 

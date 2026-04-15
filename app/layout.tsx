@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Montserrat } from "next/font/google";
 import Link from "next/link";
 import Script from "next/script";
 import { FooterSubscribeForm } from "./components/FooterSubscribeForm";
@@ -12,14 +12,10 @@ import { CartDrawer } from "./components/CartDrawer";
 import { AnalyticsPageView } from "./components/analytics/AnalyticsPageView";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const montserrat = Montserrat({
+  variable: "--font-montserrat",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
 });
 
 const SITE_URL = "https://bingbingjade.com";
@@ -71,7 +67,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning style={{ scrollbarGutter: "stable" }}>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100`}>
+      <body className={`${montserrat.variable} antialiased min-h-screen flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100`}>
         <ThemeProvider>
           <CartProvider>
           {isStudio ? (
@@ -121,7 +117,7 @@ export default async function RootLayout({
 
                   {/* Shop */}
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">Shop</p>
+                    <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">Shop</p>
                     <ul className="space-y-2.5">
                       {[
                         { href: "/products", label: "All Pieces" },
@@ -142,7 +138,7 @@ export default async function RootLayout({
 
                   {/* Help */}
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">Help</p>
+                    <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">Help</p>
                     <ul className="space-y-2.5">
                       {[
                         { href: "/faq", label: "FAQ & Shipping" },
@@ -162,7 +158,7 @@ export default async function RootLayout({
 
                   {/* Newsletter */}
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">Newsletter</p>
+                    <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">Newsletter</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-4">
                       New arrivals, restocks, and a welcome discount for first-time subscribers.
                     </p>
