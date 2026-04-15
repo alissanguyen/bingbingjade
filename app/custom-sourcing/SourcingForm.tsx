@@ -116,7 +116,7 @@ const labelClass =
   "block text-[12px] sm:text-[16px] font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400 mb-1.5";
 
 const sectionClass =
-  "rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-3.5 sm:p-6 space-y-5";
+  "rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3.5 sm:p-6 space-y-5";
 
 function Toggle({
   label, checked, onChange, description,
@@ -335,7 +335,7 @@ export default function SourcingForm() {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf9f7] dark:bg-[#0d0d0d]">
+    <div className="min-h-screen bg-[#faf9f7] dark:bg-gray-950">
 
       {/* ── Hero ──────────────────────────────────────────────────── */}
       <div className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
@@ -368,22 +368,22 @@ export default function SourcingForm() {
 
       {/* ── How classification works ───────────────────────────── */}
       <div className="mx-auto max-w-3xl px-6 pt-10">
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/60 px-5 py-4 space-y-3">
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40 px-5 py-4 space-y-3">
           <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
             How your request is classified
           </p>
           <div className="grid sm:grid-cols-3 gap-3 text-xs sm:text-[16px]">
-            <div className="rounded-xl border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-gray-950 px-3 py-2.5">
+            <div className="rounded-xl border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-gray-800/60 px-3 py-2.5">
               <p className="sm:text-[18px] font-bold text-emerald-700 dark:text-emerald-300 mb-0.5">Standard</p>
               <p className="text-gray-500 dark:text-gray-400 leading-relaxed">General preferences, flexible on details.</p>
               <p className="mt-1 text-emerald-600 dark:text-emerald-400 font-medium">2 rounds of selection</p>
             </div>
-            <div className="rounded-xl border border-violet-400 dark:border-violet-800 bg-white dark:bg-gray-950 px-3 py-2.5">
+            <div className="rounded-xl border border-violet-400 dark:border-violet-800 bg-white dark:bg-gray-800/60 px-3 py-2.5">
               <p className="font-bold text-violet-700 dark:text-violet-300 mb-0.5">Premium</p>
               <p className="text-gray-500 dark:text-gray-400 leading-relaxed">Specific color, pattern, or translucency requirements.</p>
               <p className="mt-1 text-violet-600 dark:text-violet-400 font-medium">3 rounds of selection</p>
             </div>
-            <div className="rounded-xl border border-amber-400 dark:border-amber-800 bg-white dark:bg-gray-950 px-3 py-2.5">
+            <div className="rounded-xl border border-amber-400 dark:border-amber-800 bg-white dark:bg-gray-800/60 px-3 py-2.5">
               <p className="font-bold text-amber-700 dark:text-amber-300 mb-0.5">Concierge</p>
               <p className="text-gray-500 dark:text-gray-400 leading-relaxed">Close photo match or multiple strict requirements.</p>
               <p className="mt-1 text-amber-600 dark:text-amber-400 font-medium">4 rounds of selection</p>
