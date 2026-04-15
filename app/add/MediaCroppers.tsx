@@ -16,20 +16,53 @@ function createImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
-async function cropImageFile(src: string, pixelCrop: Area, originalName: string): Promise<File> {
+interface Adjustments { saturation: number; vibrance: number }
+
+function applyVibranceToImageData(data: Uint8ClampedArray, amount: number) {
+  // amount: -100 to 100. Selectively boosts low-saturation pixels more than high-saturation ones.
+  const v = amount / 100;
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i], g = data[i + 1], b = data[i + 2];
+    const max = Math.max(r, g, b);
+    const avg = (r + g + b) / 3;
+    const satLevel = max === 0 ? 0 : (max - avg) / max;
+    const boost = v * (1 - satLevel);
+    data[i]     = Math.min(255, Math.max(0, r + (max - r) * boost));
+    data[i + 1] = Math.min(255, Math.max(0, g + (max - g) * boost));
+    data[i + 2] = Math.min(255, Math.max(0, b + (max - b) * boost));
+  }
+}
+
+async function cropImageFile(
+  src: string,
+  pixelCrop: Area,
+  originalName: string,
+  adj: Adjustments = { saturation: 0, vibrance: 0 },
+): Promise<File> {
   const image = await createImage(src);
   const canvas = document.createElement("canvas");
   canvas.width = pixelCrop.width;
   canvas.height = pixelCrop.height;
   const ctx = canvas.getContext("2d")!;
+  // Apply saturation via canvas filter before drawing (fast, GPU-accelerated)
+  if (adj.saturation !== 0) {
+    ctx.filter = `saturate(${1 + adj.saturation / 100})`;
+  }
   ctx.drawImage(
     image,
     pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height,
     0, 0, pixelCrop.width, pixelCrop.height,
   );
+  ctx.filter = "none";
+  // Apply vibrance via pixel manipulation
+  if (adj.vibrance !== 0) {
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    applyVibranceToImageData(imgData.data, adj.vibrance);
+    ctx.putImageData(imgData, 0, 0);
+  }
   return new Promise((resolve) => {
     canvas.toBlob((blob) => {
-      const name = originalName.replace(/\.[^.]+$/, "_cropped.jpg");
+      const name = originalName.replace(/\.[^.]+$/, "_edited.jpg");
       resolve(new File([blob!], name, { type: "image/jpeg" }));
     }, "image/jpeg", 0.95);
   });
@@ -48,9 +81,11 @@ function formatTime(s: number): string {
 function FreeCropSelector({
   src,
   onPixelsChange,
+  filterStyle,
 }: {
   src: string;
   onPixelsChange: (pixels: Area | null) => void;
+  filterStyle?: string;
 }) {
   const imgRef = useRef<HTMLImageElement>(null);
   const [sel, setSel] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
@@ -115,7 +150,7 @@ function FreeCropSelector({
           src={src}
           alt="Select crop area"
           className="block pointer-events-none"
-          style={{ maxWidth: "100%", maxHeight: 380 }}
+          style={{ maxWidth: "100%", maxHeight: 380, filter: filterStyle }}
           draggable={false}
         />
         {sel ? (
@@ -170,10 +205,21 @@ export function ImageCropModal({ src, fileName, onConfirm, onClose }: ImageCropM
   // Free-crop state (custom drag selector)
   const [freePixels, setFreePixels] = useState<Area | null>(null);
 
+  // Adjustments
+  const [saturation, setSaturation] = useState(0); // -100 to +100
+  const [vibrance, setVibrance]     = useState(0); // -100 to +100
+
   const [loading, setLoading] = useState(false);
 
   const isFree = aspect === undefined;
   const croppedPixels = isFree ? freePixels : fixedPixels;
+
+  // CSS filter string for live preview (vibrance has no CSS equivalent so we preview
+  // it as extra saturation at half weight — close enough for a visual guide)
+  const previewFilter = [
+    saturation !== 0 ? `saturate(${1 + saturation / 100})` : "",
+    vibrance   !== 0 ? `saturate(${1 + vibrance / 200})`   : "",
+  ].filter(Boolean).join(" ") || undefined;
 
   const handleAspectChange = (value: number | undefined) => {
     setAspect(value);
@@ -182,15 +228,22 @@ export function ImageCropModal({ src, fileName, onConfirm, onClose }: ImageCropM
   };
 
   const handleConfirm = async () => {
-    if (!croppedPixels) return;
+    if (!croppedPixels && !hasAdjustments) return;
     setLoading(true);
     try {
-      const file = await cropImageFile(src, croppedPixels, fileName);
+      // If no crop region selected, apply adjustments to the full image
+      const pixels = croppedPixels ?? await (async () => {
+        const img = await createImage(src);
+        return { x: 0, y: 0, width: img.naturalWidth, height: img.naturalHeight };
+      })();
+      const file = await cropImageFile(src, pixels, fileName, { saturation, vibrance });
       onConfirm(file);
     } finally {
       setLoading(false);
     }
   };
+
+  const hasAdjustments = saturation !== 0 || vibrance !== 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
@@ -200,7 +253,7 @@ export function ImageCropModal({ src, fileName, onConfirm, onClose }: ImageCropM
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-800">
-          <h2 className="text-sm font-semibold text-white">Crop Image</h2>
+          <h2 className="text-sm font-semibold text-white">Edit Image</h2>
           <div className="flex items-center gap-1.5">
             {ASPECTS.map((a) => (
               <button
@@ -221,7 +274,7 @@ export function ImageCropModal({ src, fileName, onConfirm, onClose }: ImageCropM
 
         {/* Crop area */}
         {isFree ? (
-          <FreeCropSelector src={src} onPixelsChange={setFreePixels} />
+          <FreeCropSelector src={src} onPixelsChange={setFreePixels} filterStyle={previewFilter} />
         ) : (
           <div className="relative bg-black" style={{ height: 380 }}>
             <Cropper
@@ -232,6 +285,7 @@ export function ImageCropModal({ src, fileName, onConfirm, onClose }: ImageCropM
               onCropChange={setFixedCrop}
               onZoomChange={setZoom}
               onCropComplete={onCropComplete}
+              style={{ mediaStyle: { filter: previewFilter } }}
             />
           </div>
         )}
@@ -250,6 +304,40 @@ export function ImageCropModal({ src, fileName, onConfirm, onClose }: ImageCropM
           </div>
         )}
 
+        {/* Adjustment sliders */}
+        <div className="px-5 py-3 border-t border-gray-800 space-y-2.5">
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-500 w-20 shrink-0">Saturation</span>
+            <input
+              type="range" min={-100} max={100} step={1}
+              value={saturation}
+              onChange={(e) => setSaturation(Number(e.target.value))}
+              className="flex-1 accent-emerald-500"
+            />
+            <span className="text-xs text-gray-400 w-10 text-right">
+              {saturation > 0 ? `+${saturation}` : saturation}
+            </span>
+            {saturation !== 0 && (
+              <button type="button" onClick={() => setSaturation(0)} className="text-[10px] text-gray-600 hover:text-gray-400">↺</button>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-500 w-20 shrink-0">Vibrance</span>
+            <input
+              type="range" min={-100} max={100} step={1}
+              value={vibrance}
+              onChange={(e) => setVibrance(Number(e.target.value))}
+              className="flex-1 accent-emerald-500"
+            />
+            <span className="text-xs text-gray-400 w-10 text-right">
+              {vibrance > 0 ? `+${vibrance}` : vibrance}
+            </span>
+            {vibrance !== 0 && (
+              <button type="button" onClick={() => setVibrance(0)} className="text-[10px] text-gray-600 hover:text-gray-400">↺</button>
+            )}
+          </div>
+        </div>
+
         {/* Footer */}
         <div className="px-5 py-4 border-t border-gray-800 flex justify-end gap-3">
           <button
@@ -262,10 +350,10 @@ export function ImageCropModal({ src, fileName, onConfirm, onClose }: ImageCropM
           <button
             type="button"
             onClick={handleConfirm}
-            disabled={loading || !croppedPixels}
+            disabled={loading || (!croppedPixels && !hasAdjustments)}
             className="px-5 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-sm font-medium text-white disabled:opacity-50 transition-colors"
           >
-            {loading ? "Cropping…" : "Apply Crop"}
+            {loading ? "Applying…" : "Apply"}
           </button>
         </div>
       </div>
