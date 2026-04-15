@@ -284,10 +284,9 @@ export async function sendAttemptEmail(params: {
 export async function sendCheckoutOfferEmail(params: {
   customerName: string;
   customerEmail: string;
-  publicToken: string;
   offerToken: string;
   itemTitle: string;
-  finalAmountCents: number;
+  priceCents: number;
   creditAppliedCents: number;
   expiresAt: string;
 }): Promise<void> {
@@ -295,13 +294,13 @@ export async function sendCheckoutOfferEmail(params: {
   if (!resend) return;
 
   const firstName = params.customerName.split(" ")[0];
-  const checkoutUrl = `${SITE_URL}/custom-sourcing/${params.publicToken}/checkout/${params.offerToken}`;
+  const checkoutUrl = `${SITE_URL}/checkout/custom-sourcing/${params.offerToken}`;
   const expires = new Date(params.expiresAt).toLocaleDateString("en-US", {
     weekday: "long", month: "long", day: "numeric",
   });
-  const total = `$${(params.finalAmountCents / 100).toFixed(2)}`;
+  const itemPrice = `$${(params.priceCents / 100).toFixed(2)}`;
   const credit = params.creditAppliedCents > 0
-    ? `<p style="margin:0 0 6px;font-size:13px;color:#374151;">Sourcing credit applied: <strong style="color:#065f46;">&minus;$${(params.creditAppliedCents / 100).toFixed(2)}</strong></p>`
+    ? `<p style="margin:0 0 6px;font-size:13px;color:#374151;">Sourcing deposit credit: <strong style="color:#065f46;">&minus;$${(params.creditAppliedCents / 100).toFixed(2)}</strong></p>`
     : "";
 
   const content = `
@@ -314,8 +313,9 @@ export async function sendCheckoutOfferEmail(params: {
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;margin-bottom:28px;">
       <tr><td style="padding:22px 28px;">
         <p style="margin:0 0 10px;font-size:17px;font-weight:700;color:#065f46;">${params.itemTitle}</p>
+        <p style="margin:0 0 6px;font-size:13px;color:#374151;">Item price: <strong>${itemPrice}</strong></p>
         ${credit}
-        <p style="margin:0 0 8px;font-size:14px;color:#374151;">Total due: <strong>${total}</strong></p>
+        <p style="margin:0 0 8px;font-size:13px;color:#374151;">Shipping &amp; fees calculated at checkout based on your address.</p>
         <p style="margin:0;font-size:12px;color:#6b7280;">Offer expires ${expires}.</p>
       </td></tr>
     </table>

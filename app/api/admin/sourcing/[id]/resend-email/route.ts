@@ -46,7 +46,7 @@ export async function POST(
   if (status === "accepted_pending_checkout") {
     const { data: offer } = await supabaseAdmin
       .from("sourcing_checkout_offers")
-      .select("id, public_token, title_snapshot, final_amount_cents, sourcing_credit_applied_cents, expires_at")
+      .select("id, public_token, title_snapshot, price_cents, sourcing_credit_applied_cents, expires_at")
       .eq("sourcing_request_id", id)
       .eq("status", "pending_checkout")
       .order("created_at", { ascending: false })
@@ -60,10 +60,9 @@ export async function POST(
     await sendCheckoutOfferEmail({
       customerName:       req.customer_name,
       customerEmail:      req.customer_email,
-      publicToken:        req.public_token,
       offerToken:         offer.public_token,
       itemTitle:          offer.title_snapshot,
-      finalAmountCents:   offer.final_amount_cents,
+      priceCents:         offer.price_cents,
       creditAppliedCents: offer.sourcing_credit_applied_cents,
       expiresAt:          offer.expires_at ?? new Date(Date.now() + CHECKOUT_OFFER_HOURS * 3600_000).toISOString(),
     });

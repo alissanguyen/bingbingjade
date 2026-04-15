@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getAvailableCredit, computeCheckoutBreakdown, CHECKOUT_OFFER_HOURS } from "@/lib/sourcing-workflow";
+import { sendCheckoutOfferEmail } from "@/lib/sourcing-emails";
 
 export const dynamic = "force-dynamic";
 
@@ -151,6 +152,17 @@ export async function POST(
     .from("sourcing_requests")
     .update({ sourcing_status: "accepted_pending_checkout", updated_at: now.toISOString() })
     .eq("id", sourcingReq.id);
+
+  // Send checkout offer email (fire-and-forget)
+  sendCheckoutOfferEmail({
+    customerName:       sourcingReq.customer_name,
+    customerEmail:      sourcingReq.customer_email,
+    offerToken:         offer.public_token,
+    itemTitle:          option.title,
+    priceCents:         option.price_cents,
+    creditAppliedCents: creditApplied,
+    expiresAt:          expiresAt.toISOString(),
+  }).catch((e) => console.error("[accept] Checkout offer email failed:", e));
 
   // Direct customer to the custom checkout page — Stripe session is created there
   return NextResponse.json({
