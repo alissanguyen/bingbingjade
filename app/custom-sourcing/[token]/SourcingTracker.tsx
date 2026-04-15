@@ -223,9 +223,17 @@ export function SourcingTracker({ token, data, purchaseSuccess }: Props) {
     }
   }
 
-  const pastAttempts = data.attempts.filter((a) =>
-    !activeAttempt || a.id !== activeAttempt.id
-  ).filter((a) => a.status !== "draft");
+  // In checkout-ready state, exclude the attempt currently being checked out (not the activeAttempt,
+  // which may be a different round still within its response window).
+  const checkoutAttemptId = status === "accepted_pending_checkout"
+    ? (data.attempts.find((a) => a.sourcing_attempt_options.some((o) => o.status === "converted_to_checkout"))?.id ?? null)
+    : null;
+
+  const pastAttempts = data.attempts.filter((a) => {
+    if (a.status === "draft") return false;
+    if (status === "accepted_pending_checkout") return a.id !== checkoutAttemptId;
+    return !activeAttempt || a.id !== activeAttempt.id;
+  });
 
   // Rounds remaining after current
   const roundsRemaining = data.max_attempts - data.attempts_used;
