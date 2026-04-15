@@ -111,10 +111,10 @@ describe("getDepositCents", () => {
 });
 
 describe("getTimelineSurchargeCents", () => {
-  it("returns 0 for within_3_months",  () => expect(getTimelineSurchargeCents("within_3_months")).toBe(0));
-  it("returns 1000 for 1-2_months",    () => expect(getTimelineSurchargeCents("1-2_months")).toBe(1000));
-  it("returns 2500 for within_1_month", () => expect(getTimelineSurchargeCents("within_1_month")).toBe(2500));
-  it("returns 5000 for asap",          () => expect(getTimelineSurchargeCents("asap")).toBe(5000));
+  it("returns 0 for within_2_months",   () => expect(getTimelineSurchargeCents("within_2_months")).toBe(0));
+  it("returns 1000 for within_1_month", () => expect(getTimelineSurchargeCents("within_1_month")).toBe(1000));
+  it("returns 2500 for within_2_weeks", () => expect(getTimelineSurchargeCents("within_2_weeks")).toBe(2500));
+  it("returns 5000 for asap",           () => expect(getTimelineSurchargeCents("asap")).toBe(5000));
   it("returns 0 for unknown timeline", () => expect(getTimelineSurchargeCents("unknown")).toBe(0));
 });
 

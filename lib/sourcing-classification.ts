@@ -13,7 +13,7 @@ export interface ClassificationInputs {
 }
 
 export type RequestType = "standard" | "premium" | "concierge";
-export type Timeline = "asap" | "within_1_month" | "1-2_months" | "within_3_months";
+export type Timeline = "asap" | "within_2_weeks" | "within_1_month" | "within_2_months";
 
 // Base deposit amounts by tier (in cents)
 export const BASE_DEPOSIT_CENTS: Record<RequestType, number> = {
@@ -27,9 +27,9 @@ export const DEPOSIT_CENTS = BASE_DEPOSIT_CENTS;
 
 // Timeline urgency surcharges (in cents, added on top of base deposit)
 export const TIMELINE_SURCHARGE_CENTS: Record<Timeline, number> = {
-  within_3_months: 0,     // +$0
-  "1-2_months":    1000,  // +$10
-  within_1_month:  2500,  // +$25
+  within_2_months: 0,     // +$0
+  within_1_month:  1000,  // +$10
+  within_2_weeks:  2500,  // +$25
   asap:            5000,  // +$50
 };
 

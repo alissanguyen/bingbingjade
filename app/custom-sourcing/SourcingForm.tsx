@@ -26,7 +26,7 @@ function tierMinBudget(tier: string, category: Category | ""): number {
   if (!category) return 0;
   return TRANSLUCENCY_BUDGET_MIN[tier]?.[category as Category] ?? 0;
 }
-type Timeline = "asap" | "within_1_month" | "1-2_months" | "within_3_months";
+type Timeline = "asap" | "within_2_weeks" | "within_1_month" | "within_2_months";
 type TranslucencyPref = "glutinous_fine" | "icy_glutinous" | "icy_above" | "";
 
 interface RefImage {
@@ -72,7 +72,7 @@ interface FormState {
 const INITIAL: FormState = {
   name: "", email: "", category: "", budget_min: "", budget_max: "",
   preferred_color: "", size_description: "", must_haves: "", must_avoid: "",
-  timeline: "within_3_months", notes: "",
+  timeline: "within_2_months", notes: "",
   close_reference_match: false, reference_notes: "",
   exact_color_matters: false, color_detail: "",
   pattern_veining_matters: false, pattern_description: "",
@@ -101,10 +101,10 @@ const CATEGORIES: { value: Category; label: string }[] = [
 ];
 
 const TIMELINES: { value: Timeline; label: string }[] = [
-  { value: "asap", label: "As soon as possible" },
+  { value: "asap",           label: "As soon as possible" },
+  { value: "within_2_weeks", label: "Within 2 weeks" },
   { value: "within_1_month", label: "Within 1 month" },
-  { value: "1-2_months", label: "1–2 months" },
-  { value: "within_3_months", label: "Within 3 months" },
+  { value: "within_2_months", label: "Within 2 months" },
 ];
 
 // ── Style helpers ─────────────────────────────────────────────────────────────
