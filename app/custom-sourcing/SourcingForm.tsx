@@ -347,20 +347,24 @@ export default function SourcingForm() {
             Your Perfect Piece,<br />Sourced for You
           </h1>
           <p className="mt-4 text-sm sm:text-base text-gray-500 dark:text-gray-400 leading-relaxed max-w-2xl">
-            Our custom sourcing service is designed for clients who want more than browsing ready stock — a guided, more tailored way to find a piece that feels personal, intentional, and closely aligned with your preferences.
+            Looking for something specific, rare, or deeply personal? Our custom sourcing service offers a refined, guided experience beyond ready stock. We carefully source natural jadeite options tailored to your preferences, so finding the right piece feels effortless, intentional, and special.
           </p>
-          <div className="mt-6 flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm">
+          <div className="mt-6 flex flex-col flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm">
             <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              Deposit applied toward your purchase
+              Deposit applied toward your selected piece
             </div>
             <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              Access to carefully curated options
+              Curated options tailored to your preferences
             </div>
             <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               Certified natural jadeite only
+            </div>
+            <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-500 italic">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              To date, every custom sourcing client has found a piece they loved.
             </div>
           </div>
         </div>

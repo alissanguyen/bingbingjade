@@ -779,7 +779,7 @@ export function AttemptManager({
                 <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                   Round {attempt.attempt_number}
                 </span>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${ATTEMPT_STATUS_COLORS[attempt.status] ?? "bg-gray-100 text-gray-500"}`}>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold uppercase tracking-wide ${ATTEMPT_STATUS_COLORS[attempt.status] ?? "bg-gray-100 text-gray-500"}`}>
                   {attempt.status}
                 </span>
               </div>
@@ -881,7 +881,7 @@ export function AttemptManager({
                           {(opt.customer_reaction || opt.customer_note) && (
                             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                               {opt.customer_reaction && (
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${REACTION_COLORS[opt.customer_reaction]}`}>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-[12px] font-semibold ${REACTION_COLORS[opt.customer_reaction]}`}>
                                   {REACTION_LABELS[opt.customer_reaction]}
                                 </span>
                               )}
@@ -891,7 +891,7 @@ export function AttemptManager({
                             </div>
                           )}
                           {!["draft", "active"].includes(opt.status) && (
-                            <span className="inline-block mt-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                            <span className="inline-block mt-1 text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-orange-500 dark:text-yellow-400">
                               {opt.status.replace(/_/g, " ")}
                             </span>
                           )}

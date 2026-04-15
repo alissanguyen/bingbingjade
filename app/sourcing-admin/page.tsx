@@ -34,7 +34,7 @@ const REQUEST_TYPE_COLORS: Record<string, string> = {
 
 function Badge({ label, colorClass }: { label: string; colorClass: string }) {
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[12px] sm:text-xs font-semibold uppercase tracking-wide ${colorClass}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[12px] sm:text-sm font-semibold uppercase tracking-wide ${colorClass}`}>
       {label.replace(/_/g, " ")}
     </span>
   );

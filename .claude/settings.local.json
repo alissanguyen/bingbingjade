@@ -55,7 +55,9 @@
       "Bash(npm view:*)",
       "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -type f -path */supabase/* -name *.sql)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(claude plugin:*)"
+      "Bash(claude plugin:*)",
+      "Bash(gh repo:*)",
+      "Bash(gh run:*)"
     ]
   }
 }
