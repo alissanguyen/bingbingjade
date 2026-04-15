@@ -96,7 +96,7 @@ const STATUS_INFO: Record<SourcingStatus, { label: string; color: string; descri
   accepted_pending_checkout: {
     label: "Checkout Ready",
     color: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300",
-    description: "You've selected a piece — congratulations! A private checkout link has been sent to your email with your sourcing deposit applied as a discount.",
+    description: "You've selected a piece — congratulations! Complete your checkout below, or change your mind and explore other options.",
   },
   fulfilled: {
     label: "Complete",
@@ -155,6 +155,7 @@ export function SourcingTracker({ token, data, purchaseSuccess }: Props) {
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [feedbackSent, setFeedbackSent] = useState(!!activeAttempt?.customer_feedback);
   const [accepting, setAccepting] = useState<string | null>(null);
+  const [continuing, setContinuing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function submitFeedback() {
@@ -196,9 +197,7 @@ export function SourcingTracker({ token, data, purchaseSuccess }: Props) {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Failed to create checkout.");
-      if (json.url) {
-        window.location.href = json.url;
-      }
+      if (json.url) window.location.href = json.url;
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -206,8 +205,32 @@ export function SourcingTracker({ token, data, purchaseSuccess }: Props) {
     }
   }
 
+  async function continueRequest() {
+    if (!confirm("Discard your current selection and continue sourcing? Your checkout link will be cancelled.")) return;
+    setContinuing(true); setError(null);
+    try {
+      const res = await fetch(`/api/sourcing/request/${token}/continue`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed to continue request.");
+      window.location.reload();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setContinuing(false);
+    }
+  }
+
   const pastAttempts = data.attempts.filter((a) =>
     !activeAttempt || a.id !== activeAttempt.id
+  ).filter((a) => a.status !== "draft");
+
+  // Rounds remaining after current
+  const roundsRemaining = data.max_attempts - data.attempts_used;
+  const hasPastPickableOptions = pastAttempts.some((a) =>
+    a.sourcing_attempt_options.some((o) => ["active", "responded", "skipped"].includes(o.status))
   );
 
   return (
@@ -221,7 +244,7 @@ export function SourcingTracker({ token, data, purchaseSuccess }: Props) {
           <div>
             <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Payment complete — congratulations!</p>
             <p className="text-sm text-emerald-700 dark:text-emerald-400 mt-0.5">
-              Your purchase is confirmed. We'll prepare your piece and reach out with shipping details soon.
+              Your purchase is confirmed. We&apos;ll prepare your piece and reach out with shipping details soon.
             </p>
           </div>
         </div>
@@ -240,7 +263,7 @@ export function SourcingTracker({ token, data, purchaseSuccess }: Props) {
         </p>
       </div>
 
-      {/* Request summary */}
+      {/* Request summary card */}
       <div className={`rounded-xl overflow-hidden ${data.request_type === "concierge" ? "concierge-card" : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800"}`}>
         <div className={`px-5 py-4 flex flex-wrap items-start justify-between gap-3 ${data.request_type === "concierge" ? "border-b border-amber-900/30" : "border-b border-gray-100 dark:border-gray-800"}`}>
           <div>
@@ -272,15 +295,15 @@ export function SourcingTracker({ token, data, purchaseSuccess }: Props) {
       {data.preferences_json && Object.keys(data.preferences_json).length > 0 && (() => {
         const p = data.preferences_json!;
         const rows: { label: string; value: string }[] = [];
-        if (p.timeline)                 rows.push({ label: "Timeline",        value: String(p.timeline).replace(/_/g, " ") });
-        if (p.preferred_color)          rows.push({ label: "Color",           value: String(p.preferred_color) });
-        if (p.size_description)         rows.push({ label: "Size",            value: String(p.size_description) });
-        if (p.translucency_preference)  rows.push({ label: "Translucency",    value: String(p.translucency_preference).replace(/_/g, " ") });
-        if (p.exact_dimensions)         rows.push({ label: "Dimensions",      value: String(p.exact_dimensions) });
-        if (p.surface_finish)           rows.push({ label: "Surface finish",  value: String(p.surface_finish) });
-        if (p.pattern_description)      rows.push({ label: "Pattern",         value: String(p.pattern_description) });
-        if (p.reference_notes)          rows.push({ label: "Notes",           value: String(p.reference_notes) });
-        if (p.must_haves)               rows.push({ label: "Must-haves",      value: String(p.must_haves) });
+        if (p.timeline)                rows.push({ label: "Timeline",       value: String(p.timeline).replace(/_/g, " ") });
+        if (p.preferred_color)         rows.push({ label: "Color",          value: String(p.preferred_color) });
+        if (p.size_description)        rows.push({ label: "Size",           value: String(p.size_description) });
+        if (p.translucency_preference) rows.push({ label: "Translucency",   value: String(p.translucency_preference).replace(/_/g, " ") });
+        if (p.exact_dimensions)        rows.push({ label: "Dimensions",     value: String(p.exact_dimensions) });
+        if (p.surface_finish)          rows.push({ label: "Surface finish", value: String(p.surface_finish) });
+        if (p.pattern_description)     rows.push({ label: "Pattern",        value: String(p.pattern_description) });
+        if (p.reference_notes)         rows.push({ label: "Notes",          value: String(p.reference_notes) });
+        if (p.must_haves)              rows.push({ label: "Must-haves",     value: String(p.must_haves) });
         if (rows.length === 0) return null;
         return (
           <details className="group rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
@@ -304,69 +327,128 @@ export function SourcingTracker({ token, data, purchaseSuccess }: Props) {
         );
       })()}
 
-      {/* Trust / upsell block — shown while we're still sourcing */}
+      {/* Trust block — shown while sourcing */}
       {(status === "queued" || status === "in_progress" || status === "responded") && (
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
           <div className="px-5 pt-4 pb-2 border-b border-gray-100 dark:border-gray-800">
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500">What we&apos;re doing for you</p>
           </div>
           <div className="grid sm:grid-cols-3 gap-0">
-            <div className="px-5 py-4">
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-emerald-600 dark:text-emerald-400 text-base">🔍</span>
-                <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">Trusted Vendor Network</p>
+            {[
+              { emoji: "🔍", title: "Trusted Vendor Network", body: "We source exclusively from vendors we've vetted personally — many of whom aren't accessible to the general public." },
+              { emoji: "✨", title: "Authenticity Guaranteed", body: "Every piece we present is natural jadeite, evaluated for quality, color, and craftsmanship before reaching you." },
+              { emoji: "🎯", title: "Curated to Your Criteria", body: "We match pieces to your budget, size, style, and preferences — not just whatever's available." },
+            ].map(({ emoji, title, body }) => (
+              <div key={title} className="px-5 py-4">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-base">{emoji}</span>
+                  <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{title}</p>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{body}</p>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                We source exclusively from vendors we&apos;ve vetted personally — many of whom aren&apos;t accessible to the general public.
-              </p>
-            </div>
-            <div className="px-5 py-4">
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-emerald-600 dark:text-emerald-400 text-base">✨</span>
-                <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">Authenticity Guaranteed</p>
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                Every piece we present is natural jadeite, evaluated for quality, color, and craftsmanship before reaching you.
-              </p>
-            </div>
-            <div className="px-5 py-4">
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-emerald-600 dark:text-emerald-400 text-base">🎯</span>
-                <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">Curated to Your Criteria</p>
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                We match pieces to your budget, size, style, and preferences — not just whatever&apos;s available.
-              </p>
-            </div>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Active attempt */}
-      {activeAttempt && (
+      {error && (
+        <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+          {error}
+        </div>
+      )}
+
+      {/* ── CHECKOUT READY state: selection + options ───────────── */}
+      {status === "accepted_pending_checkout" && (
+        <div className="space-y-4">
+          {/* Current selection + checkout actions */}
+          {(() => {
+            // Find the converted_to_checkout option
+            const checkoutAttempt = data.attempts.find((a) =>
+              a.sourcing_attempt_options.some((o) => o.status === "converted_to_checkout")
+            );
+            const checkoutOption = checkoutAttempt?.sourcing_attempt_options.find(
+              (o) => o.status === "converted_to_checkout"
+            );
+            return checkoutAttempt && checkoutOption ? (
+              <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-gray-900 overflow-hidden">
+                <div className="px-5 py-4 border-b border-emerald-100 dark:border-emerald-900">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-600 dark:text-emerald-400 mb-0.5">
+                    Your Selection — Round {checkoutAttempt.attempt_number}
+                  </p>
+                  <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{checkoutOption.title}</h2>
+                  <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                    ${(checkoutOption.price_cents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}
+                  </p>
+                  {(checkoutOption.images_json as string[]).length > 0 && (
+                    <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
+                      {(checkoutOption.images_json as string[]).slice(0, 4).map((url, i) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img key={i} src={url} alt="" className="h-20 w-20 object-cover rounded-lg border border-gray-200 dark:border-gray-700 shrink-0" />
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="px-5 py-4 flex flex-wrap gap-3 items-center">
+                  <button
+                    type="button"
+                    onClick={() => acceptOption(checkoutOption.id, checkoutAttempt.id)}
+                    disabled={!!accepting}
+                    className="px-5 py-2.5 text-sm font-semibold bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {accepting === checkoutOption.id ? "Processing…" : "Resume Checkout →"}
+                  </button>
+                  {roundsRemaining > 0 && (
+                    <button
+                      type="button"
+                      onClick={continueRequest}
+                      disabled={continuing}
+                      className="px-4 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+                    >
+                      {continuing ? "Cancelling…" : `Continue Sourcing (${roundsRemaining} round${roundsRemaining > 1 ? "s" : ""} left)`}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : null;
+          })()}
+
+          {/* Pick from previous round */}
+          {hasPastPickableOptions && (
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800">
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-500 dark:text-gray-400">
+                  Or pick from a previous round
+                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                  Changed your mind? Accept any piece from a previous round instead — your checkout window resets.
+                </p>
+              </div>
+              {renderPastRounds(true)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── ACTIVE ATTEMPT ──────────────────────────────────────── */}
+      {activeAttempt && status !== "accepted_pending_checkout" && (
         <div className="rounded-xl border border-violet-200 dark:border-violet-800 bg-white dark:bg-gray-950 overflow-hidden">
           <div className="px-5 py-4 border-b border-violet-100 dark:border-violet-900 flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-600 dark:text-violet-400 mb-0.5">
                 Round {activeAttempt.attempt_number} of {data.max_attempts}
               </p>
-              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                Your Options
-              </h2>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Your Options</h2>
             </div>
             {activeAttempt.response_due_at && (
               <div className="text-right">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-400 dark:text-gray-500">Respond by</p>
                 <p className={`text-sm font-semibold ${new Date(activeAttempt.response_due_at) < new Date(Date.now() + 24 * 3600_000) ? "text-amber-600 dark:text-amber-400" : "text-gray-700 dark:text-gray-300"}`}>
-                  {new Date(activeAttempt.response_due_at).toLocaleDateString("en-US", {
-                    weekday: "short", month: "short", day: "numeric",
-                  })}
+                  {new Date(activeAttempt.response_due_at).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
                 </p>
               </div>
             )}
           </div>
 
-          {/* Options */}
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
             {activeAttempt.sourcing_attempt_options
               .filter((o) => ["active", "responded", "converted_to_checkout"].includes(o.status))
@@ -374,41 +456,25 @@ export function SourcingTracker({ token, data, purchaseSuccess }: Props) {
                 const pendingCheckout = option.status === "converted_to_checkout";
                 const reaction = reactions[option.id] ?? null;
                 const note = notes[option.id] ?? "";
-
                 return (
                   <div key={option.id} className="px-5 py-5">
-                    {/* Option images */}
                     {(option.images_json as string[]).length > 0 && (
                       <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
                         {(option.images_json as string[]).map((url, i) => (
                           <a key={i} href={url} target="_blank" rel="noreferrer" className="shrink-0">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={url}
-                              alt={`${option.title} image ${i + 1}`}
-                              className="h-32 w-32 object-cover rounded-lg border border-gray-200 dark:border-gray-700 hover:opacity-90 transition-opacity"
-                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                            />
+                            <img src={url} alt={`${option.title} image ${i + 1}`} className="h-32 w-32 object-cover rounded-lg border border-gray-200 dark:border-gray-700 hover:opacity-90 transition-opacity" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                           </a>
                         ))}
                       </div>
                     )}
-
-                    {/* Option videos */}
                     {(option.videos_json as string[]).length > 0 && (
                       <div className="flex flex-col gap-3 mb-3">
                         {(option.videos_json as string[]).map((url, i) => (
-                          <video
-                            key={i}
-                            src={url}
-                            controls
-                            playsInline
-                            className="w-full max-h-72 rounded-lg border border-gray-200 dark:border-gray-700 bg-black"
-                          />
+                          <video key={i} src={url} controls playsInline className="w-full max-h-72 rounded-lg border border-gray-200 dark:border-gray-700 bg-black" />
                         ))}
                       </div>
                     )}
-
                     <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                       <div>
                         <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{option.title}</h3>
@@ -420,66 +486,42 @@ export function SourcingTracker({ token, data, purchaseSuccess }: Props) {
                           {option.color && <span>{option.color}</span>}
                           {option.dimensions && <span>{option.dimensions}</span>}
                         </div>
-                        {option.notes && (
-                          <p className="mt-1.5 text-sm text-gray-600 dark:text-gray-300">{option.notes}</p>
-                        )}
+                        {option.notes && <p className="mt-1.5 text-sm text-gray-600 dark:text-gray-300">{option.notes}</p>}
                       </div>
-
-                      {/* Accept button */}
                       {pendingCheckout ? (
-                        <button
-                          type="button"
-                          onClick={() => acceptOption(option.id, activeAttempt.id)}
-                          disabled={!!accepting}
-                          className="shrink-0 px-4 py-2 text-sm font-semibold bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
+                        <button type="button" onClick={() => acceptOption(option.id, activeAttempt.id)} disabled={!!accepting}
+                          className="shrink-0 px-4 py-2 text-sm font-semibold bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors disabled:opacity-50">
                           {accepting === option.id ? "Processing…" : "Resume Checkout"}
                         </button>
                       ) : !feedbackSent && (
-                        <button
-                          type="button"
-                          onClick={() => acceptOption(option.id, activeAttempt.id)}
-                          disabled={!!accepting}
-                          className="shrink-0 px-4 py-2 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
+                        <button type="button" onClick={() => acceptOption(option.id, activeAttempt.id)} disabled={!!accepting}
+                          className="shrink-0 px-4 py-2 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50">
                           {accepting === option.id ? "Processing…" : "Accept & Checkout"}
                         </button>
                       )}
                     </div>
-
-                    {/* Reaction buttons */}
                     {!feedbackSent && !pendingCheckout && (
                       <div className="space-y-2">
                         <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Your reaction:</p>
                         <div className="flex gap-2">
                           {(["liked", "neutral", "disliked"] as const).map((r) => (
-                            <button
-                              key={r}
-                              type="button"
-                              onClick={() => setReactions((prev) => ({ ...prev, [option.id]: r }))}
+                            <button key={r} type="button" onClick={() => setReactions((prev) => ({ ...prev, [option.id]: r }))}
                               className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
                                 reaction === r
                                   ? r === "liked"    ? "border-emerald-400 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
                                   : r === "disliked" ? "border-red-400 bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300"
                                   :                   "border-gray-400 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
                                   : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
-                              }`}
-                            >
+                              }`}>
                               {r === "liked" ? "Liked" : r === "disliked" ? "Not for me" : "Neutral"}
                             </button>
                           ))}
                         </div>
-                        <input
-                          type="text"
-                          value={note}
-                          onChange={(e) => setNotes((prev) => ({ ...prev, [option.id]: e.target.value }))}
+                        <input type="text" value={note} onChange={(e) => setNotes((prev) => ({ ...prev, [option.id]: e.target.value }))}
                           placeholder="Optional note (e.g. love the color but too large)"
-                          className="w-full px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                        />
+                          className="w-full px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
                       </div>
                     )}
-
-                    {/* Submitted reaction */}
                     {feedbackSent && option.customer_reaction && (
                       <div className="flex items-center gap-2">
                         <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${
@@ -489,9 +531,7 @@ export function SourcingTracker({ token, data, purchaseSuccess }: Props) {
                         }`}>
                           {option.customer_reaction === "liked" ? "You liked this" : option.customer_reaction === "disliked" ? "Not for you" : "Neutral"}
                         </span>
-                        {option.customer_note && (
-                          <span className="text-xs text-gray-400 italic">&quot;{option.customer_note}&quot;</span>
-                        )}
+                        {option.customer_note && <span className="text-xs text-gray-400 italic">&quot;{option.customer_note}&quot;</span>}
                       </div>
                     )}
                   </div>
@@ -499,119 +539,76 @@ export function SourcingTracker({ token, data, purchaseSuccess }: Props) {
               })}
           </div>
 
-          {/* General feedback + submit */}
+          {/* General feedback */}
           {!feedbackSent ? (
             <div className="px-5 py-4 bg-gray-50 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-800 space-y-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
                   Any overall feedback for us? <span className="text-gray-400 font-normal">(optional)</span>
                 </label>
-                <textarea
-                  value={generalFeedback}
-                  onChange={(e) => setGeneralFeedback(e.target.value)}
-                  placeholder="e.g. I prefer something with more green, or size is perfect..."
-                  rows={3}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none"
-                />
+                <textarea value={generalFeedback} onChange={(e) => setGeneralFeedback(e.target.value)}
+                  placeholder="e.g. I prefer something with more green, or size is perfect..." rows={3}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none" />
               </div>
-              {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
               <div className="flex gap-3 items-center">
-                <button
-                  type="button"
-                  onClick={submitFeedback}
-                  disabled={submittingFeedback}
-                  className="px-4 py-2 text-sm font-semibold bg-gray-800 dark:bg-gray-200 hover:bg-gray-700 dark:hover:bg-white text-white dark:text-gray-900 rounded-lg transition-colors disabled:opacity-50"
-                >
+                <button type="button" onClick={submitFeedback} disabled={submittingFeedback}
+                  className="px-4 py-2 text-sm font-semibold bg-gray-800 dark:bg-gray-200 hover:bg-gray-700 dark:hover:bg-white text-white dark:text-gray-900 rounded-lg transition-colors disabled:opacity-50">
                   {submittingFeedback ? "Submitting…" : "Submit Feedback"}
                 </button>
-                <p className="text-xs text-gray-400 dark:text-gray-500">
-                  You can also accept an option above to proceed directly to checkout.
-                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">You can also accept an option above to proceed directly to checkout.</p>
               </div>
             </div>
           ) : (
             <div className="px-5 py-4 bg-emerald-50 dark:bg-emerald-950/20 border-t border-emerald-100 dark:border-emerald-900 flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
-                  Thank you for your feedback! We&apos;ll review it and follow up soon.
-                </p>
+                <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">Thank you for your feedback! We&apos;ll review it and follow up soon.</p>
                 {activeAttempt.customer_feedback && (
                   <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 italic">&quot;{activeAttempt.customer_feedback}&quot;</p>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => setFeedbackSent(false)}
-                className="shrink-0 text-xs text-emerald-700 dark:text-emerald-400 underline underline-offset-2 hover:no-underline"
-              >
+              <button type="button" onClick={() => setFeedbackSent(false)}
+                className="shrink-0 text-xs text-emerald-700 dark:text-emerald-400 underline underline-offset-2 hover:no-underline">
                 Update feedback
               </button>
+            </div>
+          )}
+
+          {/* Pick from previous round (also available from active round) */}
+          {hasPastPickableOptions && (
+            <div className="px-5 py-3 bg-gray-50 dark:bg-gray-900/30 border-t border-gray-100 dark:border-gray-800">
+              <p className="text-xs text-gray-400 dark:text-gray-500">
+                Prefer something from a previous round? See <a href="#previous-rounds" className="underline underline-offset-2 text-emerald-600 dark:text-emerald-400">past rounds</a> below.
+              </p>
             </div>
           )}
         </div>
       )}
 
-      {/* Past attempts (read-only) */}
-      {pastAttempts.filter((a) => a.status !== "draft").length > 0 && (
-        <div className="space-y-3">
+      {/* ── PAST ROUNDS (accordion) ──────────────────────────────── */}
+      {pastAttempts.length > 0 && status !== "accepted_pending_checkout" && (
+        <div id="previous-rounds" className="space-y-3">
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500">Previous Rounds</p>
-          {pastAttempts
-            .filter((a) => a.status !== "draft")
-            .map((attempt) => (
-              <div key={attempt.id} className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 overflow-hidden">
-                <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Round {attempt.attempt_number}
-                  </span>
-                  <span className="text-xs text-gray-400 dark:text-gray-500">
-                    {attempt.sent_at && new Date(attempt.sent_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                  </span>
-                </div>
-                <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {attempt.sourcing_attempt_options.map((opt) => (
-                    <div key={opt.id} className="px-5 py-3 flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{opt.title}</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">
-                          ${(opt.price_cents / 100).toLocaleString("en-US")}
-                          {opt.tier && ` · ${opt.tier}`}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {opt.customer_reaction && (
-                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                            opt.customer_reaction === "liked"    ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
-                            : opt.customer_reaction === "disliked" ? "bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400"
-                            :                                         "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
-                          }`}>
-                            {opt.customer_reaction === "liked" ? "Liked" : opt.customer_reaction === "disliked" ? "Not for me" : "Neutral"}
-                          </span>
-                        )}
-                        {["active", "responded"].includes(opt.status) && (
-                          <button
-                            type="button"
-                            onClick={() => acceptOption(opt.id, attempt.id)}
-                            disabled={!!accepting}
-                            className="px-3 py-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50"
-                          >
-                            {accepting === opt.id ? "…" : "Accept this piece"}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  {attempt.customer_feedback && (
-                    <div className="px-5 py-3 bg-gray-50 dark:bg-gray-900/40">
-                      <p className="text-xs text-gray-400 dark:text-gray-500">Feedback: <em className="text-gray-600 dark:text-gray-300">&quot;{attempt.customer_feedback}&quot;</em></p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+          {renderPastRounds(false)}
         </div>
       )}
 
-      {/* Empty state for queued/in_progress */}
+      {/* ── ALL ROUNDS DONE (no active, no checkout) ─────────────── */}
+      {!activeAttempt && status !== "accepted_pending_checkout" && status !== "fulfilled" && status !== "cancelled" && status !== "closed" && data.attempts.length > 0 && (
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-5 py-5 space-y-3">
+          <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">Didn&apos;t find the right piece?</p>
+          {hasPastPickableOptions ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              You can still pick from any previous round — see the options above. Or, if you&apos;d prefer to keep your deposit as store credit (valid for 1 year), <a href="/contact" className="text-emerald-600 dark:text-emerald-400 underline underline-offset-2">reach out to us</a>.
+            </p>
+          ) : (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Your deposit remains as store credit, valid for 1 year. <a href="/contact" className="text-emerald-600 dark:text-emerald-400 underline underline-offset-2">Contact us</a> to apply it or start a new request.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ── EMPTY (queued/in_progress with no attempts) ───────────── */}
       {(status === "queued" || status === "in_progress") && data.attempts.length === 0 && (
         <div className="rounded-xl border border-dashed border-emerald-200 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/10 px-6 py-10 text-center">
           <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center mx-auto mb-3">
@@ -621,20 +618,103 @@ export function SourcingTracker({ token, data, purchaseSuccess }: Props) {
           </div>
           <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">Your sourcing is underway</p>
           <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm mx-auto leading-relaxed">
-            We&apos;ll notify you at <span className="font-medium text-gray-700 dark:text-gray-300">{data.customer_email}</span> as soon as your curated options are ready to review. This typically takes a few days depending on your request tier.
+            We&apos;ll notify you at <span className="font-medium text-gray-700 dark:text-gray-300">{data.customer_email}</span> as soon as your curated options are ready to review.
           </p>
         </div>
       )}
 
-      {/* Fulfilled */}
+      {/* ── FULFILLED ─────────────────────────────────────────────── */}
       {status === "fulfilled" && (
         <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20 px-6 py-8 text-center">
           <p className="text-base font-semibold text-emerald-700 dark:text-emerald-300 mb-1">Order Complete</p>
-          <p className="text-sm text-emerald-600 dark:text-emerald-400">
-            Your jade piece is on its way. Thank you for choosing BingBing Jade!
-          </p>
+          <p className="text-sm text-emerald-600 dark:text-emerald-400">Your jade piece is on its way. Thank you for choosing BingBing Jade!</p>
         </div>
       )}
     </div>
   );
+
+  function renderPastRounds(compact: boolean) {
+    return pastAttempts.map((attempt) => (
+      <details key={attempt.id} className="group rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 overflow-hidden">
+        <summary className="px-5 py-3 flex items-center justify-between gap-2 cursor-pointer list-none select-none">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Round {attempt.attempt_number}
+              {attempt.status === "skipped" && (
+                <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">skipped</span>
+              )}
+              {attempt.status === "expired" && (
+                <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-red-500 dark:text-red-400">expired</span>
+              )}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            {attempt.sent_at && (
+              <span className="text-xs text-gray-400 dark:text-gray-500">
+                {new Date(attempt.sent_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              </span>
+            )}
+            <svg className="w-4 h-4 text-gray-400 transition-transform group-open:rotate-180 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </summary>
+        <div className="border-t border-gray-100 dark:border-gray-800 divide-y divide-gray-100 dark:divide-gray-800">
+          {attempt.sourcing_attempt_options.map((opt) => {
+            const canAccept = ["active", "responded", "skipped"].includes(opt.status);
+            return (
+              <div key={opt.id} className={`px-5 py-4 ${compact ? "" : ""}`}>
+                {/* Images */}
+                {(opt.images_json as string[]).length > 0 && (
+                  <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
+                    {(opt.images_json as string[]).slice(0, compact ? 3 : 6).map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noreferrer" className="shrink-0">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt={`${opt.title} ${i + 1}`} className="h-24 w-24 object-cover rounded-lg border border-gray-200 dark:border-gray-700 hover:opacity-90 transition-opacity" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                      </a>
+                    ))}
+                  </div>
+                )}
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{opt.title}</p>
+                    <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                      ${(opt.price_cents / 100).toLocaleString("en-US")}
+                    </p>
+                    <div className="flex flex-wrap gap-x-3 text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                      {opt.tier && <span>{opt.tier}</span>}
+                      {opt.color && <span>{opt.color}</span>}
+                      {opt.dimensions && <span>{opt.dimensions}</span>}
+                    </div>
+                    {opt.notes && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{opt.notes}</p>}
+                    {opt.customer_reaction && (
+                      <span className={`inline-flex mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                        opt.customer_reaction === "liked"    ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
+                        : opt.customer_reaction === "disliked" ? "bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400"
+                        :                                         "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                      }`}>
+                        {opt.customer_reaction === "liked" ? "You liked this" : opt.customer_reaction === "disliked" ? "Not for me" : "Neutral"}
+                      </span>
+                    )}
+                    {opt.customer_note && <p className="text-xs text-gray-400 italic mt-0.5">&quot;{opt.customer_note}&quot;</p>}
+                  </div>
+                  {canAccept && (
+                    <button type="button" onClick={() => acceptOption(opt.id, attempt.id)} disabled={!!accepting}
+                      className="px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50 shrink-0">
+                      {accepting === opt.id ? "…" : "Accept this piece"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {attempt.customer_feedback && (
+            <div className="px-5 py-3 bg-gray-50 dark:bg-gray-900/40">
+              <p className="text-xs text-gray-400 dark:text-gray-500">Your feedback: <em className="text-gray-600 dark:text-gray-300">&quot;{attempt.customer_feedback}&quot;</em></p>
+            </div>
+          )}
+        </div>
+      </details>
+    ));
+  }
 }

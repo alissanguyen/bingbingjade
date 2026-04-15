@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 
-type OptionStatus = "draft" | "active" | "rejected" | "accepted" | "converted_to_checkout" | "paid" | "expired";
-type AttemptStatus = "draft" | "sent" | "responded" | "expired" | "accepted" | "closed";
+type OptionStatus = "draft" | "active" | "rejected" | "accepted" | "converted_to_checkout" | "paid" | "expired" | "skipped" | "responded";
+type AttemptStatus = "draft" | "sent" | "responded" | "expired" | "accepted" | "closed" | "skipped";
 
 interface AttemptOption {
   id: string;
@@ -76,6 +76,7 @@ const ATTEMPT_STATUS_COLORS: Record<string, string> = {
   sent:      "bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300",
   responded: "bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300",
   expired:   "bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400",
+  skipped:   "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300",
   accepted:  "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300",
   closed:    "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400",
 };
@@ -155,9 +156,9 @@ interface OptionFormState {
   colors: string[];
   dimensions: string;
   notes: string;
-  images: string[];   // public URLs
-  videos: string[];   // storage paths (private bucket)
-  videoNames: string[]; // display filenames for admin preview
+  images: string[];
+  videos: string[];
+  videoNames: string[];
 }
 
 const emptyForm = (): OptionFormState => ({
@@ -168,7 +169,7 @@ const emptyForm = (): OptionFormState => ({
 function TierSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <div>
-      <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-400 dark:text-gray-500 mb-0.5">Tier</label>
+      <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-400 dark:text-gray-500 mb-0.5">Tier *</label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -223,7 +224,6 @@ export function AttemptManager({
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [globalSuccess, setGlobalSuccess] = useState<string | null>(null);
 
-  // Per-attempt state
   const [showAddOption, setShowAddOption] = useState<Record<string, boolean>>({});
   const [optionForms, setOptionForms] = useState<Record<string, OptionFormState>>({});
   const [editingOption, setEditingOption] = useState<Record<string, OptionFormState>>({});
@@ -300,7 +300,6 @@ export function AttemptManager({
     const newNames: string[] = [];
     for (const file of Array.from(files)) {
       try {
-        // Get signed upload URL
         const urlRes = await fetch("/api/create-upload-url", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -308,7 +307,6 @@ export function AttemptManager({
         });
         const { signedUrl, path } = await urlRes.json() as { signedUrl?: string; path?: string; error?: string };
         if (!urlRes.ok || !signedUrl || !path) throw new Error("Failed to get upload URL");
-        // Upload directly to Supabase
         const uploadRes = await fetch(signedUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
         if (!uploadRes.ok) throw new Error("Video upload failed");
         newPaths.push(path);
@@ -330,6 +328,15 @@ export function AttemptManager({
     if (ok) setTimeout(() => setGlobalSuccess(null), 3000);
   }
 
+  function validateOption(form: OptionFormState): string | null {
+    if (!form.title.trim()) return "Title is required.";
+    if (!form.tier) return "Tier is required.";
+    const price = parseFloat(form.priceUsd);
+    if (isNaN(price) || price <= 0) return "A valid price is required.";
+    if (form.images.length === 0) return "At least one image is required.";
+    return null;
+  }
+
   async function createAttempt() {
     setGlobalLoading(true); setMsg(null, null);
     try {
@@ -345,11 +352,9 @@ export function AttemptManager({
 
   async function addOption(attemptId: string) {
     const form = optionForms[attemptId] ?? emptyForm();
+    const validationError = validateOption(form);
+    if (validationError) { setMsg(validationError, null); return; }
     const priceCents = Math.round(parseFloat(form.priceUsd) * 100);
-    if (!form.title.trim() || isNaN(priceCents) || priceCents <= 0) {
-      setMsg("Title and a valid price are required.", null);
-      return;
-    }
     setSavingOption((prev) => ({ ...prev, [attemptId]: true })); setMsg(null, null);
     try {
       const data = await apiCall(`/api/admin/sourcing/attempts/${attemptId}/options`, {
@@ -396,11 +401,9 @@ export function AttemptManager({
   async function saveOptionEdit(attemptId: string, optionId: string) {
     const form = editingOption[optionId];
     if (!form) return;
+    const validationError = validateOption(form);
+    if (validationError) { setMsg(validationError, null); return; }
     const priceCents = Math.round(parseFloat(form.priceUsd) * 100);
-    if (!form.title.trim() || isNaN(priceCents) || priceCents <= 0) {
-      setMsg("Title and valid price required.", null);
-      return;
-    }
     setSavingOption((prev) => ({ ...prev, [optionId]: true })); setMsg(null, null);
     try {
       const data = await apiPut(`/api/admin/sourcing/attempts/${attemptId}/options/${optionId}`, {
@@ -464,10 +467,54 @@ export function AttemptManager({
     try {
       const data = await apiCall(`/api/admin/sourcing/${requestId}/resend-email`) as { resent: string; attemptNumber?: number };
       const label =
-        data.resent === "checkout_offer"      ? "Checkout offer email resent." :
-        data.resent === "attempt"             ? `Round ${data.attemptNumber} options email resent.` :
-                                               "Deposit confirmation email resent.";
+        data.resent === "checkout_offer" ? "Checkout offer email resent." :
+        data.resent === "attempt"        ? `Round ${data.attemptNumber} options email resent.` :
+                                           "Deposit confirmation email resent.";
       setMsg(null, label);
+    } catch (e) {
+      setMsg((e as Error).message, null);
+    } finally {
+      setGlobalLoading(false);
+    }
+  }
+
+  async function resendRoundEmail(attemptId: string) {
+    setGlobalLoading(true); setMsg(null, null);
+    try {
+      await apiCall(`/api/admin/sourcing/attempts/${attemptId}/resend`);
+      setMsg(null, "Round email resent to customer.");
+    } catch (e) {
+      setMsg((e as Error).message, null);
+    } finally {
+      setGlobalLoading(false);
+    }
+  }
+
+  async function skipRound(attemptId: string) {
+    if (!confirm("Mark this round as skipped? Customer did not make a selection.")) return;
+    setGlobalLoading(true); setMsg(null, null);
+    try {
+      await apiCall(`/api/admin/sourcing/attempts/${attemptId}/skip`);
+      setAttempts((prev) => prev.map((a) => a.id === attemptId ? { ...a, status: "skipped" } : a));
+      setMsg(null, "Round marked as skipped.");
+    } catch (e) {
+      setMsg((e as Error).message, null);
+    } finally {
+      setGlobalLoading(false);
+    }
+  }
+
+  async function reactivateRound(attemptId: string) {
+    if (!confirm("Reactivate this round? Customer will have a new 72-hour window to respond.")) return;
+    setGlobalLoading(true); setMsg(null, null);
+    try {
+      const data = await apiCall(`/api/admin/sourcing/attempts/${attemptId}/reactivate`) as { responseDueAt: string };
+      setAttempts((prev) => prev.map((a) =>
+        a.id === attemptId
+          ? { ...a, status: "sent", response_due_at: data.responseDueAt }
+          : a
+      ));
+      setMsg(null, "Round reactivated. Customer has 72 hours to respond.");
     } catch (e) {
       setMsg((e as Error).message, null);
     } finally {
@@ -521,6 +568,85 @@ export function AttemptManager({
     }
   }
 
+  // Shared image upload UI (used in both add and edit forms)
+  function renderImageUpload(
+    formKey: string,
+    images: string[],
+    onUpload: (files: FileList) => void,
+    onRemove: (i: number) => void
+  ) {
+    return (
+      <div>
+        <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-400 dark:text-gray-500 mb-0.5">Images *</label>
+        <input
+          type="file"
+          accept="image/*,.heic,.heif,.pdf"
+          multiple
+          disabled={uploadingImages[formKey]}
+          onChange={(e) => e.target.files && onUpload(e.target.files)}
+          className="block w-full text-xs text-gray-600 dark:text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-emerald-50 dark:file:bg-emerald-950/30 file:text-emerald-700 dark:file:text-emerald-300"
+        />
+        {uploadingImages[formKey] && <p className="text-[10px] text-emerald-600 mt-0.5">Uploading…</p>}
+        {images.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-1.5">
+            {images.map((url, i) => (
+              <div key={i} className="relative group">
+                {i === 0 && (
+                  <span className="absolute -top-1 -left-1 z-10 text-[8px] font-bold bg-emerald-600 text-white px-1 rounded">THUMB</span>
+                )}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt="" className="h-14 w-14 object-cover rounded border border-gray-200 dark:border-gray-700" />
+                <button
+                  type="button"
+                  onClick={() => onRemove(i)}
+                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >×</button>
+              </div>
+            ))}
+          </div>
+        )}
+        {images.length === 0 && (
+          <p className="text-[10px] text-red-400 mt-0.5">At least one image required. First image is the thumbnail.</p>
+        )}
+      </div>
+    );
+  }
+
+  function renderVideoUpload(
+    formKey: string,
+    videoNames: string[],
+    onUpload: (files: FileList) => void,
+    onRemove: (i: number) => void
+  ) {
+    return (
+      <div>
+        <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-400 dark:text-gray-500 mb-0.5">Videos (optional)</label>
+        <input
+          type="file"
+          accept="video/*,.mov,.mp4,.m4v"
+          multiple
+          disabled={uploadingImages[`video_${formKey}`]}
+          onChange={(e) => e.target.files && onUpload(e.target.files)}
+          className="block w-full text-xs text-gray-600 dark:text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-sky-50 dark:file:bg-sky-950/30 file:text-sky-700 dark:file:text-sky-300"
+        />
+        {uploadingImages[`video_${formKey}`] && <p className="text-[10px] text-sky-600 mt-0.5">Uploading…</p>}
+        {videoNames.length > 0 && (
+          <div className="flex flex-col gap-1 mt-1.5">
+            {videoNames.map((name, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                <span className="truncate max-w-[200px]">🎬 {name}</span>
+                <button type="button" onClick={() => onRemove(i)} className="text-red-400 hover:text-red-600 shrink-0">×</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Suppress unused warning — publicToken may be used in future
+  void publicToken;
+
   return (
     <div className="space-y-4">
       {/* Section header + global actions */}
@@ -550,7 +676,6 @@ export function AttemptManager({
         </div>
       </div>
 
-      {/* Status messages */}
       {globalError && <p className="text-xs text-red-600 dark:text-red-400">{globalError}</p>}
       {globalSuccess && <p className="text-xs text-emerald-600 dark:text-emerald-400">{globalSuccess}</p>}
 
@@ -560,7 +685,6 @@ export function AttemptManager({
         </div>
       )}
 
-      {/* No attempts yet */}
       {attempts.length === 0 && isPaid && (
         <div className="rounded-xl border border-dashed border-gray-200 dark:border-gray-700 px-6 py-8 text-center">
           <p className="text-sm text-gray-400 dark:text-gray-500 mb-3">No rounds yet.</p>
@@ -574,8 +698,11 @@ export function AttemptManager({
 
       {/* Attempt cards */}
       {attempts.map((attempt) => {
-        const isDraft = attempt.status === "draft";
-        const isSent  = attempt.status === "sent";
+        const isDraft   = attempt.status === "draft";
+        const isSent    = attempt.status === "sent";
+        const isSkipped = attempt.status === "skipped";
+        const isExpired = attempt.status === "expired";
+        const canReactivate = ["expired", "skipped", "responded"].includes(attempt.status);
         const addForm = optionForms[attempt.id] ?? emptyForm();
         const isAddingOption = showAddOption[attempt.id] ?? false;
 
@@ -591,7 +718,7 @@ export function AttemptManager({
                   {attempt.status}
                 </span>
               </div>
-              <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
                 {attempt.sent_at && <span>Sent {new Date(attempt.sent_at).toLocaleDateString()}</span>}
                 {attempt.response_due_at && (
                   <span className={new Date(attempt.response_due_at) < new Date() ? "text-red-500" : ""}>
@@ -607,11 +734,11 @@ export function AttemptManager({
               </div>
             </div>
 
-            {/* Empty draft nudge */}
+            {/* Draft empty nudge */}
             {isDraft && attempt.sourcing_attempt_options.length === 0 && !isAddingOption && (
-              <div className="px-5 py-4 bg-amber-50 dark:bg-amber-950/20 border-b border-amber-100 dark:border-amber-900 flex items-center justify-between gap-3">
+              <div className="px-5 py-4 bg-amber-50 dark:bg-amber-950/20 border-b border-amber-100 dark:border-amber-900">
                 <p className="text-xs text-amber-700 dark:text-amber-300">
-                  This draft has no options yet. Add at least one option before sending, or discard this round.
+                  This draft has no options yet. Add at least one option (with title, tier, price, and image) before sending.
                 </p>
               </div>
             )}
@@ -626,102 +753,69 @@ export function AttemptManager({
                   <div key={opt.id} className="px-5 py-3">
                     {isEditing && editForm ? (
                       <div className="grid sm:grid-cols-2 gap-3">
-                        <FieldInput label="Title" value={editForm.title} onChange={(v) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], title: v } }))} />
-                        <FieldInput label="Price (USD)" value={editForm.priceUsd} onChange={(v) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], priceUsd: v } }))} type="number" />
+                        <FieldInput label="Title *" value={editForm.title} onChange={(v) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], title: v } }))} />
+                        <FieldInput label="Price (USD) *" value={editForm.priceUsd} onChange={(v) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], priceUsd: v } }))} type="number" />
                         <TierSelect value={editForm.tier} onChange={(v) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], tier: v } }))} />
                         <ColorPicker selected={editForm.colors} onChange={(v) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], colors: v } }))} />
                         <FieldInput label="Dimensions" value={editForm.dimensions} onChange={(v) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], dimensions: v } }))} />
-                        <div>
-                          <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-400 dark:text-gray-500 mb-0.5">Images</label>
-                          <input
-                            type="file"
-                            accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf"
-                            multiple
-                            disabled={uploadingImages[opt.id]}
-                            onChange={(e) => e.target.files && uploadImages(
-                              e.target.files, opt.id,
-                              () => editingOption[opt.id]?.images ?? [],
-                              (imgs) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], images: imgs } }))
-                            )}
-                            className="block w-full text-xs text-gray-600 dark:text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-emerald-50 dark:file:bg-emerald-950/30 file:text-emerald-700 dark:file:text-emerald-300"
-                          />
-                          {uploadingImages[opt.id] && <p className="text-[10px] text-emerald-600 mt-0.5">Uploading…</p>}
-                          {editForm.images.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mt-1.5">
-                              {editForm.images.map((url, i) => (
-                                <div key={i} className="relative group">
-                                  <img src={url} alt="" className="h-14 w-14 object-cover rounded border border-gray-200 dark:border-gray-700" />
-                                  <button
-                                    type="button"
-                                    onClick={() => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], images: p[opt.id].images.filter((_, idx) => idx !== i) } }))}
-                                    className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                  >×</button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                        {renderImageUpload(
+                          opt.id,
+                          editForm.images,
+                          (files) => uploadImages(files, opt.id,
+                            () => editingOption[opt.id]?.images ?? [],
+                            (imgs) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], images: imgs } }))
+                          ),
+                          (i) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], images: p[opt.id].images.filter((_, idx) => idx !== i) } }))
+                        )}
                         <div className="sm:col-span-2">
                           <FieldTextarea label="Notes" value={editForm.notes} onChange={(v) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], notes: v } }))} />
                         </div>
                         <div className="sm:col-span-2">
-                          <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-400 dark:text-gray-500 mb-0.5">Videos (optional)</label>
-                          <input
-                            type="file"
-                            accept="video/*,.mov,.mp4,.m4v"
-                            multiple
-                            disabled={uploadingImages[`video_${opt.id}`]}
-                            onChange={(e) => e.target.files && uploadVideos(
-                              e.target.files, opt.id,
+                          {renderVideoUpload(
+                            opt.id,
+                            editForm.videoNames,
+                            (files) => uploadVideos(files, opt.id,
                               () => ({ paths: editingOption[opt.id]?.videos ?? [], names: editingOption[opt.id]?.videoNames ?? [] }),
                               (paths, names) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], videos: paths, videoNames: names } }))
-                            )}
-                            className="block w-full text-xs text-gray-600 dark:text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-sky-50 dark:file:bg-sky-950/30 file:text-sky-700 dark:file:text-sky-300"
-                          />
-                          {uploadingImages[`video_${opt.id}`] && <p className="text-[10px] text-sky-600 mt-0.5">Uploading…</p>}
-                          {editForm.videoNames.length > 0 && (
-                            <div className="flex flex-col gap-1 mt-1.5">
-                              {editForm.videoNames.map((name, i) => (
-                                <div key={i} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                                  <span className="truncate max-w-[200px]">🎬 {name}</span>
-                                  <button type="button" onClick={() => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], videos: p[opt.id].videos.filter((_, idx) => idx !== i), videoNames: p[opt.id].videoNames.filter((_, idx) => idx !== i) } }))} className="text-red-400 hover:text-red-600 shrink-0">×</button>
-                                </div>
-                              ))}
-                            </div>
+                            ),
+                            (i) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], videos: p[opt.id].videos.filter((_, idx) => idx !== i), videoNames: p[opt.id].videoNames.filter((_, idx) => idx !== i) } }))
                           )}
                         </div>
                         <div className="sm:col-span-2 flex gap-2">
-                          <Btn variant="primary" onClick={() => saveOptionEdit(attempt.id, opt.id)} disabled={savingOption[opt.id]}>
-                            Save
-                          </Btn>
-                          <Btn onClick={() => setEditingOption((p) => { const n = { ...p }; delete n[opt.id]; return n; })}>
-                            Cancel
-                          </Btn>
+                          <Btn variant="primary" onClick={() => saveOptionEdit(attempt.id, opt.id)} disabled={savingOption[opt.id]}>Save</Btn>
+                          <Btn onClick={() => setEditingOption((p) => { const n = { ...p }; delete n[opt.id]; return n; })}>Cancel</Btn>
                         </div>
                       </div>
                     ) : (
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="space-y-0.5 min-w-0">
-                          <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{opt.title}</p>
-                          <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
-                            ${(opt.price_cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            {(opt.images_json as string[])?.[0] && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={(opt.images_json as string[])[0]} alt="" className="w-10 h-10 object-cover rounded border border-gray-200 dark:border-gray-700 shrink-0" />
+                            )}
+                            <div>
+                              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{opt.title}</p>
+                              <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+                                ${(opt.price_cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                              </p>
+                            </div>
+                          </div>
                           <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-400 dark:text-gray-500">
                             {opt.tier && <span>Tier: {opt.tier}</span>}
                             {opt.color && <span>Color: {opt.color}</span>}
                             {opt.dimensions && <span>Dim: {opt.dimensions}</span>}
                           </div>
                           {opt.notes && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{opt.notes}</p>}
-                          {(opt.images_json ?? []).length > 0 && (
+                          {(opt.images_json as string[]).length > 1 && (
                             <div className="flex flex-wrap gap-1 mt-1">
-                              {(opt.images_json as string[]).map((url, i) => (
+                              {(opt.images_json as string[]).slice(1).map((url, i) => (
                                 <a key={i} href={url} target="_blank" rel="noreferrer" className="text-[10px] text-sky-600 dark:text-sky-400 hover:underline">
-                                  Image {i + 1} ↗
+                                  Image {i + 2} ↗
                                 </a>
                               ))}
                             </div>
                           )}
-                          {/* Customer reaction + note */}
                           {(opt.customer_reaction || opt.customer_note) && (
                             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                               {opt.customer_reaction && (
@@ -734,7 +828,7 @@ export function AttemptManager({
                               )}
                             </div>
                           )}
-                          {opt.status !== "draft" && opt.status !== "active" && (
+                          {!["draft", "active"].includes(opt.status) && (
                             <span className="inline-block mt-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
                               {opt.status.replace(/_/g, " ")}
                             </span>
@@ -756,77 +850,41 @@ export function AttemptManager({
               {attempt.customer_feedback && (
                 <div className="px-5 py-3 bg-sky-50 dark:bg-sky-950/20">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-sky-600 dark:text-sky-400 mb-0.5">Customer feedback</p>
-                  <p className="text-xs text-gray-700 dark:text-gray-300 italic">"{attempt.customer_feedback}"</p>
+                  <p className="text-xs text-gray-700 dark:text-gray-300 italic">&quot;{attempt.customer_feedback}&quot;</p>
                 </div>
               )}
 
               {/* Add option form */}
               {isDraft && isAddingOption && (
                 <div className="px-5 py-4 bg-gray-50 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-800">
-                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Add option</p>
+                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Add Option <span className="text-gray-400 font-normal">(title, tier, price, and image required)</span></p>
                   <div className="grid sm:grid-cols-2 gap-3">
                     <FieldInput label="Title *" value={addForm.title} onChange={(v) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), title: v } }))} placeholder="e.g. Grade A bangle — deep green" />
                     <FieldInput label="Price (USD) *" value={addForm.priceUsd} onChange={(v) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), priceUsd: v } }))} type="number" placeholder="0.00" />
                     <TierSelect value={addForm.tier} onChange={(v) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), tier: v } }))} />
                     <ColorPicker selected={addForm.colors} onChange={(v) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), colors: v } }))} />
                     <FieldInput label="Dimensions" value={addForm.dimensions} onChange={(v) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), dimensions: v } }))} placeholder="e.g. 55mm internal diameter" />
-                    <div>
-                      <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-400 dark:text-gray-500 mb-0.5">Images</label>
-                      <input
-                        type="file"
-                        accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf"
-                        multiple
-                        disabled={uploadingImages[attempt.id]}
-                        onChange={(e) => e.target.files && uploadImages(
-                          e.target.files, attempt.id,
-                          () => (optionForms[attempt.id] ?? emptyForm()).images,
-                          (imgs) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), images: imgs } }))
-                        )}
-                        className="block w-full text-xs text-gray-600 dark:text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-emerald-50 dark:file:bg-emerald-950/30 file:text-emerald-700 dark:file:text-emerald-300"
-                      />
-                      {uploadingImages[attempt.id] && <p className="text-[10px] text-emerald-600 mt-0.5">Uploading…</p>}
-                      {addForm.images.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-1.5">
-                          {addForm.images.map((url, i) => (
-                            <div key={i} className="relative group">
-                              <img src={url} alt="" className="h-14 w-14 object-cover rounded border border-gray-200 dark:border-gray-700" />
-                              <button
-                                type="button"
-                                onClick={() => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), images: (p[attempt.id]?.images ?? []).filter((_, idx) => idx !== i) } }))}
-                                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                              >×</button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    {renderImageUpload(
+                      attempt.id,
+                      addForm.images,
+                      (files) => uploadImages(files, attempt.id,
+                        () => (optionForms[attempt.id] ?? emptyForm()).images,
+                        (imgs) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), images: imgs } }))
+                      ),
+                      (i) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), images: (p[attempt.id]?.images ?? []).filter((_, idx) => idx !== i) } }))
+                    )}
                     <div className="sm:col-span-2">
                       <FieldTextarea label="Notes" value={addForm.notes} onChange={(v) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), notes: v } }))} placeholder="Any additional details about this piece..." rows={3} />
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-400 dark:text-gray-500 mb-0.5">Videos (optional)</label>
-                      <input
-                        type="file"
-                        accept="video/*,.mov,.mp4,.m4v"
-                        multiple
-                        disabled={uploadingImages[`video_${attempt.id}`]}
-                        onChange={(e) => e.target.files && uploadVideos(
-                          e.target.files, attempt.id,
+                      {renderVideoUpload(
+                        attempt.id,
+                        addForm.videoNames,
+                        (files) => uploadVideos(files, attempt.id,
                           () => ({ paths: (optionForms[attempt.id] ?? emptyForm()).videos, names: (optionForms[attempt.id] ?? emptyForm()).videoNames }),
                           (paths, names) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), videos: paths, videoNames: names } }))
-                        )}
-                        className="block w-full text-xs text-gray-600 dark:text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-sky-50 dark:file:bg-sky-950/30 file:text-sky-700 dark:file:text-sky-300"
-                      />
-                      {uploadingImages[`video_${attempt.id}`] && <p className="text-[10px] text-sky-600 mt-0.5">Uploading…</p>}
-                      {addForm.videoNames.length > 0 && (
-                        <div className="flex flex-col gap-1 mt-1.5">
-                          {addForm.videoNames.map((name, i) => (
-                            <div key={i} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                              <span className="truncate max-w-[200px]">🎬 {name}</span>
-                              <button type="button" onClick={() => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), videos: (p[attempt.id]?.videos ?? []).filter((_, idx) => idx !== i), videoNames: (p[attempt.id]?.videoNames ?? []).filter((_, idx) => idx !== i) } }))} className="text-red-400 hover:text-red-600 shrink-0">×</button>
-                            </div>
-                          ))}
-                        </div>
+                        ),
+                        (i) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), videos: (p[attempt.id]?.videos ?? []).filter((_, idx) => idx !== i), videoNames: (p[attempt.id]?.videoNames ?? []).filter((_, idx) => idx !== i) } }))
                       )}
                     </div>
                   </div>
@@ -858,11 +916,40 @@ export function AttemptManager({
               </div>
             )}
 
-            {isSent && (
-              <div className="px-5 py-3 bg-gray-50 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-400 dark:text-gray-500">
-                Awaiting customer response
-                {attempt.response_due_at && new Date(attempt.response_due_at) > new Date() && (
-                  <> · due {new Date(attempt.response_due_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</>
+            {/* Per-round actions for sent/responded/expired/skipped rounds */}
+            {!isDraft && (
+              <div className="px-5 py-3 bg-gray-50 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center gap-2">
+                {isSent && (
+                  <span className="text-xs text-gray-400 dark:text-gray-500 mr-1">
+                    Awaiting customer response
+                    {attempt.response_due_at && new Date(attempt.response_due_at) > new Date() && (
+                      <> · due {new Date(attempt.response_due_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</>
+                    )}
+                  </span>
+                )}
+                {isSkipped && (
+                  <span className="text-xs text-amber-600 dark:text-amber-400 mr-1">Customer did not select from this round.</span>
+                )}
+                {isExpired && (
+                  <span className="text-xs text-red-500 dark:text-red-400 mr-1">Response window closed.</span>
+                )}
+                {/* Resend email (for any sent/responded/skipped round) */}
+                {["sent", "responded", "skipped", "expired"].includes(attempt.status) && (
+                  <Btn variant="default" onClick={() => resendRoundEmail(attempt.id)} disabled={globalLoading}>
+                    Resend Email
+                  </Btn>
+                )}
+                {/* Skip round (sent or responded only) */}
+                {["sent", "responded"].includes(attempt.status) && (
+                  <Btn variant="amber" onClick={() => skipRound(attempt.id)} disabled={globalLoading}>
+                    Mark as Skipped
+                  </Btn>
+                )}
+                {/* Reactivate (expired, skipped, responded) */}
+                {canReactivate && (
+                  <Btn variant="primary" onClick={() => reactivateRound(attempt.id)} disabled={globalLoading}>
+                    Reactivate Round
+                  </Btn>
                 )}
               </div>
             )}
@@ -883,6 +970,15 @@ export function AttemptManager({
       {!canCreateAttempt && !isDone && isPaid && attemptsUsed >= maxAttempts && (
         <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 px-4 py-3 text-xs text-amber-700 dark:text-amber-300">
           Maximum rounds reached ({maxAttempts}/{maxAttempts}). Close the request or void credit to conclude.
+        </div>
+      )}
+
+      {/* Void credit */}
+      {!isDone && isPaid && availableCreditCents > 0 && (
+        <div className="flex justify-end">
+          <Btn variant="danger" onClick={voidCredit} disabled={globalLoading}>
+            Void ${(availableCreditCents / 100).toFixed(2)} Credit &amp; Cancel
+          </Btn>
         </div>
       )}
     </div>
