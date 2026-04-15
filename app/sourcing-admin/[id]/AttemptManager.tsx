@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ImageCropModal } from "../../add/MediaCroppers";
 
 type OptionStatus = "draft" | "active" | "rejected" | "accepted" | "converted_to_checkout" | "paid" | "expired" | "skipped" | "responded";
 type AttemptStatus = "draft" | "sent" | "responded" | "expired" | "accepted" | "closed" | "skipped";
@@ -230,6 +231,15 @@ export function AttemptManager({
   const [savingOption, setSavingOption] = useState<Record<string, boolean>>({});
   const [uploadingImages, setUploadingImages] = useState<Record<string, boolean>>({});
 
+  interface CropSession {
+    file: File;
+    src: string;
+    remaining: File[];
+    formKey: string;
+    mode: "add" | "edit";
+  }
+  const [cropSession, setCropSession] = useState<CropSession | null>(null);
+
   const isDone = ["fulfilled", "cancelled", "closed"].includes(sourcingStatus);
   const isPaid = paymentStatus === "paid";
   const canCreateAttempt = isPaid && !isDone && (attemptsUsed < maxAttempts);
@@ -320,6 +330,61 @@ export function AttemptManager({
       setVideos([...paths, ...newPaths], [...names, ...newNames]);
     }
     setUploadingImages((p) => ({ ...p, [`video_${formKey}`]: false }));
+  }
+
+  function addImageUrl(url: string, formKey: string, mode: "add" | "edit") {
+    if (mode === "add") {
+      setOptionForms((p) => ({ ...p, [formKey]: { ...(p[formKey] ?? emptyForm()), images: [...(p[formKey]?.images ?? []), url] } }));
+    } else {
+      setEditingOption((p) => ({ ...p, [formKey]: { ...p[formKey], images: [...(p[formKey]?.images ?? []), url] } }));
+    }
+  }
+
+  async function uploadOneFile(file: File, formKey: string, mode: "add" | "edit") {
+    setUploadingImages((p) => ({ ...p, [formKey]: true }));
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const res = await fetch("/api/admin/sourcing/upload-option-image", { method: "POST", body: fd });
+      const json = await res.json() as { url?: string; error?: string };
+      if (!res.ok) throw new Error(json.error ?? "Upload failed");
+      if (json.url) addImageUrl(json.url, formKey, mode);
+    } catch (e) {
+      setGlobalError((e as Error).message);
+    } finally {
+      setUploadingImages((p) => ({ ...p, [formKey]: false }));
+    }
+  }
+
+  function advanceCropQueue(remaining: File[], formKey: string, mode: "add" | "edit") {
+    if (remaining.length === 0) { setCropSession(null); return; }
+    const [next, ...rest] = remaining;
+    setCropSession({ file: next, src: URL.createObjectURL(next), remaining: rest, formKey, mode });
+  }
+
+  function startCropFlow(files: FileList, formKey: string, mode: "add" | "edit") {
+    const arr = Array.from(files).filter((f) => f.type.startsWith("image/") || /\.(heic|heif|pdf)$/i.test(f.name));
+    if (arr.length === 0) return;
+    const [first, ...rest] = arr;
+    setCropSession({ file: first, src: URL.createObjectURL(first), remaining: rest, formKey, mode });
+  }
+
+  async function handleCropConfirm(croppedFile: File) {
+    if (!cropSession) return;
+    const { formKey, mode, remaining, src } = cropSession;
+    URL.revokeObjectURL(src);
+    setCropSession(null);
+    await uploadOneFile(croppedFile, formKey, mode);
+    advanceCropQueue(remaining, formKey, mode);
+  }
+
+  async function handleCropClose() {
+    if (!cropSession) return;
+    const { file, formKey, mode, remaining, src } = cropSession;
+    URL.revokeObjectURL(src);
+    setCropSession(null);
+    await uploadOneFile(file, formKey, mode);
+    advanceCropQueue(remaining, formKey, mode);
   }
 
   function setMsg(err: string | null, ok: string | null) {
@@ -761,10 +826,7 @@ export function AttemptManager({
                         {renderImageUpload(
                           opt.id,
                           editForm.images,
-                          (files) => uploadImages(files, opt.id,
-                            () => editingOption[opt.id]?.images ?? [],
-                            (imgs) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], images: imgs } }))
-                          ),
+                          (files) => startCropFlow(files, opt.id, "edit"),
                           (i) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], images: p[opt.id].images.filter((_, idx) => idx !== i) } }))
                         )}
                         <div className="sm:col-span-2">
@@ -867,10 +929,7 @@ export function AttemptManager({
                     {renderImageUpload(
                       attempt.id,
                       addForm.images,
-                      (files) => uploadImages(files, attempt.id,
-                        () => (optionForms[attempt.id] ?? emptyForm()).images,
-                        (imgs) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), images: imgs } }))
-                      ),
+                      (files) => startCropFlow(files, attempt.id, "add"),
                       (i) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), images: (p[attempt.id]?.images ?? []).filter((_, idx) => idx !== i) } }))
                     )}
                     <div className="sm:col-span-2">
@@ -980,6 +1039,15 @@ export function AttemptManager({
             Void ${(availableCreditCents / 100).toFixed(2)} Credit &amp; Cancel
           </Btn>
         </div>
+      )}
+
+      {cropSession && (
+        <ImageCropModal
+          src={cropSession.src}
+          fileName={cropSession.file.name}
+          onConfirm={handleCropConfirm}
+          onClose={handleCropClose}
+        />
       )}
     </div>
   );
