@@ -6,10 +6,9 @@ import { ALLOWED_COUNTRIES, getShippingZone, calculateShipping, calculateStripeF
 export const dynamic = "force-dynamic";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
-const TX_FEE_RATE = 0.035;
 
 // POST /api/sourcing/offer/[token]/pay
-// Body: { shippingAddress, paymentMethod }
+// Body: { shippingAddress, paymentMethod, taxAmountCents?, taxCalculationId? }
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ token: string }> }
@@ -30,7 +29,7 @@ export async function POST(
     return NextResponse.json({ error: "This offer has expired." }, { status: 400 });
   }
 
-  let body: { shippingAddress?: Record<string, string>; paymentMethod?: string };
+  let body: { shippingAddress?: Record<string, string>; paymentMethod?: string; taxAmountCents?: number; taxCalculationId?: string };
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
   }
@@ -53,15 +52,20 @@ export async function POST(
   const zone = getShippingZone(addr.country);
   const shippingCents = calculateShipping(zone, 1) * 100;
   const priceCents = offer.price_cents as number;
-  const creditCents = offer.sourcing_credit_applied_cents as number ?? 0;
+  const creditCents = (offer.sourcing_credit_applied_cents as number) ?? 0;
 
-  // Credit is capped to item + actual shipping (in case zone differs from when offer was created)
+  // WA state tax from client-side pre-calculation
+  const taxAmountCents = typeof body.taxAmountCents === "number" && body.taxAmountCents > 0
+    ? body.taxAmountCents
+    : 0;
+
+  // Credit is capped to item + actual shipping
   const effectiveCredit = Math.min(creditCents, priceCents + shippingCents);
   const afterCreditCents = Math.max(0, priceCents + shippingCents - effectiveCredit);
+  // Tx fee computed on (after-credit + tax), same as public checkout
   const txFeeCents = paymentMethod === "bnpl"
-    ? calculateBnplFee(afterCreditCents)
-    : calculateStripeFee(afterCreditCents, zone);
-  const totalCents = afterCreditCents + txFeeCents;
+    ? calculateBnplFee(afterCreditCents + taxAmountCents)
+    : calculateStripeFee(afterCreditCents + taxAmountCents, zone);
 
   // Fetch sourcing request token for success/cancel URLs
   const { data: sourcingReq } = await supabaseAdmin
@@ -105,6 +109,18 @@ export async function POST(
     },
     quantity: 1,
   });
+
+  if (taxAmountCents > 0) {
+    lineItems.push({
+      price_data: {
+        currency: "usd",
+        product_data: { name: "Washington State Sales Tax" },
+        unit_amount: taxAmountCents,
+        tax_behavior: "exclusive",
+      },
+      quantity: 1,
+    });
+  }
 
   lineItems.push({
     price_data: {
@@ -163,6 +179,7 @@ export async function POST(
         sourcing_attempt_option_id: offer.sourcing_attempt_option_id as string,
         payment_method: paymentMethod,
         sourcing_credit_applied_cents: String(effectiveCredit),
+        ...(body.taxCalculationId ? { tax_calculation_id: body.taxCalculationId } : {}),
         ...addrMeta,
       },
     });

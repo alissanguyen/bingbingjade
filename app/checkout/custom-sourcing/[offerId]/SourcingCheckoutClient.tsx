@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Elements, AddressElement } from "@stripe/react-stripe-js";
@@ -84,6 +84,11 @@ export function SourcingCheckoutClient({
   // Payment method
   const [paymentMethod, setPaymentMethod] = useState<"standard" | "bnpl" | null>(null);
 
+  // WA state tax
+  const [taxAmountCents, setTaxAmountCents] = useState(0);
+  const [taxCalculationId, setTaxCalculationId] = useState<string | null>(null);
+  const [taxLoading, setTaxLoading] = useState(false);
+
   // Submit
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -104,17 +109,69 @@ export function SourcingCheckoutClient({
       ? Math.max(0, priceCents + shippingCents - effectiveCreditCents)
       : null;
 
+  // Tx fee computed on (after-credit + tax), same as public checkout
   const txFeeCents =
     afterCreditCents != null && zone != null
       ? paymentMethod === "bnpl"
-        ? calculateBnplFee(afterCreditCents)
-        : calculateStripeFee(afterCreditCents, zone)
+        ? calculateBnplFee(afterCreditCents + taxAmountCents)
+        : calculateStripeFee(afterCreditCents + taxAmountCents, zone)
       : null;
 
   const totalCents =
     afterCreditCents != null && txFeeCents != null
-      ? afterCreditCents + txFeeCents
+      ? afterCreditCents + taxAmountCents + txFeeCents
       : null;
+
+  // WA state tax key — only fetch when address is complete and state is WA
+  const taxKey = useMemo(() => {
+    const isWA = address?.country === "US" && address?.state?.toUpperCase() === "WA";
+    if (!isWA || !addressValue) return null;
+    return `${address.postal_code}|${priceCents}`;
+  }, [addressValue, address, priceCents]);
+
+  const lastTaxKeyRef = useRef<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (taxKey === null) {
+      setTaxAmountCents(0);
+      setTaxCalculationId(null);
+      lastTaxKeyRef.current = null;
+      return;
+    }
+    if (taxKey === lastTaxKeyRef.current) return;
+    lastTaxKeyRef.current = taxKey;
+
+    let cancelled = false;
+    setTaxLoading(true);
+
+    fetch("/api/stripe/calculate-tax", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: [{ price: priceCents / 100 }],
+        shippingAddress: {
+          line1: addressValue!.address.line1,
+          city: addressValue!.address.city,
+          state: "WA",
+          postal_code: addressValue!.address.postal_code,
+          country: "US",
+        },
+      }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled) {
+          setTaxAmountCents(data.taxAmountCents ?? 0);
+          setTaxCalculationId(data.calculationId ?? null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) { setTaxAmountCents(0); setTaxCalculationId(null); }
+      })
+      .finally(() => { if (!cancelled) setTaxLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [taxKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const bnplEligible = address?.country === "US";
   useEffect(() => {
@@ -134,6 +191,8 @@ export function SourcingCheckoutClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           paymentMethod,
+          taxAmountCents: taxAmountCents > 0 ? taxAmountCents : undefined,
+          taxCalculationId: taxCalculationId || undefined,
           shippingAddress: {
             name: addressValue.name,
             line1: addressValue.address.line1,
@@ -390,6 +449,16 @@ export function SourcingCheckoutClient({
                       {shippingCents != null ? fmt(shippingCents) : "—"}
                     </span>
                   </div>
+                  {(taxAmountCents > 0 || taxLoading) && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-[12px] sm:text-sm text-stone-500 dark:text-gray-400">
+                        Washington State Tax{taxLoading && taxAmountCents === 0 && <span className="text-stone-400"> (calculating…)</span>}
+                      </span>
+                      <span className="text-[12px] sm:text-sm font-medium text-stone-900 dark:text-gray-100">
+                        {taxLoading && taxAmountCents === 0 ? "…" : fmt(taxAmountCents)}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm">
                     <span className="text-[12px] sm:text-sm text-stone-500 dark:text-gray-400">
                       {paymentMethod === "bnpl" ? "Installment Fee" : "Transaction Fee"}
