@@ -147,6 +147,14 @@ export async function POST(
     .update({ status: "converted_to_checkout", updated_at: now.toISOString() })
     .eq("id", optionId);
 
+  // If the attempt was still "sent", transition it to "responded" so it no longer
+  // blocks admin from creating the next round (the customer has made their choice).
+  await supabaseAdmin
+    .from("sourcing_attempts")
+    .update({ status: "responded", responded_at: now.toISOString(), updated_at: now.toISOString() })
+    .eq("id", attemptId)
+    .eq("status", "sent");
+
   // Update request status
   await supabaseAdmin
     .from("sourcing_requests")

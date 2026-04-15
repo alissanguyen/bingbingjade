@@ -39,7 +39,9 @@ export async function POST(
     return NextResponse.json({ error: "Maximum attempts already reached." }, { status: 400 });
   }
 
-  // Prevent creating a new draft if one already exists or is currently sent
+  // Prevent creating a new draft if one already exists or is currently sent.
+  // Exception: a "sent" attempt whose only active option is converted_to_checkout
+  // means the customer has already accepted from it — allow the next round.
   const { data: existing } = await supabaseAdmin
     .from("sourcing_attempts")
     .select("id, status")
@@ -48,9 +50,29 @@ export async function POST(
     .maybeSingle();
 
   if (existing) {
-    return NextResponse.json({
-      error: `An attempt is already ${existing.status}. Complete or expire it first.`,
-    }, { status: 409 });
+    if (existing.status === "sent") {
+      // Allow if customer already accepted from this attempt (all options converted)
+      const { count: openCount } = await supabaseAdmin
+        .from("sourcing_attempt_options")
+        .select("id", { count: "exact", head: true })
+        .eq("attempt_id", existing.id)
+        .in("status", ["active", "responded"]);
+
+      if ((openCount ?? 0) > 0) {
+        return NextResponse.json({
+          error: "An attempt is already sent. Complete or expire it first.",
+        }, { status: 409 });
+      }
+      // All options are in a terminal state — auto-advance attempt to responded
+      await supabaseAdmin
+        .from("sourcing_attempts")
+        .update({ status: "responded", updated_at: new Date().toISOString() })
+        .eq("id", existing.id);
+    } else {
+      return NextResponse.json({
+        error: "A draft round already exists. Finish or discard it first.",
+      }, { status: 409 });
+    }
   }
 
   // Count all non-cancelled attempts to determine the next attempt_number
