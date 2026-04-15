@@ -446,18 +446,41 @@ export function SourcingCheckoutClient({
               </div>
 
               {/* Trust badges */}
-              <div className="border-t border-stone-100 dark:border-gray-800 px-6 py-5 space-y-3 bg-stone-50/50 dark:bg-gray-900/20">
+              <div className="border-t border-stone-100 dark:border-gray-800 px-6 py-5 space-y-4 bg-stone-50/50 dark:bg-gray-900/20">
                 {[
-                  { icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z", label: "Secure Payment", sub: "Encrypted via Stripe" },
-                  { icon: "M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z", label: "All Major Cards Accepted", sub: "Visa, Mastercard, Amex, and more" },
-                ].map(({ icon, label, sub }) => (
-                  <div key={label} className="flex items-center gap-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-stone-400 dark:text-gray-500 shrink-0">
-                      <path d={icon} />
-                    </svg>
+                  {
+                    icon: (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                    ),
+                    title: "Secured by Stripe",
+                    body: "Your payment is encrypted end-to-end. We never store your card details.",
+                  },
+                  {
+                    icon: (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                      </svg>
+                    ),
+                    title: "Authenticity Guaranteed",
+                    body: "Natural Type A Jadeite — untreated, certified, backed by our lifetime guarantee.",
+                  },
+                  {
+                    icon: (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                      </svg>
+                    ),
+                    title: "Orders Processed within 1-2 Business Days",
+                    body: "Each order is carefully packaged. Expedited options available.",
+                  },
+                ].map((badge) => (
+                  <div key={badge.title} className="flex items-start gap-3">
+                    <span className="text-emerald-600 dark:text-emerald-500 shrink-0 mt-1">{badge.icon}</span>
                     <div>
-                      <p className="text-[12px] sm:text-sm font-medium text-stone-700 dark:text-gray-300">{label}</p>
-                      <p className="text-[10px] sm:text-[13px] text-stone-400 dark:text-gray-500">{sub}</p>
+                      <p className="text-[12px] sm:text-[17px] font-semibold text-stone-700 dark:text-gray-300">{badge.title}</p>
+                      <p className="text-[11px] sm:text-[15px] text-stone-400 dark:text-gray-500 mt-0.5">{badge.body}</p>
                     </div>
                   </div>
                 ))}
