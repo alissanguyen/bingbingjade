@@ -12,10 +12,12 @@ export const metadata: Metadata = {
 
 export default async function CustomerSourcingPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ purchased?: string }>;
 }) {
-  const { token } = await params;
+  const [{ token }, sp] = await Promise.all([params, searchParams]);
   const data = await getSourcingRequestByToken(token);
 
   if (!data) notFound();
@@ -23,7 +25,7 @@ export default async function CustomerSourcingPage({
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 py-10">
-        <SourcingTracker token={token} data={data} />
+        <SourcingTracker token={token} data={data} purchaseSuccess={sp.purchased === "1"} />
       </div>
     </div>
   );

@@ -193,7 +193,7 @@ export default async function SourcingRequestDetailPage({
             <PrefRow label="Translucency" value={prefs.translucency_preference ? String(prefs.translucency_preference).replace(/_/g, " ") : null} />
             <PrefRow label="Exact dimensions" value={prefs.exact_dimensions as string} />
             <PrefRow label="Color detail" value={prefs.color_detail as string} />
-            <PrefRow label="Pattern / veining" value={prefs.pattern_description as string} />
+            <PrefRow label="Pattern / texture" value={prefs.pattern_description as string} />
             <PrefRow label="Reference notes" value={prefs.reference_notes as string} />
             {!!prefs.must_haves && (
               <div className="sm:col-span-2">

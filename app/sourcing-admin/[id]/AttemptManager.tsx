@@ -44,6 +44,21 @@ interface Props {
   initialAttempts: Attempt[];
 }
 
+const TIERS = ["Bean", "Glutinous", "Fine Glutinous", "Very Fine Glutinous", "Icy Glutinous", "Icy", "High Icy", "Glassy", "Longshi"];
+
+const OPTION_COLORS = [
+  { value: "white",    label: "White",    cls: "bg-white border-gray-300" },
+  { value: "green",    label: "Green",    cls: "bg-green-500" },
+  { value: "blue",     label: "Blue",     cls: "bg-blue-500" },
+  { value: "red",      label: "Red",      cls: "bg-red-500" },
+  { value: "pink",     label: "Pink",     cls: "bg-pink-400" },
+  { value: "purple",   label: "Purple",   cls: "bg-purple-500" },
+  { value: "orange",   label: "Orange",   cls: "bg-orange-500" },
+  { value: "yellow",   label: "Yellow",   cls: "bg-yellow-400" },
+  { value: "black",    label: "Black",    cls: "bg-gray-900" },
+  { value: "marbling", label: "Marbling", cls: "bg-gradient-to-br from-gray-200 via-white to-gray-400 border-gray-300" },
+];
+
 const REACTION_LABELS: Record<string, string> = {
   liked:    "Liked",
   disliked: "Disliked",
@@ -137,7 +152,7 @@ interface OptionFormState {
   title: string;
   priceUsd: string;
   tier: string;
-  color: string;
+  colors: string[];
   dimensions: string;
   notes: string;
   images: string[];   // public URLs
@@ -146,9 +161,52 @@ interface OptionFormState {
 }
 
 const emptyForm = (): OptionFormState => ({
-  title: "", priceUsd: "", tier: "", color: "", dimensions: "", notes: "",
+  title: "", priceUsd: "", tier: "", colors: [], dimensions: "", notes: "",
   images: [], videos: [], videoNames: [],
 });
+
+function TierSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-400 dark:text-gray-500 mb-0.5">Tier</label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+      >
+        <option value="">— Select tier —</option>
+        {TIERS.map((t) => <option key={t} value={t}>{t}</option>)}
+      </select>
+    </div>
+  );
+}
+
+function ColorPicker({ selected, onChange }: { selected: string[]; onChange: (v: string[]) => void }) {
+  const toggle = (val: string) =>
+    onChange(selected.includes(val) ? selected.filter((c) => c !== val) : [...selected, val]);
+  return (
+    <div>
+      <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-400 dark:text-gray-500 mb-1">Colors</label>
+      <div className="flex flex-wrap gap-1.5">
+        {OPTION_COLORS.map((c) => {
+          const active = selected.includes(c.value);
+          return (
+            <button
+              key={c.value}
+              type="button"
+              title={c.label}
+              onClick={() => toggle(c.value)}
+              className={`w-6 h-6 rounded-full border-2 transition-all ${c.cls} ${active ? "ring-2 ring-offset-1 ring-emerald-500 border-emerald-500" : "border-transparent"}`}
+            />
+          );
+        })}
+      </div>
+      {selected.length > 0 && (
+        <p className="text-[10px] text-gray-400 mt-0.5">{selected.join(", ")}</p>
+      )}
+    </div>
+  );
+}
 
 export function AttemptManager({
   requestId,
@@ -297,8 +355,8 @@ export function AttemptManager({
       const data = await apiCall(`/api/admin/sourcing/attempts/${attemptId}/options`, {
         title:       form.title.trim(),
         price_cents: priceCents,
-        tier:        form.tier.trim() || null,
-        color:       form.color.trim() || null,
+        tier:        form.tier || null,
+        color:       form.colors.length > 0 ? form.colors.join(", ") : null,
         dimensions:  form.dimensions.trim() || null,
         notes:       form.notes.trim() || null,
         images_json: form.images,
@@ -348,8 +406,8 @@ export function AttemptManager({
       const data = await apiPut(`/api/admin/sourcing/attempts/${attemptId}/options/${optionId}`, {
         title:       form.title.trim(),
         price_cents: priceCents,
-        tier:        form.tier.trim() || null,
-        color:       form.color.trim() || null,
+        tier:        form.tier || null,
+        color:       form.colors.length > 0 ? form.colors.join(", ") : null,
         dimensions:  form.dimensions.trim() || null,
         notes:       form.notes.trim() || null,
         images_json: form.images,
@@ -377,7 +435,7 @@ export function AttemptManager({
         title:      option.title,
         priceUsd:   (option.price_cents / 100).toFixed(2),
         tier:       option.tier ?? "",
-        color:      option.color ?? "",
+        colors:     option.color ? option.color.split(", ").filter(Boolean) : [],
         dimensions: option.dimensions ?? "",
         notes:      option.notes ?? "",
         images:     (option.images_json as string[]) ?? [],
@@ -517,7 +575,7 @@ export function AttemptManager({
       {/* Attempt cards */}
       {attempts.map((attempt) => {
         const isDraft = attempt.status === "draft";
-        const isSent  = attempt.status === "sent" || attempt.status === "responded";
+        const isSent  = attempt.status === "sent";
         const addForm = optionForms[attempt.id] ?? emptyForm();
         const isAddingOption = showAddOption[attempt.id] ?? false;
 
@@ -570,8 +628,8 @@ export function AttemptManager({
                       <div className="grid sm:grid-cols-2 gap-3">
                         <FieldInput label="Title" value={editForm.title} onChange={(v) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], title: v } }))} />
                         <FieldInput label="Price (USD)" value={editForm.priceUsd} onChange={(v) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], priceUsd: v } }))} type="number" />
-                        <FieldInput label="Tier" value={editForm.tier} onChange={(v) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], tier: v } }))} placeholder="e.g. A-grade, commercial" />
-                        <FieldInput label="Color" value={editForm.color} onChange={(v) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], color: v } }))} />
+                        <TierSelect value={editForm.tier} onChange={(v) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], tier: v } }))} />
+                        <ColorPicker selected={editForm.colors} onChange={(v) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], colors: v } }))} />
                         <FieldInput label="Dimensions" value={editForm.dimensions} onChange={(v) => setEditingOption((p) => ({ ...p, [opt.id]: { ...p[opt.id], dimensions: v } }))} />
                         <div>
                           <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-400 dark:text-gray-500 mb-0.5">Images</label>
@@ -663,14 +721,16 @@ export function AttemptManager({
                               ))}
                             </div>
                           )}
-                          {/* Customer reaction */}
-                          {opt.customer_reaction && (
-                            <div className="mt-1.5 flex items-center gap-1.5">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${REACTION_COLORS[opt.customer_reaction]}`}>
-                                {REACTION_LABELS[opt.customer_reaction]}
-                              </span>
+                          {/* Customer reaction + note */}
+                          {(opt.customer_reaction || opt.customer_note) && (
+                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                              {opt.customer_reaction && (
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${REACTION_COLORS[opt.customer_reaction]}`}>
+                                  {REACTION_LABELS[opt.customer_reaction]}
+                                </span>
+                              )}
                               {opt.customer_note && (
-                                <span className="text-xs text-gray-500 dark:text-gray-400 italic">"{opt.customer_note}"</span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400 italic">&ldquo;{opt.customer_note}&rdquo;</span>
                               )}
                             </div>
                           )}
@@ -707,8 +767,8 @@ export function AttemptManager({
                   <div className="grid sm:grid-cols-2 gap-3">
                     <FieldInput label="Title *" value={addForm.title} onChange={(v) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), title: v } }))} placeholder="e.g. Grade A bangle — deep green" />
                     <FieldInput label="Price (USD) *" value={addForm.priceUsd} onChange={(v) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), priceUsd: v } }))} type="number" placeholder="0.00" />
-                    <FieldInput label="Tier" value={addForm.tier} onChange={(v) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), tier: v } }))} placeholder="e.g. A-grade, commercial" />
-                    <FieldInput label="Color" value={addForm.color} onChange={(v) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), color: v } }))} placeholder="e.g. Apple green" />
+                    <TierSelect value={addForm.tier} onChange={(v) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), tier: v } }))} />
+                    <ColorPicker selected={addForm.colors} onChange={(v) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), colors: v } }))} />
                     <FieldInput label="Dimensions" value={addForm.dimensions} onChange={(v) => setOptionForms((p) => ({ ...p, [attempt.id]: { ...(p[attempt.id] ?? emptyForm()), dimensions: v } }))} placeholder="e.g. 55mm internal diameter" />
                     <div>
                       <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-400 dark:text-gray-500 mb-0.5">Images</label>

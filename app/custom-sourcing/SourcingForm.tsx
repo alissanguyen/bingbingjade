@@ -622,8 +622,8 @@ export default function SourcingForm() {
             )}
 
             <Toggle
-              label="Pattern / veining is important"
-              description="The natural markings and texture of the jade matter to you."
+              label="Pattern / texture is important"
+              description="The natural pattern and texture of the jade matter to you."
               checked={form.pattern_veining_matters}
               onChange={(v) => set("pattern_veining_matters", v)}
             />

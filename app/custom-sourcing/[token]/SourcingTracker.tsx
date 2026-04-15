@@ -69,6 +69,7 @@ interface SourcingData {
 interface Props {
   token: string;
   data: SourcingData;
+  purchaseSuccess?: boolean;
 }
 
 const STATUS_INFO: Record<SourcingStatus, { label: string; color: string; description: string }> = {
@@ -120,7 +121,7 @@ const TIER_LABELS: Record<string, string> = {
   concierge: "Concierge",
 };
 
-export function SourcingTracker({ token, data }: Props) {
+export function SourcingTracker({ token, data, purchaseSuccess }: Props) {
   const status = data.sourcing_status;
   const statusInfo = STATUS_INFO[status] ?? STATUS_INFO.queued;
 
@@ -184,15 +185,14 @@ export function SourcingTracker({ token, data }: Props) {
     }
   }
 
-  async function acceptOption(optionId: string) {
-    if (!activeAttempt) return;
+  async function acceptOption(optionId: string, attemptId: string) {
     if (!confirm("Accept this option and proceed to checkout?")) return;
     setAccepting(optionId); setError(null);
     try {
       const res = await fetch(`/api/sourcing/request/${token}/accept`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ optionId, attemptId: activeAttempt.id }),
+        body: JSON.stringify({ optionId, attemptId }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Failed to create checkout.");
@@ -212,6 +212,21 @@ export function SourcingTracker({ token, data }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* Purchase success banner */}
+      {purchaseSuccess && (
+        <div className="rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 px-5 py-4 flex items-start gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          <div>
+            <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Payment complete — congratulations!</p>
+            <p className="text-sm text-emerald-700 dark:text-emerald-400 mt-0.5">
+              Your purchase is confirmed. We'll prepare your piece and reach out with shipping details soon.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Page title */}
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600 dark:text-emerald-400 mb-1">
@@ -354,8 +369,9 @@ export function SourcingTracker({ token, data }: Props) {
           {/* Options */}
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
             {activeAttempt.sourcing_attempt_options
-              .filter((o) => o.status === "active" || o.status === "responded")
+              .filter((o) => ["active", "responded", "converted_to_checkout"].includes(o.status))
               .map((option) => {
+                const pendingCheckout = option.status === "converted_to_checkout";
                 const reaction = reactions[option.id] ?? null;
                 const note = notes[option.id] ?? "";
 
@@ -410,10 +426,19 @@ export function SourcingTracker({ token, data }: Props) {
                       </div>
 
                       {/* Accept button */}
-                      {!feedbackSent && (
+                      {pendingCheckout ? (
                         <button
                           type="button"
-                          onClick={() => acceptOption(option.id)}
+                          onClick={() => acceptOption(option.id, activeAttempt.id)}
+                          disabled={!!accepting}
+                          className="shrink-0 px-4 py-2 text-sm font-semibold bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {accepting === option.id ? "Processing…" : "Resume Checkout"}
+                        </button>
+                      ) : !feedbackSent && (
+                        <button
+                          type="button"
+                          onClick={() => acceptOption(option.id, activeAttempt.id)}
                           disabled={!!accepting}
                           className="shrink-0 px-4 py-2 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -423,7 +448,7 @@ export function SourcingTracker({ token, data }: Props) {
                     </div>
 
                     {/* Reaction buttons */}
-                    {!feedbackSent && (
+                    {!feedbackSent && !pendingCheckout && (
                       <div className="space-y-2">
                         <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Your reaction:</p>
                         <div className="flex gap-2">
@@ -505,13 +530,22 @@ export function SourcingTracker({ token, data }: Props) {
               </div>
             </div>
           ) : (
-            <div className="px-5 py-4 bg-emerald-50 dark:bg-emerald-950/20 border-t border-emerald-100 dark:border-emerald-900">
-              <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
-                Thank you for your feedback! We&apos;ll review it and follow up soon.
-              </p>
-              {activeAttempt.customer_feedback && (
-                <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 italic">&quot;{activeAttempt.customer_feedback}&quot;</p>
-              )}
+            <div className="px-5 py-4 bg-emerald-50 dark:bg-emerald-950/20 border-t border-emerald-100 dark:border-emerald-900 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
+                  Thank you for your feedback! We&apos;ll review it and follow up soon.
+                </p>
+                {activeAttempt.customer_feedback && (
+                  <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 italic">&quot;{activeAttempt.customer_feedback}&quot;</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setFeedbackSent(false)}
+                className="shrink-0 text-xs text-emerald-700 dark:text-emerald-400 underline underline-offset-2 hover:no-underline"
+              >
+                Update feedback
+              </button>
             </div>
           )}
         </div>
@@ -543,15 +577,27 @@ export function SourcingTracker({ token, data }: Props) {
                           {opt.tier && ` · ${opt.tier}`}
                         </p>
                       </div>
-                      {opt.customer_reaction && (
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                          opt.customer_reaction === "liked"    ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
-                          : opt.customer_reaction === "disliked" ? "bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400"
-                          :                                         "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
-                        }`}>
-                          {opt.customer_reaction === "liked" ? "Liked" : opt.customer_reaction === "disliked" ? "Not for me" : "Neutral"}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {opt.customer_reaction && (
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                            opt.customer_reaction === "liked"    ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
+                            : opt.customer_reaction === "disliked" ? "bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400"
+                            :                                         "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                          }`}>
+                            {opt.customer_reaction === "liked" ? "Liked" : opt.customer_reaction === "disliked" ? "Not for me" : "Neutral"}
+                          </span>
+                        )}
+                        {["active", "responded"].includes(opt.status) && (
+                          <button
+                            type="button"
+                            onClick={() => acceptOption(opt.id, attempt.id)}
+                            disabled={!!accepting}
+                            className="px-3 py-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                          >
+                            {accepting === opt.id ? "…" : "Accept this piece"}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                   {attempt.customer_feedback && (

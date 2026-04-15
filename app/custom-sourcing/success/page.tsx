@@ -43,11 +43,11 @@ export default async function SourcingSuccessPage({
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">What happens next</h2>
             <ol className="space-y-2.5">
               {[
-                "We review your preferences and strictness requirements.",
-                "We source 1–3 candidate pieces that match your criteria.",
-                "We send you photos, videos, and certification details via email.",
-                "You choose your favourite — your deposit applies as credit.",
-                "If nothing fits, your deposit remains as store credit (valid 1 year).",
+                "We review your preferences and how focused or flexible you would like the search to be.",
+                "We source some candidate pieces that align with your criteria.",
+                "We share photos, videos, and details with you by email.",
+                "You choose the piece that speaks to you, and your deposit is applied toward your purchase.",
+                "If none feel right, your deposit remains available as store credit for 12 months, so you can take your time selecting a piece that truly speaks to you.",
               ].map((step, i) => (
                 <li key={i} className="flex gap-3 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
                   <span className="shrink-0 w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold flex items-center justify-center">

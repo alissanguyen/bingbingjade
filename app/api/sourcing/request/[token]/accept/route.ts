@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { stripe } from "@/lib/stripe";
 import { getAvailableCredit, computeCheckoutBreakdown, CHECKOUT_OFFER_HOURS } from "@/lib/sourcing-workflow";
-import { sendCheckoutOfferEmail } from "@/lib/sourcing-emails";
 
 export const dynamic = "force-dynamic";
 
@@ -73,25 +71,30 @@ export async function POST(
     return NextResponse.json({ error: "Option is not available for acceptance." }, { status: 400 });
   }
 
-  // Prevent duplicate active offers
+  // Prevent duplicate active offers — expire stale ones, preserve the original 72h window
   const { data: existingOffer } = await supabaseAdmin
     .from("sourcing_checkout_offers")
-    .select("id, status, stripe_checkout_session_id")
+    .select("id, status, expires_at, sourcing_attempt_option_id")
     .eq("sourcing_request_id", sourcingReq.id)
-    .in("status", ["pending_checkout"])
+    .eq("status", "pending_checkout")
     .maybeSingle();
 
+  let preservedExpiry: Date | null = null;
+
   if (existingOffer) {
-    // Try to reuse if Stripe session still open
-    if (existingOffer.stripe_checkout_session_id) {
-      try {
-        const sess = await stripe.checkout.sessions.retrieve(existingOffer.stripe_checkout_session_id);
-        if (sess.url && sess.status === "open") {
-          return NextResponse.json({ url: sess.url });
-        }
-      } catch { /* session gone */ }
+    // If customer is re-selecting, reuse the original expiry window
+    if (existingOffer.expires_at) {
+      const orig = new Date(existingOffer.expires_at as string);
+      if (orig > new Date()) preservedExpiry = orig;
     }
-    // Expire the stale offer
+    // Revert the previously selected option back to active
+    if (existingOffer.sourcing_attempt_option_id) {
+      await supabaseAdmin
+        .from("sourcing_attempt_options")
+        .update({ status: "active", updated_at: new Date().toISOString() })
+        .eq("id", existingOffer.sourcing_attempt_option_id)
+        .eq("status", "converted_to_checkout");
+    }
     await supabaseAdmin
       .from("sourcing_checkout_offers")
       .update({ status: "expired", updated_at: new Date().toISOString() })
@@ -106,7 +109,9 @@ export async function POST(
   );
 
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + CHECKOUT_OFFER_HOURS * 60 * 60 * 1000);
+  // Preserve original 72h window if customer is changing their selection
+  const maxExpiry = new Date(now.getTime() + CHECKOUT_OFFER_HOURS * 60 * 60 * 1000);
+  const expiresAt = preservedExpiry && preservedExpiry < maxExpiry ? preservedExpiry : maxExpiry;
 
   // Create checkout offer row first (get the ID for Stripe metadata)
   const { data: offer, error: offerErr } = await supabaseAdmin
@@ -147,68 +152,8 @@ export async function POST(
     .update({ sourcing_status: "accepted_pending_checkout", updated_at: now.toISOString() })
     .eq("id", sourcingReq.id);
 
-  // Create Stripe Checkout Session
-  let stripeSession: { id: string; url: string | null };
-  try {
-    stripeSession = await stripe.checkout.sessions.create({
-      mode: "payment",
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: option.title,
-              description: `Custom sourced jade piece${creditApplied > 0 ? ` (includes $${(creditApplied / 100).toFixed(0)} sourcing credit applied)` : ""}`,
-            },
-            unit_amount: finalAmount > 0 ? finalAmount : 50, // Stripe min $0.50
-          },
-          quantity: 1,
-        },
-      ],
-      customer_email: sourcingReq.customer_email,
-      success_url: `${SITE_URL}/custom-sourcing/${token}/success?offer=${offer.public_token}`,
-      cancel_url:  `${SITE_URL}/custom-sourcing/${token}`,
-      expires_at:  Math.floor(expiresAt.getTime() / 1000),
-      metadata: {
-        is_sourcing_offer_checkout:          "true",
-        sourcing_checkout_offer_id:          offer.id,
-        sourcing_request_id:                 sourcingReq.id,
-        sourcing_attempt_option_id:          optionId,
-        sourcing_credit_applied_cents:       String(creditApplied),
-        customer_email:                      sourcingReq.customer_email,
-      },
-    });
-  } catch (err) {
-    console.error("[accept] Stripe session creation failed:", err);
-    // Clean up offer
-    await supabaseAdmin.from("sourcing_checkout_offers").delete().eq("id", offer.id);
-    await supabaseAdmin
-      .from("sourcing_attempt_options")
-      .update({ status: "active", updated_at: now.toISOString() })
-      .eq("id", optionId);
-    return NextResponse.json({ error: "Payment setup failed. Please try again." }, { status: 500 });
-  }
-
-  // Store Stripe session ID on offer
-  await supabaseAdmin
-    .from("sourcing_checkout_offers")
-    .update({
-      stripe_checkout_session_id: stripeSession.id,
-      updated_at: now.toISOString(),
-    })
-    .eq("id", offer.id);
-
-  // Send checkout offer email
-  await sendCheckoutOfferEmail({
-    customerName:       sourcingReq.customer_name,
-    customerEmail:      sourcingReq.customer_email,
-    publicToken:        token,
-    offerToken:         offer.public_token,
-    itemTitle:          option.title,
-    finalAmountCents:   finalAmount,
-    creditAppliedCents: creditApplied,
-    expiresAt:          expiresAt.toISOString(),
+  // Direct customer to the custom checkout page — Stripe session is created there
+  return NextResponse.json({
+    url: `${SITE_URL}/checkout/custom-sourcing/${offer.public_token}`,
   });
-
-  return NextResponse.json({ url: stripeSession.url });
 }

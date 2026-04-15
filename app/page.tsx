@@ -215,10 +215,10 @@ export default async function Home() {
       {/* ── Closing quote ── */}
       <div className="border-t border-gray-100 dark:border-gray-800">
         <div className="mx-auto max-w-3xl px-6 py-20 text-center">
-          <p className="text-2xl sm:text-3xl font-light text-gray-700 dark:text-gray-300 leading-relaxed italic">
+          <p className="text-2xl sm:text-3xl font-normal text-gray-700 dark:text-gray-300 leading-relaxed italic">
             &quot;Each piece tells its own story.
           </p>
-          <p className="text-2xl sm:text-3xl font-light text-emerald-700 dark:text-emerald-400 leading-relaxed italic mt-1">
+          <p className="text-2xl sm:text-3xl font-normal text-emerald-700 dark:text-emerald-400 leading-relaxed italic mt-1">
             Some will speak to you immediately.&quot;
           </p>
           <Link
