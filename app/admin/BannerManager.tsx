@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { BANNER_TEMPLATES } from "@/app/components/AnnouncementBanner";
+import { DateTimePicker } from "./DateTimePicker";
 
 interface BannerConfig {
   is_active: boolean;
@@ -17,19 +18,6 @@ const DEFAULT: BannerConfig = {
   background: "black",
 };
 
-// Convert UTC ISO string to local datetime-local input value
-function toLocalInputValue(iso: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-// Convert local datetime-local value back to ISO string
-function fromLocalInputValue(val: string): string | null {
-  if (!val) return null;
-  return new Date(val).toISOString();
-}
 
 export function BannerManager() {
   const [config, setConfig] = useState<BannerConfig>(DEFAULT);
@@ -142,17 +130,10 @@ export function BannerManager() {
             <label className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500 mb-1.5">
               Drop Date &amp; Time
             </label>
-            <input
-              type="datetime-local"
-              value={toLocalInputValue(config.target_date)}
-              onChange={(e) => setConfig((c) => ({ ...c, target_date: fromLocalInputValue(e.target.value) }))}
-              className="w-full sm:w-72 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            <DateTimePicker
+              value={config.target_date}
+              onChange={(iso) => setConfig((c) => ({ ...c, target_date: iso }))}
             />
-            {config.target_date && (
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
-                {new Date(config.target_date).toLocaleString("en-US", { dateStyle: "full", timeStyle: "short" })}
-              </p>
-            )}
           </div>
         )}
 
