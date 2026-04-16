@@ -65,7 +65,7 @@ const COLOR_SWATCHES: Record<string, string> = {
 function Accordion({ label, children }: { label: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border-t border-gray-100 dark:border-gray-800">
+    <div className="border-b border-gray-200/80 dark:border-gray-800">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -372,29 +372,17 @@ export function ProductPageClient({ product, productImages, productVideos, optio
             </div>
           )}
 
-          {/* Description */}
-          {product.description && (
-            <Accordion label="Description">
-              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">{product.description}</p>
-            </Accordion>
-          )}
-
-          {/* Blemishes */}
-          {product.blemishes && (
-            <Accordion label="Blemishes">
-              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">{product.blemishes}</p>
-            </Accordion>
-          )}
         </div>
 
         {/* CTA */}
-        <div className="IndividualProduct_CTA mt-2 pt-6 border-t border-gray-100 dark:border-gray-800">
+        <div className="IndividualProduct_CTA mt-4 pt-6">
           {/* Status badge */}
           <div className="mb-4">
             {isEffectivelySold ? (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 dark:bg-red-950/50 border border-red-200 dark:border-red-800 px-3 py-1 text-sm font-semibold text-red-600 dark:text-red-400">
                 <span className="w-2 h-2 rounded-full bg-red-500" />
                 Sold
+
               </span>
             ) : isOnSale ? (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 px-3 py-1 text-sm font-semibold text-amber-700 dark:text-amber-400">
@@ -408,10 +396,14 @@ export function ProductPageClient({ product, productImages, productVideos, optio
               </span>
             )}
           </div>
-
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-6 mb-2">
+          {isEffectivelySold ? (<p className="text-sm text-gray-500 dark:text-gray-400 mt-6 mb-2">
+            Interested in this piece? We can find you another one. <a href="/contact" target="_blank" className="hover:underline hover:transition-all duration-200 ease-in text-emerald-600 dark:text-emerald-500">Reach out to us</a>.
+          </p>) : (<p className="text-sm text-gray-500 dark:text-gray-400 mt-6 mb-2">
             Interested in this piece? Add to cart to purchase, or reach out directly.
-          </p>
+          </p>)
+
+          }
+
 
           {/* Add to Cart / Inquire to Purchase */}
           {!isEffectivelySold && checkoutPrice != null ? (
@@ -464,8 +456,43 @@ export function ProductPageClient({ product, productImages, productVideos, optio
               </a>
             )}
           </div>
-
-          <p className="italic text-xs sm:text-sm text-emerald-600 font-semibold mt-4">** We can provide more pictures and videos of different lighting upon request.</p>
+          <div className="spacer-div h-4"></div>
+          {/* Description */}
+          {product.description && (
+            <Accordion label="Description">
+              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">{product.description}</p>
+            </Accordion>
+          )}
+          <div className="spacer-div h-4"></div>
+          {/* Blemishes */}
+          {product.blemishes && (
+            <Accordion label="Blemishes">
+              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">{product.blemishes}</p>
+            </Accordion>
+          )}
+          <Accordion label="Authenticity Guarantee">
+            <div className="space-y-3 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+              <p>
+                Each piece we offer is natural jadeite and entirely unique. Variations in color, translucency, and internal structure are inherent to untreated jade and contribute to its individuality. While we present every piece through detailed photos and videos across different lighting conditions, slight differences in appearance may occur depending on environment, lighting, and skin tone.
+              </p>
+              <p>
+                We encourage clients to review all provided media carefully prior to purchase. Our team is always available to provide additional photos, videos, or guidance to ensure you feel confident in your selection.
+              </p>
+              <p>
+                Due to the nature of these pieces, purchases are considered final unless otherwise stated. In certain cases, requests for return or exchange may be reviewed if submitted within 24–48 hours of confirmed delivery, in accordance with our shop terms. Items must remain in original condition, and additional verification may be required.
+              </p>
+              <p>
+                All jade offered is natural, untreated jadeite (Type A) and is backed by our lifetime authenticity guarantee. Certification from trusted independent laboratories is available for select pieces or upon request.
+              </p>
+              <p>
+                If a piece becomes unavailable, or if you are searching for something more specific, we offer access to a wider private inventory through our custom sourcing service. Each request is handled with care, sourcing pieces that are closely aligned with your preferences.
+              </p>
+              <p className="text-slate-500 dark:text-slate-500 italic">
+                For assistance or sourcing inquiries, please contact us — we are always happy to help you find a piece that feels right.
+              </p>
+            </div>
+          </Accordion>
+          <p className="italic text-xs sm:text-sm text-emerald-600 font-semibold mt-8">** We can provide more pictures and videos of different lighting upon request.</p>
           {product.category === 'bangle' || product.category === 'raw_material' ? (<div className="text-sm">
 
             <p className="text-gray-400 dark:text-gray-500 mt-2"><span className="mr-2 text-emerald-600">Not your styles?</span>Some pieces can be <span className="font-semibold text-gray-500">reshaped</span> or <span className="font-semibold text-gray-500">widened</span>, contact us for more details.</p>
