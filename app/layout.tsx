@@ -12,6 +12,7 @@ import { CartDrawer } from "./components/CartDrawer";
 import { AnalyticsPageView } from "./components/analytics/AnalyticsPageView";
 import { AnnouncementBanner } from "./components/AnnouncementBanner";
 import { WhatsAppFloatingButton } from "./components/WhatsAppFloatingButton";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -209,6 +210,7 @@ export default async function RootLayout({
           })(window,document,"clarity","script","wauncim2tq");
         `}</Script>
         <AnalyticsPageView />
+        <Analytics />
       </body>
     </html>
   );
