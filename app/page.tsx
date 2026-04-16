@@ -6,6 +6,7 @@ import { resolveImageUrls, isStoragePath } from "@/lib/storage";
 import { FeaturedCarousel } from "@/app/components/FeaturedCarousel";
 import { ReviewsCarousel } from "@/app/components/ReviewsCarousel";
 import { SubscribePopup } from "@/app/components/SubscribePopup";
+import { GalleryGrid } from "@/app/components/GalleryGrid";
 
 export const metadata: Metadata = {
   title: "BingBing Jade | Natural Type A Jadeite Jewelry with Certification | US Based",
@@ -219,27 +220,7 @@ export default async function Home() {
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">A Closer Look</h2>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">Natural light, honest photography — every piece as it truly appears.</p>
         </div>
-        <div className="columns-2 md:columns-3 lg:columns-4 gap-3">
-          {[
-            "/gallery/IMG_4028.jpg",
-            "/gallery/IMG_5466.jpg",
-            "/gallery/IMG_5620.jpg",
-            "/gallery/IMG_4157.jpg",
-            "/gallery/IMG_5462.jpg",
-            "/gallery/IMG_5623.jpg",
-            "/gallery/IMG_5959.jpg",
-            "/gallery/IMG_5463%202.jpg",
-          ].map((src) => (
-            <div key={src} className="mb-3 break-inside-avoid overflow-hidden rounded-xl group">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={src}
-                alt="BingBing Jade natural jadeite piece"
-                className="w-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-            </div>
-          ))}
-        </div>
+        <GalleryGrid />
         <div className="text-center mt-8">
           <Link
             href="/products"
