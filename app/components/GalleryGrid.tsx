@@ -14,10 +14,8 @@ const IMAGES = [
   "/gallery/IMG_3968.jpg",
   "/gallery/IMG_3511.jpg",
   "/gallery/IMG_5395.jpg",
-  "/gallery/IMG_6266.jpg",
   "/gallery/IMG_6272.jpg",
   "/gallery/IMG_6273.jpg",
-  "/gallery/IMG_6274.jpg",
   "/gallery/IMG_6278.jpg",
   "/gallery/IMG_6279.jpg",
   "/gallery/IMG_6280.jpg",
@@ -29,7 +27,6 @@ const IMAGES = [
   "/gallery/IMG_6290.jpg",
   "/gallery/IMG_6294.jpg",
   "/gallery/IMG_6295.jpg",
-  "/gallery/IMG_6296.jpg",
   "/gallery/IMG_6297.jpg",
   "/gallery/IMG_6298.jpg",
 ];
