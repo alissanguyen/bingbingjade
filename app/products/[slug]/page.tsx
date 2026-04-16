@@ -233,6 +233,36 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         options={optionsWithResolvedImages}
       />
 
+      {/* Quality assurance strip */}
+      <div className="my-16 border-t border-gray-100 dark:border-gray-800 pt-14 grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+        {/* Image */}
+        <div className="overflow-hidden rounded-2xl aspect-[4/3] bg-gray-100 dark:bg-gray-900">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/homepage3.jpg"
+            alt="Natural jadeite sourcing and quality inspection"
+            className="w-full h-full object-cover"
+          />
+        </div>
+        {/* Text */}
+        <div className="space-y-4 px-2 md:px-6">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500">Natural &amp; Authentic</p>
+          <div className="w-8 h-px bg-gray-300 dark:bg-gray-700" />
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 leading-snug">
+            Type A Jadeite — No dye, no treatment, no compromise.
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+            Every piece we offer is natural, untreated jadeite backed by our lifetime authenticity guarantee. Variations in color, translucency, and grain are natural characteristics of genuine jade — not flaws.
+          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+            Certification from trusted independent laboratories is available for select pieces or upon request. For items over $5,000, GIA / NGTC certification is included as a complimentary.
+          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+            We provide detailed photos and videos across multiple lighting conditions for every listing. Our team is always available to share additional media or answer any questions before you purchase.
+          </p>
+        </div>
+      </div>
+
       <RelatedProductsCarousel products={related} />
     </div>
   );
