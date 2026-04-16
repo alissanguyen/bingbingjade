@@ -10,6 +10,7 @@ import { CategoryBar } from "./components/CategoryBar";
 import { CartProvider } from "./components/CartContext";
 import { CartDrawer } from "./components/CartDrawer";
 import { AnalyticsPageView } from "./components/analytics/AnalyticsPageView";
+import { AnnouncementBanner } from "./components/AnnouncementBanner";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -75,6 +76,8 @@ export default async function RootLayout({
           ) : (
             <>
               <header className="sticky top-0 z-40 bg-white dark:bg-gray-950">
+                {/* New drop / announcement banner */}
+                <AnnouncementBanner />
                 {/* Beta banner — only shown in beta mode */}
                 {process.env.NEXT_PUBLIC_CHECKOUT_MODE !== "live" && (
                   <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800 px-4 py-2 text-center text-[12px] sm:text-xs text-amber-800 dark:text-amber-300">

@@ -5,6 +5,7 @@ import { AdminBarServer } from "@/app/components/AdminBarServer";
 import { resolveFirstImageUrl } from "@/lib/storage";
 import type { PendingProduct, TokenRequestItem } from "./AdminProfileClient";
 import { AdminProfileClient } from "./AdminProfileClient";
+import { BannerManager } from "./BannerManager";
 
 export const dynamic = "force-dynamic";
 
@@ -73,6 +74,9 @@ export default async function AdminProfilePage() {
       <div className="mx-auto max-w-3xl px-6 pt-10 pb-2">
         <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Admin Profile</h1>
         <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">Pending action items</p>
+      </div>
+      <div className="mx-auto max-w-3xl px-6 pb-6">
+        <BannerManager />
       </div>
       <AdminProfileClient
         pendingProducts={pendingProducts}
