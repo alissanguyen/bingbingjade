@@ -91,11 +91,11 @@ export function ProductPageClient({ product, productImages, productVideos, optio
   const isEffectivelySold = isProductSold || isOptionSold;
 
   // Per-option sale_price_usd takes priority over product-level sale_price_usd.
-  // Product-level sale only applies when product.status === "on_sale".
+  // Show sale price regardless of status so sold-via-checkout products still display the sale price.
   const activeSalePrice =
     selectedOption?.sale_price_usd != null
       ? selectedOption.sale_price_usd
-      : product.status === "on_sale" && product.sale_price_usd != null
+      : product.sale_price_usd != null
         ? product.sale_price_usd
         : null;
 
@@ -209,7 +209,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                 const optSalePrice =
                   opt.sale_price_usd != null
                     ? opt.sale_price_usd
-                    : product.status === "on_sale" && product.sale_price_usd != null
+                    : product.sale_price_usd != null
                       ? product.sale_price_usd
                       : null;
                 const discountPct =
