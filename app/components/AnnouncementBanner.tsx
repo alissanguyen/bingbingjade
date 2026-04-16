@@ -55,7 +55,7 @@ function useCountdown(targetDate: string | null) {
 
 // ── Slide countdown cards ─────────────────────────────────────────────────────
 
-function SlideDigit({ digit, dark }: { digit: string; dark: boolean }) {
+function SlideDigit({ digit, cardBg, digitClr }: { digit: string; cardBg: string; digitClr: string }) {
   const [current, setCurrent] = useState(digit);
   const [next, setNext]       = useState(digit);
   const [animating, setAnimating] = useState(false);
@@ -72,16 +72,13 @@ function SlideDigit({ digit, dark }: { digit: string; dark: boolean }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [digit]);
 
-  const bg    = dark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.07)";
-  const color = dark ? "#34d399" : "#059669";
-
   return (
-    <div className="fc-card" style={{ background: bg }}>
-      <span className={`fc-digit ${animating ? "fc-digit-out" : ""}`} style={{ color }}>
+    <div className="fc-card" style={{ background: cardBg }}>
+      <span className={`fc-digit ${animating ? "fc-digit-out" : ""}`} style={{ color: digitClr }}>
         {current}
       </span>
       {animating && (
-        <span className="fc-digit fc-digit-in" style={{ color }}>
+        <span className="fc-digit fc-digit-in" style={{ color: digitClr }}>
           {next}
         </span>
       )}
@@ -89,24 +86,19 @@ function SlideDigit({ digit, dark }: { digit: string; dark: boolean }) {
   );
 }
 
-function SlideUnit({ value, dark }: { value: number; dark: boolean }) {
+function SlideUnit({ value, cardBg, digitClr }: { value: number; cardBg: string; digitClr: string }) {
   const s = String(value).padStart(2, "0");
   return (
     <div className="flex gap-[2px]">
-      <SlideDigit digit={s[0]} dark={dark} />
-      <SlideDigit digit={s[1]} dark={dark} />
+      <SlideDigit digit={s[0]} cardBg={cardBg} digitClr={digitClr} />
+      <SlideDigit digit={s[1]} cardBg={cardBg} digitClr={digitClr} />
     </div>
   );
 }
 
-function SlideSep({ dark }: { dark: boolean }) {
+function SlideSep({ color }: { color: string }) {
   return (
-    <span
-      className="font-bold text-xs self-center"
-      style={{ color: dark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.25)" }}
-    >
-      :
-    </span>
+    <span className="font-bold text-xs self-center" style={{ color }}>:</span>
   );
 }
 
@@ -150,19 +142,25 @@ export function AnnouncementBanner() {
 
   const isBlack = config.background !== "white";
 
+  // Emerald dark: bg-emerald-800, white text, dark card bg, white digits
+  // Light: bg-white, gray-900 text, light card bg, emerald-600 digits
+  const bannerCls = isBlack
+    ? "bg-emerald-800 text-white"
+    : "bg-white text-gray-900 border-b border-gray-200 dark:border-gray-800";
+  const cardBg    = isBlack ? "rgba(0,0,0,0.25)"          : "rgba(0,0,0,0.07)";
+  const digitClr  = isBlack ? "#ffffff"                    : "#059669";
+  const sepClr    = isBlack ? "rgba(255,255,255,0.35)"     : "rgba(0,0,0,0.25)";
+  const dismissCls = isBlack
+    ? "text-emerald-300 hover:text-white"
+    : "text-gray-400 hover:text-gray-700";
+
   const dismiss = () => {
     try { sessionStorage.setItem(DISMISS_KEY, "1"); } catch {}
     setDismissed(true);
   };
 
   return (
-    <div
-      className={`relative flex items-center justify-center gap-3 px-10 py-2 select-none ${
-        isBlack
-          ? "bg-gray-950 text-white"
-          : "bg-white text-gray-900 border-b border-gray-200 dark:border-gray-800"
-      }`}
-    >
+    <div className={`relative flex items-center justify-center gap-3 px-10 py-2 select-none ${bannerCls}`}>
       {/* Message */}
       <span className="text-xs sm:text-sm font-medium tracking-wide text-center leading-snug">
         {text}
@@ -175,15 +173,15 @@ export function AnnouncementBanner() {
         <div className="flex items-center gap-1">
           {timeLeft.d > 0 && (
             <>
-              <SlideUnit value={timeLeft.d} dark={isBlack} />
-              <SlideSep dark={isBlack} />
+              <SlideUnit value={timeLeft.d} cardBg={cardBg} digitClr={digitClr} />
+              <SlideSep color={sepClr} />
             </>
           )}
-          <SlideUnit value={timeLeft.h} dark={isBlack} />
-          <SlideSep dark={isBlack} />
-          <SlideUnit value={timeLeft.m} dark={isBlack} />
-          <SlideSep dark={isBlack} />
-          <SlideUnit value={timeLeft.s} dark={isBlack} />
+          <SlideUnit value={timeLeft.h} cardBg={cardBg} digitClr={digitClr} />
+          <SlideSep color={sepClr} />
+          <SlideUnit value={timeLeft.m} cardBg={cardBg} digitClr={digitClr} />
+          <SlideSep color={sepClr} />
+          <SlideUnit value={timeLeft.s} cardBg={cardBg} digitClr={digitClr} />
         </div>
       )}
 
@@ -192,9 +190,7 @@ export function AnnouncementBanner() {
         type="button"
         onClick={dismiss}
         aria-label="Dismiss"
-        className={`absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-base leading-none transition-colors ${
-          isBlack ? "text-gray-600 hover:text-white" : "text-gray-400 hover:text-gray-700"
-        }`}
+        className={`absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-base leading-none transition-colors ${dismissCls}`}
       >
         ×
       </button>

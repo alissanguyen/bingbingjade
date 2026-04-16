@@ -168,7 +168,7 @@ export function BannerManager() {
           </label>
           <div className={`rounded-lg px-4 py-2.5 text-xs sm:text-sm text-center font-medium relative overflow-hidden ${
             config.background === "black"
-              ? "bg-gray-950 text-white"
+              ? "bg-emerald-800 text-white"
               : "bg-white text-gray-900 border border-gray-200"
           }`}>
             {previewText || <span className="opacity-40">Select a template to preview</span>}
