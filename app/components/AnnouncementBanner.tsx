@@ -17,15 +17,15 @@ export const BANNER_TEMPLATES: {
   text: string;
   hasDate: boolean;
 }[] = [
-  { value: "restock",        label: "Next Restock",           text: "Next Restock Drops",                     hasDate: true  },
-  { value: "releasing_soon", label: "New Pieces Releasing Soon", text: "New Pieces Releasing Soon",           hasDate: true  },
-  { value: "next_favorite",  label: "Your Next Favorite Piece", text: "Your Next Favorite Piece Drops",       hasDate: true  },
-  { value: "black_friday",   label: "Black Friday Sale",       text: "🛍 Black Friday Sale Starting",         hasDate: true  },
-  { value: "christmas",      label: "Christmas Sale",          text: "🎄 Christmas Deals Starting",           hasDate: true  },
-  { value: "new_year",       label: "New Year Sale",           text: "🎊 New Year Sale Starting",             hasDate: true  },
-  { value: "valentines",     label: "Valentine's Day",         text: "💝 Valentine's Day Special Starting",   hasDate: true  },
-  { value: "mothers_day",    label: "Mother's Day",            text: "💐 Mother's Day Sale Starting",         hasDate: true  },
-  { value: "lunar_new_year", label: "Lunar New Year",          text: "🧧 Lunar New Year Sale Starting",       hasDate: true  },
+  { value: "restock",        label: "Next Restock",              text: "Next Restock Drops",                   hasDate: true  },
+  { value: "releasing_soon", label: "New Pieces Releasing Soon", text: "New Pieces Releasing Soon",            hasDate: true  },
+  { value: "next_favorite",  label: "Your Next Favorite Piece",  text: "Your Next Favorite Piece Drops",       hasDate: true  },
+  { value: "black_friday",   label: "Black Friday Sale",         text: "🛍 Black Friday Sale Starting",        hasDate: true  },
+  { value: "christmas",      label: "Christmas Sale",            text: "🎄 Christmas Deals Starting",          hasDate: true  },
+  { value: "new_year",       label: "New Year Sale",             text: "🎊 New Year Sale Starting",            hasDate: true  },
+  { value: "valentines",     label: "Valentine's Day",           text: "💝 Valentine's Day Special Starting",  hasDate: true  },
+  { value: "mothers_day",    label: "Mother's Day",              text: "💐 Mother's Day Sale Starting",        hasDate: true  },
+  { value: "lunar_new_year", label: "Lunar New Year",            text: "🧧 Lunar New Year Sale Starting",      hasDate: true  },
 ];
 
 function useCountdown(targetDate: string | null) {
@@ -53,9 +53,81 @@ function useCountdown(targetDate: string | null) {
   return timeLeft;
 }
 
-function Pad({ n }: { n: number }) {
-  return <>{String(n).padStart(2, "0")}</>;
+// ── Flip card components ──────────────────────────────────────────────────────
+
+function FlipDigit({ digit, dark }: { digit: string; dark: boolean }) {
+  const [current, setCurrent] = useState(digit);
+  const [next, setNext]       = useState(digit);
+  const [animating, setAnimating] = useState(false);
+
+  useEffect(() => {
+    if (digit === current) return;
+    setNext(digit);
+    setAnimating(true);
+    const t = setTimeout(() => {
+      setCurrent(digit);
+      setAnimating(false);
+    }, 550);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [digit]);
+
+  const topBg = dark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)";
+  const botBg = dark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)";
+  const color = dark ? "#34d399" : "#059669";
+
+  return (
+    <div className={`fc-card${animating ? " animating" : ""}`}>
+      {/* bottom — shows next digit, bottom half visible */}
+      <span className="fc-bottom" style={{ background: botBg }}>
+        <span style={{ color }}>{next}</span>
+      </span>
+      {/* bottom-back — top half of next digit, behind fc-top while it folds */}
+      <span className="fc-bottom-back" style={{ background: topBg }}>
+        <span style={{ color }}>{next}</span>
+      </span>
+      {/* top — top half of current digit, folds away */}
+      <span className="fc-top" style={{ background: topBg }}>
+        <span style={{ color }}>{current}</span>
+      </span>
+      {/* top-back — bottom half area, rotates in showing next digit */}
+      <span className="fc-top-back" style={{ background: botBg }}>
+        <span style={{ color }}>{next}</span>
+      </span>
+    </div>
+  );
 }
+
+function FlipUnit({ value, label, dark }: { value: number; label: string; dark: boolean }) {
+  const s = String(value).padStart(2, "0");
+  return (
+    <div className="flex flex-col items-center gap-[3px]">
+      <div className="flex gap-[3px]">
+        <FlipDigit digit={s[0]} dark={dark} />
+        <FlipDigit digit={s[1]} dark={dark} />
+      </div>
+      <span
+        className="text-[8px] uppercase tracking-widest font-medium"
+        style={{ color: dark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)" }}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function FlipSep({ dark }: { dark: boolean }) {
+  return (
+    <span
+      className="font-bold text-sm self-center mb-[12px]"
+      style={{ color: dark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)" }}
+    >
+      :
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export function AnnouncementBanner() {
   const [config, setConfig] = useState<BannerConfig | null>(null);
@@ -79,7 +151,7 @@ export function AnnouncementBanner() {
 
   if (!mounted || !config || dismissed) return null;
 
-  // Hide once date has passed (except "releasing soon" which has no date)
+  // Hide once date has passed
   if (config.target_date && new Date(config.target_date) < new Date() && !timeLeft) return null;
 
   const tpl = BANNER_TEMPLATES.find((t) => t.value === config.template);
@@ -102,31 +174,34 @@ export function AnnouncementBanner() {
 
   return (
     <div
-      className={`relative flex items-center justify-center gap-2 px-10 py-2 text-xs sm:text-sm select-none ${
+      className={`relative flex items-center justify-center gap-3 px-10 py-2 select-none ${
         isBlack
           ? "bg-gray-950 text-white"
           : "bg-white text-gray-900 border-b border-gray-200 dark:border-gray-800"
       }`}
     >
       {/* Message */}
-      <span className="font-medium tracking-wide text-center leading-snug">
+      <span className="text-xs sm:text-sm font-medium tracking-wide text-center leading-snug">
         {text}
         {hasDate && !timeLeft && formattedDate ? ` on ${formattedDate}` : ""}
         {hasDate && timeLeft ? " in" : ""}
       </span>
 
-      {/* Countdown */}
+      {/* Flip countdown */}
       {timeLeft && (
-        <span className={`flex items-center gap-1 font-mono font-semibold tabular-nums ${isBlack ? "text-emerald-400" : "text-emerald-600"}`}>
+        <div className="flex items-end gap-1.5">
           {timeLeft.d > 0 && (
-            <><span><Pad n={timeLeft.d} />d</span><span className="opacity-40 mx-0.5">·</span></>
+            <>
+              <FlipUnit value={timeLeft.d} label="days" dark={isBlack} />
+              <FlipSep dark={isBlack} />
+            </>
           )}
-          <span><Pad n={timeLeft.h} />h</span>
-          <span className="opacity-40 mx-0.5">·</span>
-          <span><Pad n={timeLeft.m} />m</span>
-          <span className="opacity-40 mx-0.5">·</span>
-          <span><Pad n={timeLeft.s} />s</span>
-        </span>
+          <FlipUnit value={timeLeft.h} label="hrs"  dark={isBlack} />
+          <FlipSep dark={isBlack} />
+          <FlipUnit value={timeLeft.m} label="min"  dark={isBlack} />
+          <FlipSep dark={isBlack} />
+          <FlipUnit value={timeLeft.s} label="sec"  dark={isBlack} />
+        </div>
       )}
 
       {/* Dismiss */}
