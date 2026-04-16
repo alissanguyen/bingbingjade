@@ -62,6 +62,29 @@ const COLOR_SWATCHES: Record<string, string> = {
   marbling: "bg-gradient-to-br from-gray-200 via-white to-gray-400 border border-gray-300",
 };
 
+function Accordion({ label, children }: { label: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-t border-gray-100 dark:border-gray-800">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between py-3 text-left"
+      >
+        <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">{label}</span>
+        <svg
+          width="14" height="14" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          className={`text-gray-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {open && <div className="pb-4">{children}</div>}
+    </div>
+  );
+}
+
 interface Props {
   product: ProductClient;
   productImages: string[];
@@ -351,18 +374,16 @@ export function ProductPageClient({ product, productImages, productVideos, optio
 
           {/* Description */}
           {product.description && (
-            <div className="IndividualProduct_Description">
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">Description</p>
+            <Accordion label="Description">
               <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">{product.description}</p>
-            </div>
+            </Accordion>
           )}
 
           {/* Blemishes */}
           {product.blemishes && (
-            <div className="IndividualProduct_Blemishes">
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">Blemishes</p>
+            <Accordion label="Blemishes">
               <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">{product.blemishes}</p>
-            </div>
+            </Accordion>
           )}
         </div>
 
