@@ -286,41 +286,38 @@ export default async function Products({
                 <ProductCardLink
                   key={product.id}
                   href={`/products/${productSlug(product)}`}
-                  className={`group rounded-2xl border overflow-hidden hover:shadow-lg transition-all block ${
+                  className={`group rounded-2xl overflow-hidden transition-all duration-500 block ${
                     product.status === "sold"
-                      ? "border-gray-300 dark:border-gray-700 bg-gray-900/20 dark:bg-gray-700"
-                      : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-emerald-300 dark:hover:border-emerald-700"
+                      ? "bg-gray-50 dark:bg-gray-900/60 shadow-sm"
+                      : "bg-white dark:bg-gray-900 shadow-[0_2px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_16px_48px_rgba(0,0,0,0.13)] dark:hover:shadow-[0_16px_48px_rgba(0,0,0,0.5)] hover:-translate-y-1"
                   }`}
                 >
-                  {/* Image strip — slides to peek at second image on hover/touch */}
+                  {/* Image strip */}
                   <ProductCardImage images={product.images ?? []} name={product.name} priority={i === 0}>
                     {isDev && !product.is_published && (
-                      <div className="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 z-10 bg-gray-600 text-white text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow">
+                      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 bg-gray-600/90 backdrop-blur-sm text-white text-[10px] font-medium tracking-widest uppercase px-2 py-0.5 rounded-full">
                         Draft
                       </div>
                     )}
                     {product.status === "sold" && (
-                      <div className="ProductCard_Badge_Sold absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-10 bg-black text-white text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow">
+                      <div className="ProductCard_Badge_Sold absolute top-2 left-2 sm:top-3 sm:left-3 z-10 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-gray-500 dark:text-gray-400 text-[10px] font-medium tracking-widest uppercase px-2.5 py-1 rounded-full">
                         Sold
                       </div>
                     )}
                     {product.status === "on_sale" && (
-                      <div className="ProductCard_Badge_OnSale absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-10 flex items-center gap-1 sm:gap-1.5">
-                        <div className="bg-amber-400 text-white text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow">
-                          On Sale
-                        </div>
+                      <div className="ProductCard_Badge_OnSale absolute top-2 left-2 sm:top-3 sm:left-3 z-10 flex items-center gap-1.5">
                         {product.price_display_usd != null && product.sale_price_usd != null && (
-                          <div className="bg-orange-500 text-white text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow">
+                          <div className="bg-amber-500/90 backdrop-blur-sm text-white text-[10px] font-semibold tracking-wide px-2.5 py-1 rounded-full">
                             −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
                           </div>
                         )}
                       </div>
                     )}
                     {product.quick_ship && product.status !== "sold" && (
-                      <div className="absolute bottom-1.5 right-1.5 sm:bottom-2.5 sm:right-2.5 z-10">
+                      <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 z-10">
                         <div
-                          className="flex items-center gap-1 sm:gap-1.5 bg-sky-950 border border-sky-400/60 text-sky-300 text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full"
-                          style={{ boxShadow: "0 0 8px 1px rgba(56,189,248,0.35)" }}
+                          className="flex items-center gap-1 sm:gap-1.5 bg-sky-950/90 backdrop-blur-sm border border-sky-400/40 text-sky-300 text-[10px] font-medium tracking-wide px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full"
+                          style={{ boxShadow: "0 0 10px 1px rgba(56,189,248,0.25)" }}
                         >
                           <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_4px_1px_rgba(56,189,248,0.8)]" />
                           Available Now
@@ -330,101 +327,30 @@ export default async function Products({
                   </ProductCardImage>
 
                   {/* Info — desktop */}
-                  <div className={`ProductCard_InfoDesktop hidden sm:block p-4 ${product.status === "sold" ? "opacity-80" : ""}`}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="ProductCard_Category text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                      {getCategoryLabel(product.category)}
+                  <div className={`ProductCard_InfoDesktop hidden sm:block px-5 pt-4 pb-5 ${product.status === "sold" ? "opacity-70" : ""}`}>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="ProductCard_Category text-[10px] font-semibold uppercase tracking-[0.15em] text-emerald-700 dark:text-emerald-400">
+                        {getCategoryLabel(product.category)}
                       </span>
                       {product.tier?.length > 0 && (
-                        <span className="ProductCard_Tier text-xs text-gray-400 dark:text-gray-500">· {product.tier.join(" · ")}</span>
+                        <span className="ProductCard_Tier text-[10px] text-gray-300 dark:text-gray-600">·</span>
+                      )}
+                      {product.tier?.length > 0 && (
+                        <span className="ProductCard_Tier text-[10px] text-gray-400 dark:text-gray-500 italic">{product.tier.join(" · ")}</span>
                       )}
                     </div>
-                    <h2 className="ProductCard_Title font-semibold text-gray-900 dark:text-gray-100 leading-snug">{product.name}</h2>
-                    <p className="ProductCard_Description mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{product.description}</p>
+                    <h2 className="ProductCard_Title text-sm font-semibold text-gray-900 dark:text-gray-100 leading-snug">{product.name}</h2>
                     {(product.color ?? []).filter((c) => c && c.trim()).length > 0 && (
-                      <div className="ProductCard_ColorTags mt-3 flex flex-wrap gap-1.5">
+                      <div className="ProductCard_ColorTags mt-2.5 flex flex-wrap gap-1.5">
                         {(product.color ?? []).filter((c) => c && c.trim()).map((c) => (
-                          <span key={c} className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-2.5 py-0.5 text-xs text-gray-600 dark:text-gray-400">
-                            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${COLOR_SWATCHES[c] ?? "bg-gray-300"}`} />
-                            {c.charAt(0).toUpperCase() + c.slice(1)}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    <div className="ProductCard_PriceRow mt-3 flex items-center justify-between">
-                      {(() => {
-                        const vp = getVariantPrices(product);
-                        const vMin = vp.length > 0 ? Math.min(...vp) : null;
-                        const vMax = vp.length > 0 ? Math.max(...vp) : null;
-                        const hasRange = vMin != null && vMax != null && vMin !== vMax;
-                        const rangeLabel = hasRange ? fmtRangeLabel(vMin!, vMax!) : null;
-                        if (product.status === "sold") {
-                          const base = product.sale_price_usd ?? (rangeLabel ? null : product.price_display_usd);
-                          return (
-                            <span className="flex items-center gap-2">
-                              <span className="font-medium text-gray-500 dark:text-gray-400">
-                                {base != null ? fmtCardPrice(base) : rangeLabel ?? "—"}
-                              </span>
-                              {product.sale_price_usd != null && product.price_display_usd != null && (
-                                <>
-                                  <span className="text-xs text-gray-400 line-through">{fmtCardPrice(product.price_display_usd)}</span>
-                                  <span className="rounded-full bg-gray-400 dark:bg-gray-600 px-1.5 py-0.5 text-xs font-semibold text-white">
-                                    −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
-                                  </span>
-                                </>
-                              )}
-                            </span>
-                          );
-                        }
-                        if (product.status === "on_sale" && product.sale_price_usd != null) {
-                          return (
-                            <span className="flex items-center gap-2">
-                              <span className="font-medium text-amber-600 dark:text-amber-400">{fmtCardPrice(product.sale_price_usd)}</span>
-                              <span className="text-xs text-gray-400 line-through">
-                                {rangeLabel ?? (product.price_display_usd != null ? fmtCardPrice(product.price_display_usd) : null)}
-                              </span>
-                            </span>
-                          );
-                        }
-                        return (
-                          <span className="font-medium text-emerald-700 dark:text-emerald-400">
-                            {rangeLabel ?? (product.price_display_usd != null ? fmtCardPrice(product.price_display_usd) : "Contact for price")}
-                          </span>
-                        );
-                      })()}
-                      <span className="ProductCard_SizeOrigin text-xs text-gray-400 dark:text-gray-500 text-right">
-                        {product.size ? `${product.size}mm` : ""}
-                        {product.size && product.origin ? " · " : ""}
-                        {product.origin && <span className={ORIGIN_TEXT[product.origin] ?? ""}>{product.origin}</span>}
-                      </span>
-                    </div>
-                    {product.status !== "sold" && (() => {
-                      const bnplPrice = product.status === "on_sale"
-                        ? (product.sale_price_usd ?? product.price_display_usd)
-                        : product.price_display_usd;
-                      if (!bnplPrice || requiresInquiry(bnplPrice)) return null;
-                      return <PaymentMessaging price={bnplPrice} compact className="mt-1.5" />;
-                    })()}
-                  </div>
-
-                  {/* Info — mobile only */}
-                  <div className={`ProductCard_InfoMobile sm:hidden p-2.5 flex flex-col gap-0.5 ${product.status === "sold" ? "opacity-80" : ""}`}>
-                    <span className="ProductCard_Category text-[14px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">{getCategoryLabel(product.category)}</span>
-                    {product.tier?.length > 0 && (
-                      <span className="ProductCard_Tier text-[13px] text-gray-400 dark:text-gray-500">{product.tier.join(" · ")}</span>
-                    )}
-                    <h2 className="ProductCard_Title text-xs font-semibold text-gray-900 dark:text-gray-100 leading-snug mt-0.5">{product.name}</h2>
-                    {(product.color ?? []).filter((c) => c && c.trim()).length > 0 && (
-                      <div className="ProductCard_ColorTags flex flex-wrap gap-1 mt-1">
-                        {(product.color ?? []).filter((c) => c && c.trim()).map((c) => (
-                          <span key={c} className="inline-flex items-center gap-1 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-1.5 py-0.5 text-[10px] text-gray-600 dark:text-gray-400">
+                          <span key={c} className="inline-flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
                             <span className={`w-2 h-2 rounded-full shrink-0 ${COLOR_SWATCHES[c] ?? "bg-gray-300"}`} />
                             {c.charAt(0).toUpperCase() + c.slice(1)}
                           </span>
                         ))}
                       </div>
                     )}
-                    <div className="ProductCard_PriceRow flex flex-col mt-1">
+                    <div className="ProductCard_PriceRow mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
                       {(() => {
                         const vp = getVariantPrices(product);
                         const vMin = vp.length > 0 ? Math.min(...vp) : null;
@@ -434,52 +360,96 @@ export default async function Products({
                         if (product.status === "sold") {
                           const base = product.sale_price_usd ?? (rangeLabel ? null : product.price_display_usd);
                           return (
-                            <span className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                            <span className="flex items-center gap-2">
+                              <span className="text-sm text-gray-400 dark:text-gray-500">
                                 {base != null ? fmtCardPrice(base) : rangeLabel ?? "—"}
                               </span>
                               {product.sale_price_usd != null && product.price_display_usd != null && (
-                                <>
-                                  <span className="text-[10px] text-gray-400 line-through">{fmtCardPrice(product.price_display_usd)}</span>
-                                  <span className="rounded-full bg-gray-400 dark:bg-gray-600 px-1 py-0.5 text-[10px] font-semibold text-white">
-                                    −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
-                                  </span>
-                                </>
+                                <span className="text-xs text-gray-300 dark:text-gray-600 line-through">{fmtCardPrice(product.price_display_usd)}</span>
                               )}
                             </span>
                           );
                         }
                         if (product.status === "on_sale" && product.sale_price_usd != null) {
                           return (
-                            <span className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-amber-600 dark:text-amber-400">{fmtCardPrice(product.sale_price_usd)}</span>
-                              <span className="text-[10px] text-gray-400 line-through">
+                            <span className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">{fmtCardPrice(product.sale_price_usd)}</span>
+                              <span className="text-xs text-gray-300 dark:text-gray-600 line-through">
                                 {rangeLabel ?? (product.price_display_usd != null ? fmtCardPrice(product.price_display_usd) : null)}
                               </span>
                             </span>
                           );
                         }
                         return (
-                          <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                          <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                            {rangeLabel ?? (product.price_display_usd != null ? fmtCardPrice(product.price_display_usd) : "Contact for price")}
+                          </span>
+                        );
+                      })()}
+                      <span className="ProductCard_SizeOrigin text-[11px] text-gray-400 dark:text-gray-500 text-right">
+                        {product.size ? `${product.size}mm` : ""}
+                        {product.size && product.origin ? " · " : ""}
+                        {product.origin && <span className={ORIGIN_TEXT[product.origin] ?? ""}>{product.origin}</span>}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Info — mobile */}
+                  <div className={`ProductCard_InfoMobile sm:hidden px-3 pt-3 pb-3.5 flex flex-col gap-1 ${product.status === "sold" ? "opacity-70" : ""}`}>
+                    <span className="ProductCard_Category text-[10px] font-semibold uppercase tracking-[0.15em] text-emerald-700 dark:text-emerald-400">{getCategoryLabel(product.category)}</span>
+                    {product.tier?.length > 0 && (
+                      <span className="ProductCard_Tier text-[10px] text-gray-400 dark:text-gray-500 italic">{product.tier.join(" · ")}</span>
+                    )}
+                    <h2 className="ProductCard_Title text-xs font-semibold text-gray-900 dark:text-gray-100 leading-snug">{product.name}</h2>
+                    {(product.color ?? []).filter((c) => c && c.trim()).length > 0 && (
+                      <div className="ProductCard_ColorTags flex flex-wrap gap-x-2 gap-y-1 mt-0.5">
+                        {(product.color ?? []).filter((c) => c && c.trim()).map((c) => (
+                          <span key={c} className="inline-flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400">
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${COLOR_SWATCHES[c] ?? "bg-gray-300"}`} />
+                            {c.charAt(0).toUpperCase() + c.slice(1)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="ProductCard_PriceRow mt-2 pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                      {(() => {
+                        const vp = getVariantPrices(product);
+                        const vMin = vp.length > 0 ? Math.min(...vp) : null;
+                        const vMax = vp.length > 0 ? Math.max(...vp) : null;
+                        const hasRange = vMin != null && vMax != null && vMin !== vMax;
+                        const rangeLabel = hasRange ? fmtRangeLabel(vMin!, vMax!) : null;
+                        if (product.status === "sold") {
+                          const base = product.sale_price_usd ?? (rangeLabel ? null : product.price_display_usd);
+                          return (
+                            <span className="text-xs text-gray-400 dark:text-gray-500">
+                              {base != null ? fmtCardPrice(base) : rangeLabel ?? "—"}
+                            </span>
+                          );
+                        }
+                        if (product.status === "on_sale" && product.sale_price_usd != null) {
+                          return (
+                            <span className="flex items-center gap-1.5">
+                              <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">{fmtCardPrice(product.sale_price_usd)}</span>
+                              <span className="text-[10px] text-gray-300 dark:text-gray-600 line-through">
+                                {rangeLabel ?? (product.price_display_usd != null ? fmtCardPrice(product.price_display_usd) : null)}
+                              </span>
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
                             {rangeLabel ?? (product.price_display_usd != null ? fmtCardPrice(product.price_display_usd) : "Contact for price")}
                           </span>
                         );
                       })()}
                       {(product.size || product.origin) && (
-                        <span className="ProductCard_SizeOrigin text-[11px] mt-1 text-gray-400 dark:text-gray-500">
+                        <span className="ProductCard_SizeOrigin text-[10px] text-gray-400 dark:text-gray-500">
                           {product.size ? `${product.size}mm` : ""}
                           {product.size && product.origin ? " · " : ""}
                           {product.origin && <span className={ORIGIN_TEXT[product.origin] ?? ""}>{product.origin}</span>}
                         </span>
                       )}
                     </div>
-                    {product.status !== "sold" && (() => {
-                      const bnplPrice = product.status === "on_sale"
-                        ? (product.sale_price_usd ?? product.price_display_usd)
-                        : product.price_display_usd;
-                      if (!bnplPrice || requiresInquiry(bnplPrice)) return null;
-                      return <PaymentMessaging price={bnplPrice} compact className="mt-1.5" />;
-                    })()}
                   </div>
                 </ProductCardLink>
               ))}
