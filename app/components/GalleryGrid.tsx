@@ -27,7 +27,6 @@ export function GalleryGrid() {
   const [active, setActive] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
 
-  const visible = expanded ? IMAGES : IMAGES.slice(0, INITIAL_COUNT);
   const hasMore = IMAGES.length > INITIAL_COUNT;
 
   // Close on Escape
@@ -46,34 +45,45 @@ export function GalleryGrid() {
 
   return (
     <>
-      {/* Masonry grid */}
-      <div className="columns-2 md:columns-3 lg:columns-4 gap-3">
-        {visible.map((src) => (
-          <button
-            key={src}
-            type="button"
-            onClick={() => setActive(src)}
-            className="mb-3 break-inside-avoid overflow-hidden rounded-xl group block w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={src}
-              alt="BingBing Jade natural jadeite piece"
-              className="w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-          </button>
-        ))}
+      {/* Masonry grid with fade-out when collapsed */}
+      <div className="relative">
+        <div
+          className="columns-2 md:columns-3 lg:columns-4 gap-3 overflow-hidden transition-[max-height] duration-500 ease-in-out"
+          style={{ maxHeight: expanded ? "9999px" : "680px" }}
+        >
+          {IMAGES.map((src) => (
+            <button
+              key={src}
+              type="button"
+              onClick={() => setActive(src)}
+              className="mb-3 break-inside-avoid overflow-hidden rounded-xl group block w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={src}
+                alt="BingBing Jade natural jadeite piece"
+                className="w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+            </button>
+          ))}
+        </div>
+
+        {/* Gradient fade + toggle button */}
+        {hasMore && (
+          <div
+            className={`absolute bottom-0 left-0 right-0 h-44 bg-gradient-to-b from-transparent via-white/80 to-white dark:via-gray-950/80 dark:to-gray-950 transition-opacity duration-500 ${expanded ? "opacity-0 pointer-events-none" : "opacity-100"}`}
+          />
+        )}
       </div>
 
-      {/* Show more / less */}
       {hasMore && (
-        <div className="text-center mt-2 mb-6">
+        <div className="text-center mt-4 mb-6">
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
             className="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
           >
-            {expanded ? "Show less" : `Show ${IMAGES.length - INITIAL_COUNT} more photos`}
+            {expanded ? "Show less" : "Show more photos"}
             <svg
               width="14" height="14" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
