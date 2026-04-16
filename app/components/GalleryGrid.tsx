@@ -11,10 +11,24 @@ const IMAGES = [
   "/gallery/IMG_5623.jpg",
   "/gallery/IMG_5959.jpg",
   "/gallery/IMG_5463%202.jpg",
+  "/gallery/IMG_3968.jpg",
+  "/gallery/IMG_6272.jpg",
+  "/gallery/IMG_6273.jpg",
+  "/gallery/IMG_6274.jpg",
+  "/gallery/IMG_6288.jpg",
+  "/gallery/IMG_6294.jpg",
+  "/gallery/IMG_6296.jpg",
+  "/gallery/IMG_6298.jpg",
 ];
+
+const INITIAL_COUNT = 8;
 
 export function GalleryGrid() {
   const [active, setActive] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+
+  const visible = expanded ? IMAGES : IMAGES.slice(0, INITIAL_COUNT);
+  const hasMore = IMAGES.length > INITIAL_COUNT;
 
   // Close on Escape
   useEffect(() => {
@@ -24,7 +38,7 @@ export function GalleryGrid() {
     return () => window.removeEventListener("keydown", handler);
   }, [active]);
 
-  // Prevent body scroll when open
+  // Prevent body scroll when lightbox open
   useEffect(() => {
     document.body.style.overflow = active ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
@@ -34,7 +48,7 @@ export function GalleryGrid() {
     <>
       {/* Masonry grid */}
       <div className="columns-2 md:columns-3 lg:columns-4 gap-3">
-        {IMAGES.map((src) => (
+        {visible.map((src) => (
           <button
             key={src}
             type="button"
@@ -50,6 +64,26 @@ export function GalleryGrid() {
           </button>
         ))}
       </div>
+
+      {/* Show more / less */}
+      {hasMore && (
+        <div className="text-center mt-2 mb-6">
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+          >
+            {expanded ? "Show less" : `Show ${IMAGES.length - INITIAL_COUNT} more photos`}
+            <svg
+              width="14" height="14" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              className={`transition-transform ${expanded ? "rotate-180" : ""}`}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* Lightbox */}
       {active && (
@@ -70,7 +104,7 @@ export function GalleryGrid() {
               draggable={false}
             />
 
-            {/* Watermark — centered logo over image */}
+            {/* Watermark */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -82,7 +116,7 @@ export function GalleryGrid() {
               />
             </div>
 
-            {/* Close button */}
+            {/* Close */}
             <button
               type="button"
               onClick={() => setActive(null)}
@@ -92,7 +126,7 @@ export function GalleryGrid() {
               ×
             </button>
 
-            {/* Prev / Next */}
+            {/* Prev */}
             <button
               type="button"
               aria-label="Previous"
@@ -106,6 +140,8 @@ export function GalleryGrid() {
                 <polyline points="15 18 9 12 15 6" />
               </svg>
             </button>
+
+            {/* Next */}
             <button
               type="button"
               aria-label="Next"
