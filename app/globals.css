@@ -233,3 +233,16 @@ body {
 
 .fc-digit-out { animation: fc-slide-out 0.28s ease-in  forwards; }
 .fc-digit-in  { animation: fc-slide-in  0.28s ease-out forwards; }
+
+@keyframes wa-vibrate {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  10%       { transform: translateX(-3px) rotate(-4deg); }
+  20%       { transform: translateX(3px)  rotate(4deg); }
+  30%       { transform: translateX(-3px) rotate(-4deg); }
+  40%       { transform: translateX(3px)  rotate(4deg); }
+  50%       { transform: translateX(-2px) rotate(-2deg); }
+  60%       { transform: translateX(2px)  rotate(2deg); }
+  70%       { transform: translateX(-1px) rotate(-1deg); }
+  80%       { transform: translateX(1px)  rotate(1deg); }
+}
+.wa-vibrate { animation: wa-vibrate 0.6s ease-in-out; }

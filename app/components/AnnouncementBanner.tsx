@@ -160,7 +160,7 @@ export function AnnouncementBanner() {
   };
 
   return (
-    <div className={`relative flex items-center justify-center gap-3 px-10 py-2 select-none ${bannerCls}`}>
+    <div className={`relative flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-3 px-10 py-2 select-none ${bannerCls}`}>
       {/* Message */}
       <span className="text-xs sm:text-sm font-medium tracking-wide text-center leading-snug">
         {text}

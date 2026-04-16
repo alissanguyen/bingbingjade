@@ -11,6 +11,7 @@ import { CartProvider } from "./components/CartContext";
 import { CartDrawer } from "./components/CartDrawer";
 import { AnalyticsPageView } from "./components/analytics/AnalyticsPageView";
 import { AnnouncementBanner } from "./components/AnnouncementBanner";
+import { WhatsAppFloatingButton } from "./components/WhatsAppFloatingButton";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -105,6 +106,8 @@ export default async function RootLayout({
               <CartDrawer />
 
               <main className="flex-1">{children}</main>
+
+              <WhatsAppFloatingButton />
 
               <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
                 {/* ── Main footer body ── */}

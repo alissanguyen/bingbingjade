@@ -521,39 +521,146 @@ export function ProductPageClient({ product, productImages, productVideos, optio
             </p>
           </div>
           <div className="spacer-div h-4"></div>
-          <Accordion label="Authenticity & Natural Jadeite Guarantee">
-            <div className="space-y-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
-              <p>
-                At BingBing Jade, authenticity is not a marketing phrase — it is the
-                foundation of everything we do. We offer natural jadeite only, and every
-                piece is represented as untreated Type A jadeite with certification.
-              </p>
+          {product.origin !== "Hetian" ? (<>
+            <Accordion label="Jade Meaning & Cultural Significance">
+              <div className="space-y-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
+                <p>
+                  Beyond its beauty, jade carries deep cultural meaning shaped over
+                  thousands of years. In many traditions, it is associated with protection,
+                  balance, prosperity, and quiet strength — often chosen not just for how
+                  it looks, but for what it represents.
+                </p>
 
-              <p className="mt-4 font-bold">
-                In practical terms, this means no dye, no bleaching, no polymer
-                impregnation, and no chemical enhancement. We value honesty, careful
-                selection, and thoughtful presentation at every stage.
-              </p>
+                <p className="mt-4">
+                  Certain shapes and forms are believed to carry specific intentions.
+                  The <span className="italic">Ping An Kou (平安扣)</span>, for example,
+                  symbolizes peace, protection, and safe passage — its continuous circle
+                  representing harmony and wholeness. Bangles are often worn as a form of
+                  protection, believed to stay with the wearer through different stages of life.
+                </p>
 
-              <p className="mt-4">
-                Each piece is backed by our lifetime authenticity guarantee. If a piece is
-                ever professionally tested and believed not to be Type A jadeite, you can return the piece to us for a full refund in accordance
-                with our guarantee terms.
-              </p>
+                <p className="mt-4">
+                  Color also plays a meaningful role. Green jade is commonly associated
+                  with prosperity and growth, lavender tones with calm and emotional balance,
+                  and icy or clear jade with purity and clarity of mind. Each piece carries
+                  a slightly different feeling — something many choose intuitively.
+                </p>
 
-              <p className="mt-4">
-                Natural jadeite is never perfectly uniform, and that is part of its beauty.
-                Slight differences in color, glow, translucency, grain, and internal structure are
-                natural characteristics of genuine jadeite and may appear differently across
-                lighting conditions and environments. We provide many pictures and videos of different lighting conditions to best present the texture and conditions of our jades.
-              </p>
+                <p className="mt-4">
+                  Because no two pieces are ever identical, selecting jade often becomes
+                  a personal process — choosing what resonates, rather than simply what
+                  looks perfect.
+                </p>
 
-              <p className="mt-4">
-                Every piece comes with certification from trusted laboratories, with additional GIA or NGTC certification
-                available for eligible items at additional cost. For items over $5000, GIA/NGTC Certification is provided as a complimentary.
-              </p>
-            </div>
-          </Accordion>
+                <p className="mt-4 italic">
+                  Many of our clients choose jade not only for themselves, but as a
+                  meaningful gift — something to protect, to celebrate, or to carry forward.
+                </p>
+                <p className="mt-4 text-slate-500">
+                  If you&apos;re looking for a piece with a specific meaning or intention, we’re
+                  happy to help you find the right one.
+                </p>
+              </div>
+            </Accordion>
+            <Accordion label="Authenticity & Natural Jadeite Guarantee">
+              <div className="space-y-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
+                <p>
+                  At BingBing Jade, authenticity is not a marketing phrase — it is the
+                  foundation of everything we do. We offer natural jadeite only, and every
+                  piece is represented as untreated Type A jadeite with certification.
+                </p>
+
+                <p className="mt-4 font-bold">
+                  In practical terms, this means no dye, no bleaching, no polymer
+                  impregnation, and no chemical enhancement. We value honesty, careful
+                  selection, and thoughtful presentation at every stage.
+                </p>
+
+                <p className="mt-4">
+                  Each piece is backed by our lifetime authenticity guarantee. If a piece is
+                  ever professionally tested and believed not to be Type A jadeite, you can return the piece to us for a full refund in accordance
+                  with our guarantee terms.
+                </p>
+
+                <p className="mt-4">
+                  Natural jadeite is never perfectly uniform, and that is part of its beauty.
+                  Slight differences in color, glow, translucency, grain, and internal structure are
+                  natural characteristics of genuine jadeite and may appear differently across
+                  lighting conditions and environments. We provide many pictures and videos of different lighting conditions to best present the texture and conditions of our jades.
+                </p>
+
+                <p className="mt-4">
+                  Every piece comes with certification from trusted laboratories, with additional GIA or NGTC certification
+                  available for eligible items at additional cost. For items over $5000, GIA/NGTC Certification is provided as a complimentary.
+                </p>
+              </div>
+            </Accordion>
+          </>) : (<>
+            <Accordion label="Hetian Meaning & Cultural Significance">
+              <div className="space-y-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
+                <p>
+                  Hetian jade is a traditional nephrite jade long valued in Chinese culture
+                  for its smooth texture, soft luster, and quiet elegance. Distinct from
+                  jadeite, it is appreciated less for vivid translucency and more for its
+                  warmth, refinement, and timeless character.
+                </p>
+
+                <p className="mt-4">
+                  It is often associated with harmony, protection, balance, and virtue,
+                  and is commonly chosen as a meaningful piece to wear, gift, or keep.
+                  Many are drawn to Hetian jade for its understated beauty and calm presence.
+                </p>
+
+                <p className="mt-4">
+                  Certain forms carry symbolic meaning as well. Circular pieces such as{" "}
+                  <span className="italic">Ping An Kou (平安扣)</span> are traditionally
+                  associated with peace, safety, and wholeness, while pendants and bangles
+                  are often valued for their closeness to the body and enduring symbolism.
+                </p>
+
+                <p className="mt-4 italic">
+                  More subtle than jadeite, Hetian jade is often chosen for its texture,
+                  meaning, and sense of tradition.
+                </p>
+              </div>
+            </Accordion>
+            <Accordion label="Authenticity & Natural Hetian Jade (Nephrite) Guarantee">
+              <div className="space-y-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
+                <p>
+                  In addition to jadeite, we occasionally offer natural Hetian jade — a
+                  traditional nephrite jade selected for its quality, authenticity, and
+                  character. While jadeite remains our primary specialty, we are pleased
+                  to offer select Hetian pieces for clients who appreciate its distinct
+                  material and cultural appeal.
+                </p>
+
+                <p className="mt-4 font-medium text-slate-700 dark:text-slate-200">
+                  Our Hetian pieces are represented as natural and untreated unless clearly
+                  stated otherwise.
+                </p>
+
+                <p className="mt-4">
+                  As with all natural jade materials, variations in tone, texture, luster,
+                  and internal structure are part of the material itself and should not be
+                  mistaken for treatment or imitation.
+                </p>
+
+                <p className="mt-4">
+                  We also offer certification for Hetian jade through trusted laboratories,
+                  with additional certification options available upon request depending on
+                  the piece.
+                </p>
+
+                <p className="mt-4">
+                  If a Hetian piece is ever professionally tested and believed not to be
+                  natural nephrite jade, you may contact us to arrange review and
+                  verification. If the returned findings confirm otherwise, a refund will
+                  be issued in accordance with our guarantee terms.
+                </p>
+              </div>
+            </Accordion>
+          </>)}
+
           <div className="spacer-div h-3"></div>
           <Accordion label="Selection & Purchase">
             <div className="space-y-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">

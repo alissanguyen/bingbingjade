@@ -17,21 +17,24 @@ export function getPaymentMessaging(price: number): MessagingResult | null {
   return { monthly: Math.ceil((price * 1.05) / 24), showAfterpay: false };
 }
 
-/**
- * Affirm wordmark.
- * Black letter-paths use currentColor so dark mode just needs text-white.
- * Blue swoosh (#4A4AF4) is hardcoded — brand color, stays in both modes.
- * viewBox trimmed slightly on top to reduce whitespace above the arc.
- */
 function AffirmLogo() {
   return (
-    <Image
-      src="/affirm.svg"
-      alt="Affirm"
-      width={80} // adjust as needed
-      height={20}
-      className="h-3 mb-[7.9px] sm:mb-2 sm:h-4 w-auto shrink-0 self-end"
-    />
+    <>
+      <Image
+        src="/affirm.svg"
+        alt="Affirm"
+        width={80}
+        height={20}
+        className="dark:hidden h-3 mb-[7.9px] sm:mb-2 sm:h-4 w-auto shrink-0 self-end"
+      />
+      <Image
+        src="/affirm-dark.svg"
+        alt="Affirm"
+        width={80}
+        height={20}
+        className="hidden dark:block h-3 mb-[7.9px] sm:mb-2 sm:h-4 w-auto shrink-0 self-end"
+      />
+    </>
   );
 }
 

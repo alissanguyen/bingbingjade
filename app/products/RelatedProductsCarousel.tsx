@@ -110,13 +110,16 @@ export function RelatedProductsCarousel({ products }: { products: RelatedProduct
               key={p.id}
               href={`/products/${cardSlug}`}
               style={{ scrollSnapAlign: "start" }}
-              className={`group rounded-2xl border overflow-hidden hover:shadow-lg transition-all block shrink-0 w-[46vw] sm:w-[calc(33.33%-11px)] ${
+              className={`group rounded-2xl overflow-hidden transition-all duration-500 block shrink-0 w-[46vw] sm:w-[calc(33.33%-11px)] ${
                 isSold
-                  ? "border-gray-300 dark:border-gray-700 bg-gray-900/20 dark:bg-gray-700"
-                  : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-emerald-300 dark:hover:border-emerald-700"
+                  ? "bg-gray-100 dark:bg-gray-800/60 shadow-sm"
+                  : "bg-white dark:bg-gray-900 shadow-[0_2px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_16px_48px_rgba(0,0,0,0.13)] dark:hover:shadow-[0_16px_48px_rgba(0,0,0,0.5)] hover:-translate-y-1"
               }`}
             >
               <ProductCardImage images={p.cardImages} name={p.name}>
+                {isSold && (
+                  <div className="absolute inset-0 bg-black/45 z-10 pointer-events-none" />
+                )}
                 {isSold && (
                   <div className="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-10 bg-black text-white text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow">
                     Sold
@@ -159,17 +162,17 @@ export function RelatedProductsCarousel({ products }: { products: RelatedProduct
                 </div>
                 <h3 className="font-semibold text-gray-900 dark:text-gray-100 leading-snug">{p.name}</h3>
                 {colors.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1.5">
+                  <div className="mt-2.5 flex flex-wrap gap-2">
                     {colors.map((c) => (
-                      <span key={c} className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-2.5 py-0.5 text-xs text-gray-600 dark:text-gray-400">
-                        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${COLOR_SWATCHES[c] ?? "bg-gray-300"}`} />
+                      <span key={c} className="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${COLOR_SWATCHES[c] ?? "bg-gray-300"}`} />
                         {c.charAt(0).toUpperCase() + c.slice(1)}
                       </span>
                     ))}
                   </div>
                 )}
-                <div className="mt-3 flex items-center justify-between">
-                  <span className={`font-medium ${isSold ? "text-gray-500 dark:text-gray-400" : isOnSale ? "text-amber-600 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}`}>
+                <div className={`mt-2 pt-2 sm:mt-3 sm:pt-3 border-t dark:border-gray-800 flex items-center justify-between ${p.status === "sold" ? "border-gray-200" : "border-gray-100"}`}>
+                  <span className={`font-medium ${isSold ? "text-gray-400 dark:text-gray-500" : isOnSale ? "text-amber-600 dark:text-amber-400" : "text-gray-800 dark:text-gray-200"}`}>
                     {displayPrice != null ? fmtCardPrice(displayPrice) : "Contact for price"}
                   </span>
                   <span className="text-xs text-gray-400 dark:text-gray-500 text-right">
@@ -182,18 +185,18 @@ export function RelatedProductsCarousel({ products }: { products: RelatedProduct
 
               {/* Info — mobile */}
               <div className={`sm:hidden p-2.5 flex flex-col gap-0.5 ${isSold ? "opacity-80" : ""}`}>
-                <span className="text-[14px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                   {getCategoryLabel(p.category)}
                 </span>
                 {tiers.length > 0 && (
-                  <span className="text-[13px] text-gray-400 dark:text-gray-500">{tiers.join(" · ")}</span>
+                  <span className="text-[9px] italic text-gray-400 dark:text-gray-500">{tiers.join(" · ")}</span>
                 )}
-                <h3 className="text-xs font-semibold text-gray-900 dark:text-gray-100 leading-snug mt-0.5">{p.name}</h3>
+                <h3 className="text-[11px] font-semibold text-gray-900 dark:text-gray-100 leading-snug mt-0.5">{p.name}</h3>
                 {colors.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
+                  <div className="flex flex-wrap gap-x-2 gap-y-1 mt-1">
                     {colors.map((c) => (
-                      <span key={c} className="inline-flex items-center gap-1 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-1.5 py-0.5 text-[10px] text-gray-600 dark:text-gray-400">
-                        <span className={`w-2 h-2 rounded-full shrink-0 ${COLOR_SWATCHES[c] ?? "bg-gray-300"}`} />
+                      <span key={c} className="inline-flex items-center gap-1 text-[8px] text-gray-500 dark:text-gray-400">
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${COLOR_SWATCHES[c] ?? "bg-gray-300"}`} />
                         {c.charAt(0).toUpperCase() + c.slice(1)}
                       </span>
                     ))}
