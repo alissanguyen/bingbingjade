@@ -212,6 +212,47 @@ export default async function Home() {
         </div>
       </div>
 
+      {/* ── Gallery ── */}
+      <div className="mx-auto max-w-7xl px-6 py-16">
+        <div className="text-center mb-10">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 mb-2">Studio Shots</p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">A Closer Look</h2>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">Natural light, honest photography — every piece as it truly appears.</p>
+        </div>
+        <div className="columns-2 md:columns-3 lg:columns-4 gap-3">
+          {[
+            "/gallery/IMG_4028.jpg",
+            "/gallery/IMG_5466.jpg",
+            "/gallery/IMG_5620.jpg",
+            "/gallery/IMG_4157.jpg",
+            "/gallery/IMG_5462.jpg",
+            "/gallery/IMG_5623.jpg",
+            "/gallery/IMG_5959.jpg",
+            "/gallery/IMG_5463%202.jpg",
+          ].map((src) => (
+            <div key={src} className="mb-3 break-inside-avoid overflow-hidden rounded-xl group">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={src}
+                alt="BingBing Jade natural jadeite piece"
+                className="w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+            </div>
+          ))}
+        </div>
+        <div className="text-center mt-8">
+          <Link
+            href="/products"
+            className="inline-flex items-center gap-2 rounded-full border border-emerald-600 text-emerald-700 dark:text-emerald-400 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 px-6 py-2.5 text-sm font-medium transition-colors"
+          >
+            View All Pieces
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
+            </svg>
+          </Link>
+        </div>
+      </div>
+
       {/* ── Closing quote ── */}
       <div className="border-t border-gray-100 dark:border-gray-800">
         <div className="mx-auto max-w-3xl px-6 py-20 text-center">
