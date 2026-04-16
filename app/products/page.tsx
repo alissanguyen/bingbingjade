@@ -211,12 +211,15 @@ export default async function Products({
     }
   }
 
-  // Compute counts from the full unfiltered product list for the filter sidebar
+  // Compute counts scoped to the selected category (or all if none selected)
   const allProductsList = (allProducts as ProductCard[] | null) ?? [];
+  const countBase = selectedCategory
+    ? allProductsList.filter((p) => p.category === selectedCategory)
+    : allProductsList;
   const statusCounts: Record<string, number> = {};
   const originCounts: Record<string, number> = {};
   const colorCounts: Record<string, number> = {};
-  for (const p of allProductsList) {
+  for (const p of countBase) {
     statusCounts[p.status] = (statusCounts[p.status] ?? 0) + 1;
     if (p.origin) originCounts[p.origin] = (originCounts[p.origin] ?? 0) + 1;
     for (const c of p.color ?? []) {
