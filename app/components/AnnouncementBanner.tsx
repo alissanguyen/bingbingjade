@@ -53,9 +53,9 @@ function useCountdown(targetDate: string | null) {
   return timeLeft;
 }
 
-// ── Flip card components ──────────────────────────────────────────────────────
+// ── Slide countdown cards ─────────────────────────────────────────────────────
 
-function FlipDigit({ digit, dark }: { digit: string; dark: boolean }) {
+function SlideDigit({ digit, dark }: { digit: string; dark: boolean }) {
   const [current, setCurrent] = useState(digit);
   const [next, setNext]       = useState(digit);
   const [animating, setAnimating] = useState(false);
@@ -67,60 +67,43 @@ function FlipDigit({ digit, dark }: { digit: string; dark: boolean }) {
     const t = setTimeout(() => {
       setCurrent(digit);
       setAnimating(false);
-    }, 550);
+    }, 280);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [digit]);
 
-  const topBg = dark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)";
-  const botBg = dark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)";
+  const bg    = dark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.07)";
   const color = dark ? "#34d399" : "#059669";
 
   return (
-    <div className={`fc-card${animating ? " animating" : ""}`}>
-      {/* bottom — shows next digit, bottom half visible */}
-      <span className="fc-bottom" style={{ background: botBg }}>
-        <span style={{ color }}>{next}</span>
+    <div className="fc-card" style={{ background: bg }}>
+      <span className={`fc-digit ${animating ? "fc-digit-out" : ""}`} style={{ color }}>
+        {current}
       </span>
-      {/* bottom-back — top half of next digit, behind fc-top while it folds */}
-      <span className="fc-bottom-back" style={{ background: topBg }}>
-        <span style={{ color }}>{next}</span>
-      </span>
-      {/* top — top half of current digit, folds away */}
-      <span className="fc-top" style={{ background: topBg }}>
-        <span style={{ color }}>{current}</span>
-      </span>
-      {/* top-back — bottom half area, rotates in showing next digit */}
-      <span className="fc-top-back" style={{ background: botBg }}>
-        <span style={{ color }}>{next}</span>
-      </span>
+      {animating && (
+        <span className="fc-digit fc-digit-in" style={{ color }}>
+          {next}
+        </span>
+      )}
     </div>
   );
 }
 
-function FlipUnit({ value, label, dark }: { value: number; label: string; dark: boolean }) {
+function SlideUnit({ value, dark }: { value: number; dark: boolean }) {
   const s = String(value).padStart(2, "0");
   return (
-    <div className="flex flex-col items-center gap-[3px]">
-      <div className="flex gap-[3px]">
-        <FlipDigit digit={s[0]} dark={dark} />
-        <FlipDigit digit={s[1]} dark={dark} />
-      </div>
-      <span
-        className="text-[8px] uppercase tracking-widest font-medium"
-        style={{ color: dark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)" }}
-      >
-        {label}
-      </span>
+    <div className="flex gap-[2px]">
+      <SlideDigit digit={s[0]} dark={dark} />
+      <SlideDigit digit={s[1]} dark={dark} />
     </div>
   );
 }
 
-function FlipSep({ dark }: { dark: boolean }) {
+function SlideSep({ dark }: { dark: boolean }) {
   return (
     <span
-      className="font-bold text-sm self-center mb-[12px]"
-      style={{ color: dark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)" }}
+      className="font-bold text-xs self-center"
+      style={{ color: dark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.25)" }}
     >
       :
     </span>
@@ -187,20 +170,20 @@ export function AnnouncementBanner() {
         {hasDate && timeLeft ? " in" : ""}
       </span>
 
-      {/* Flip countdown */}
+      {/* Slide countdown */}
       {timeLeft && (
-        <div className="flex items-end gap-1.5">
+        <div className="flex items-center gap-1">
           {timeLeft.d > 0 && (
             <>
-              <FlipUnit value={timeLeft.d} label="days" dark={isBlack} />
-              <FlipSep dark={isBlack} />
+              <SlideUnit value={timeLeft.d} dark={isBlack} />
+              <SlideSep dark={isBlack} />
             </>
           )}
-          <FlipUnit value={timeLeft.h} label="hrs"  dark={isBlack} />
-          <FlipSep dark={isBlack} />
-          <FlipUnit value={timeLeft.m} label="min"  dark={isBlack} />
-          <FlipSep dark={isBlack} />
-          <FlipUnit value={timeLeft.s} label="sec"  dark={isBlack} />
+          <SlideUnit value={timeLeft.h} dark={isBlack} />
+          <SlideSep dark={isBlack} />
+          <SlideUnit value={timeLeft.m} dark={isBlack} />
+          <SlideSep dark={isBlack} />
+          <SlideUnit value={timeLeft.s} dark={isBlack} />
         </div>
       )}
 

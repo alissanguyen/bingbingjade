@@ -199,84 +199,37 @@ body {
   transition-timing-function: ease;
 }
 
-/* ── Flip countdown cards (AnnouncementBanner) ── */
+/* ── Slide countdown cards (AnnouncementBanner) ── */
 .fc-card {
   position: relative;
-  width: 22px;
-  height: 30px;
-  border-radius: 4px;
+  width: 18px;
+  height: 24px;
+  border-radius: 3px;
+  overflow: hidden;
   flex-shrink: 0;
 }
 
-.fc-top,
-.fc-top-back,
-.fc-bottom,
-.fc-bottom-back {
+.fc-digit {
   position: absolute;
-  left: 0;
-  right: 0;
-  height: 50%;
-  overflow: hidden;
-  backface-visibility: hidden;
-  transition: none !important;
-}
-
-/* Top halves */
-.fc-top,
-.fc-bottom-back {
-  top: 0;
-  border-radius: 4px 4px 0 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.18);
-}
-
-/* Bottom halves */
-.fc-bottom,
-.fc-top-back {
-  top: 50%;
-  border-radius: 0 0 4px 4px;
-}
-
-.fc-top    { z-index: 3; transform-origin: 50% 100%; }
-.fc-top-back { z-index: 4; transform-origin: 50% 0; transform: perspective(200px) rotateX(180deg); }
-.fc-bottom-back { z-index: 2; }
-.fc-bottom { z-index: 1; }
-
-/* Digit text — spans fill the full card height inside each clipped half */
-.fc-top > span,
-.fc-top-back > span,
-.fc-bottom > span,
-.fc-bottom-back > span {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 200%;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 700;
   font-family: ui-monospace, 'Courier New', monospace;
   font-variant-numeric: tabular-nums;
   transition: none !important;
 }
 
-.fc-top > span,
-.fc-top-back > span,
-.fc-bottom-back > span { top: 0; }
-.fc-bottom > span { top: -100%; }
-
-@keyframes fc-fold-top {
-  from { transform: perspective(200px) rotateX(0deg); }
-  to   { transform: perspective(200px) rotateX(-180deg); }
+@keyframes fc-slide-out {
+  from { transform: translateY(0); opacity: 1; }
+  to   { transform: translateY(100%); opacity: 0; }
 }
-@keyframes fc-unfold-back {
-  from { transform: perspective(200px) rotateX(180deg); }
-  to   { transform: perspective(200px) rotateX(0deg); }
+@keyframes fc-slide-in {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
 }
 
-.fc-card.animating .fc-top {
-  animation: fc-fold-top 0.55s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-.fc-card.animating .fc-top-back {
-  animation: fc-unfold-back 0.55s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
+.fc-digit-out { animation: fc-slide-out 0.28s ease-in  forwards; }
+.fc-digit-in  { animation: fc-slide-in  0.28s ease-out forwards; }
