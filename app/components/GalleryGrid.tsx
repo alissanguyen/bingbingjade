@@ -78,7 +78,7 @@ export function GalleryGrid() {
                 alt=""
                 aria-hidden
                 draggable={false}
-                className="w-48 sm:w-64 opacity-30 select-none pointer-events-none"
+                className="w-48 sm:w-64 opacity-60 select-none pointer-events-none"
               />
             </div>
 
