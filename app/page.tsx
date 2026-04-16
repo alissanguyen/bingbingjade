@@ -218,7 +218,7 @@ export default async function Home() {
         <div className="text-center mb-10">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 mb-2">Studio Shots</p>
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">A Closer Look</h2>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">Natural light, honest photography — every piece as it truly appears.</p>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-lg mx-auto">Created to give a closer, more accurate view of jade’s true color and character. A glimpse into pieces we’ve sourced — many already found their homes.</p>
         </div>
         <GalleryGrid />
         <div className="text-center mt-8">

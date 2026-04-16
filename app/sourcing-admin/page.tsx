@@ -64,7 +64,7 @@ export default async function SourcingAdminPage({
 
   // Fetch ledger rows for all requests to compute available credits
   const requestIds = (requests ?? []).map((r) => r.id as string);
-  let ledgerMap: Map<string, LedgerRow[]> = new Map();
+  const ledgerMap: Map<string, LedgerRow[]> = new Map();
 
   if (requestIds.length > 0) {
     const { data: ledger } = await supabaseAdmin

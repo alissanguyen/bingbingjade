@@ -460,42 +460,21 @@ export function ProductPageClient({ product, productImages, productVideos, optio
           {/* Description */}
           {product.description && (
             <Accordion label="Description">
-              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">{product.description}</p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">{product.description}</p>
             </Accordion>
           )}
           <div className="spacer-div h-4"></div>
           {/* Blemishes */}
           {product.blemishes && (
             <Accordion label="Blemishes">
-              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">{product.blemishes}</p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">{product.blemishes}</p>
             </Accordion>
           )}
-          <Accordion label="Authenticity Guarantee">
-            <div className="space-y-3 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-              <p>
-                Each piece we offer is natural jadeite and entirely unique. Variations in color, translucency, and internal structure are inherent to untreated jade and contribute to its individuality. While we present every piece through detailed photos and videos across different lighting conditions, slight differences in appearance may occur depending on environment, lighting, and skin tone.
-              </p>
-              <p>
-                We encourage clients to review all provided media carefully prior to purchase. Our team is always available to provide additional photos, videos, or guidance to ensure you feel confident in your selection.
-              </p>
-              <p>
-                Due to the nature of these pieces, purchases are considered final unless otherwise stated. In certain cases, requests for return or exchange may be reviewed if submitted within 24–48 hours of confirmed delivery, in accordance with our shop terms. Items must remain in original condition, and additional verification may be required.
-              </p>
-              <p>
-                All jade offered is natural, untreated jadeite (Type A) and is backed by our lifetime authenticity guarantee. Certification from trusted independent laboratories is available for select pieces or upon request.
-              </p>
-              <p>
-                If a piece becomes unavailable, or if you are searching for something more specific, we offer access to a wider private inventory through our custom sourcing service. Each request is handled with care, sourcing pieces that are closely aligned with your preferences.
-              </p>
-              <p className="text-slate-500 dark:text-slate-500 italic">
-                For assistance or sourcing inquiries, please contact us — we are always happy to help you find a piece that feels right.
-              </p>
-            </div>
-          </Accordion>
+
           <p className="italic text-xs sm:text-sm text-emerald-600 font-semibold mt-8">** We can provide more pictures and videos of different lighting upon request.</p>
           {product.category === 'bangle' || product.category === 'raw_material' ? (<div className="text-sm">
 
-            <p className="text-gray-400 dark:text-gray-500 mt-2"><span className="mr-2 text-emerald-600">Not your styles?</span>Some pieces can be <span className="font-semibold text-gray-500">reshaped</span> or <span className="font-semibold text-gray-500">widened</span>, contact us for more details.</p>
+            <p className="text-gray-400 text-xs sm:text-sm dark:text-gray-500 mt-2"><span className="mr-2 text-emerald-600">Not your styles?</span>Some pieces can be <span className="font-semibold text-gray-500">reshaped</span> or <span className="font-semibold text-gray-500">widened</span>, contact us for more details.</p>
           </div>) : null}
           {product.category === 'raw_material' ? (<div className="text-xs italic text-gray-500 mt-4">
             <p>*** Please note that custom made orders are not refundable nor returnable per our <a href="/policy" target="_blank" className="text-emerald-500 hover:underlined">policy</a>. </p>
@@ -541,6 +520,61 @@ export function ProductPageClient({ product, productImages, productVideos, optio
               Every piece is natural Jadeite (Type A), untreated and unenhanced. Each is backed by our lifetime authenticity guarantee and accompanied by certification for complete confidence.
             </p>
           </div>
+          <div className="spacer-div h-4"></div>
+          <Accordion label="Authenticity & Natural Jadeite Guarantee">
+            <div className="space-y-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
+              <p>
+                At BingBing Jade, authenticity is not a marketing phrase — it is the
+                foundation of everything we do. We offer natural jadeite only, and every
+                piece is represented as untreated Type A jadeite with certification.
+              </p>
+
+              <p className="mt-4 font-bold">
+                In practical terms, this means no dye, no bleaching, no polymer
+                impregnation, and no chemical enhancement. We value honesty, careful
+                selection, and thoughtful presentation at every stage.
+              </p>
+
+              <p className="mt-4">
+                Each piece is backed by our lifetime authenticity guarantee. If a piece is
+                ever professionally tested and believed not to be Type A jadeite, you can return the piece to us for a full refund in accordance
+                with our guarantee terms.
+              </p>
+
+              <p className="mt-4">
+                Natural jadeite is never perfectly uniform, and that is part of its beauty.
+                Slight differences in color, glow, translucency, grain, and internal structure are
+                natural characteristics of genuine jadeite and may appear differently across
+                lighting conditions and environments. We provide many pictures and videos of different lighting conditions to best present the texture and conditions of our jades.
+              </p>
+
+              <p className="mt-4">
+                Every piece comes with certification from trusted laboratories, with additional GIA or NGTC certification
+                available for eligible items at additional cost. For items over $5000, GIA/NGTC Certification is provided as a complimentary.
+              </p>
+            </div>
+          </Accordion>
+          <div className="spacer-div h-3"></div>
+          <Accordion label="Selection & Purchase">
+            <div className="space-y-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
+              <p>
+                Each piece we offer is natural jadeite and entirely unique. Variations in color, translucency, and internal structure are inherent to untreated jade and contribute to its individuality. While we present every piece through detailed photos and videos across different lighting conditions, slight differences in appearance may occur depending on environment, lighting, and skin tone.
+              </p>
+              <p>
+                We encourage clients to review all provided media carefully prior to purchase. Our team is always available to provide additional photos, videos, or guidance to ensure you feel confident in your selection.
+              </p>
+              <p>
+                Due to the nature of these pieces, purchases are considered final unless otherwise stated. In certain cases, requests for return or exchange may be reviewed if submitted within 24–48 hours of confirmed delivery, in accordance with our shop terms. Items must remain in original condition, unworn and unaltered.
+              </p>
+
+              <p>
+                If a piece becomes unavailable, or if you are searching for something more specific, we offer access to a wider private inventory through our custom sourcing service. Each request is handled with care, sourcing pieces that are closely aligned with your preferences.
+              </p>
+              <p className="text-slate-500 text-xs sm:text-sm dark:text-slate-500 italic leading-relaxed">
+                For assistance or sourcing inquiries, please contact us — we are always happy to help you find a piece that feels right.
+              </p>
+            </div>
+          </Accordion>
         </div>
       </div>
     </div>

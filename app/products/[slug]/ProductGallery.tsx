@@ -121,7 +121,7 @@ export function ProductGallery({ images, videos, category = "" }: { images: stri
         >
           {/* Transparent overlay — blocks right-click save on images */}
           {active.type === "image" && (
-            <div className="absolute inset-0 z-[1] pointer-events-auto" onContextMenu={blockContextMenu} />
+            <div className="absolute inset-0 z-1 pointer-events-auto" onContextMenu={blockContextMenu} />
           )}
           {active.type === "image" ? (
             <Image
@@ -262,7 +262,7 @@ export function ProductGallery({ images, videos, category = "" }: { images: stri
             {active.type === "image" ? (
               <>
                 {/* Transparent overlay blocks right-click save in lightbox */}
-                <div className="absolute inset-0 z-[1]" onContextMenu={blockContextMenu} />
+                <div className="absolute inset-0 z-1" onContextMenu={blockContextMenu} />
                 <Image
                   src={active.src}
                   alt="Product"
@@ -293,7 +293,7 @@ export function ProductGallery({ images, videos, category = "" }: { images: stri
                   alt=""
                   aria-hidden
                   draggable={false}
-                  className="absolute z-[2] pointer-events-none select-none"
+                  className="absolute z-2 pointer-events-none select-none"
                   style={wmStyle}
                 />
               </div>
