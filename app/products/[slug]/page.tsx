@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase";
 import { publicIdFromSlug, productSlug } from "@/lib/slug";
-import { resolveImageUrls, resolveVideoUrls, resolveFirstImageUrl, isStoragePath } from "@/lib/storage";
+import { resolveImageUrls, resolveVideoUrls, resolveFirstImageUrl } from "@/lib/storage";
 import { ProductPageClient } from "./ProductPageClient";
 import { BackToProductsLink } from "./BackToProductsLink";
 import { RelatedProductsCarousel } from "../RelatedProductsCarousel";
@@ -173,7 +173,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const optionsWithResolvedImages = await Promise.all(
     (rawOptions ?? []).map(async (opt) => {
       const imgs = opt.images ?? [];
-      const resolved = imgs.some(isStoragePath) ? await resolveImageUrls(imgs) : imgs;
+      const resolved = await resolveImageUrls(imgs);
       return { ...opt, images: resolved };
     })
   );
@@ -195,7 +195,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       const overlap = pColors.filter((c) => currentColors.includes(c)).length;
       // Resolve up to 2 images for the card hover slide effect
       const firstTwo = imgs.slice(0, 2);
-      const resolvedTwo = firstTwo.some(isStoragePath) ? await resolveImageUrls(firstTwo) : firstTwo;
+      const resolvedTwo = await resolveImageUrls(firstTwo);
       return {
         id: p.id as string,
         name: p.name as string,

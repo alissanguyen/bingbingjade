@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
-import { resolveImageUrls, isStoragePath } from "@/lib/storage";
+import { resolveImageUrls } from "@/lib/storage";
 import { FeaturedCarousel } from "@/app/components/FeaturedCarousel";
 import { ReviewsCarousel } from "@/app/components/ReviewsCarousel";
 import { SubscribePopup } from "@/app/components/SubscribePopup";
@@ -49,9 +49,7 @@ export default async function Home() {
   // Resolve signed URLs for the first two images of each product (carousel uses [0] and [1])
   const raw = rawFeatured ?? [];
   const firstTwo = raw.flatMap((p) => [p.images?.[0] ?? "", p.images?.[1] ?? ""]);
-  const resolvedFirstTwo = firstTwo.some(isStoragePath)
-    ? await resolveImageUrls(firstTwo)
-    : firstTwo;
+  const resolvedFirstTwo = await resolveImageUrls(firstTwo);
   const featuredProducts = raw.map((p, i) => {
     const r0 = resolvedFirstTwo[i * 2];
     const r1 = resolvedFirstTwo[i * 2 + 1];
