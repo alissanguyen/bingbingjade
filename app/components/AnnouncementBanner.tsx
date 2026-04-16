@@ -18,7 +18,7 @@ export const BANNER_TEMPLATES: {
   hasDate: boolean;
 }[] = [
   { value: "restock",        label: "Next Restock",           text: "Next Restock Drops",                     hasDate: true  },
-  { value: "releasing_soon", label: "New Pieces Releasing Soon", text: "New Pieces Releasing Soon",           hasDate: false },
+  { value: "releasing_soon", label: "New Pieces Releasing Soon", text: "New Pieces Releasing Soon",           hasDate: true  },
   { value: "next_favorite",  label: "Your Next Favorite Piece", text: "Your Next Favorite Piece Drops",       hasDate: true  },
   { value: "black_friday",   label: "Black Friday Sale",       text: "🛍 Black Friday Sale Starting",         hasDate: true  },
   { value: "christmas",      label: "Christmas Sale",          text: "🎄 Christmas Deals Starting",           hasDate: true  },
