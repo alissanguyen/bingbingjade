@@ -47,11 +47,8 @@ export function GalleryGrid() {
     <>
       {/* Masonry grid with fade-out when collapsed */}
       <div className="relative">
-        <div
-          className="columns-2 md:columns-3 lg:columns-4 gap-3 overflow-hidden transition-[max-height] duration-500 ease-in-out"
-          style={{ maxHeight: expanded ? "9999px" : "680px" }}
-        >
-          {IMAGES.map((src) => (
+        <div className="columns-2 md:columns-3 lg:columns-4 gap-3">
+          {(expanded ? IMAGES : IMAGES.slice(0, INITIAL_COUNT)).map((src) => (
             <button
               key={src}
               type="button"
