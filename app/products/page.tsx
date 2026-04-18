@@ -177,8 +177,8 @@ export default async function Products({
 
   // Sort / arrange into the final display order
   let sorted: ProductCard[];
-  if (sort === "newest") {
-    // Already ordered by created_at DESC from the DB
+  if (sort === "" || sort === "newest") {
+    // Default: newest-first, already ordered by created_at DESC from the DB
     sorted = products;
   } else if (sort === "price_asc" || sort === "price_desc") {
     sorted = [...products].sort((a, b) => {
@@ -193,7 +193,7 @@ export default async function Products({
       return sort === "size_asc" ? sa - sb : sb - sa;
     });
   } else {
-    // Default: round-robin interleave across categories so a bulk upload of
+    // "Featured": round-robin interleave across categories so a bulk upload of
     // one type doesn't flood the first page. Within each group, newest-first
     // order is preserved (DB returns created_at DESC).
     const groups = new Map<string, ProductCard[]>();
