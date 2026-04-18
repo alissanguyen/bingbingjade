@@ -46,21 +46,21 @@ interface OptionPriceRow {
 }
 
 const ORIGIN_TEXT: Record<string, string> = {
-  Myanmar:   "text-emerald-600 dark:text-emerald-400",
+  Myanmar: "text-emerald-600 dark:text-emerald-400",
   Guatemala: "text-blue-600 dark:text-blue-400",
-  Hetian:    "text-fuchsia-600 dark:text-fuchsia-400",
+  Hetian: "text-fuchsia-600 dark:text-fuchsia-400",
 };
 
 const COLOR_SWATCHES: Record<string, string> = {
-  white:    "bg-white border border-gray-300",
-  green:    "bg-green-500",
-  blue:     "bg-blue-500",
-  red:      "bg-red-500",
-  pink:     "bg-pink-400",
+  white: "bg-white border border-gray-300",
+  green: "bg-green-500",
+  blue: "bg-blue-500",
+  red: "bg-red-500",
+  pink: "bg-pink-400",
   lavender: "bg-purple-300",
-  orange:   "bg-orange-500",
-  yellow:   "bg-yellow-400",
-  black:    "bg-gray-900",
+  orange: "bg-orange-500",
+  yellow: "bg-yellow-400",
+  black: "bg-gray-900",
   marbling: "bg-gradient-to-br from-gray-200 via-white to-gray-400 border border-gray-300",
 };
 
@@ -75,9 +75,9 @@ export default async function Products({
   searchParams: Promise<{ colors?: string; status?: string; category?: string; origins?: string; minSize?: string; maxSize?: string; minPrice?: string; maxPrice?: string; sort?: string; page?: string }>;
 }) {
   const params = await searchParams;
-  const selectedColors   = params.colors?.split(",").filter(Boolean) ?? [];
+  const selectedColors = params.colors?.split(",").filter(Boolean) ?? [];
   const selectedStatuses = params.status?.split(",").filter(Boolean) ?? [];
-  const selectedOrigins  = params.origins?.split(",").filter(Boolean) ?? [];
+  const selectedOrigins = params.origins?.split(",").filter(Boolean) ?? [];
   const selectedCategory = params.category ?? "";
   const minSize = params.minSize ? Number(params.minSize) : null;
   const maxSize = params.maxSize ? Number(params.maxSize) : null;
@@ -289,11 +289,10 @@ export default async function Products({
                 <ProductCardLink
                   key={product.id}
                   href={`/products/${productSlug(product)}`}
-                  className={`group rounded-2xl overflow-hidden transition-all duration-500 block ${
-                    product.status === "sold"
+                  className={`group rounded-2xl overflow-hidden transition-all duration-500 block ${product.status === "sold"
                       ? "bg-gray-100 dark:bg-gray-800/60 shadow-sm"
                       : "bg-white dark:bg-gray-900 shadow-[0_2px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_16px_48px_rgba(0,0,0,0.13)] dark:hover:shadow-[0_16px_48px_rgba(0,0,0,0.5)] hover:-translate-y-1"
-                  }`}
+                    }`}
                 >
                   {/* Image strip */}
                   <ProductCardImage images={product.images ?? []} name={product.name} priority={i === 0}>
@@ -301,19 +300,19 @@ export default async function Products({
                       <div className="absolute inset-0 bg-black/45 z-10 pointer-events-none" />
                     )}
                     {isDev && !product.is_published && (
-                      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 bg-gray-600/90 backdrop-blur-sm text-white text-[10px] font-medium tracking-widest uppercase px-2 py-0.5 rounded-full">
+                      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 bg-gray-600/90 backdrop-blur-sm text-white text-[10px] sm:text-[14px] font-medium tracking-widest uppercase px-2 py-0.5 rounded-full">
                         Draft
                       </div>
                     )}
                     {product.status === "sold" && (
-                      <div className="ProductCard_Badge_Sold absolute top-2 left-2 sm:top-3 sm:left-3 z-10 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-gray-500 dark:text-gray-400 text-[10px] font-medium tracking-widest uppercase px-2.5 py-1 rounded-full">
+                      <div className="ProductCard_Badge_Sold absolute top-2 left-2 sm:top-3 sm:left-3 z-10 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-gray-500 dark:text-gray-400 text-[10px] sm:text-[14px] font-medium tracking-widest uppercase px-2.5 py-1 rounded-full">
                         Sold
                       </div>
                     )}
                     {product.status === "on_sale" && (
                       <div className="ProductCard_Badge_OnSale absolute top-2 left-2 sm:top-3 sm:left-3 z-10 flex items-center gap-1.5">
                         {product.price_display_usd != null && product.sale_price_usd != null && (
-                          <div className="bg-amber-500/90 backdrop-blur-sm text-white text-[10px] font-semibold tracking-wide px-2.5 py-1 rounded-full">
+                          <div className="bg-amber-500/90 backdrop-blur-sm text-white text-[10px] sm:text-[14px] font-semibold tracking-wide px-2.5 py-1 rounded-full">
                             −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
                           </div>
                         )}
@@ -322,11 +321,11 @@ export default async function Products({
                     {product.quick_ship && product.status !== "sold" && (
                       <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 z-10">
                         <div
-                          className="flex items-center gap-1 sm:gap-1.5 bg-sky-950/90 backdrop-blur-sm border border-sky-400/40 text-sky-300 text-[10px] font-medium tracking-wide px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full"
+                          className="flex items-center gap-1 sm:gap-1.5 bg-sky-950/90 backdrop-blur-sm border border-sky-400/40 text-sky-300 text-[10px] sm:text-[14px] font-medium tracking-wide px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full"
                           style={{ boxShadow: "0 0 10px 1px rgba(56,189,248,0.25)" }}
                         >
                           <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_4px_1px_rgba(56,189,248,0.8)]" />
-                          Available Now
+                          Ship Now
                         </div>
                       </div>
                     )}

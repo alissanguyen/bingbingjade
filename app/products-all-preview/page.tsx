@@ -264,19 +264,19 @@ export default async function ProductsAllPreview({
                       <div className="absolute inset-0 bg-black/45 z-10 pointer-events-none" />
                     )}
                     {!product.is_published && (
-                      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 bg-amber-500/90 backdrop-blur-sm text-white text-[10px] font-medium tracking-widest uppercase px-2 py-0.5 rounded-full">
+                      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 bg-amber-500/90 backdrop-blur-sm text-white text-[10px] sm:text-[14px] font-medium tracking-widest uppercase px-2 py-0.5 rounded-full">
                         Draft
                       </div>
                     )}
                     {product.status === "sold" && (
-                      <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-gray-500 dark:text-gray-400 text-[10px] font-medium tracking-widest uppercase px-2.5 py-1 rounded-full">
+                      <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-gray-500 dark:text-gray-400 text-[10px] sm:text-[14px] font-medium tracking-widest uppercase px-2.5 py-1 rounded-full">
                         Sold
                       </div>
                     )}
                     {product.status === "on_sale" && (
                       <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 flex items-center gap-1.5">
                         {product.price_display_usd != null && product.sale_price_usd != null && (
-                          <div className="bg-amber-500/90 backdrop-blur-sm text-white text-[10px] font-semibold tracking-wide px-2.5 py-1 rounded-full">
+                          <div className="bg-amber-500/90 backdrop-blur-sm text-white text-[10px] sm:text-[14px] font-semibold tracking-wide px-2.5 py-1 rounded-full">
                             −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
                           </div>
                         )}
@@ -285,11 +285,11 @@ export default async function ProductsAllPreview({
                     {product.quick_ship && product.status !== "sold" && (
                       <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 z-10">
                         <div
-                          className="flex items-center gap-1 sm:gap-1.5 bg-sky-950/90 backdrop-blur-sm border border-sky-400/40 text-sky-300 text-[10px] font-medium tracking-wide px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full"
+                          className="flex items-center gap-1 sm:gap-1.5 bg-sky-950/90 backdrop-blur-sm border border-sky-400/40 text-sky-300 text-[10px] sm:text-[14px] font-medium tracking-wide px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full"
                           style={{ boxShadow: "0 0 10px 1px rgba(56,189,248,0.25)" }}
                         >
                           <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_4px_1px_rgba(56,189,248,0.8)]" />
-                          Available Now
+                          Ship Now
                         </div>
                       </div>
                     )}

@@ -445,7 +445,7 @@ export function CheckoutClient() {
             {/* Mixed cart notice */}
             {isMixedCart && (
               <div className="mb-4 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/30 px-4 py-3 text-[12px] sm:text-sm text-indigo-700 dark:text-indigo-300 leading-relaxed">
-                This order contains both <strong>Available Now</strong> and <strong>Sourced for You</strong> pieces. They will ship separately at their respective timelines.
+                This order contains both <strong>Ship Now</strong> and <strong>Sourced for You</strong> pieces. They will ship separately at their respective timelines.
               </div>
             )}
 
@@ -499,7 +499,7 @@ export function CheckoutClient() {
                             style={{ boxShadow: "0 0 6px 1px rgba(56,189,248,0.3)" }}
                           >
                             <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_4px_1px_rgba(56,189,248,0.8)]" />
-                            Available Now
+                            Ship Now
                           </div>
                         )}
                       </div>
@@ -533,7 +533,7 @@ export function CheckoutClient() {
                   {isMixedCart && availableNowItems.length > 0 && (
                     <div className="flex items-center gap-2 pt-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_4px_1px_rgba(56,189,248,0.8)]" />
-                      <span className="text-[13px] sm:text-[15px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">Available Now</span>
+                      <span className="text-[13px] sm:text-[15px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">Ship Now</span>
                       <span className="text-[10px] sm:text-[14px] text-stone-400">· Ships in 2–5 business days</span>
                     </div>
                   )}

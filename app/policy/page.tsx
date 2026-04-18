@@ -59,7 +59,7 @@ const sections = [
   {
     id: "shipping-delivery",
     title: "Shipping & Delivery",
-    body: "Items labeled “Available Now” are in our U.S. inventory and typically ship within 2–5 business days, offering a faster and more convenient delivery experience. Pieces labeled “Sourced for You” are carefully selected and prepared upon order, with an estimated delivery timeframe of 2–4 weeks. This allows for quality inspection, certification, and international handling when applicable. We prioritize care and accuracy at every step to ensure your piece arrives safely.",
+    body: "Items labeled “Ship Now” are in our U.S. inventory and typically ship within 2–5 business days, offering a faster and more convenient delivery experience. Pieces labeled “Sourced for You” are carefully selected and prepared upon order, with an estimated delivery timeframe of 2–4 weeks. This allows for quality inspection, certification, and international handling when applicable. We prioritize care and accuracy at every step to ensure your piece arrives safely.",
   },
   {
     id: "expedited-shipping",

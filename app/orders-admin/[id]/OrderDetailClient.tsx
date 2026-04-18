@@ -967,7 +967,7 @@ export function OrderDetailClient({
                               ? "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400"
                               : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400"
                           }`}>
-                            {shipment.fulfillment_type === "available_now" ? "Available Now" : "Sourced for You"}
+                            {shipment.fulfillment_type === "available_now" ? "Ship Now" : "Sourced for You"}
                           </span>
                         </div>
                         <div className="flex items-center gap-3">

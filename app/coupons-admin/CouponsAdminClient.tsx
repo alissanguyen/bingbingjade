@@ -21,7 +21,6 @@ export type Campaign = {
   redemption_count: number;
   customer_email: string | null;
   coupon_purpose: "thank_you" | "retention" | null;
-  scheduled_send_at: string | null;
   email_sent_at: string | null;
 };
 
@@ -672,14 +671,29 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
                           {c.coupon_purpose === "thank_you" ? "Thank You" : "Retention"} · {c.customer_email}
                         </span>
                       )}
-                      {c.scheduled_send_at && !c.email_sent_at && (
+                      {c.customer_email && c.email_sent_at && new Date(c.email_sent_at) > new Date() && (
                         <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400">
-                          ⏰ Scheduled {fmtDateTime(c.scheduled_send_at)}
+                          Scheduled {fmtDateTime(c.email_sent_at)}
                         </span>
                       )}
-                      {c.email_sent_at && (
+                      {c.customer_email && c.email_sent_at && new Date(c.email_sent_at) <= new Date() && (
                         <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                          ✓ Sent {fmtDateTime(c.email_sent_at)}
+                          Sent {fmtDateTime(c.email_sent_at)}
+                        </span>
+                      )}
+                      {c.customer_email && !c.email_sent_at && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+                          Email not sent
+                        </span>
+                      )}
+                      {c.customer_email && c.redemption_count > 0 && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 font-medium">
+                          Used
+                        </span>
+                      )}
+                      {c.customer_email && c.email_sent_at && c.redemption_count === 0 && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400">
+                          Unused
                         </span>
                       )}
                     </div>

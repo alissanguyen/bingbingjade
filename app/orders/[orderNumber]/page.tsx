@@ -353,7 +353,7 @@ export default async function TrackOrderPage({
                           ? "text-sky-600 dark:text-sky-400"
                           : "text-indigo-600 dark:text-indigo-400"
                       }`}>
-                        {shipment.fulfillment_type === "available_now" ? "Available Now" : "Sourced for You"}
+                        {shipment.fulfillment_type === "available_now" ? "Ship Now" : "Sourced for You"}
                       </p>
                     )}
                     {!isMixed && (

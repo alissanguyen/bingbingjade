@@ -487,10 +487,10 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                 style={{ boxShadow: "0 0 12px 2px rgba(56,189,248,0.18), 0 0 2px 0px rgba(56,189,248,0.35)" }}>
                 <span className="shrink-0 w-2 h-2 rounded-full bg-sky-600 dark:bg-sky-400 shadow-[0_0_6px_2px_rgba(56,189,248,0.7)] animate-pulse mt-1.5" />
                 <div>
-                  <p className="text-sm font-semibold text-sky-800 dark:text-sky-300 tracking-wide">Available Now</p>
+                  <p className="text-sm font-semibold text-sky-800 dark:text-sky-300 tracking-wide">Ship Now</p>
                   <ul className="mt-1.5 space-y-0.5">
                     <li className="text-xs sm:text-[15px] text-sky-600 dark:text-sky-200/80">✔ In U.S. inventory — ships in 2–5 business days</li>
-                    <li className="text-xs sm:text-[15px] text-sky-600 dark:text-sky-200/80">✔ Easier returns &amp; exchanges</li>
+                    <li className="text-xs sm:text-[15px] text-sky-600 dark:text-sky-200/80">✔ Fast returns &amp; exchanges</li>
                   </ul>
                 </div>
               </div>

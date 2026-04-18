@@ -158,7 +158,7 @@ export async function sendOrderConfirmationEmail(params: {
     params.estimatedDelivery
       ? `Estimated delivery: <strong>${params.estimatedDelivery}</strong>`
       : isMixed
-        ? "This order contains both <strong>Available Now</strong> pieces (ships in 2–5 business days) and <strong>Sourced for You</strong> pieces (typically 2–4 weeks). They will ship separately — we will be in touch to coordinate each shipment."
+        ? "This order contains both <strong>Ship Now</strong> pieces (ships in 2–5 business days) and <strong>Sourced for You</strong> pieces (typically 2–4 weeks). They will ship separately — we will be in touch to coordinate each shipment."
         : hasAvailableNow
           ? "Your piece is in our U.S. inventory and will ship within 2–5 business days. We will send tracking details as soon as it is on its way."
           : "We will be in touch once your order ships. Authentic jade sourcing, certification, and international shipping take time — typically 2–4 weeks.";

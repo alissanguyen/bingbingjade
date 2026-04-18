@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
   const customerEmail = body.customer_email?.trim().toLowerCase() || null;
   const couponPurpose = body.coupon_purpose ?? null;
   const scheduledSendAt = body.scheduled_send_at || null;
-  const sendImmediately = !scheduledSendAt || new Date(scheduledSendAt) <= new Date();
+  const isFutureSchedule = scheduledSendAt && new Date(scheduledSendAt) > new Date();
 
   // All customer coupons are valid for exactly 3 months
   const endsAt = customerEmail
@@ -101,7 +101,6 @@ export async function POST(req: NextRequest) {
       created_by: "admin",
       customer_email: customerEmail,
       coupon_purpose: couponPurpose,
-      scheduled_send_at: scheduledSendAt,
     })
     .select("*")
     .single();
@@ -113,8 +112,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Send email now only if no future schedule
-  if (customerEmail && couponPurpose && data && sendImmediately) {
+  // Send email — immediately or via Resend's native scheduledAt if a future time was given.
+  // Store email_sent_at = scheduledAt for future sends (so admin sees when it's queued for),
+  // or email_sent_at = now for immediate sends.
+  if (customerEmail && couponPurpose && data) {
     const discountType = body.discount_type!;
     const discountValue = body.discount_value;
     const discountLabel =
@@ -124,7 +125,9 @@ export async function POST(req: NextRequest) {
         ? `${discountValue}% off`
         : `$${discountValue} off`;
 
-    const expiresAt = body.ends_at ? new Date(body.ends_at) : null;
+    const endsAtDate = endsAt ? new Date(endsAt) : null;
+    // For future schedules, record the scheduled time; for immediate, record now.
+    const emailSentAt = isFutureSchedule ? scheduledSendAt! : new Date().toISOString();
 
     // Fire-and-forget — don't fail the create if email fails
     sendCustomerCouponEmail({
@@ -132,10 +135,14 @@ export async function POST(req: NextRequest) {
       couponCode: code,
       purpose: couponPurpose,
       discountLabel,
-      expiresAt,
+      expiresAt: endsAtDate,
+      scheduledAt: isFutureSchedule ? scheduledSendAt : null,
     })
       .then(() =>
-        supabaseAdmin.from("coupon_campaigns").update({ email_sent_at: new Date().toISOString() }).eq("id", data.id)
+        supabaseAdmin
+          .from("coupon_campaigns")
+          .update({ email_sent_at: emailSentAt })
+          .eq("id", data.id)
       )
       .catch((err) => console.error("[coupons] Failed to send customer coupon email:", err));
   }

@@ -413,11 +413,12 @@ export async function sendCustomerCouponEmail(params: {
   purpose: "thank_you" | "retention";
   discountLabel: string;
   expiresAt?: Date | null;
+  scheduledAt?: string | null;
 }): Promise<void> {
   const resend = getResend();
   if (!resend) return;
 
-  const { customerEmail, couponCode, purpose, discountLabel, expiresAt } = params;
+  const { customerEmail, couponCode, purpose, discountLabel, expiresAt, scheduledAt } = params;
   const isThankYou = purpose === "thank_you";
   const from = "BingBing Jade <notification@bingbingjade.com>";
   const html = buildCustomerCouponHtml({ couponCode, purpose, discountLabel, expiresAt });
@@ -431,6 +432,7 @@ export async function sendCustomerCouponEmail(params: {
         ? `A thank-you gift from BingBing Jade: ${couponCode}`
         : `We miss you — here's ${discountLabel} on us: ${couponCode}`,
       html,
+      ...(scheduledAt ? { scheduledAt } : {}),
     });
   } catch (err) {
     console.error("[discount-emails] Failed to send customer coupon email:", err);
