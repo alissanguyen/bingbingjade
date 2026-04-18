@@ -251,7 +251,7 @@ export async function sendOrderConfirmationEmail(params: {
     const { error } = await resend.emails.send({
       from,
       to: params.customerEmail,
-      bcc: "bingbing.jade2@gmail.com",
+      bcc: "contact@bingbingjade.com",
       subject: `[Order Placed] Your BingBing Jade Order ${params.orderNumber} is Confirmed`,
       html,
     });
@@ -530,7 +530,7 @@ export async function sendOrderStatusEmail(params: {
     const { error } = await resend.emails.send({
       from,
       to: params.customerEmail,
-      bcc: "bingbing.jade2@gmail.com",
+      bcc: "contact@bingbingjade.com",
       subject: `[Order Update] ${meta.subject} — ${params.orderNumber}`,
       html,
     });
@@ -636,7 +636,7 @@ export async function sendDeliveryDateEmail(params: {
     const { error } = await resend.emails.send({
       from,
       to: params.customerEmail,
-      bcc: "bingbing.jade2@gmail.com",
+      bcc: "contact@bingbingjade.com",
       subject: `[Order Update] Delivery Update for Your Order ${params.orderNumber}`,
       html,
     });

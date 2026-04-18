@@ -6,7 +6,7 @@
 import { Resend } from "resend";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
-const ADMIN_EMAIL = "bingbing.jade2@gmail.com";
+const ADMIN_EMAIL = "contact@bingbingjade.com";
 const JADE_BANNER = "https://images.unsplash.com/photo-1705931396849-93822983c1dc?q=80&w=1624&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
 
 function getResend() {

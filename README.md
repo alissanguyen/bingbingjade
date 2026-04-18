@@ -201,7 +201,7 @@ A production-hardened discount engine with no stacking (exactly one discount sou
 
 ### Email System (Resend)
 
-All transactional emails use custom branded HTML templates and are BCC'd to `bingbing.jade2@gmail.com`. Subject lines are prefixed for Gmail filter-based sorting:
+All transactional emails use custom branded HTML templates and are BCC'd to `contact@bingbingjade.com`. Subject lines are prefixed for Gmail filter-based sorting:
 
 | Subject prefix | Emails |
 |---|---|

@@ -163,7 +163,7 @@ export async function sendWelcomeSubscriberEmail(
     await resend.emails.send({
       from,
       to: email,
-      bcc: "bingbing.jade2@gmail.com",
+      bcc: "contact@bingbingjade.com",
       subject: `Your BingBing Jade welcome coupon: ${couponCode}`,
       html,
     });
@@ -192,7 +192,7 @@ export async function resendSubscriberCouponEmail(
     await resend.emails.send({
       from,
       to: email,
-      bcc: "bingbing.jade2@gmail.com",
+      bcc: "contact@bingbingjade.com",
       subject: `Your BingBing Jade welcome coupon: ${couponCode}`,
       html,
     });
@@ -427,7 +427,7 @@ export async function sendCustomerCouponEmail(params: {
     await resend.emails.send({
       from,
       to: customerEmail,
-      bcc: "bingbing.jade2@gmail.com",
+      bcc: "contact@bingbingjade.com",
       subject: isThankYou
         ? `A thank-you gift from BingBing Jade: ${couponCode}`
         : `We miss you — here's ${discountLabel} on us: ${couponCode}`,
@@ -598,7 +598,7 @@ export async function sendCustomerCouponReminderEmail(params: {
     await resend.emails.send({
       from,
       to: customerEmail,
-      bcc: "bingbing.jade2@gmail.com",
+      bcc: "contact@bingbingjade.com",
       subject,
       html,
     });
@@ -724,7 +724,7 @@ export async function sendReferralInviteEmail(params: {
     await resend.emails.send({
       from,
       to: params.customerEmail,
-      bcc: "bingbing.jade2@gmail.com",
+      bcc: "contact@bingbingjade.com",
       subject: `[Order Update] Your BingBing Jade referral code — share and earn $10`,
       html,
     });
@@ -829,7 +829,7 @@ export async function sendReferralRewardEmail(params: {
     await resend.emails.send({
       from,
       to: params.referrerEmail,
-      bcc: "bingbing.jade2@gmail.com",
+      bcc: "contact@bingbingjade.com",
       subject: `[Order Update] You earned $${params.creditAmountDollars.toFixed(2)} store credit — BingBing Jade`,
       html,
     });
