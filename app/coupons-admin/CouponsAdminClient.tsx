@@ -201,22 +201,58 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
   const [customerError, setCustomerError] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState(false);
+  const [resendTarget, setResendTarget] = useState<Campaign | null>(null);
+  const [resendSending, setResendSending] = useState<string | null>(null); // type being sent
+  const [resendPreviewing, setResendPreviewing] = useState<string | null>(null); // type being previewed
 
   function showToast(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
   }
 
-  async function resendEmail(campaign: Campaign) {
-    if (!confirm(`Resend coupon email to ${campaign.customer_email}?`)) return;
-    const res = await fetch(`/api/admin/coupons/${campaign.id}/resend`, { method: "POST" });
-    if (res.ok) {
-      const { email_sent_at } = await res.json();
-      setCampaigns((prev) => prev.map((c) => c.id === campaign.id ? { ...c, email_sent_at } : c));
-      showToast(`Email resent to ${campaign.customer_email}`);
-    } else {
-      const { error } = await res.json().catch(() => ({ error: "Failed to resend." }));
-      showToast(`Error: ${error}`);
+  async function sendResend(type: string) {
+    if (!resendTarget) return;
+    setResendSending(type);
+    try {
+      const res = await fetch(`/api/admin/coupons/${resendTarget.id}/resend`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type }),
+      });
+      if (res.ok) {
+        const { email_sent_at } = await res.json();
+        setCampaigns((prev) => prev.map((c) => c.id === resendTarget!.id ? { ...c, email_sent_at } : c));
+        showToast(`Email sent to ${resendTarget.customer_email}`);
+        setResendTarget(null);
+      } else {
+        const { error } = await res.json().catch(() => ({ error: "Failed to send." }));
+        showToast(`Error: ${error}`);
+      }
+    } finally {
+      setResendSending(null);
+    }
+  }
+
+  async function previewResend(type: string) {
+    if (!resendTarget) return;
+    setResendPreviewing(type);
+    try {
+      const reminderNumber = type === "reminder1" ? 1 : type === "reminder2" ? 2 : null;
+      const res = await fetch("/api/admin/coupons/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          purpose: resendTarget.coupon_purpose,
+          discount_type: resendTarget.discount_type === "tiered" ? "fixed" : resendTarget.discount_type,
+          discount_value: resendTarget.discount_value,
+          coupon_code: resendTarget.code,
+          reminder_number: reminderNumber,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) setPreviewHtml(data.html);
+    } finally {
+      setResendPreviewing(null);
     }
   }
 
@@ -637,6 +673,57 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
         </form>
       )}
 
+      {/* Resend email picker modal */}
+      {resendTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+          <div className="w-full max-w-sm bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-xl p-5 space-y-4">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Send Email</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{resendTarget.customer_email}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setResendTarget(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-lg leading-none mt-0.5"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="space-y-2">
+              {([
+                { type: "initial", label: "Initial email", desc: resendTarget.coupon_purpose === "thank_you" ? "Thank you + coupon code" : "Retention + coupon code" },
+                { type: "reminder1", label: "Reminder", desc: "Gentle nudge — coupon still valid" },
+                { type: "reminder2", label: "Expiring soon", desc: "Last chance — expires soon" },
+              ] as const).map(({ type, label, desc }) => (
+                <div key={type} className="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{label}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">{desc}</p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={resendPreviewing === type}
+                    onClick={() => previewResend(type)}
+                    className="text-xs px-2.5 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors shrink-0"
+                  >
+                    {resendPreviewing === type ? "…" : "Preview"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!!resendSending}
+                    onClick={() => sendResend(type)}
+                    className="text-xs px-2.5 py-1.5 rounded-md bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-50 transition-colors shrink-0"
+                  >
+                    {resendSending === type ? "Sending…" : "Send"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Campaigns table */}
       {previewHtml && (
         <EmailPreviewModal html={previewHtml} onClose={() => setPreviewHtml(null)} maxWidth="max-w-5xl" />
@@ -726,9 +813,8 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
                       {c.customer_email && c.coupon_purpose && (
                         <button
                           type="button"
-                          onClick={() => resendEmail(c)}
+                          onClick={() => setResendTarget(c)}
                           className="text-xs text-violet-500 hover:text-violet-700 dark:hover:text-violet-300 transition-colors"
-                          title={c.email_sent_at ? `Last sent ${fmtDateTime(c.email_sent_at)}` : "Send email now"}
                         >
                           {c.email_sent_at ? "Resend email" : "Send now"}
                         </button>
