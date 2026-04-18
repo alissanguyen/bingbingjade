@@ -456,7 +456,6 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
         setResult({ error: res.error });
       } else {
         setResult({ success: true, pendingApproval: res.pendingApproval });
-        setNewImages([]);
         setNewVideos([]);
       }
     } catch (err) {
