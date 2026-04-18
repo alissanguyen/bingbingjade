@@ -208,6 +208,19 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
     setTimeout(() => setToast(null), 3000);
   }
 
+  async function resendEmail(campaign: Campaign) {
+    if (!confirm(`Resend coupon email to ${campaign.customer_email}?`)) return;
+    const res = await fetch(`/api/admin/coupons/${campaign.id}/resend`, { method: "POST" });
+    if (res.ok) {
+      const { email_sent_at } = await res.json();
+      setCampaigns((prev) => prev.map((c) => c.id === campaign.id ? { ...c, email_sent_at } : c));
+      showToast(`Email resent to ${campaign.customer_email}`);
+    } else {
+      const { error } = await res.json().catch(() => ({ error: "Failed to resend." }));
+      showToast(`Error: ${error}`);
+    }
+  }
+
   async function toggleActive(campaign: Campaign) {
     const res = await fetch(`/api/admin/coupons/${campaign.id}`, {
       method: "PATCH",
@@ -688,13 +701,25 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
                     </span>
                   </td>
                   <td className="px-4 py-4 text-right">
-                    <button
-                      type="button"
-                      onClick={() => toggleActive(c)}
-                      className="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                    >
-                      {c.active ? "Deactivate" : "Activate"}
-                    </button>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleActive(c)}
+                        className="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                      >
+                        {c.active ? "Deactivate" : "Activate"}
+                      </button>
+                      {c.customer_email && c.coupon_purpose && (
+                        <button
+                          type="button"
+                          onClick={() => resendEmail(c)}
+                          className="text-xs text-violet-500 hover:text-violet-700 dark:hover:text-violet-300 transition-colors"
+                          title={c.email_sent_at ? `Last sent ${fmtDateTime(c.email_sent_at)}` : "Send email now"}
+                        >
+                          {c.email_sent_at ? "Resend email" : "Send now"}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
