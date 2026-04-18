@@ -36,7 +36,7 @@ const COLORS: { value: string; label: string; swatch: string; border?: string }[
   { value: "blue",     label: "Blue",     swatch: "bg-blue-500" },
   { value: "red",      label: "Red",      swatch: "bg-red-500" },
   { value: "pink",     label: "Pink",     swatch: "bg-pink-400" },
-  { value: "purple",   label: "Purple",   swatch: "bg-purple-500" },
+  { value: "lavender", label: "Lavender", swatch: "bg-purple-300" },
   { value: "orange",   label: "Orange",   swatch: "bg-orange-500" },
   { value: "yellow",   label: "Yellow",   swatch: "bg-yellow-400" },
   { value: "black",    label: "Black",    swatch: "bg-gray-900" },
@@ -316,11 +316,13 @@ function VendorSearch({ vendors: initialVendors, value, onChange }: { vendors: V
 export function ProductForm({ vendors, isApprovedUser = false }: Props) {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const dragIndexRef = useRef<number | null>(null);
 
   const [images, setImages] = useState<{ file: File; preview: string | null; broken?: boolean }[]>([]);
   const [videos, setVideos] = useState<File[]>([]);
   const [imageDragging, setImageDragging] = useState(false);
   const [videoDragging, setVideoDragging] = useState(false);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ success?: boolean; error?: string; pendingApproval?: boolean } | null>(null);
   const [isFeatured, setIsFeatured] = useState(false);
@@ -823,12 +825,37 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
           {images.length > 0 && (
             <div className="mt-3 grid grid-cols-4 gap-3 sm:grid-cols-6">
               {images.map(({ file, preview, broken }, i) => (
-                <div key={i} className="relative group aspect-square">
+                <div
+                  key={i}
+                  draggable
+                  onDragStart={() => { dragIndexRef.current = i; }}
+                  onDragOver={(e) => { e.preventDefault(); setDragOverIndex(i); }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const from = dragIndexRef.current;
+                    if (from === null || from === i) { setDragOverIndex(null); return; }
+                    setImages((prev) => {
+                      const next = [...prev];
+                      const [moved] = next.splice(from, 1);
+                      next.splice(i, 0, moved);
+                      return next;
+                    });
+                    dragIndexRef.current = null;
+                    setDragOverIndex(null);
+                  }}
+                  onDragEnd={() => { dragIndexRef.current = null; setDragOverIndex(null); }}
+                  className={`relative group aspect-square cursor-grab active:cursor-grabbing rounded-lg transition-all ${
+                    dragOverIndex === i ? "ring-2 ring-emerald-500 scale-95" : ""
+                  } ${i === 0 ? "ring-2 ring-emerald-400/60" : ""}`}
+                >
+                  {i === 0 && (
+                    <span className="absolute top-1 left-1 z-10 text-[9px] font-bold uppercase tracking-wider bg-emerald-500 text-white px-1.5 py-0.5 rounded-sm leading-none">Cover</span>
+                  )}
                   {preview && !broken ? (
                     <img
                       src={preview}
                       alt={file.name}
-                      className="w-full h-full rounded-lg object-cover"
+                      className="w-full h-full rounded-lg object-cover pointer-events-none"
                       onError={() => setImages((prev) => prev.map((img, idx) => idx === i ? { ...img, broken: true } : img))}
                     />
                   ) : (

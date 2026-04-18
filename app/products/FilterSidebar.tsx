@@ -9,7 +9,7 @@ const ALL_COLORS = [
   { value: "blue",     label: "Blue",     swatch: "bg-blue-500" },
   { value: "red",      label: "Red",      swatch: "bg-red-500" },
   { value: "pink",     label: "Pink",     swatch: "bg-pink-400" },
-  { value: "purple",   label: "Purple",   swatch: "bg-purple-500" },
+  { value: "lavender", label: "Lavender", swatch: "bg-purple-300" },
   { value: "orange",   label: "Orange",   swatch: "bg-orange-500" },
   { value: "yellow",   label: "Yellow",   swatch: "bg-yellow-400" },
   { value: "black",    label: "Black",    swatch: "bg-gray-900" },

@@ -43,7 +43,7 @@ const COLOR_SWATCHES: Record<string, string> = {
   blue: "bg-blue-500",
   red: "bg-red-500",
   pink: "bg-pink-400",
-  purple: "bg-purple-500",
+  lavender: "bg-purple-300",
   orange: "bg-orange-500",
   yellow: "bg-yellow-400",
   black: "bg-gray-900",
