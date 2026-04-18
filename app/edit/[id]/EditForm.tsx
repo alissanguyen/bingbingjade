@@ -661,10 +661,18 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
                   >
                     <XIcon />
                   </button>
-                  {item.kind === "new" && item.preview && !item.broken && (
+                  {(item.kind === "existing" || (item.preview && !item.broken)) && (
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); setCropTarget({ index: i, src: item.preview!, fileName: item.file.name }); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (item.kind === "existing") {
+                          const fileName = item.url.split("/").pop()?.split("?")[0] ?? "image.jpg";
+                          setCropTarget({ index: i, src: item.url, fileName });
+                        } else {
+                          setCropTarget({ index: i, src: item.preview!, fileName: item.file.name });
+                        }
+                      }}
                       className="absolute bottom-1 right-1 w-6 h-6 rounded-md bg-black/60 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-emerald-600"
                       title="Crop image"
                     >
