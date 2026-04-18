@@ -199,12 +199,18 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
-  // Existing media (already uploaded URLs)
-  const [existingImages, setExistingImages] = useState<string[]>(product.images ?? []);
-  const [existingVideos, setExistingVideos] = useState<string[]>(product.videos ?? []);
+  type ImageItem =
+    | { kind: "existing"; url: string }
+    | { kind: "new"; file: File; preview: string | null; broken?: boolean };
 
-  // New files to upload
-  const [newImages, setNewImages] = useState<{ file: File; preview: string | null; broken?: boolean }[]>([]);
+  // Unified ordered image list (existing URLs + new files together for drag-to-reorder)
+  const [allImages, setAllImages] = useState<ImageItem[]>(
+    (product.images ?? []).map((url) => ({ kind: "existing" as const, url }))
+  );
+  const imgDragRef = useRef<number | null>(null);
+  const [imgDragOver, setImgDragOver] = useState<number | null>(null);
+
+  const [existingVideos, setExistingVideos] = useState<string[]>(product.videos ?? []);
   const [newVideos, setNewVideos] = useState<File[]>([]);
 
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
@@ -216,11 +222,11 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
   const handleCropConfirm = (croppedFile: File) => {
     if (!cropTarget) return;
     const preview = URL.createObjectURL(croppedFile);
-    setNewImages((prev) => {
+    setAllImages((prev) => {
       const updated = [...prev];
-      const old = updated[cropTarget.index];
-      if (old.preview) URL.revokeObjectURL(old.preview);
-      updated[cropTarget.index] = { file: croppedFile, preview };
+      const item = updated[cropTarget.index];
+      if (item.kind === "new" && item.preview) URL.revokeObjectURL(item.preview);
+      updated[cropTarget.index] = { kind: "new", file: croppedFile, preview };
       return updated;
     });
     setCropTarget(null);
@@ -339,34 +345,39 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
     if (!files) return;
     Array.from(files).forEach((file) => {
       const preview = URL.createObjectURL(file);
-      setNewImages((prev) => [...prev, { file, preview }]);
+      setAllImages((prev) => [...prev, { kind: "new", file, preview }]);
     });
   };
 
-  const removeExistingImage = (i: number) => setExistingImages((prev) => prev.filter((_, idx) => idx !== i));
-  const removeExistingVideo = (i: number) => setExistingVideos((prev) => prev.filter((_, idx) => idx !== i));
-  const removeNewImage = (i: number) => {
-    setNewImages((prev) => {
-      const url = prev[i].preview;
-      if (url) URL.revokeObjectURL(url);
+  const removeImage = (i: number) => {
+    setAllImages((prev) => {
+      const item = prev[i];
+      if (item.kind === "new" && item.preview) URL.revokeObjectURL(item.preview);
       return prev.filter((_, idx) => idx !== i);
     });
   };
+
+  const removeExistingVideo = (i: number) => setExistingVideos((prev) => prev.filter((_, idx) => idx !== i));
   const removeNewVideo = (i: number) => setNewVideos((prev) => prev.filter((_, idx) => idx !== i));
 
   const uploadNewFiles = async () => {
-    const imageUrls: string[] = [];
-    for (const { file } of newImages) {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("category", form.category);
-      const res = await fetch("/api/upload-image", { method: "POST", body: fd });
-      if (!res.ok) {
-        const { error } = await res.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error(`Image upload failed: ${error}`);
+    // Upload new images in the user-defined order, preserving existing URL positions
+    const orderedImageUrls: string[] = [];
+    for (const item of allImages) {
+      if (item.kind === "existing") {
+        orderedImageUrls.push(item.url);
+      } else {
+        const fd = new FormData();
+        fd.append("file", item.file);
+        fd.append("category", form.category);
+        const res = await fetch("/api/upload-image", { method: "POST", body: fd });
+        if (!res.ok) {
+          const { error } = await res.json().catch(() => ({ error: "Unknown error" }));
+          throw new Error(`Image upload failed: ${error}`);
+        }
+        const { path } = await res.json();
+        orderedImageUrls.push(path);
       }
-      const { path } = await res.json();
-      imageUrls.push(path);
     }
     const videoUrls: string[] = [];
     for (const file of newVideos) {
@@ -385,7 +396,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       if (!uploadRes.ok) throw new Error("Video upload failed");
       videoUrls.push(path);
     }
-    return { imageUrls, videoUrls };
+    return { orderedImageUrls, videoUrls };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -397,7 +408,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
     setIsSubmitting(true);
     setResult(null);
     try {
-      const { imageUrls, videoUrls } = await uploadNewFiles();
+      const { orderedImageUrls, videoUrls } = await uploadNewFiles();
       const fd = new FormData();
       Object.entries(form).forEach(([k, v]) => fd.append(k, v));
       fd.append("vendor_id", vendorId);
@@ -408,7 +419,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       sizeDetailed.forEach((v, i) => fd.append(`size_detailed_${i}`, v));
       selectedColors.forEach((c) => fd.append("color", c));
       selectedTiers.forEach((t) => fd.append("tier", t));
-      [...existingImages, ...imageUrls].forEach((url) => fd.append("imageUrls", url));
+      orderedImageUrls.forEach((url) => fd.append("imageUrls", url));
       [...existingVideos, ...videoUrls].forEach((url) => fd.append("videoUrls", url));
 
       // Upload variant images (skip if no variants)
@@ -588,57 +599,72 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Media</h2>
 
-        {/* Existing images */}
-        {existingImages.length > 0 && (
-          <div className="mb-4">
-            <p className={labelClass}>Current Images</p>
-            <div className="grid grid-cols-4 gap-3 sm:grid-cols-6">
-              {existingImages.map((url, i) => (
-                <div key={url} className="relative group aspect-square cursor-zoom-in" onClick={() => setLightboxSrc(url)}>
-                  <Image src={url} alt="" fill unoptimized className="rounded-lg object-cover" sizes="120px" loading="lazy" />
-                  <button type="button" onClick={(e) => { e.stopPropagation(); removeExistingImage(i); }}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow">
-                    <XIcon />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Add new images */}
+        {/* Images — unified draggable grid (existing + new together) */}
         <div className="mb-6">
-          <label className={labelClass}>Add Images (.heic, .jpg, .jpeg)</label>
-          <div onDragOver={(e) => { e.preventDefault(); setImageDragging(true); }} onDragLeave={() => setImageDragging(false)}
-            onDrop={(e) => { e.preventDefault(); setImageDragging(false); addImages(e.dataTransfer.files); }}
-            onClick={() => imageInputRef.current?.click()}
-            className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-6 cursor-pointer transition-colors ${imageDragging ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30" : "border-gray-200 dark:border-gray-700 hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-gray-50 dark:hover:bg-gray-800/50"}`}>
-            <UploadIcon />
-            <p className="text-sm text-gray-500 dark:text-gray-400">Drop or <span className="text-emerald-600 dark:text-emerald-400 font-medium">browse</span></p>
-            <input ref={imageInputRef} type="file" multiple accept=".heic,.jpg,.jpeg,image/jpeg" className="hidden" onChange={(e) => addImages(e.target.files)} />
-          </div>
-          {newImages.length > 0 && (
-            <div className="mt-3 grid grid-cols-4 gap-3 sm:grid-cols-6">
-              {newImages.map(({ file, preview, broken }, i) => (
-                <div key={i} className="relative group aspect-square">
-                  {preview && !broken ? (
+          <label className={labelClass}>Images</label>
+          {allImages.length > 0 && (
+            <div className="mb-3 grid grid-cols-4 gap-3 sm:grid-cols-6">
+              {allImages.map((item, i) => (
+                <div
+                  key={item.kind === "existing" ? item.url : i}
+                  draggable
+                  onDragStart={() => { imgDragRef.current = i; }}
+                  onDragOver={(e) => { e.preventDefault(); setImgDragOver(i); }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const from = imgDragRef.current;
+                    if (from === null || from === i) { setImgDragOver(null); return; }
+                    setAllImages((prev) => {
+                      const next = [...prev];
+                      const [moved] = next.splice(from, 1);
+                      next.splice(i, 0, moved);
+                      return next;
+                    });
+                    imgDragRef.current = null;
+                    setImgDragOver(null);
+                  }}
+                  onDragEnd={() => { imgDragRef.current = null; setImgDragOver(null); }}
+                  className={`relative group aspect-square cursor-grab active:cursor-grabbing rounded-lg transition-all ${
+                    imgDragOver === i ? "ring-2 ring-emerald-500 scale-95" : ""
+                  } ${i === 0 ? "ring-2 ring-emerald-400/60" : ""}`}
+                >
+                  {i === 0 && (
+                    <span className="absolute top-1 left-1 z-10 text-[9px] font-bold uppercase tracking-wider bg-emerald-500 text-white px-1.5 py-0.5 rounded-sm leading-none pointer-events-none">Cover</span>
+                  )}
+                  {item.kind === "existing" ? (
+                    <Image
+                      src={item.url}
+                      alt=""
+                      fill
+                      unoptimized
+                      className="rounded-lg object-cover pointer-events-none"
+                      sizes="120px"
+                      loading="lazy"
+                    />
+                  ) : item.preview && !item.broken ? (
                     <img
-                      src={preview}
-                      alt={file.name}
-                      className="w-full h-full rounded-lg object-cover"
-                      onError={() => setNewImages((prev) => prev.map((img, idx) => idx === i ? { ...img, broken: true } : img))}
+                      src={item.preview}
+                      alt={item.file.name}
+                      className="w-full h-full rounded-lg object-cover pointer-events-none"
+                      onError={() => setAllImages((prev) => prev.map((img, idx) => idx === i ? { ...img, broken: true } : img))}
                     />
                   ) : (
-                    <div className="w-full h-full rounded-lg bg-gray-100 dark:bg-gray-800 flex flex-col items-center justify-center gap-1"><span className="text-lg">🪨</span><span className="text-[10px] text-gray-400">HEIC</span></div>
+                    <div className="w-full h-full rounded-lg bg-gray-100 dark:bg-gray-800 flex flex-col items-center justify-center gap-1">
+                      <span className="text-lg">🪨</span>
+                      <span className="text-[10px] text-gray-400">HEIC</span>
+                    </div>
                   )}
-                  <button type="button" onClick={() => removeNewImage(i)}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); removeImage(i); }}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow"
+                  >
                     <XIcon />
                   </button>
-                  {preview && !broken && (
+                  {item.kind === "new" && item.preview && !item.broken && (
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); setCropTarget({ index: i, src: preview, fileName: file.name }); }}
+                      onClick={(e) => { e.stopPropagation(); setCropTarget({ index: i, src: item.preview!, fileName: item.file.name }); }}
                       className="absolute bottom-1 right-1 w-6 h-6 rounded-md bg-black/60 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-emerald-600"
                       title="Crop image"
                     >
@@ -649,6 +675,17 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
               ))}
             </div>
           )}
+          <div
+            onDragOver={(e) => { e.preventDefault(); setImageDragging(true); }}
+            onDragLeave={() => setImageDragging(false)}
+            onDrop={(e) => { e.preventDefault(); setImageDragging(false); addImages(e.dataTransfer.files); }}
+            onClick={() => imageInputRef.current?.click()}
+            className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-6 cursor-pointer transition-colors ${imageDragging ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30" : "border-gray-200 dark:border-gray-700 hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-gray-50 dark:hover:bg-gray-800/50"}`}
+          >
+            <UploadIcon />
+            <p className="text-sm text-gray-500 dark:text-gray-400">Drop or <span className="text-emerald-600 dark:text-emerald-400 font-medium">browse</span></p>
+            <input ref={imageInputRef} type="file" multiple accept=".heic,.jpg,.jpeg,image/jpeg" className="hidden" onChange={(e) => addImages(e.target.files)} />
+          </div>
         </div>
 
         {/* Existing videos */}
