@@ -21,12 +21,13 @@ const STATUS_META: Record<string, { label: string; badge: string }> = {
 };
 
 const CAT_LABEL: Record<string, string> = {
-  bracelet: "Bracelet",
-  bangle:   "Bangle",
-  ring:     "Ring",
-  pendant:  "Pendant",
-  necklace: "Necklace",
+  bracelet:     "Bracelet",
+  bangle:       "Bangle",
+  ring:         "Ring",
+  pendant:      "Pendant",
+  necklace:     "Necklace",
   set:          "Set",
+  earring:      "Earring",
   other:        "Other",
   raw_material: "Raw Material",
 };
