@@ -4,7 +4,14 @@ import { useEffect, useRef, useState } from "react";
 
 const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "";
 const MESSAGE = "Hi, I'd like to inquire about your jade pieces. Could you help me?";
-const DISMISSED_KEY = "wa_bubble_dismissed";
+const DISMISSED_KEY = "wa_bubble_dismissed_at";
+const DISMISS_DURATION_MS = 3 * 60 * 60 * 1000; // 3 hours
+
+function isDismissed() {
+  const val = localStorage.getItem(DISMISSED_KEY);
+  if (!val) return false;
+  return Date.now() - Number(val) < DISMISS_DURATION_MS;
+}
 
 export function WhatsAppFloatingButton() {
   const href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(MESSAGE)}`;
@@ -12,7 +19,7 @@ export function WhatsAppFloatingButton() {
   const [dismissed, setDismissed] = useState(true); // start hidden to avoid flash
 
   useEffect(() => {
-    setDismissed(localStorage.getItem(DISMISSED_KEY) === "1");
+    setDismissed(isDismissed());
   }, []);
 
   useEffect(() => {
@@ -31,7 +38,7 @@ export function WhatsAppFloatingButton() {
   function dismiss(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    localStorage.setItem(DISMISSED_KEY, "1");
+    localStorage.setItem(DISMISSED_KEY, String(Date.now()));
     setDismissed(true);
   }
 
@@ -57,8 +64,8 @@ export function WhatsAppFloatingButton() {
         type="button"
         onClick={dismiss}
         aria-label="Dismiss WhatsApp button"
-        className="w-5 h-5 rounded-full bg-gray-400/80 hover:bg-gray-500 text-white flex items-center justify-center self-start -mt-1 -ml-3 shadow"
-        style={{ fontSize: "10px", lineHeight: 1 }}
+        className="w-6 h-6 rounded-full bg-gray-400/80 hover:bg-gray-500 text-white flex items-center justify-center self-start -mt-1 -ml-3 shadow"
+        style={{ fontSize: "14px", lineHeight: 1 }}
       >
         ×
       </button>
