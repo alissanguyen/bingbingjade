@@ -185,8 +185,14 @@ export default async function Products({
   // Sort / arrange into the final display order
   let sorted: ProductCard[];
   if (sort === "" || sort === "newest") {
-    // Default: newest-first, already ordered by created_at DESC from the DB
-    sorted = products;
+    // Default: prioritize unsold first, then newest within each tier.
+    // DB already returns newest-first, so a stable sort preserves that within tiers.
+    function soldTier(p: ProductCard): number {
+      if (p.quick_ship && p.status !== "sold") return 0; // Ship Now, not sold
+      if (p.status !== "sold") return 1;                 // Not sold
+      return 2;                                          // Sold
+    }
+    sorted = [...products].sort((a, b) => soldTier(a) - soldTier(b));
   } else if (sort === "price_asc" || sort === "price_desc") {
     sorted = [...products].sort((a, b) => {
       const pa = effectiveSortPrice(a);
