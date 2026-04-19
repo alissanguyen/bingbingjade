@@ -59,10 +59,9 @@ function productCard(product: EmailProduct, siteUrl: string): string {
       }`
     : `<span style="font-size:16px;color:#6b7280;">Contact for price</span>`;
 
-  // Padding-bottom 100% trick = reliable 1:1 square in all email clients
   const imageHtml = product.imageUrl
-    ? `<div style="position:relative;width:100%;padding-bottom:100%;overflow:hidden;"><img src="${product.imageUrl}" alt="${product.name.replace(/"/g, "&quot;")}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;display:block;" /></div>`
-    : `<div style="position:relative;width:100%;padding-bottom:100%;background:#f0fdf4;"><div style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:48px;">&#129704;</div></div>`;
+    ? `<img src="${product.imageUrl}" alt="${product.name.replace(/"/g, "&quot;")}" style="display:block;width:100%;aspect-ratio:1/1;object-fit:cover;" />`
+    : `<div style="width:100%;aspect-ratio:1/1;background:#f0fdf4;text-align:center;font-size:48px;line-height:1;padding:40% 0;">&#129704;</div>`;
 
   return `
     <td width="50%" style="padding:0 10px 20px;vertical-align:top;">
