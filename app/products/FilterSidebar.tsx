@@ -79,13 +79,20 @@ function FilterSidebarSync({
   return null;
 }
 
+const SHIPPING_OPTIONS = [
+  { value: "ship_now",  label: "Ship Now",          dot: "bg-sky-400" },
+  { value: "standard",  label: "Standard Shipping",  dot: "bg-gray-400" },
+];
+
 export function FilterSidebar({
   statusCounts = {},
   originCounts = {},
   colorCounts = {},
+  shippingCounts = {},
   initialColors = [],
   initialStatuses = [],
   initialOrigins = [],
+  initialShipping = [],
   initialMinSize = "",
   initialMaxSize = "",
   initialMinPrice = "",
@@ -94,9 +101,11 @@ export function FilterSidebar({
   statusCounts?: Record<string, number>;
   originCounts?: Record<string, number>;
   colorCounts?: Record<string, number>;
+  shippingCounts?: Record<string, number>;
   initialColors?: string[];
   initialStatuses?: string[];
   initialOrigins?: string[];
+  initialShipping?: string[];
   initialMinSize?: string;
   initialMaxSize?: string;
   initialMinPrice?: string;
@@ -110,6 +119,7 @@ export function FilterSidebar({
   const [selectedColors,   setSelectedColors]   = useState<string[]>(initialColors);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(initialStatuses);
   const [selectedOrigins,  setSelectedOrigins]  = useState<string[]>(initialOrigins);
+  const [selectedShipping, setSelectedShipping] = useState<string[]>(initialShipping);
   const [minSize,  setMinSize]  = useState(initialMinSize);
   const [maxSize,  setMaxSize]  = useState(initialMaxSize);
   const [minPrice, setMinPrice] = useState(initialMinPrice);
@@ -120,6 +130,7 @@ export function FilterSidebar({
     setSelectedColors(params.get("colors")?.split(",").filter(Boolean) ?? []);
     setSelectedStatuses(params.get("status")?.split(",").filter(Boolean) ?? []);
     setSelectedOrigins(params.get("origins")?.split(",").filter(Boolean) ?? []);
+    setSelectedShipping(params.get("shipping")?.split(",").filter(Boolean) ?? []);
     setMinSize(params.get("minSize")  ?? "");
     setMaxSize(params.get("maxSize")  ?? "");
     setMinPrice(params.get("minPrice") ?? "");
@@ -130,6 +141,7 @@ export function FilterSidebar({
     selectedColors.length +
     selectedStatuses.length +
     selectedOrigins.length +
+    selectedShipping.length +
     (minSize  ? 1 : 0) +
     (maxSize  ? 1 : 0) +
     (minPrice ? 1 : 0) +
@@ -180,12 +192,37 @@ export function FilterSidebar({
     push({ origins: next.length > 0 ? next.join(",") : null });
   }
 
+  function toggleShipping(value: string) {
+    const next = selectedShipping.includes(value)
+      ? selectedShipping.filter((s) => s !== value)
+      : [...selectedShipping, value];
+    push({ shipping: next.length > 0 ? next.join(",") : null });
+  }
+
   function clearAll() {
     router.push(pathname);
   }
 
   const filterControls = (
     <div className="space-y-5">
+      {/* Shipping */}
+      <div>
+        <SectionLabel>Shipping</SectionLabel>
+        <div className="space-y-1.5">
+          {SHIPPING_OPTIONS.map(({ value, label, dot }) => (
+            <CheckRow key={value} checked={selectedShipping.includes(value)} onChange={() => toggleShipping(value)}>
+              <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
+              <span className="text-xs text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors flex-1">
+                {label}
+              </span>
+              {shippingCounts[value] != null && (
+                <span className="text-[13px] text-gray-400 dark:text-gray-600 tabular-nums">({shippingCounts[value]})</span>
+              )}
+            </CheckRow>
+          ))}
+        </div>
+      </div>
+
       {/* Status */}
       <div>
         <SectionLabel>Status</SectionLabel>
@@ -364,6 +401,22 @@ export function FilterSidebar({
         <div className="overflow-y-auto max-h-[65vh] px-5 py-4">
           {/* Make the controls full-width on mobile */}
           <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+            {/* Shipping */}
+            <div className="col-span-2">
+              <SectionLabel>Shipping</SectionLabel>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                {SHIPPING_OPTIONS.map(({ value, label, dot }) => (
+                  <CheckRow key={value} checked={selectedShipping.includes(value)} onChange={() => toggleShipping(value)}>
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
+                    <span className="text-sm text-gray-600 dark:text-gray-400 flex-1">{label}</span>
+                    {shippingCounts[value] != null && (
+                      <span className="text-xs text-gray-400 dark:text-gray-600 tabular-nums">({shippingCounts[value]})</span>
+                    )}
+                  </CheckRow>
+                ))}
+              </div>
+            </div>
+
             {/* Status */}
             <div>
               <SectionLabel>Status</SectionLabel>

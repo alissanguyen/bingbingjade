@@ -72,12 +72,13 @@ export const revalidate = 21600;
 export default async function Products({
   searchParams,
 }: {
-  searchParams: Promise<{ colors?: string; status?: string; category?: string; origins?: string; minSize?: string; maxSize?: string; minPrice?: string; maxPrice?: string; sort?: string; page?: string }>;
+  searchParams: Promise<{ colors?: string; status?: string; category?: string; origins?: string; minSize?: string; maxSize?: string; minPrice?: string; maxPrice?: string; sort?: string; page?: string; shipping?: string }>;
 }) {
   const params = await searchParams;
   const selectedColors = params.colors?.split(",").filter(Boolean) ?? [];
   const selectedStatuses = params.status?.split(",").filter(Boolean) ?? [];
   const selectedOrigins = params.origins?.split(",").filter(Boolean) ?? [];
+  const selectedShipping = params.shipping?.split(",").filter(Boolean) ?? [];
   const selectedCategory = params.category ?? "";
   const minSize = params.minSize ? Number(params.minSize) : null;
   const maxSize = params.maxSize ? Number(params.maxSize) : null;
@@ -137,6 +138,12 @@ export default async function Products({
   const products = (allProducts as ProductCard[] | null)?.filter((p) => {
     // Category filter
     if (selectedCategory && p.category !== selectedCategory) return false;
+    // Shipping filter
+    if (selectedShipping.length > 0) {
+      const matchesShipNow = selectedShipping.includes("ship_now") && p.quick_ship;
+      const matchesStandard = selectedShipping.includes("standard") && !p.quick_ship;
+      if (!matchesShipNow && !matchesStandard) return false;
+    }
     // Status filter — "available" also matches "on_sale" products
     if (selectedStatuses.length > 0) {
       const effectiveStatus = selectedStatuses.includes("available") && p.status === "on_sale"
@@ -219,12 +226,15 @@ export default async function Products({
   const statusCounts: Record<string, number> = {};
   const originCounts: Record<string, number> = {};
   const colorCounts: Record<string, number> = {};
+  const shippingCounts: Record<string, number> = {};
   for (const p of countBase) {
     statusCounts[p.status] = (statusCounts[p.status] ?? 0) + 1;
     if (p.origin) originCounts[p.origin] = (originCounts[p.origin] ?? 0) + 1;
     for (const c of p.color ?? []) {
       if (c) colorCounts[c] = (colorCounts[c] ?? 0) + 1;
     }
+    const shipKey = p.quick_ship ? "ship_now" : "standard";
+    shippingCounts[shipKey] = (shippingCounts[shipKey] ?? 0) + 1;
   }
 
   const totalCount = sorted.length;
@@ -261,9 +271,11 @@ export default async function Products({
           statusCounts={statusCounts}
           originCounts={originCounts}
           colorCounts={colorCounts}
+          shippingCounts={shippingCounts}
           initialColors={selectedColors}
           initialStatuses={selectedStatuses}
           initialOrigins={selectedOrigins}
+          initialShipping={selectedShipping}
           initialMinSize={params.minSize ?? ""}
           initialMaxSize={params.maxSize ?? ""}
           initialMinPrice={params.minPrice ?? ""}
