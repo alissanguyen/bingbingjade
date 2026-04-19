@@ -80,8 +80,8 @@ function FilterSidebarSync({
 }
 
 const SHIPPING_OPTIONS = [
-  { value: "ship_now",  label: "Ship Now",          dot: "bg-sky-400" },
-  { value: "standard",  label: "Standard Shipping",  dot: "bg-gray-400" },
+  { value: "ship_now",  label: "Ship Now" },
+  { value: "standard",  label: "Standard Shipping" },
 ];
 
 export function FilterSidebar({
@@ -209,9 +209,8 @@ export function FilterSidebar({
       <div>
         <SectionLabel>Shipping</SectionLabel>
         <div className="space-y-1.5">
-          {SHIPPING_OPTIONS.map(({ value, label, dot }) => (
+          {SHIPPING_OPTIONS.map(({ value, label }) => (
             <CheckRow key={value} checked={selectedShipping.includes(value)} onChange={() => toggleShipping(value)}>
-              <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
               <span className="text-xs text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors flex-1">
                 {label}
               </span>
@@ -405,9 +404,8 @@ export function FilterSidebar({
             <div className="col-span-2">
               <SectionLabel>Shipping</SectionLabel>
               <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                {SHIPPING_OPTIONS.map(({ value, label, dot }) => (
+                {SHIPPING_OPTIONS.map(({ value, label }) => (
                   <CheckRow key={value} checked={selectedShipping.includes(value)} onChange={() => toggleShipping(value)}>
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
                     <span className="text-sm text-gray-600 dark:text-gray-400 flex-1">{label}</span>
                     {shippingCounts[value] != null && (
                       <span className="text-xs text-gray-400 dark:text-gray-600 tabular-nums">({shippingCounts[value]})</span>
