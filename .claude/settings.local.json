@@ -57,7 +57,12 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(claude plugin:*)",
       "Bash(gh repo:*)",
-      "Bash(gh run:*)"
+      "Bash(gh run:*)",
+      "Bash(npm list:*)",
+      "Bash(npm i:*)",
+      "Bash(find /Users/nouveau/Documents/workspaces/jade-shop/prisma -name *.prisma -o -name *.sql)",
+      "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -path */.next -prune -o -name schema* -type f)",
+      "Bash(perl:*)"
     ]
   }
 }

@@ -185,14 +185,25 @@ export default async function Products({
   // Sort / arrange into the final display order
   let sorted: ProductCard[];
   if (sort === "" || sort === "newest") {
-    // Default: prioritize unsold first, then newest within each tier.
-    // DB already returns newest-first, so a stable sort preserves that within tiers.
-    function soldTier(p: ProductCard): number {
-      if (p.quick_ship && p.status !== "sold") return 0; // Ship Now, not sold
-      if (p.status !== "sold") return 1;                 // Not sold
-      return 2;                                          // Sold
+    // Keep sold at the end
+    const unsold = products.filter((p) => p.status !== "sold");
+    const sold = products.filter((p) => p.status === "sold");
+
+    // Split unsold products into 2 groups
+    const newlyAdded = unsold.filter((p) => !p.quick_ship);
+    const quickship = unsold.filter((p) => p.quick_ship);
+
+    // Interleave: newly added -> quickship -> newly added -> quickship
+    sorted = [];
+    const maxLen = Math.max(newlyAdded.length, quickship.length);
+
+    for (let i = 0; i < maxLen; i++) {
+      if (i < newlyAdded.length) sorted.push(newlyAdded[i]);
+      if (i < quickship.length) sorted.push(quickship[i]);
     }
-    sorted = [...products].sort((a, b) => soldTier(a) - soldTier(b));
+
+    // Sold always last
+    sorted.push(...sold);
   } else if (sort === "price_asc" || sort === "price_desc") {
     sorted = [...products].sort((a, b) => {
       const pa = effectiveSortPrice(a);
@@ -308,8 +319,8 @@ export default async function Products({
                   key={product.id}
                   href={`/products/${productSlug(product)}`}
                   className={`group rounded-2xl overflow-hidden transition-all duration-500 block ${product.status === "sold"
-                      ? "bg-gray-100 dark:bg-gray-800/60 shadow-sm"
-                      : "bg-white dark:bg-gray-900 shadow-[0_2px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_16px_48px_rgba(0,0,0,0.13)] dark:hover:shadow-[0_16px_48px_rgba(0,0,0,0.5)] hover:-translate-y-1"
+                    ? "bg-gray-100 dark:bg-gray-800/60 shadow-sm"
+                    : "bg-white dark:bg-gray-900 shadow-[0_2px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_16px_48px_rgba(0,0,0,0.13)] dark:hover:shadow-[0_16px_48px_rgba(0,0,0,0.5)] hover:-translate-y-1"
                     }`}
                 >
                   {/* Image strip */}
