@@ -16,12 +16,12 @@ const BANNER_CAPTIONS = [
 const DEFAULT_INTRO = "Discover our latest selection of natural jadeite pieces, chosen for their beauty, character, and quiet elegance. Once sold, each piece is gone.";
 
 const CATEGORY_LABELS: Record<string, string> = {
-  bracelet: "Bracelets",
-  bangle: "Bangles",
-  ring: "Rings",
-  pendant: "Pendants",
-  necklace: "Necklaces",
-  set: "Sets",
+  bracelet: "Bracelet",
+  bangle: "Bangle",
+  ring: "Ring",
+  pendant: "Pendant",
+  necklace: "Necklace",
+  set: "Set",
   earring: "Earrings",
   raw_material: "Raw Material",
 };
