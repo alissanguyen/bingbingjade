@@ -12,7 +12,7 @@ interface OptionInput {
   price: string;
   salePrice?: string;
   status: string;
-  images?: string[];
+  image_index?: number | null;
 }
 
 export async function deleteProduct(id: string): Promise<{ error?: string; success?: boolean }> {
@@ -32,7 +32,7 @@ async function applyOptions(productId: string, optionsJson: string, productStatu
     size: o.size ? Number(o.size) : null,
     price_usd: o.price ? Number(o.price) : null,
     sale_price_usd: o.salePrice ? Number(o.salePrice) : null,
-    images: o.images ?? [],
+    image_index: o.image_index ?? null,
     status: isSingleNoLabel
       ? (productStatus === "sold" ? "sold" : "available")
       : (o.status || "available"),

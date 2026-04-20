@@ -15,10 +15,7 @@ interface OptionRow {
   salePrice: string;
   comboOf: number[];
   status: OptionStatus;
-  imageFile: File | null;
-  imagePreview: string | null;
-  existingImagePath: string;
-  existingImageUrl: string;
+  imageIndex: number | null;
 }
 
 interface Props {
@@ -31,15 +28,15 @@ const CATEGORIES: ProductCategory[] = ["bracelet", "bangle", "ring", "pendant", 
 const TIERS = ["Been", "Glutinous", "Fine Glutinous", "Very Fine Glutinous", "Icy Glutinous", "Icy", "High Icy", "Glassy", "Longshi"];
 
 const COLORS: { value: string; label: string; swatch: string; border?: string }[] = [
-  { value: "white",    label: "White",    swatch: "bg-white",       border: "border-gray-300" },
-  { value: "green",    label: "Green",    swatch: "bg-green-500" },
-  { value: "blue",     label: "Blue",     swatch: "bg-blue-500" },
-  { value: "red",      label: "Red",      swatch: "bg-red-500" },
-  { value: "pink",     label: "Pink",     swatch: "bg-pink-400" },
+  { value: "white", label: "White", swatch: "bg-white", border: "border-gray-300" },
+  { value: "green", label: "Green", swatch: "bg-green-500" },
+  { value: "blue", label: "Blue", swatch: "bg-blue-500" },
+  { value: "red", label: "Red", swatch: "bg-red-500" },
+  { value: "pink", label: "Pink", swatch: "bg-pink-400" },
   { value: "lavender", label: "Lavender", swatch: "bg-purple-300" },
-  { value: "orange",   label: "Orange",   swatch: "bg-orange-500" },
-  { value: "yellow",   label: "Yellow",   swatch: "bg-yellow-400" },
-  { value: "black",    label: "Black",    swatch: "bg-gray-900" },
+  { value: "orange", label: "Orange", swatch: "bg-orange-500" },
+  { value: "yellow", label: "Yellow", swatch: "bg-yellow-400" },
+  { value: "black", label: "Black", swatch: "bg-gray-900" },
   { value: "marbling", label: "Marbling", swatch: "bg-gradient-to-br from-gray-200 via-white to-gray-400", border: "border-gray-300" },
 ];
 
@@ -94,11 +91,11 @@ const PLATFORM_COLORS: Record<string, string> = {
 };
 
 const ADD_PLATFORMS: { value: VendorPlatform; label: string }[] = [
-  { value: "zalo",     label: "Zalo" },
+  { value: "zalo", label: "Zalo" },
   { value: "facebook", label: "Facebook" },
-  { value: "wechat",   label: "WeChat" },
-  { value: "tiktok",   label: "TikTok" },
-  { value: "other",    label: "Other" },
+  { value: "wechat", label: "WeChat" },
+  { value: "tiktok", label: "TikTok" },
+  { value: "other", label: "Other" },
 ];
 
 function VendorSearch({ vendors: initialVendors, value, onChange }: { vendors: Vendor[]; value: string; onChange: (id: string) => void }) {
@@ -265,11 +262,10 @@ function VendorSearch({ vendors: initialVendors, value, onChange }: { vendors: V
                       key={p.value}
                       type="button"
                       onClick={() => setAddForm((f) => ({ ...f, platform: p.value }))}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                        addForm.platform === p.value
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${addForm.platform === p.value
                           ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
                           : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
-                      }`}
+                        }`}
                     >
                       {p.label}
                     </button>
@@ -332,8 +328,6 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
 
   const [cropTarget, setCropTarget] = useState<{ index: number; src: string; fileName: string } | null>(null);
   const [trimTarget, setTrimTarget] = useState<{ index: number; file: File } | null>(null);
-  const [variantCropTarget, setVariantCropTarget] = useState<{ index: number; src: string; fileName: string } | null>(null);
-
   // AI copy generation — local state only, not saved to DB
   const [sourceNotes, setSourceNotes] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -431,13 +425,6 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
     }
   };
 
-  const handleVariantCropConfirm = (croppedFile: File) => {
-    if (!variantCropTarget) return;
-    const preview = URL.createObjectURL(croppedFile);
-    setVariantImage(variantCropTarget.index, croppedFile, preview);
-    setVariantCropTarget(null);
-  };
-
   const handleCropConfirm = (croppedFile: File) => {
     if (!cropTarget) return;
     const preview = URL.createObjectURL(croppedFile);
@@ -477,7 +464,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
   const [selectedTiers, setSelectedTiers] = useState<string[]>([]);
   const [sizeDetailed, setSizeDetailed] = useState<[string, string, string]>(["", "", ""]);
 
-  const blankRow = (): OptionRow => ({ label: "", size: "", price: "", salePrice: "", comboOf: [], status: "available", imageFile: null, imagePreview: null, existingImagePath: "", existingImageUrl: "" });
+  const blankRow = (): OptionRow => ({ label: "", size: "", price: "", salePrice: "", comboOf: [], status: "available", imageIndex: null });
 
   const [hasVariants, setHasVariants] = useState(false);
   const [optionRows, setOptionRows] = useState<OptionRow[]>([blankRow()]);
@@ -489,19 +476,10 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
       return next;
     });
 
-  const setVariantImage = (i: number, file: File, preview: string | null) =>
+  const setVariantImageIndex = (rowIdx: number, imgIdx: number | null) =>
     setOptionRows((prev) => {
       const next = [...prev];
-      if (next[i].imagePreview) URL.revokeObjectURL(next[i].imagePreview!);
-      next[i] = { ...next[i], imageFile: file, imagePreview: preview };
-      return next;
-    });
-
-  const clearVariantImage = (i: number) =>
-    setOptionRows((prev) => {
-      const next = [...prev];
-      if (next[i].imagePreview) URL.revokeObjectURL(next[i].imagePreview!);
-      next[i] = { ...next[i], imageFile: null, imagePreview: null, existingImagePath: "", existingImageUrl: "" };
+      next[rowIdx] = { ...next[rowIdx], imageIndex: imgIdx };
       return next;
     });
 
@@ -509,17 +487,16 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
     setOptionRows((prev) => [...prev, blankRow()]);
 
   const removeOptionRow = (i: number) =>
-    setOptionRows((prev) => {
-      if (prev[i].imagePreview) URL.revokeObjectURL(prev[i].imagePreview!);
-      return prev
+    setOptionRows((prev) =>
+      prev
         .filter((_, idx) => idx !== i)
         .map((row) => ({
           ...row,
           comboOf: row.comboOf
             .filter((idx) => idx !== i)
             .map((idx) => (idx > i ? idx - 1 : idx)),
-        }));
-    });
+        }))
+    );
 
   const toggleColor = (color: string) =>
     setSelectedColors((prev) =>
@@ -618,33 +595,15 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
       imageUrls.forEach((url) => fd.append("imageUrls", url));
       videoUrls.forEach((url) => fd.append("videoUrls", url));
 
-      // Upload variant images (skip if no variants)
       const rowsToSubmit = hasVariants ? optionRows : [{ ...blankRow(), status: status === "sold" ? "sold" as OptionStatus : "available" as OptionStatus }];
-      const optionImagePaths: string[] = [];
-      for (const row of rowsToSubmit) {
-        if (row.imageFile) {
-          const vfd = new FormData();
-          vfd.append("file", row.imageFile);
-          vfd.append("category", form.category);
-          const res = await fetch("/api/upload-image", { method: "POST", body: vfd });
-          if (!res.ok) {
-            const { error } = await res.json().catch(() => ({ error: "Unknown error" }));
-            throw new Error(`Variant image upload failed: ${error}`);
-          }
-          const { path } = await res.json();
-          optionImagePaths.push(path);
-        } else {
-          optionImagePaths.push(row.existingImagePath);
-        }
-      }
-      const optionsForJson = rowsToSubmit.map((row, i) => ({
+      const optionsForJson = rowsToSubmit.map((row) => ({
         label: row.label,
         size: row.size,
         price: row.price,
         salePrice: row.salePrice,
         comboOf: row.comboOf,
         status: row.status,
-        images: optionImagePaths[i] ? [optionImagePaths[i]] : [],
+        image_index: row.imageIndex ?? null,
       }));
       fd.append("options_json", JSON.stringify(optionsForJson));
 
@@ -727,11 +686,10 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
                     key={c.value}
                     type="button"
                     onClick={() => toggleColor(c.value)}
-                    className={`flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm border transition-all text-[12px] sm:text-sm ${
-                      active
+                    className={`flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm border transition-all text-[12px] sm:text-sm ${active
                         ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-medium"
                         : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
-                    }`}
+                      }`}
                   >
                     <span className={`w-3.5 h-3.5 rounded-full shrink-0 border ${c.swatch} ${c.border ?? "border-transparent"}`} />
                     {c.label}
@@ -758,11 +716,10 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
                     key={t}
                     type="button"
                     onClick={() => setSelectedTiers((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t])}
-                    className={`px-3.5 py-1.5 rounded-full text-sm border transition-all text-[12px] sm:text-sm ${
-                      active
+                    className={`px-3.5 py-1.5 rounded-full text-sm border transition-all text-[12px] sm:text-sm ${active
                         ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-medium"
                         : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
-                    }`}
+                      }`}
                   >
                     {t}
                   </button>
@@ -788,7 +745,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
                     min="0"
                     placeholder={label}
                     value={sizeDetailed[i]}
-                    onChange={(e) => setSizeDetailed((prev) => { const next = [...prev] as [string,string,string]; next[i] = e.target.value; return next; })}
+                    onChange={(e) => setSizeDetailed((prev) => { const next = [...prev] as [string, string, string]; next[i] = e.target.value; return next; })}
                     className={inputClass}
                   />
                 </div>
@@ -810,11 +767,10 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
             onDragLeave={() => setImageDragging(false)}
             onDrop={(e) => { e.preventDefault(); setImageDragging(false); addImages(e.dataTransfer.files); }}
             onClick={() => imageInputRef.current?.click()}
-            className={`relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 cursor-pointer transition-colors ${
-              imageDragging
+            className={`relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 cursor-pointer transition-colors ${imageDragging
                 ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30"
                 : "border-gray-200 dark:border-gray-700 hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-gray-50 dark:hover:bg-gray-800/50"
-            }`}
+              }`}
           >
             <UploadIcon />
             <p className="text-sm text-gray-500 dark:text-gray-400 text-[12px] sm:text-sm">Drop images here or <span className="text-emerald-600 dark:text-emerald-400 font-medium">browse</span></p>
@@ -844,9 +800,8 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
                     setDragOverIndex(null);
                   }}
                   onDragEnd={() => { dragIndexRef.current = null; setDragOverIndex(null); }}
-                  className={`relative group aspect-square cursor-grab active:cursor-grabbing rounded-lg transition-all ${
-                    dragOverIndex === i ? "ring-2 ring-emerald-500 scale-95" : ""
-                  } ${i === 0 ? "ring-2 ring-emerald-400/60" : ""}`}
+                  className={`relative group aspect-square cursor-grab active:cursor-grabbing rounded-lg transition-all ${dragOverIndex === i ? "ring-2 ring-emerald-500 scale-95" : ""
+                    } ${i === 0 ? "ring-2 ring-emerald-400/60" : ""}`}
                 >
                   {i === 0 && (
                     <span className="absolute top-1 left-1 z-10 text-[9px] font-bold uppercase tracking-wider bg-emerald-500 text-white px-1.5 py-0.5 rounded-sm leading-none">Cover</span>
@@ -901,11 +856,10 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
               setVideos(prev => [...prev, ...files]);
             }}
             onClick={() => videoInputRef.current?.click()}
-            className={`relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 cursor-pointer transition-colors ${
-              videoDragging
+            className={`relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 cursor-pointer transition-colors ${videoDragging
                 ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30"
                 : "border-gray-200 dark:border-gray-700 hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-gray-50 dark:hover:bg-gray-800/50"
-            }`}
+              }`}
           >
             <VideoIcon />
             <p className="text-sm text-gray-500 dark:text-gray-400 text-[12px] sm:text-sm">Drop videos here or <span className="text-emerald-600 dark:text-emerald-400 font-medium">browse</span></p>
@@ -1029,220 +983,274 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
             <p className="mt-1 text-[12px] sm:text-xs text-gray-400">Leave blank to show &quot;Contact for price&quot;</p>
           </div>
           {status === "on_sale" && (
-          <div>
-            <label className={labelClass}>Sale Price (USD)</label>
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-amber-400">$</span>
-              <input type="number" step="0.01" min="0" value={form.sale_price_usd} onChange={set("sale_price_usd")} placeholder="0.00" className={`${inputClass} pl-7 border-amber-300 dark:border-amber-700 focus:border-amber-500 focus:ring-amber-500`} />
+            <div>
+              <label className={labelClass}>Sale Price (USD)</label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-amber-400">$</span>
+                <input type="number" step="0.01" min="0" value={form.sale_price_usd} onChange={set("sale_price_usd")} placeholder="0.00" className={`${inputClass} pl-7 border-amber-300 dark:border-amber-700 focus:border-amber-500 focus:ring-amber-500`} />
+              </div>
+              <p className="mt-1 text-xs text-gray-400">Shown as the discounted price</p>
             </div>
-            <p className="mt-1 text-xs text-gray-400">Shown as the discounted price</p>
-          </div>
           )}
           {!isApprovedUser && (
-          <div>
-            <label className={labelClass}>Imported Price (VND) <span className="text-red-400">*</span></label>
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">₫</span>
-              <input required type="number" min="0" value={form.imported_price_vnd} onChange={set("imported_price_vnd")} placeholder="0" className={`${inputClass} pl-7`} />
+            <div>
+              <label className={labelClass}>Imported Price (VND) <span className="text-red-400">*</span></label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">₫</span>
+                <input required type="number" min="0" value={form.imported_price_vnd} onChange={set("imported_price_vnd")} placeholder="0" className={`${inputClass} pl-7`} />
+              </div>
             </div>
-          </div>
           )}
         </div>
       </section>
 
       {/* Variants */}
-      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 sm:px-6 py-6">
-        <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center justify-between mb-1">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Variants</h2>
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <span className="text-[12px] text-xs text-gray-400 dark:text-gray-500">This product has variants</span>
+      {/* Variants */}
+      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-4 sm:px-6 sm:py-6">
+        <div className="flex items-start justify-between gap-3 mb-5">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+              Variants
+            </h2>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Add separate sizes, prices, photos, or bundled combinations for each option.
+            </p>
+          </div>
+
+          <label className="flex items-center gap-2 cursor-pointer select-none shrink-0">
+            <span className="text-[12px] text-gray-400 dark:text-gray-500">
+              Has variants
+            </span>
             <button
               type="button"
               onClick={() => setHasVariants((v) => !v)}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${hasVariants ? "bg-emerald-600" : "bg-gray-300 dark:bg-gray-700"}`}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${hasVariants ? "bg-emerald-600" : "bg-gray-300 dark:bg-gray-700"
+                }`}
             >
-              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${hasVariants ? "translate-x-4" : "translate-x-0.5"}`} />
+              <span
+                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${hasVariants ? "translate-x-4" : "translate-x-0.5"
+                  }`}
+              />
             </button>
           </label>
         </div>
+
         {!hasVariants && (
-          <p className="text-[12px] sm:text-xs text-gray-400 dark:text-gray-500">Single one-of-a-kind piece. Enable variants if this product comes in multiple sizes or styles.</p>
+          <div className="rounded-xl border border-dashed border-gray-200 dark:border-gray-800 px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
+            Single one-of-a-kind piece. Enable variants if this product comes in multiple sizes or styles.
+          </div>
         )}
-        {hasVariants && (<>
-        <div className="space-y-2">
-          {optionRows.map((row, i) => (
-            <div key={i} className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-3 space-y-2">
-              <div className="flex flex-col sm:flex-row sm:items-end gap-2">
-              {/* Top row: photo + inputs + status */}
-              <div className="flex gap-2 items-end flex-1">
-              {/* Variant image thumbnail */}
-              <div className="shrink-0">
-                <label className="block text-xs text-gray-400 mb-1">Photo</label>
-                <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 cursor-pointer group">
-                  <input
-                    type="file"
-                    accept=".heic,.jpg,.jpeg,image/jpeg"
-                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      if (file.name.toLowerCase().endsWith(".heic")) {
-                        setVariantImage(i, file, null);
-                      } else {
-                        const src = URL.createObjectURL(file);
-                        setVariantCropTarget({ index: i, src, fileName: file.name });
-                      }
-                      e.target.value = "";
-                    }}
-                  />
-                  {(row.imagePreview || row.existingImageUrl) ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={row.imagePreview || row.existingImageUrl} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600 group-hover:text-emerald-500 transition-colors">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                        <circle cx="12" cy="13" r="4"/>
-                      </svg>
+
+        {hasVariants && (
+          <>
+            <div className="space-y-4">
+              {optionRows.map((row, i) => (
+                <div
+                  key={i}
+                  className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40 p-3 sm:p-4 space-y-3"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        Variant {i + 1}
+                      </p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">
+                        Add its own image, size, price, and status.
+                      </p>
+                    </div>
+
+                    {optionRows.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeOptionRow(i)}
+                        className="shrink-0 rounded-full p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                        aria-label={`Remove variant ${i + 1}`}
+                      >
+                        <XIcon />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Link to a product image (optional) */}
+                  {images.length > 0 && (
+                    <div className="mb-2">
+                      <p className="text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+                        Link to image <span className="font-normal text-gray-400">(optional — jumps gallery to this image when variant is selected)</span>
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {images.map((img, imgIdx) => (
+                          <button
+                            key={imgIdx}
+                            type="button"
+                            onClick={() => setVariantImageIndex(i, row.imageIndex === imgIdx ? null : imgIdx)}
+                            className={`relative w-14 h-14 rounded-lg overflow-hidden border-2 transition-all ${row.imageIndex === imgIdx ? "border-emerald-500" : "border-transparent opacity-60 hover:opacity-100"}`}
+                          >
+                            {img.preview ? (
+                              <img src={img.preview} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs text-gray-400">{imgIdx + 1}</div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
-                  {(row.imageFile || row.existingImagePath) && (
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); clearVariantImage(i); }}
-                      className="absolute top-0 right-0 z-20 w-4 h-4 rounded-bl bg-red-500 text-white flex items-center justify-center"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
+
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                    {/* Main fields */}
+                    <div className="flex-1 space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                        <div>
+                          <label className="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+                            Label
+                          </label>
+                          <input
+                            type="text"
+                            value={row.label}
+                            onChange={(e) => updateOptionRow(i, "label", e.target.value)}
+                            placeholder="e.g. Ring A, 51–52mm"
+                            className={inputClass}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+                            Size (mm)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={row.size}
+                            onChange={(e) => updateOptionRow(i, "size", e.target.value)}
+                            placeholder="inherit"
+                            className={inputClass}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+                            Price ($)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={row.price}
+                            onChange={(e) => updateOptionRow(i, "price", e.target.value)}
+                            placeholder="inherit"
+                            className={inputClass}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] sm:text-xs font-medium text-amber-500 mb-1.5">
+                            Sale ($)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={row.salePrice}
+                            onChange={(e) => updateOptionRow(i, "salePrice", e.target.value)}
+                            placeholder="none"
+                            className={`${inputClass} border-amber-200 dark:border-amber-800 focus:border-amber-500 focus:ring-amber-500`}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <span className="text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mr-1">
+                          Status
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => updateOptionRow(i, "status", "available")}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${row.status === "available"
+                              ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+                              : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300"
+                            }`}
+                        >
+                          Available
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => updateOptionRow(i, "status", "sold")}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${row.status === "sold"
+                              ? "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400"
+                              : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300"
+                            }`}
+                        >
+                          Sold
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => updateOptionRow(i, "status", "on_sale")}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${row.status === "on_sale"
+                              ? "border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400"
+                              : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300"
+                            }`}
+                        >
+                          On Sale
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Combo section */}
+                  {optionRows.length > 1 && (
+                    <div className="pt-1">
+                      <label className="block text-[11px] sm:text-xs text-gray-400 mb-2">
+                        Combo of — blocked when any selected variant is sold
+                      </label>
+
+                      <div className="flex flex-wrap gap-1.5">
+                        {optionRows.map((other, j) => {
+                          if (j === i) return null;
+                          const checked = row.comboOf.includes(j);
+
+                          return (
+                            <button
+                              key={j}
+                              type="button"
+                              onClick={() =>
+                                setOptionRows((prev) => {
+                                  const next = [...prev];
+                                  const cur = next[i].comboOf;
+                                  next[i] = {
+                                    ...next[i],
+                                    comboOf: checked
+                                      ? cur.filter((x) => x !== j)
+                                      : [...cur, j],
+                                  };
+                                  return next;
+                                })
+                              }
+                              className={`px-2.5 py-1 rounded-full text-xs border transition-all ${checked
+                                  ? "border-violet-400 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400"
+                                  : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300"
+                                }`}
+                            >
+                              {other.label || `Variant ${j + 1}`}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   )}
                 </div>
-              </div>
-              <div className="flex-1 grid sm:grid-cols-4 gap-1.5 sm:gap-2">
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Label</label>
-                    <input
-                      type="text"
-                      value={row.label}
-                      onChange={(e) => updateOptionRow(i, "label", e.target.value)}
-                      placeholder="e.g. Ring A, 51–52mm"
-                      className={`${inputClass} text-xs py-2`}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Size (mm)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={row.size}
-                      onChange={(e) => updateOptionRow(i, "size", e.target.value)}
-                      placeholder="inherit"
-                      className={`${inputClass} text-xs py-2`}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Price ($)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={row.price}
-                      onChange={(e) => updateOptionRow(i, "price", e.target.value)}
-                      placeholder="inherit"
-                      className={`${inputClass} text-xs py-2`}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-amber-500 mb-1">Sale ($)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={row.salePrice}
-                      onChange={(e) => updateOptionRow(i, "salePrice", e.target.value)}
-                      placeholder="none"
-                      className={`${inputClass} text-xs py-2 border-amber-200 dark:border-amber-800 focus:border-amber-500 focus:ring-amber-500`}
-                    />
-                  </div>
-              </div>
-              </div>{/* end inner flex: photo + inputs */}
-              <div className="flex items-center gap-1.5 shrink-0 sm:pb-0.5">
-                <button
-                  type="button"
-                  onClick={() => updateOptionRow(i, "status", "available")}
-                  className={`px-2.5 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                    row.status === "available"
-                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
-                      : "border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300"
-                  }`}
-                >
-                  Avail
-                </button>
-                <button
-                  type="button"
-                  onClick={() => updateOptionRow(i, "status", "sold")}
-                  className={`px-2.5 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                    row.status === "sold"
-                      ? "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400"
-                      : "border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300"
-                  }`}
-                >
-                  Sold
-                </button>
-                {optionRows.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeOptionRow(i)}
-                    className="ml-1 text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 transition-colors"
-                  >
-                    <XIcon />
-                  </button>
-                )}
-              </div>
-              </div>{/* end top flex row */}
-              {optionRows.length > 1 && (
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Combo of — blocked when any selected variant is sold</label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {optionRows.map((other, j) => {
-                      if (j === i) return null;
-                      const checked = row.comboOf.includes(j);
-                      return (
-                        <button
-                          key={j}
-                          type="button"
-                          onClick={() =>
-                            setOptionRows((prev) => {
-                              const next = [...prev];
-                              const cur = next[i].comboOf;
-                              next[i] = { ...next[i], comboOf: checked ? cur.filter((x) => x !== j) : [...cur, j] };
-                              return next;
-                            })
-                          }
-                          className={`px-2 py-0.5 rounded-full text-xs border transition-all ${
-                            checked
-                              ? "border-violet-400 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400"
-                              : "border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300"
-                          }`}
-                        >
-                          {other.label || `Variant ${j + 1}`}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              ))}
             </div>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={addOptionRow}
-          className="mt-3 flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          Add variant
-        </button>
-        </>)}
+
+            <button
+              type="button"
+              onClick={addOptionRow}
+              className="mt-4 w-full sm:w-auto inline-flex items-center justify-center rounded-xl border border-dashed border-emerald-300 dark:border-emerald-700 px-4 py-2.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
+            >
+              + Add Variant
+            </button>
+          </>
+        )}
       </section>
 
       {/* Options */}
@@ -1258,15 +1266,14 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
                   key={s}
                   type="button"
                   onClick={() => setStatus(s)}
-                  className={`text-[12px] sm: px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-                    status === s
+                  className={`text-[12px] sm: px-4 py-2 rounded-full text-sm font-medium border transition-all ${status === s
                       ? s === "available"
                         ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
                         : s === "on_sale"
-                        ? "border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400"
-                        : "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400"
+                          ? "border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400"
+                          : "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400"
                       : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
-                  }`}
+                    }`}
                 >
                   {s === "on_sale" ? "On Sale" : s.charAt(0).toUpperCase() + s.slice(1)}
                 </button>
@@ -1281,18 +1288,18 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
 
           {/* Published — admin only; approved-user listings always go to pending approval */}
           {!isApprovedUser && (
-          <button
-            type="button"
-            onClick={() => setIsPublished((v) => !v)}
-            className="flex items-center gap-3 group"
-          >
-            <div className={`relative w-10 h-6 rounded-full transition-colors ${isPublished ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"}`}>
-              <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${isPublished ? "translate-x-4" : ""}`} />
-            </div>
-            <span className="text-[12px] sm:text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
-              {isPublished ? "Published — visible on storefront" : "Draft — hidden from storefront"}
-            </span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setIsPublished((v) => !v)}
+              className="flex items-center gap-3 group"
+            >
+              <div className={`relative w-10 h-6 rounded-full transition-colors ${isPublished ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"}`}>
+                <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${isPublished ? "translate-x-4" : ""}`} />
+              </div>
+              <span className="text-[12px] sm:text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+                {isPublished ? "Published — visible on storefront" : "Draft — hidden from storefront"}
+              </span>
+            </button>
           )}
 
           {/* Featured */}
@@ -1354,15 +1361,6 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
           fileName={cropTarget.fileName}
           onConfirm={handleCropConfirm}
           onClose={() => setCropTarget(null)}
-        />
-      )}
-
-      {variantCropTarget && (
-        <ImageCropModal
-          src={variantCropTarget.src}
-          fileName={variantCropTarget.fileName}
-          onConfirm={handleVariantCropConfirm}
-          onClose={() => setVariantCropTarget(null)}
         />
       )}
 

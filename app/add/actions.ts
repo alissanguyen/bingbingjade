@@ -13,7 +13,7 @@ interface OptionInput {
   salePrice?: string;
   comboOf?: number[];
   status: string;
-  images?: string[];
+  image_index?: number | null;
 }
 
 export async function createProduct(formData: FormData): Promise<{ error?: string; success?: boolean; pendingApproval?: boolean }> {
@@ -88,7 +88,7 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
         size: o.size ? Number(o.size) : null,
         price_usd: o.price ? Number(o.price) : null,
         sale_price_usd: o.salePrice ? Number(o.salePrice) : null,
-        images: o.images ?? [],
+        image_index: o.image_index ?? null,
         status: isSingleNoLabel
           ? (productStatus === "sold" ? "sold" : "available")
           : (o.status || "available"),

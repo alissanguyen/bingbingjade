@@ -18,8 +18,8 @@ interface ProductOptionClient {
   size: number | null;
   price_usd: number | null;
   sale_price_usd: number | null;
-  images: string[]; // already resolved
-  status: "available" | "sold";
+  image_index: number | null;
+  status: "available" | "sold" | "on_sale";
   sort_order: number;
 }
 
@@ -104,12 +104,12 @@ export function ProductPageClient({ product, productImages, productVideos, optio
   const selectedOption = hasSelector ? (options[selectedIdx] ?? null) : null;
 
   // Effective values based on selected option
-  const effectiveImages =
-    (selectedOption?.images?.length ?? 0) > 0 ? selectedOption!.images : productImages;
+  const activeImageIndex = selectedOption?.image_index ?? null;
   const effectiveSize = selectedOption?.size ?? product.size;
   const effectiveDisplayPrice = selectedOption?.price_usd ?? product.price_display_usd;
 
   const isOptionSold = selectedOption?.status === "sold";
+  const isOptionOnSale = selectedOption?.status === "on_sale";
   const isProductSold = product.status === "sold";
   const isEffectivelySold = isProductSold || isOptionSold;
 
@@ -149,7 +149,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
 
   function handleAddToCart() {
     if (checkoutPrice == null) return;
-    const thumbnail = effectiveImages[0] ?? null;
+    const thumbnail = productImages[activeImageIndex ?? 0] ?? productImages[0] ?? null;
     const activeOption = hasSelector ? options[selectedIdx] : null;
     const cartItem: CartItem = {
       productId: product.id,
@@ -176,7 +176,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
     <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
       {/* Gallery */}
       <div className="relative">
-        <ProductGallery images={effectiveImages} videos={productVideos} category={getCategoryLabel(product.category)} />
+        <ProductGallery images={productImages} videos={productVideos} category={getCategoryLabel(product.category)} activeIndex={activeImageIndex} />
         {showImageSaleBadge && (
           <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 pointer-events-none">
             <div className="bg-amber-400 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">

@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { supabase } from "@/lib/supabase";
 import { updateProduct, deleteProduct } from "./actions";
 import { ImageCropModal, VideoTrimModal } from "@/app/add/MediaCroppers";
 import type { Vendor } from "@/types/vendor";
@@ -14,11 +13,9 @@ interface OptionRow {
   size: string;
   price: string;
   salePrice: string;
+  comboOf: number[];
   status: OptionStatus;
-  imageFile: File | null;
-  imagePreview: string | null;
-  existingImagePath: string;
-  existingImageUrl: string;
+  imageIndex: number | null;
 }
 
 const CATEGORIES: ProductCategory[] = ["bracelet", "bangle", "ring", "pendant", "necklace", "set", "earring", "raw_material"];
@@ -26,15 +23,15 @@ const CATEGORIES: ProductCategory[] = ["bracelet", "bangle", "ring", "pendant", 
 const TIERS = ["Been", "Glutinous", "Fine Glutinous", "Very Fine Glutinous", "Icy Glutinous", "Icy", "High Icy", "Glassy", "Longshi"];
 
 const COLORS: { value: string; label: string; swatch: string; border?: string }[] = [
-  { value: "white",    label: "White",    swatch: "bg-white",       border: "border-gray-300" },
-  { value: "green",    label: "Green",    swatch: "bg-green-500" },
-  { value: "blue",     label: "Blue",     swatch: "bg-blue-500" },
-  { value: "red",      label: "Red",      swatch: "bg-red-500" },
-  { value: "pink",     label: "Pink",     swatch: "bg-pink-400" },
+  { value: "white", label: "White", swatch: "bg-white", border: "border-gray-300" },
+  { value: "green", label: "Green", swatch: "bg-green-500" },
+  { value: "blue", label: "Blue", swatch: "bg-blue-500" },
+  { value: "red", label: "Red", swatch: "bg-red-500" },
+  { value: "pink", label: "Pink", swatch: "bg-pink-400" },
   { value: "lavender", label: "Lavender", swatch: "bg-purple-300" },
-  { value: "orange",   label: "Orange",   swatch: "bg-orange-500" },
-  { value: "yellow",   label: "Yellow",   swatch: "bg-yellow-400" },
-  { value: "black",    label: "Black",    swatch: "bg-gray-900" },
+  { value: "orange", label: "Orange", swatch: "bg-orange-500" },
+  { value: "yellow", label: "Yellow", swatch: "bg-yellow-400" },
+  { value: "black", label: "Black", swatch: "bg-gray-900" },
   { value: "marbling", label: "Marbling", swatch: "bg-gradient-to-br from-gray-200 via-white to-gray-400", border: "border-gray-300" },
 ];
 
@@ -111,7 +108,7 @@ function VendorSearch({ vendors, initialId, onChange }: { vendors: Vendor[]; ini
   const select = (v: Vendor) => { setSelected(v); onChange(v.id); setQuery(""); setOpen(false); };
   const clear = () => { setSelected(null); onChange(""); setQuery(""); };
 
-  const inputClass = "w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors";
+  const inputClass = "w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2.5 text-[12px] sm:text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors";
 
   return (
     <div ref={ref} className="relative">
@@ -181,9 +178,9 @@ interface InitialOption {
   size: number | null;
   price_usd: number | null;
   sale_price_usd: number | null;
+  comboOf?: number[] | null;
   status: OptionStatus;
-  images: string[];
-  imageUrls: string[];
+  image_index: number | null;
 }
 
 interface Props {
@@ -217,8 +214,6 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
   const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
   const [cropTarget, setCropTarget] = useState<{ index: number; src: string; fileName: string } | null>(null);
   const [trimTarget, setTrimTarget] = useState<{ index: number; file: File } | null>(null);
-  const [variantCropTarget, setVariantCropTarget] = useState<{ index: number; src: string; fileName: string } | null>(null);
-
   const handleCropConfirm = (croppedFile: File) => {
     if (!cropTarget) return;
     const preview = URL.createObjectURL(croppedFile);
@@ -230,13 +225,6 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       return updated;
     });
     setCropTarget(null);
-  };
-
-  const handleVariantCropConfirm = (croppedFile: File) => {
-    if (!variantCropTarget) return;
-    const preview = URL.createObjectURL(croppedFile);
-    setVariantImage(variantCropTarget.index, croppedFile, preview);
-    setVariantCropTarget(null);
   };
 
   const handleTrimConfirm = (trimmedFile: File) => {
@@ -281,25 +269,36 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
     product.size_detailed?.[2] != null ? String(product.size_detailed[2]) : "",
   ]);
 
-  const blankRow = (): OptionRow => ({ label: "", size: "", price: "", salePrice: "", status: "available", imageFile: null, imagePreview: null, existingImagePath: "", existingImageUrl: "" });
-
+  const blankRow = (): OptionRow => ({
+    label: "",
+    size: "",
+    price: "",
+    salePrice: "",
+    comboOf: [],
+    status: "available",
+    imageIndex: null,
+  });
   // Has variants = more than one option, or single option with a label
   const [hasVariants, setHasVariants] = useState(
-    initialOptions.length > 1 || (initialOptions.length === 1 && !!initialOptions[0]?.label)
+    initialOptions.some(
+      (o) =>
+        o.label ||
+        o.size != null ||
+        o.price_usd != null ||
+        o.sale_price_usd != null
+    )
   );
   const [optionRows, setOptionRows] = useState<OptionRow[]>(
     initialOptions.length > 0
       ? initialOptions.map((o) => ({
-          label: o.label ?? "",
-          size: o.size != null ? String(o.size) : "",
-          price: o.price_usd != null ? String(o.price_usd) : "",
-          salePrice: o.sale_price_usd != null ? String(o.sale_price_usd) : "",
-          status: o.status,
-          imageFile: null,
-          imagePreview: null,
-          existingImagePath: o.images?.[0] ?? "",
-          existingImageUrl: o.imageUrls?.[0] ?? "",
-        }))
+        label: o.label ?? "",
+        size: o.size != null ? String(o.size) : "",
+        price: o.price_usd != null ? String(o.price_usd) : "",
+        salePrice: o.sale_price_usd != null ? String(o.sale_price_usd) : "",
+        comboOf: o.comboOf ?? [],
+        status: o.status,
+        imageIndex: o.image_index ?? null,
+      }))
       : [blankRow()]
   );
 
@@ -310,19 +309,10 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       return next;
     });
 
-  const setVariantImage = (i: number, file: File, preview: string | null) =>
+  const setVariantImageIndex = (rowIdx: number, imgIdx: number | null) =>
     setOptionRows((prev) => {
       const next = [...prev];
-      if (next[i].imagePreview) URL.revokeObjectURL(next[i].imagePreview!);
-      next[i] = { ...next[i], imageFile: file, imagePreview: preview };
-      return next;
-    });
-
-  const clearVariantImage = (i: number) =>
-    setOptionRows((prev) => {
-      const next = [...prev];
-      if (next[i].imagePreview) URL.revokeObjectURL(next[i].imagePreview!);
-      next[i] = { ...next[i], imageFile: null, imagePreview: null, existingImagePath: "", existingImageUrl: "" };
+      next[rowIdx] = { ...next[rowIdx], imageIndex: imgIdx };
       return next;
     });
 
@@ -330,10 +320,16 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
     setOptionRows((prev) => [...prev, blankRow()]);
 
   const removeOptionRow = (i: number) =>
-    setOptionRows((prev) => {
-      if (prev[i].imagePreview) URL.revokeObjectURL(prev[i].imagePreview!);
-      return prev.filter((_, idx) => idx !== i);
-    });
+    setOptionRows((prev) =>
+      prev
+        .filter((_, idx) => idx !== i)
+        .map((row) => ({
+          ...row,
+          comboOf: row.comboOf
+            .filter((idx) => idx !== i)
+            .map((idx) => (idx > i ? idx - 1 : idx)),
+        }))
+    );
 
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -422,32 +418,15 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       orderedImageUrls.forEach((url) => fd.append("imageUrls", url));
       [...existingVideos, ...videoUrls].forEach((url) => fd.append("videoUrls", url));
 
-      // Upload variant images (skip if no variants)
       const rowsToSubmit = hasVariants ? optionRows : [{ ...blankRow(), status: status === "sold" ? "sold" as OptionStatus : "available" as OptionStatus }];
-      const optionImagePaths: string[] = [];
-      for (const row of rowsToSubmit) {
-        if (row.imageFile) {
-          const vfd = new FormData();
-          vfd.append("file", row.imageFile);
-          vfd.append("category", form.category);
-          const res = await fetch("/api/upload-image", { method: "POST", body: vfd });
-          if (!res.ok) {
-            const { error } = await res.json().catch(() => ({ error: "Unknown error" }));
-            throw new Error(`Variant image upload failed: ${error}`);
-          }
-          const { path } = await res.json();
-          optionImagePaths.push(path);
-        } else {
-          optionImagePaths.push(row.existingImagePath);
-        }
-      }
-      const optionsForJson = rowsToSubmit.map((row, i) => ({
+      const optionsForJson = rowsToSubmit.map((row) => ({
         label: row.label,
         size: row.size,
         price: row.price,
         salePrice: row.salePrice,
+        comboOf: row.comboOf,
         status: row.status,
-        images: optionImagePaths[i] ? [optionImagePaths[i]] : [],
+        image_index: row.imageIndex ?? null,
       }));
       fd.append("options_json", JSON.stringify(optionsForJson));
 
@@ -477,7 +456,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
     }
   };
 
-  const inputClass = "w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors";
+  const inputClass = "w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2.5 text-sm sm:text-[15px] text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors";
   const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
 
   return (
@@ -493,7 +472,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       )}
 
       {/* Basic Info */}
-      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-4 sm:px-6 sm:py-6">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Basic Info</h2>
         <div className="space-y-4">
           <div>
@@ -553,11 +532,10 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
                     key={t}
                     type="button"
                     onClick={() => setSelectedTiers((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t])}
-                    className={`px-3.5 py-1.5 rounded-full text-sm border transition-all ${
-                      active
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-medium"
-                        : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
-                    }`}
+                    className={`px-3.5 py-1.5 rounded-full text-sm border transition-all ${active
+                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-medium"
+                      : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
+                      }`}
                   >
                     {t}
                   </button>
@@ -585,7 +563,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
                   min="0"
                   placeholder={label}
                   value={sizeDetailed[i]}
-                  onChange={(e) => setSizeDetailed((prev) => { const next = [...prev] as [string,string,string]; next[i] = e.target.value; return next; })}
+                  onChange={(e) => setSizeDetailed((prev) => { const next = [...prev] as [string, string, string]; next[i] = e.target.value; return next; })}
                   className={inputClass}
                 />
               ))}
@@ -595,7 +573,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       </section>
 
       {/* Media */}
-      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-4 sm:px-6 sm:py-6">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Media</h2>
 
         {/* Images — unified draggable grid (existing + new together) */}
@@ -623,9 +601,8 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
                     setImgDragOver(null);
                   }}
                   onDragEnd={() => { imgDragRef.current = null; setImgDragOver(null); }}
-                  className={`relative group aspect-square cursor-grab active:cursor-grabbing rounded-lg transition-all ${
-                    imgDragOver === i ? "ring-2 ring-emerald-500 scale-95" : ""
-                  } ${i === 0 ? "ring-2 ring-emerald-400/60" : ""}`}
+                  className={`relative group aspect-square cursor-grab active:cursor-grabbing rounded-lg transition-all ${imgDragOver === i ? "ring-2 ring-emerald-500 scale-95" : ""
+                    } ${i === 0 ? "ring-2 ring-emerald-400/60" : ""}`}
                 >
                   {i === 0 && (
                     <span className="absolute top-1 left-1 z-10 text-[9px] font-bold uppercase tracking-wider bg-emerald-500 text-white px-1.5 py-0.5 rounded-sm leading-none pointer-events-none">Cover</span>
@@ -641,6 +618,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
                       loading="lazy"
                     />
                   ) : item.preview && !item.broken ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={item.preview}
                       alt={item.file.name}
@@ -755,7 +733,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       </section>
 
       {/* Details */}
-      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-4 sm:px-6 sm:py-6">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Details</h2>
         <div className="space-y-4">
           <div>
@@ -770,7 +748,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       </section>
 
       {/* Pricing */}
-      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-4 sm:px-6 sm:py-6">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Pricing</h2>
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -782,190 +760,228 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
             <p className="mt-1 text-xs text-gray-400">Leave blank to show &quot;Contact for price&quot;</p>
           </div>
           {status === "on_sale" && (
-          <div>
-            <label className={labelClass}>Sale Price (USD)</label>
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-amber-400">$</span>
-              <input type="number" step="0.01" min="0" value={form.sale_price_usd} onChange={set("sale_price_usd")} placeholder="0.00" className={`${inputClass} pl-7 border-amber-300 dark:border-amber-700 focus:border-amber-500 focus:ring-amber-500`} />
+            <div>
+              <label className={labelClass}>Sale Price (USD)</label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-amber-400">$</span>
+                <input type="number" step="0.01" min="0" value={form.sale_price_usd} onChange={set("sale_price_usd")} placeholder="0.00" className={`${inputClass} pl-7 border-amber-300 dark:border-amber-700 focus:border-amber-500 focus:ring-amber-500`} />
+              </div>
+              <p className="mt-1 text-xs text-gray-400">Shown as the discounted price</p>
             </div>
-            <p className="mt-1 text-xs text-gray-400">Shown as the discounted price</p>
-          </div>
           )}
           {!isApprovedUser && (
-          <div>
-            <label className={labelClass}>Imported Price (VND) <span className="text-red-400">*</span></label>
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">₫</span>
-              <input required type="number" min="0" value={form.imported_price_vnd} onChange={set("imported_price_vnd")} className={`${inputClass} pl-7`} />
+            <div>
+              <label className={labelClass}>Imported Price (VND) <span className="text-red-400">*</span></label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">₫</span>
+                <input required type="number" min="0" value={form.imported_price_vnd} onChange={set("imported_price_vnd")} className={`${inputClass} pl-7`} />
+              </div>
             </div>
-          </div>
           )}
         </div>
       </section>
 
       {/* Variants */}
-      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
-        <div className="flex items-center justify-between mb-1">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Variants</h2>
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <span className="text-xs text-gray-400 dark:text-gray-500">This product has variants</span>
-            <button
-              type="button"
-              onClick={() => setHasVariants((v) => !v)}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${hasVariants ? "bg-emerald-600" : "bg-gray-300 dark:bg-gray-700"}`}
-            >
-              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${hasVariants ? "translate-x-4" : "translate-x-0.5"}`} />
-            </button>
-          </label>
+      {/* Variants */}
+      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-4 sm:px-6 sm:py-6">
+        <div className="flex items-start justify-between gap-3 mb-5">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+              Variants
+            </h2>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Add separate sizes, prices, statuses, or photos for each option.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setHasVariants((v) => !v)}
+            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium border transition-all ${hasVariants
+              ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+              : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
+              }`}
+          >
+            {hasVariants ? "Variants On" : "Variants Off"}
+          </button>
         </div>
-        {!hasVariants && (
-          <p className="text-xs text-gray-400 dark:text-gray-500">Single one-of-a-kind piece. Enable variants if this product comes in multiple sizes or styles.</p>
-        )}
-        {hasVariants && (<>
-        <div className="space-y-2">
-          {optionRows.map((row, i) => (
-            <div key={i} className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-3 space-y-2">
-              <div className="flex gap-2 items-end">
-              {/* Variant image thumbnail */}
-              <div className="shrink-0">
-                <label className="block text-xs text-gray-400 mb-1">Photo</label>
-                <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 cursor-pointer group">
-                  <input
-                    type="file"
-                    accept=".heic,.jpg,.jpeg,image/jpeg"
-                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      if (file.name.toLowerCase().endsWith(".heic")) {
-                        setVariantImage(i, file, null);
-                      } else {
-                        const src = URL.createObjectURL(file);
-                        setVariantCropTarget({ index: i, src, fileName: file.name });
-                      }
-                      e.target.value = "";
-                    }}
-                  />
-                  {(row.imagePreview || row.existingImageUrl) ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={row.imagePreview || row.existingImageUrl} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600 group-hover:text-emerald-500 transition-colors">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                        <circle cx="12" cy="13" r="4"/>
-                      </svg>
-                    </div>
-                  )}
-                  {(row.imageFile || row.existingImagePath) && (
+
+        {hasVariants ? (
+          <div className="space-y-4">
+            {optionRows.map((row, i) => (
+              <div
+                key={i}
+                className="rounded-xl border border-gray-200 dark:border-gray-800 p-3 sm:p-4 space-y-3"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      Variant {i + 1}
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                      Each variant can have its own label, size, price, status, and image.
+                    </p>
+                  </div>
+
+                  {optionRows.length > 1 && (
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); clearVariantImage(i); }}
-                      className="absolute top-0 right-0 z-20 w-4 h-4 rounded-bl bg-red-500 text-white flex items-center justify-center"
+                      onClick={() => removeOptionRow(i)}
+                      className="shrink-0 rounded-full p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                      aria-label={`Remove variant ${i + 1}`}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      <XIcon />
                     </button>
                   )}
                 </div>
-              </div>
-              <div className="flex-1 grid grid-cols-4 gap-2">
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Label</label>
-                    <input
-                      type="text"
-                      value={row.label}
-                      onChange={(e) => updateOptionRow(i, "label", e.target.value)}
-                      placeholder="e.g. Ring A, 51–52mm"
-                      className={`${inputClass} text-xs py-2`}
-                    />
+
+                {/* Link to a product image (optional) */}
+                {allImages.length > 0 && (
+                  <div className="mb-2">
+                    <p className="text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+                      Link to image <span className="font-normal text-gray-400">(optional — jumps gallery to this image when variant is selected)</span>
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {allImages.map((img, imgIdx) => {
+                        const src = img.kind === "existing" ? img.url : (img.preview ?? undefined);
+                        return (
+                          <button
+                            key={imgIdx}
+                            type="button"
+                            onClick={() => setVariantImageIndex(i, row.imageIndex === imgIdx ? null : imgIdx)}
+                            className={`relative w-14 h-14 rounded-lg overflow-hidden border-2 transition-all ${row.imageIndex === imgIdx ? "border-emerald-500" : "border-transparent opacity-60 hover:opacity-100"}`}
+                          >
+                            {src ? (
+                              <img src={src} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs text-gray-400">{imgIdx + 1}</div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Size (mm)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={row.size}
-                      onChange={(e) => updateOptionRow(i, "size", e.target.value)}
-                      placeholder="inherit"
-                      className={`${inputClass} text-xs py-2`}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Price ($)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={row.price}
-                      onChange={(e) => updateOptionRow(i, "price", e.target.value)}
-                      placeholder="inherit"
-                      className={`${inputClass} text-xs py-2`}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-amber-500 mb-1">Sale ($)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={row.salePrice}
-                      onChange={(e) => updateOptionRow(i, "salePrice", e.target.value)}
-                      placeholder="none"
-                      className={`${inputClass} text-xs py-2 border-amber-200 dark:border-amber-800 focus:border-amber-500 focus:ring-amber-500`}
-                    />
-                  </div>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0 pb-0.5">
-                <button
-                  type="button"
-                  onClick={() => updateOptionRow(i, "status", "available")}
-                  className={`px-2.5 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                    row.status === "available"
-                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
-                      : "border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300"
-                  }`}
-                >
-                  Avail
-                </button>
-                <button
-                  type="button"
-                  onClick={() => updateOptionRow(i, "status", "sold")}
-                  className={`px-2.5 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                    row.status === "sold"
-                      ? "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400"
-                      : "border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300"
-                  }`}
-                >
-                  Sold
-                </button>
-                {optionRows.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeOptionRow(i)}
-                    className="ml-1 text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 transition-colors"
-                  >
-                    <XIcon />
-                  </button>
                 )}
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                  {/* Variant fields */}
+                  <div className="flex-1 space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                      <div>
+                        <label className="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+                          Label
+                        </label>
+                        <input
+                          value={row.label}
+                          onChange={(e) => updateOptionRow(i, "label", e.target.value)}
+                          className={inputClass}
+                          placeholder="e.g. 54mm / Style A"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+                          Size
+                        </label>
+                        <input
+                          value={row.size}
+                          onChange={(e) => updateOptionRow(i, "size", e.target.value)}
+                          className={inputClass}
+                          placeholder="e.g. 54.5"
+                          type="number"
+                          step="0.1"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+                          Price
+                        </label>
+                        <input
+                          value={row.price}
+                          onChange={(e) => updateOptionRow(i, "price", e.target.value)}
+                          className={inputClass}
+                          placeholder="USD"
+                          type="number"
+                          step="0.01"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+                          Sale Price
+                        </label>
+                        <input
+                          value={row.salePrice}
+                          onChange={(e) => updateOptionRow(i, "salePrice", e.target.value)}
+                          className={inputClass}
+                          placeholder="Optional"
+                          type="number"
+                          step="0.01"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <span className="text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mr-1">
+                        Status
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => updateOptionRow(i, "status", "available")}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${row.status === "available"
+                          ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+                          : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
+                          }`}
+                      >
+                        Available
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => updateOptionRow(i, "status", "sold")}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${row.status === "sold"
+                          ? "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400"
+                          : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
+                          }`}
+                      >
+                        Sold
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => updateOptionRow(i, "status", "on_sale")}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${row.status === "on_sale"
+                          ? "border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400"
+                          : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
+                          }`}
+                      >
+                        On Sale
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
-              </div>{/* end top flex row */}
-            </div>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={addOptionRow}
-          className="mt-3 flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          Add variant
-        </button>
-        </>)}
+            ))}
+
+            <button
+              type="button"
+              onClick={addOptionRow}
+              className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl border border-dashed border-emerald-300 dark:border-emerald-700 px-4 py-2.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
+            >
+              + Add Variant
+            </button>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-gray-200 dark:border-gray-800 px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
+            Variants are off. This product will use the main product size and pricing only.
+          </div>
+        )}
       </section>
 
       {/* Options */}
-      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Options</h2>
+      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-4 sm:px-6 sm:py-6">        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Options</h2>
         <div className="space-y-4">
           {/* Status */}
           <div>
@@ -976,15 +992,14 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
                   key={s}
                   type="button"
                   onClick={() => setStatus(s)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-                    status === s
-                      ? s === "available"
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
-                        : s === "on_sale"
+                  className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${status === s
+                    ? s === "available"
+                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+                      : s === "on_sale"
                         ? "border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400"
                         : "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400"
-                      : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
-                  }`}
+                    : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}
                 >
                   {s === "on_sale" ? "On Sale" : s.charAt(0).toUpperCase() + s.slice(1)}
                 </button>
@@ -999,14 +1014,14 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
 
           {/* Published — admin only; approved-user edits go to pending_data, publish state unchanged */}
           {!isApprovedUser && (
-          <button type="button" onClick={() => setIsPublished((v) => !v)} className="flex items-center gap-3 group">
-            <div className={`relative w-10 h-6 rounded-full transition-colors ${isPublished ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"}`}>
-              <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${isPublished ? "translate-x-4" : ""}`} />
-            </div>
-            <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
-              {isPublished ? "Published — visible on storefront" : "Draft — hidden from storefront"}
-            </span>
-          </button>
+            <button type="button" onClick={() => setIsPublished((v) => !v)} className="flex items-center gap-3 group">
+              <div className={`relative w-10 h-6 rounded-full transition-colors ${isPublished ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"}`}>
+                <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${isPublished ? "translate-x-4" : ""}`} />
+              </div>
+              <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+                {isPublished ? "Published — visible on storefront" : "Draft — hidden from storefront"}
+              </span>
+            </button>
           )}
 
           {/* Featured */}
@@ -1077,15 +1092,6 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
           file={trimTarget.file}
           onConfirm={handleTrimConfirm}
           onClose={() => setTrimTarget(null)}
-        />
-      )}
-
-      {variantCropTarget && (
-        <ImageCropModal
-          src={variantCropTarget.src}
-          fileName={variantCropTarget.fileName}
-          onConfirm={handleVariantCropConfirm}
-          onClose={() => setVariantCropTarget(null)}
         />
       )}
 

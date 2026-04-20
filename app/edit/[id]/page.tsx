@@ -12,12 +12,10 @@ interface InitialOptionRaw {
   price_usd: number | null;
   sale_price_usd: number | null;
   status: OptionStatus;
-  images: string[];
+  image_index: number | null;
 }
 
-interface InitialOption extends InitialOptionRaw {
-  imageUrls: string[]; // resolved for display
-}
+type InitialOption = InitialOptionRaw;
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -27,7 +25,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     supabaseAdmin.from("vendors").select("*").order("name"),
     supabaseAdmin
       .from("product_options")
-      .select("id, label, size, price_usd, sale_price_usd, status, images")
+      .select("id, label, size, price_usd, sale_price_usd, status, image_index")
       .eq("product_id", id)
       .order("sort_order")
       .returns<InitialOptionRaw[]>(),
@@ -44,14 +42,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     videoPaths.some(isStoragePath) ? resolveVideoUrls(videoPaths) : Promise.resolve(videoPaths),
   ]);
 
-  // Resolve option images for display in the edit form
-  const initialOptions: InitialOption[] = await Promise.all(
-    (optionsData ?? []).map(async (opt) => {
-      const paths = opt.images ?? [];
-      const urls = paths.some(isStoragePath) ? await resolveImageUrls(paths) : paths;
-      return { ...opt, imageUrls: urls };
-    })
-  );
+  const initialOptions: InitialOption[] = optionsData ?? [];
 
   const productWithUrls = {
     ...product,

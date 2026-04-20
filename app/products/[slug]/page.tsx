@@ -55,8 +55,8 @@ interface ProductOptionRaw {
   size: number | null;
   price_usd: number | null;
   sale_price_usd: number | null;
-  images: string[];
-  status: "available" | "sold";
+  image_index: number | null;
+  status: "available" | "sold" | "on_sale";
   sort_order: number;
 }
 
@@ -165,18 +165,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // Fetch product options
   const { data: rawOptions } = await supabase
     .from("product_options")
-    .select("id, label, size, price_usd, sale_price_usd, images, status, sort_order")
+    .select("id, label, size, price_usd, sale_price_usd, image_index, status, sort_order")
     .eq("product_id", product.id)
     .order("sort_order")
     .returns<ProductOptionRaw[]>();
 
-  const optionsWithResolvedImages = await Promise.all(
-    (rawOptions ?? []).map(async (opt) => {
-      const imgs = opt.images ?? [];
-      const resolved = await resolveImageUrls(imgs);
-      return { ...opt, images: resolved };
-    })
-  );
+  const optionsWithResolvedImages = (rawOptions ?? []);
 
   // Fetch related products: same category, exclude current, published only
   const currentColors = product.color ?? [];

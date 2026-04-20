@@ -53,7 +53,7 @@ export async function PATCH(
       if (options_json && typeof options_json === "string") {
         try {
           const opts = JSON.parse(options_json) as Array<{
-            label: string; size: string; price: string; status: string; images?: string[];
+            label: string; size: string; price: string; status: string; image_index?: number | null;
           }>;
           await supabaseAdmin.from("product_options").delete().eq("product_id", id);
           if (opts.length > 0) {
@@ -63,7 +63,7 @@ export async function PATCH(
                 label: o.label || null,
                 size: o.size ? Number(o.size) : null,
                 price_usd: o.price ? Number(o.price) : null,
-                images: o.images ?? [],
+                image_index: o.image_index ?? null,
                 status: o.status || "available",
                 sort_order: i,
               }))

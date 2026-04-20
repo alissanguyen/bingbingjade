@@ -64,12 +64,18 @@ function ArrowButton({
   );
 }
 
-export function ProductGallery({ images, videos, category = "" }: { images: string[]; videos: string[]; category?: string }) {
+export function ProductGallery({ images, videos, category = "", activeIndex }: { images: string[]; videos: string[]; category?: string; activeIndex?: number | null }) {
   const wmStyle: React.CSSProperties = CENTER_CATEGORIES.has(category)
     ? { width: "44%", right: "30%", top: "50%", transform: "translateY(-50%)" }
     : { width: "44%", left: "10%", bottom: "10%" };
   const [current, setCurrent] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  useEffect(() => {
+    if (activeIndex != null && activeIndex >= 0 && activeIndex < images.length) {
+      setCurrent(activeIndex);
+    }
+  }, [activeIndex, images.length]);
 
   const all: MediaItem[] = [
     ...images.map((src) => ({ type: "image" as const, src })),
