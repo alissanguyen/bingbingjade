@@ -324,7 +324,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
         {/* Raw material note */}
         {product.category === "raw_material" && (
           <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
-            Price is for the raw jadeite stone only and does not include cutting, carving, or setting into a finished piece.
+            Price includes the cost of crafting this raw jadeite into a finished piece.
           </p>
         )}
 
