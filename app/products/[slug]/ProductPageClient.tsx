@@ -46,7 +46,6 @@ interface ProductClient {
 const ORIGIN_BADGE: Record<string, string> = {
   Myanmar: "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400",
   Guatemala: "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400",
-  Hetian: "border-fuchsia-200 dark:border-fuchsia-800 bg-fuchsia-50 dark:bg-fuchsia-950/40 text-fuchsia-700 dark:text-fuchsia-400",
 };
 
 const COLOR_SWATCHES: Record<string, string> = {
@@ -528,8 +527,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
             </p>
           </div>
           <div className="spacer-div h-4"></div>
-          {product.origin !== "Hetian" ? (<>
-            <Accordion label="Jade Meaning & Cultural Significance">
+          <Accordion label="Jade Meaning & Cultural Significance">
               <div className="space-y-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
                 <p>
                   Beyond its beauty, jade carries deep cultural meaning shaped over
@@ -602,71 +600,6 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                 </p>
               </div>
             </Accordion>
-          </>) : (<>
-            <Accordion label="Hetian Meaning & Cultural Significance">
-              <div className="space-y-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
-                <p>
-                  Hetian jade is a traditional nephrite jade long valued in Chinese culture
-                  for its smooth texture, soft luster, and quiet elegance. Distinct from
-                  jadeite, it is appreciated less for vivid translucency and more for its
-                  warmth, refinement, and timeless character.
-                </p>
-
-                <p className="mt-4">
-                  It is often associated with harmony, protection, balance, and virtue,
-                  and is commonly chosen as a meaningful piece to wear, gift, or keep.
-                  Many are drawn to Hetian jade for its understated beauty and calm presence.
-                </p>
-
-                <p className="mt-4">
-                  Certain forms carry symbolic meaning as well. Circular pieces such as{" "}
-                  <span className="italic">Ping An Kou (平安扣)</span> are traditionally
-                  associated with peace, safety, and wholeness, while pendants and bangles
-                  are often valued for their closeness to the body and enduring symbolism.
-                </p>
-
-                <p className="mt-4 italic">
-                  More subtle than jadeite, Hetian jade is often chosen for its texture,
-                  meaning, and sense of tradition.
-                </p>
-              </div>
-            </Accordion>
-            <Accordion label="Authenticity & Natural Hetian Jade (Nephrite) Guarantee">
-              <div className="space-y-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
-                <p>
-                  In addition to jadeite, we occasionally offer natural Hetian jade — a
-                  traditional nephrite jade selected for its quality, authenticity, and
-                  character. While jadeite remains our primary specialty, we are pleased
-                  to offer select Hetian pieces for clients who appreciate its distinct
-                  material and cultural appeal.
-                </p>
-
-                <p className="mt-4 font-medium text-slate-700 dark:text-slate-200">
-                  Our Hetian pieces are represented as natural and untreated unless clearly
-                  stated otherwise.
-                </p>
-
-                <p className="mt-4">
-                  As with all natural jade materials, variations in tone, texture, luster,
-                  and internal structure are part of the material itself and should not be
-                  mistaken for treatment or imitation.
-                </p>
-
-                <p className="mt-4">
-                  We also offer certification for Hetian jade through trusted laboratories,
-                  with additional certification options available upon request depending on
-                  the piece.
-                </p>
-
-                <p className="mt-4">
-                  If a Hetian piece is ever professionally tested and believed not to be
-                  natural nephrite jade, you may contact us to arrange review and
-                  verification. If the returned findings confirm otherwise, a refund will
-                  be issued in accordance with our guarantee terms.
-                </p>
-              </div>
-            </Accordion>
-          </>)}
 
           <div className="spacer-div h-3"></div>
           <Accordion label="Selection & Purchase">

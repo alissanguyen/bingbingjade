@@ -25,7 +25,6 @@ const ALL_STATUSES = [
 const ALL_ORIGINS = [
   { value: "Myanmar",   label: "Myanmar",   dot: "bg-emerald-500" },
   { value: "Guatemala", label: "Guatemala", dot: "bg-blue-500" },
-  { value: "Hetian",    label: "Hetian",    dot: "bg-fuchsia-500" },
 ];
 
 function CheckRow({

@@ -496,7 +496,6 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
             <select required value={form.origin} onChange={set("origin")} className={inputClass}>
               <option value="Myanmar">Myanmar</option>
               <option value="Guatemala">Guatemala</option>
-              <option value="Hetian">Hetian</option>
             </select>
           </div>
           <div>

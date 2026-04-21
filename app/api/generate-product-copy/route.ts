@@ -70,7 +70,7 @@ Generate exactly these fields. Return STRICT JSON with no markdown, no code fenc
   "size": <number in mm, or null if not determinable>,
   "width": <number in mm, or null if not provided>,
   "thickness": <number in mm, or null if not provided>,
-  "origin": <"Myanmar" | "Guatemala" | "Hetian" — default to "Myanmar" if not specified>,
+  "origin": <"Myanmar" | "Guatemala" — default to "Myanmar" if not specified>,
   "imported_price_vnd": <integer in VND, or null if not mentioned — parse Vietnamese currency expressions like "5 triệu" = 5000000, "2.5tr" = 2500000>
 }
 
@@ -213,7 +213,7 @@ export async function POST(req: NextRequest) {
       size: toNum(parsed.size),
       width: toNum(parsed.width),
       thickness: toNum(parsed.thickness),
-      origin: ["Myanmar", "Guatemala", "Hetian"].includes(parsed.origin) ? parsed.origin : "Myanmar",
+      origin: ["Myanmar", "Guatemala"].includes(parsed.origin) ? parsed.origin : "Myanmar",
       // Never return profit margin data to approved users
       imported_price_vnd: isApproved(session) ? null : toNum(parsed.imported_price_vnd),
     });

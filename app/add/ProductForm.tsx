@@ -666,7 +666,6 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
             <select required value={form.origin} onChange={set("origin")} className={inputClass}>
               <option value="Myanmar">Myanmar</option>
               <option value="Guatemala">Guatemala</option>
-              <option value="Hetian">Hetian</option>
             </select>
           </div>
           <div>

@@ -48,7 +48,6 @@ interface OptionPriceRow {
 const ORIGIN_TEXT: Record<string, string> = {
   Myanmar: "text-emerald-600 dark:text-emerald-400",
   Guatemala: "text-blue-600 dark:text-blue-400",
-  Hetian: "text-fuchsia-600 dark:text-fuchsia-400",
 };
 
 const COLOR_SWATCHES: Record<string, string> = {
