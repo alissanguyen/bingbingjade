@@ -321,6 +321,13 @@ export function ProductPageClient({ product, productImages, productVideos, optio
           <PaymentMessaging price={checkoutPrice} className="mt-2" />
         )}
 
+        {/* Raw material note */}
+        {product.category === "raw_material" && (
+          <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
+            Price is for the raw jadeite stone only and does not include cutting, carving, or setting into a finished piece.
+          </p>
+        )}
+
         <div className="mt-6 space-y-5">
           {/* Color tags */}
           {(product.color?.length ?? 0) > 0 && (
