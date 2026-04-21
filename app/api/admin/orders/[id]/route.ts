@@ -36,7 +36,8 @@ export async function GET(
       shipping_address:customer_addresses(
         recipient_name, address_line1, address_line2,
         city, state_or_region, postal_code, country
-      )
+      ),
+      shipping_address_json
     `)
     .eq("id", id);
 
@@ -180,11 +181,13 @@ export async function PATCH(
       country: shippingAddress.country?.trim() || "US",
     };
     if ((order as Record<string, unknown>).shipping_address_id) {
+      // Update existing linked address record
       await supabaseAdmin
         .from("customer_addresses")
         .update(addrData)
         .eq("id", (order as Record<string, unknown>).shipping_address_id as string);
     } else if ((order as Record<string, unknown>).customer_id) {
+      // Create new address record linked to the customer
       const { data: newAddr } = await supabaseAdmin
         .from("customer_addresses")
         .insert({ ...addrData, customer_id: (order as Record<string, unknown>).customer_id })
@@ -193,6 +196,9 @@ export async function PATCH(
       if (newAddr) {
         await supabaseAdmin.from("orders").update({ shipping_address_id: newAddr.id }).eq("id", id);
       }
+    } else {
+      // No customer_id — store address as JSON directly on the order
+      await supabaseAdmin.from("orders").update({ shipping_address_json: addrData }).eq("id", id);
     }
   }
 

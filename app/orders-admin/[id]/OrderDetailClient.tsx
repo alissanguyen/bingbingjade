@@ -89,6 +89,7 @@ interface Order {
   } | null;
   order_items: OrderItem[];
   shipping_address: ShippingAddress | null;
+  shipping_address_json: ShippingAddress | null;
   shipments?: Shipment[];
 }
 
@@ -177,14 +178,15 @@ export function OrderDetailClient({
   const [editPhone, setEditPhone] = useState(order.customer_phone_snapshot ?? "");
   const [editOrderNum, setEditOrderNum] = useState(order.order_number ?? "");
   const [editCreatedAt, setEditCreatedAt] = useState(order.created_at.slice(0, 10));
+  const effectiveAddress = order.shipping_address ?? order.shipping_address_json;
   const [editShip, setEditShip] = useState({
-    recipientName: order.shipping_address?.recipient_name ?? "",
-    line1: order.shipping_address?.address_line1 ?? "",
-    line2: order.shipping_address?.address_line2 ?? "",
-    city: order.shipping_address?.city ?? "",
-    state: order.shipping_address?.state_or_region ?? "",
-    postal: order.shipping_address?.postal_code ?? "",
-    country: order.shipping_address?.country ?? "US",
+    recipientName: effectiveAddress?.recipient_name ?? "",
+    line1: effectiveAddress?.address_line1 ?? "",
+    line2: effectiveAddress?.address_line2 ?? "",
+    city: effectiveAddress?.city ?? "",
+    state: effectiveAddress?.state_or_region ?? "",
+    postal: effectiveAddress?.postal_code ?? "",
+    country: effectiveAddress?.country ?? "US",
   });
   const [editFeeShipping, setEditFeeShipping] = useState(String(order.fee_breakdown?.shipping ?? ""));
   const [editFeeTax, setEditFeeTax] = useState(String(order.fee_breakdown?.tax ?? ""));
@@ -409,6 +411,15 @@ export function OrderDetailClient({
           postal_code: editShip.postal,
           country: editShip.country || "US",
         } : prev.shipping_address,
+        shipping_address_json: editShip.line1.trim() ? {
+          recipient_name: editShip.recipientName || null,
+          address_line1: editShip.line1,
+          address_line2: editShip.line2 || null,
+          city: editShip.city,
+          state_or_region: editShip.state,
+          postal_code: editShip.postal,
+          country: editShip.country || "US",
+        } : prev.shipping_address_json,
       }));
       setShowEditInfo(false);
       showToast("ok", "Order info updated");
@@ -669,13 +680,13 @@ export function OrderDetailClient({
                   setEditFeeOther(String(order.fee_breakdown?.other ?? ""));
                   setEditFeeOtherLabel(order.fee_breakdown?.otherLabel ?? "");
                   setEditShip({
-                    recipientName: order.shipping_address?.recipient_name ?? "",
-                    line1: order.shipping_address?.address_line1 ?? "",
-                    line2: order.shipping_address?.address_line2 ?? "",
-                    city: order.shipping_address?.city ?? "",
-                    state: order.shipping_address?.state_or_region ?? "",
-                    postal: order.shipping_address?.postal_code ?? "",
-                    country: order.shipping_address?.country ?? "US",
+                    recipientName: effectiveAddress?.recipient_name ?? "",
+                    line1: effectiveAddress?.address_line1 ?? "",
+                    line2: effectiveAddress?.address_line2 ?? "",
+                    city: effectiveAddress?.city ?? "",
+                    state: effectiveAddress?.state_or_region ?? "",
+                    postal: effectiveAddress?.postal_code ?? "",
+                    country: effectiveAddress?.country ?? "US",
                   });
                   setShowEditInfo(true);
                 }}
@@ -1124,17 +1135,17 @@ export function OrderDetailClient({
             </div>
 
             {/* Shipping address */}
-            {order.shipping_address && (
+            {effectiveAddress && (
               <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-4">
                 <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Shipping Address</h2>
                 <address className="not-italic text-sm text-gray-600 dark:text-gray-300 space-y-0.5">
-                  {order.shipping_address.recipient_name && (
-                    <p className="font-medium">{order.shipping_address.recipient_name}</p>
+                  {effectiveAddress.recipient_name && (
+                    <p className="font-medium">{effectiveAddress.recipient_name}</p>
                   )}
-                  <p>{order.shipping_address.address_line1}</p>
-                  {order.shipping_address.address_line2 && <p>{order.shipping_address.address_line2}</p>}
-                  <p>{order.shipping_address.city}, {order.shipping_address.state_or_region} {order.shipping_address.postal_code}</p>
-                  <p>{order.shipping_address.country}</p>
+                  <p>{effectiveAddress.address_line1}</p>
+                  {effectiveAddress.address_line2 && <p>{effectiveAddress.address_line2}</p>}
+                  <p>{effectiveAddress.city}, {effectiveAddress.state_or_region} {effectiveAddress.postal_code}</p>
+                  <p>{effectiveAddress.country}</p>
                 </address>
               </div>
             )}
