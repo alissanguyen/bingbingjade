@@ -136,12 +136,14 @@ export default async function CheckoutSuccessPage({
             <>
               Your order number is{" "}
               <span className="font-semibold text-gray-600 dark:text-gray-300">{orderNumber}</span>.
-              {" "}A confirmation email is on its way with a link to track your order.
+              {" "}A confirmation email is on its way with a link to track your order.{" "}
+              If it doesn&apos;t arrive within a few minutes, please check your spam or promotions folder.
             </>
           ) : (
             <>
               A confirmation email is on its way with your BingBing Jade order number and a tracking
-              link. For any questions, reach out via WhatsApp or our contact form.
+              link. If it doesn&apos;t arrive within a few minutes, please check your spam or promotions folder.
+              For any questions, reach out via WhatsApp or our contact form.
             </>
           )}
         </p>
