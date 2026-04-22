@@ -278,11 +278,23 @@ export default async function Products({
 
   return (
     <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 py-16">
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Products</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Our Collection</h1>
       {searchQuery ? (
-        <p className="text-xs sm:text-base mt-2 text-gray-500 dark:text-gray-400">
-          Search results for <span className="font-medium text-gray-800 dark:text-gray-200">"{searchQuery}"</span> · {totalCount} {totalCount === 1 ? "item" : "items"} found
-        </p>
+        <div className="mt-2 flex items-center gap-2">
+          <p className="text-xs sm:text-base text-gray-500 dark:text-gray-400">
+            Search results for <span className="font-medium text-gray-800 dark:text-gray-200">&quot;{searchQuery}&quot;</span> · {totalCount} {totalCount === 1 ? "item" : "items"} found
+          </p>
+          <a
+            href="/products"
+            className="inline-flex items-center gap-1 text-xs sm:text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            aria-label="Clear search"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+            Clear
+          </a>
+        </div>
       ) : (
         <p className="text-xs sm:text-base mt-2 text-gray-500 dark:text-gray-400">Browse our collection of authentic jade pieces.</p>
       )}
