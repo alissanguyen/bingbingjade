@@ -1,10 +1,21 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
 import { useCart } from "./CartContext";
+import { getCategoryLabel } from "@/app/products/categories";
+
+interface SearchResult {
+  id: string;
+  name: string;
+  slug: string;
+  category: string;
+  price: number | null;
+  image: string | null;
+  onSale: boolean;
+}
 
 const NAV_CATEGORIES = [
   { value: "", label: "All Products" },
@@ -24,7 +35,10 @@ export function Navbar() {
   const [mobileProductsOpen, setMobileProductsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const { count, openDrawer, closeDrawer } = useCart();
@@ -33,14 +47,46 @@ export function Navbar() {
     if (searchOpen) searchInputRef.current?.focus();
   }, [searchOpen]);
 
+  const fetchResults = useCallback((q: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (q.trim().length < 2) { setSearchResults([]); return; }
+    debounceRef.current = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q.trim())}`);
+        const json = await res.json();
+        setSearchResults(json.results ?? []);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 250);
+  }, []);
+
+  function handleSearchChange(val: string) {
+    setSearchQuery(val);
+    fetchResults(val);
+  }
+
+  function closeSearch() {
+    setSearchOpen(false);
+    setSearchQuery("");
+    setSearchResults([]);
+  }
+
   function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault();
     const q = searchQuery.trim();
     if (!q) return;
-    setSearchOpen(false);
-    setSearchQuery("");
+    closeSearch();
     setOpen(false);
     router.push(`/products?search=${encodeURIComponent(q)}`);
+  }
+
+  function handleResultClick() {
+    closeSearch();
+    setOpen(false);
   }
 
 
@@ -367,13 +413,19 @@ export function Navbar() {
               ref={searchInputRef}
               type="search"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               placeholder="Search products…"
               className="flex-1 bg-transparent text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 outline-none"
             />
+            {searchLoading && (
+              <svg className="animate-spin text-gray-400 shrink-0" xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+            )}
             <button
               type="button"
-              onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+              onClick={closeSearch}
               className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
               aria-label="Close search"
             >
@@ -382,6 +434,46 @@ export function Navbar() {
               </svg>
             </button>
           </form>
+
+          {/* Live results dropdown */}
+          {searchResults.length > 0 && (
+            <div className="max-w-xl mx-auto mt-2 border-t border-gray-100 dark:border-gray-800">
+              {searchResults.map((r) => (
+                <Link
+                  key={r.id}
+                  href={`/products/${r.slug}`}
+                  onClick={handleResultClick}
+                  className="flex items-center gap-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-900/60 transition-colors rounded-lg px-1 -mx-1"
+                >
+                  <div className="w-10 h-10 rounded-lg overflow-hidden bg-emerald-50 dark:bg-emerald-950 shrink-0">
+                    {r.image ? (
+                      <img src={r.image} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-lg">🪨</div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{r.name}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">{getCategoryLabel(r.category)}</p>
+                  </div>
+                  {r.price != null && (
+                    <span className={`text-sm font-semibold shrink-0 ${r.onSale ? "text-amber-600 dark:text-amber-400" : "text-gray-700 dark:text-gray-300"}`}>
+                      ${r.price.toFixed(2)}
+                    </span>
+                  )}
+                </Link>
+              ))}
+              {searchQuery.trim().length >= 2 && (
+                <button
+                  type="button"
+                  onClick={() => { const q = searchQuery.trim(); closeSearch(); setOpen(false); router.push(`/products?search=${encodeURIComponent(q)}`); }}
+                  className="w-full text-left py-2 text-xs text-emerald-600 dark:text-emerald-400 hover:underline"
+                >
+                  See all results for "{searchQuery.trim()}" →
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
