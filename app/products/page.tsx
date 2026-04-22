@@ -336,6 +336,9 @@ export default async function Products({
                     )}
                     {product.status === "on_sale" && (
                       <div className="ProductCard_Badge_OnSale absolute top-2 left-2 sm:top-3 sm:left-3 z-10 flex items-center gap-1.5">
+                        <div className="bg-red-500/90 backdrop-blur-sm text-white text-[10px] sm:text-[14px] font-semibold tracking-wide px-2.5 py-1">
+                          Sale
+                        </div>
                         {product.price_display_usd != null && product.sale_price_usd != null && (
                           <div className="bg-amber-500/90 backdrop-blur-sm text-white text-[10px] sm:text-[14px] font-semibold tracking-wide px-2.5 py-1 rounded-full">
                             −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
