@@ -369,11 +369,14 @@ export async function POST(req: NextRequest) {
   try {
     const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 20 });
     let shippingCents = 0;
+    let insuranceCents = 0;
     let txFeeCents = 0;
     let discountCents = discountMeta?.amountCents ?? 0;
     for (const li of lineItems.data) {
       const name = li.description ?? "";
-      if (name.startsWith("Shipping") || name.startsWith("Priority Sourcing")) {
+      if (name.startsWith("Shipping Insurance")) {
+        insuranceCents = li.amount_total;
+      } else if (name.startsWith("Shipping") || name.startsWith("Priority Sourcing")) {
         shippingCents = li.amount_total;
       } else if (name.startsWith("Transaction Fee")) {
         txFeeCents = li.amount_total;
@@ -381,6 +384,7 @@ export async function POST(req: NextRequest) {
     }
     const fees: Record<string, number | string> = {};
     if (shippingCents > 0) fees.shipping = shippingCents / 100;
+    if (insuranceCents > 0) fees.insurance = insuranceCents / 100;
     if (txFeeCents > 0) fees.paypal = txFeeCents / 100; // stored under 'paypal' = transaction fee slot
     if (discountCents > 0) fees.discount = discountCents / 100;
     if (Object.keys(fees).length > 0) feeBreakdown = fees;
