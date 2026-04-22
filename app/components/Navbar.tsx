@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
 import { useCart } from "./CartContext";
 
@@ -22,8 +22,26 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
   const [productsOpen, setProductsOpen] = useState(false);
   const [mobileProductsOpen, setMobileProductsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const pathname = usePathname();
+  const router = useRouter();
   const { count, openDrawer, closeDrawer } = useCart();
+
+  useEffect(() => {
+    if (searchOpen) searchInputRef.current?.focus();
+  }, [searchOpen]);
+
+  function handleSearchSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (!q) return;
+    setSearchOpen(false);
+    setSearchQuery("");
+    setOpen(false);
+    router.push(`/products?search=${encodeURIComponent(q)}`);
+  }
 
 
   return (
@@ -260,6 +278,17 @@ export function Navbar() {
           </Link>
         </li>
         <li>
+          <button
+            onClick={() => setSearchOpen((v) => !v)}
+            aria-label="Search products"
+            className={`p-1.5 transition-colors ${searchOpen ? "text-emerald-700 dark:text-emerald-400" : "text-gray-600 dark:text-gray-300 hover:text-emerald-700 dark:hover:text-emerald-400"}`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </button>
+        </li>
+        <li>
           <ThemeToggle />
         </li>
         <li>
@@ -284,6 +313,15 @@ export function Navbar() {
 
       {/* Mobile right side */}
       <div className="flex sm:hidden items-center gap-3">
+        <button
+          onClick={() => { setSearchOpen((v) => !v); setOpen(false); }}
+          aria-label="Search products"
+          className={`p-1 transition-colors ${searchOpen ? "text-emerald-700 dark:text-emerald-400" : "text-gray-600 dark:text-gray-300"}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </button>
         <ThemeToggle />
         <button
           onClick={() => { setOpen(false); setMobileProductsOpen(false); openDrawer(); }}
@@ -317,6 +355,35 @@ export function Navbar() {
           )}
         </button>
       </div>
+
+      {/* Search overlay */}
+      {searchOpen && (
+        <div className="absolute top-full left-0 right-0 z-50 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 px-6 py-3">
+          <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 max-w-xl mx-auto">
+            <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 shrink-0">
+              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              ref={searchInputRef}
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search products…"
+              className="flex-1 bg-transparent text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              aria-label="Close search"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* Mobile dropdown */}
       {open && (

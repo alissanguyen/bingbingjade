@@ -71,7 +71,7 @@ export const revalidate = 21600;
 export default async function Products({
   searchParams,
 }: {
-  searchParams: Promise<{ colors?: string; status?: string; category?: string; origins?: string; minSize?: string; maxSize?: string; minPrice?: string; maxPrice?: string; sort?: string; page?: string; shipping?: string }>;
+  searchParams: Promise<{ colors?: string; status?: string; category?: string; origins?: string; minSize?: string; maxSize?: string; minPrice?: string; maxPrice?: string; sort?: string; page?: string; shipping?: string; search?: string }>;
 }) {
   const params = await searchParams;
   const selectedColors = params.colors?.split(",").filter(Boolean) ?? [];
@@ -79,6 +79,7 @@ export default async function Products({
   const selectedOrigins = params.origins?.split(",").filter(Boolean) ?? [];
   const selectedShipping = params.shipping?.split(",").filter(Boolean) ?? [];
   const selectedCategory = params.category ?? "";
+  const searchQuery = params.search?.trim() ?? "";
   const minSize = params.minSize ? Number(params.minSize) : null;
   const maxSize = params.maxSize ? Number(params.maxSize) : null;
   const minPrice = params.minPrice ? Number(params.minPrice) : null;
@@ -135,6 +136,8 @@ export default async function Products({
   }
 
   const products = (allProducts as ProductCard[] | null)?.filter((p) => {
+    // Search filter
+    if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     // Category filter
     if (selectedCategory && p.category !== selectedCategory) return false;
     // Shipping filter
@@ -276,7 +279,13 @@ export default async function Products({
   return (
     <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 py-16">
       <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Products</h1>
-      <p className="text-xs sm:text-base mt-2 text-gray-500 dark:text-gray-400">Browse our collection of authentic jade pieces.</p>
+      {searchQuery ? (
+        <p className="text-xs sm:text-base mt-2 text-gray-500 dark:text-gray-400">
+          Search results for <span className="font-medium text-gray-800 dark:text-gray-200">"{searchQuery}"</span> · {totalCount} {totalCount === 1 ? "item" : "items"} found
+        </p>
+      ) : (
+        <p className="text-xs sm:text-base mt-2 text-gray-500 dark:text-gray-400">Browse our collection of authentic jade pieces.</p>
+      )}
 
       <div className="mt-10 flex gap-6">
         {/* Filter sidebar — manages its own internal Suspense for URL sync */}
@@ -502,6 +511,7 @@ export default async function Products({
                 ...(params.minPrice ? { minPrice: params.minPrice } : {}),
                 ...(params.maxPrice ? { maxPrice: params.maxPrice } : {}),
                 ...(params.sort ? { sort: params.sort } : {}),
+                ...(params.search ? { search: params.search } : {}),
               })
             ).toString()}
           />
