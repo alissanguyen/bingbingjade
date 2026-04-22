@@ -178,11 +178,11 @@ export function ProductPageClient({ product, productImages, productVideos, optio
         <ProductGallery images={productImages} videos={productVideos} category={getCategoryLabel(product.category)} activeIndex={activeImageIndex} />
         {showImageSaleBadge && (
           <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 pointer-events-none">
-            <div className="bg-amber-400 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">
+            <div className="bg-red-500/90 text-white text-xs font-semibold px-2.5 py-1.5 shadow">
               On Sale
             </div>
             {imageBadgePct != null && imageBadgePct > 0 && (
-              <div className="bg-orange-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">
+              <div className="bg-orange-400 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">
                 −{imageBadgePct}%
               </div>
             )}
@@ -391,7 +391,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
 
               </span>
             ) : isOnSale ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 px-3 py-1 text-sm font-semibold text-amber-700 dark:text-amber-400">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-300/30 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 px-3 py-1 text-sm font-semibold text-amber-700 dark:text-amber-400">
                 <span className="w-2 h-2 rounded-full bg-amber-400" />
                 On Sale
               </span>

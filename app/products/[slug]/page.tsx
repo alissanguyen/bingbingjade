@@ -214,7 +214,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // Sort: color-matching first, then by name; cap at 4
   const related = relatedResolved
     .sort((a, b) => b.colorOverlap - a.colorOverlap || a.name.localeCompare(b.name))
-    .slice(0, 4);
+    .slice(0, 8);
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">

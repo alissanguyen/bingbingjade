@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
 import { useCart } from "./CartContext";
 import { getCategoryLabel } from "@/app/products/categories";
+import Image from "next/image";
 
 interface SearchResult {
   id: string;
@@ -445,9 +446,9 @@ export function Navbar() {
                   onClick={handleResultClick}
                   className="flex items-center gap-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-900/60 transition-colors rounded-lg px-1 -mx-1"
                 >
-                  <div className="w-10 h-10 rounded-lg overflow-hidden bg-emerald-50 dark:bg-emerald-950 shrink-0">
+                  <div className="w-10 h-10 overflow-hidden bg-emerald-50 dark:bg-emerald-950 shrink-0">
                     {r.image ? (
-                      <img src={r.image} alt="" className="w-full h-full object-cover" />
+                      <Image src={r.image} alt="" className="w-full h-full object-cover" width={50} height={50}/>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-lg">🪨</div>
                     )}
@@ -461,7 +462,7 @@ export function Navbar() {
                   onClick={() => { const q = searchQuery.trim(); closeSearch(); setOpen(false); router.push(`/products?search=${encodeURIComponent(q)}`); }}
                   className="w-full text-left py-2 text-xs text-emerald-600 dark:text-emerald-400 hover:underline"
                 >
-                  See all results for "{searchQuery.trim()}" →
+                  See all results for &quot;{searchQuery.trim()}&quot; →
                 </button>
               )}
             </div>

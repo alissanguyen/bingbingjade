@@ -126,7 +126,7 @@ export function RelatedProductsCarousel({ products }: { products: RelatedProduct
                 )}
                 {isOnSale && (
                   <div className="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-10 flex items-center gap-1 sm:gap-1.5">
-                    <div className="bg-amber-400 text-white text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow">
+                    <div className="bg-red-500/90 text-white text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 shadow">
                       On Sale
                     </div>
                     {p.price_display_usd != null && p.sale_price_usd != null && (
