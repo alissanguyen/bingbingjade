@@ -452,15 +452,7 @@ export function Navbar() {
                       <div className="w-full h-full flex items-center justify-center text-lg">🪨</div>
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{r.name}</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">{getCategoryLabel(r.category)}</p>
-                  </div>
-                  {r.price != null && (
-                    <span className={`text-sm font-semibold shrink-0 ${r.onSale ? "text-amber-600 dark:text-amber-400" : "text-gray-700 dark:text-gray-300"}`}>
-                      ${r.price.toFixed(2)}
-                    </span>
-                  )}
+                  <p className="flex-1 min-w-0 text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{r.name}</p>
                 </Link>
               ))}
               {searchQuery.trim().length >= 2 && (
