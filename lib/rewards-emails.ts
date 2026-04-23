@@ -34,7 +34,7 @@ export async function sendRewardsMagicLinkEmail(params: {
 
         <tr>
           <td style="background:#065f46;padding:28px 40px;text-align:center;">
-            <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:#6ee7b7;">Private Client Access</p>
+            <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:#6ee7b7;">REWARDS CENTER</p>
             <h1 style="margin:8px 0 0;font-size:24px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">BingBing Jade</h1>
           </td>
         </tr>

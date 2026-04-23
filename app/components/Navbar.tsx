@@ -30,6 +30,12 @@ const NAV_CATEGORIES = [
   { value: "raw_material", label: "Raw Material" },
 ];
 
+const NAV_COLLECTIONS = [
+  { label: "Under $700", href: "/products?maxPrice=700" },
+  { label: "Signature Pieces", href: "/products?minPrice=2000&maxPrice=10000" },
+  { label: "Collector Grade", href: "/products?minPrice=10000" },
+];
+
 export function Navbar() {
   const [open, setOpen] = useState(false);
   const [productsOpen, setProductsOpen] = useState(false);
@@ -261,9 +267,9 @@ export function Navbar() {
         >
           <Link
             href="/products"
-            className={`flex items-center gap-1 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors ${pathname.startsWith("/products") ? "text-emerald-700 dark:text-emerald-400 font-semibold" : ""}`}
+            className={`flex items-center gap-1 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors ${pathname.startsWith("/products") || pathname.startsWith("/custom-sourcing") ? "text-emerald-700 dark:text-emerald-400 font-semibold" : ""}`}
           >
-            Products
+            Shop Now
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="13"
@@ -282,38 +288,59 @@ export function Navbar() {
 
           {/* Dropdown */}
           <div
-            className={`absolute top-full left-1/2 -translate-x-1/2 pt-3 z-50 transition-all duration-150 ${productsOpen ? "opacity-100 pointer-events-auto translate-y-0" : "opacity-0 pointer-events-none -translate-y-1"
+            className={`absolute top-full left-0 pt-3 z-50 transition-all duration-150 ${productsOpen ? "opacity-100 pointer-events-auto translate-y-0" : "opacity-0 pointer-events-none -translate-y-1"
               }`}
           >
-            <div className="w-44 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg overflow-hidden py-1">
-              {NAV_CATEGORIES.map(({ value, label }) => (
+            <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg overflow-hidden py-3 flex">
+              {/* Category column */}
+              <div className="px-2 min-w-[170px]">
+                <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Category</p>
+                {NAV_CATEGORIES.map(({ value, label }) => (
+                  <Link
+                    key={value}
+                    href={value ? `/products?category=${value}` : "/products"}
+                    onClick={() => setProductsOpen(false)}
+                    className="block px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </div>
+              {/* Divider */}
+              <div className="w-px bg-gray-100 dark:bg-gray-800 mx-1 self-stretch" />
+              {/* Collection column */}
+              <div className="px-2 min-w-40">
+                <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Collection</p>
+                {NAV_COLLECTIONS.map(({ label, href }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setProductsOpen(false)}
+                    className="block px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
+                  >
+                    {label}
+                  </Link>
+                ))}
+                <div className="my-2 h-px bg-gray-100 dark:bg-gray-800 mx-3" />
+                <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Services</p>
                 <Link
-                  key={value}
-                  href={value ? `/products?category=${value}` : "/products"}
+                  href="/custom-sourcing"
                   onClick={() => setProductsOpen(false)}
-                  className="block px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                  className="block px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
                 >
-                  {label}
+                  Custom Sourcing
                 </Link>
-              ))}
+              </div>
             </div>
           </div>
         </li>
 
         <li>
           <Link
-            href="/custom-sourcing"
-            className={`hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors ${pathname.startsWith("/custom-sourcing") ? "text-emerald-700 dark:text-emerald-400 font-semibold" : ""}`}
-          >
-            Custom Sourcing
-          </Link>
-        </li>
-        <li>
-          <Link
             href="/blog"
             className={`hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors ${pathname.startsWith("/blog") ? "text-emerald-700 dark:text-emerald-400 font-semibold" : ""}`}
           >
-            Educational Blog
+            Jade Blog
           </Link>
         </li>
         <li>
@@ -322,6 +349,14 @@ export function Navbar() {
             className={`hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors ${pathname === "/contact" ? "text-emerald-700 dark:text-emerald-400 font-semibold" : ""}`}
           >
             Contact
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/rewards"
+            className={`hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors ${pathname === "/rewards" ? "text-emerald-700 dark:text-emerald-400 font-semibold" : ""}`}
+          >
+            Rewards
           </Link>
         </li>
         <li>
@@ -489,9 +524,9 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={() => setMobileProductsOpen((v) => !v)}
-                className={`w-full flex items-center justify-between py-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors ${pathname.startsWith("/products") ? "text-emerald-700 dark:text-emerald-400 font-semibold" : ""}`}
+                className={`w-full flex items-center justify-between py-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors ${pathname.startsWith("/products") || pathname.startsWith("/custom-sourcing") ? "text-emerald-700 dark:text-emerald-400 font-semibold" : ""}`}
               >
-                Products
+                Shop Now
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="14"
@@ -509,38 +544,58 @@ export function Navbar() {
               </button>
 
               {mobileProductsOpen && (
-                <ul className="pl-4 pb-2 space-y-1 border-l-2 border-emerald-100 dark:border-emerald-900 ml-1">
-                  {NAV_CATEGORIES.map(({ value, label }) => (
-                    <li key={value}>
+                <div className="pl-4 pb-2 border-l-2 border-emerald-100 dark:border-emerald-900 ml-1">
+                  <p className="pt-1 pb-1 text-[10px] sm:text-[14px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Category</p>
+                  <ul className="space-y-0.5">
+                    {NAV_CATEGORIES.map(({ value, label }) => (
+                      <li key={value}>
+                        <Link
+                          href={value ? `/products?category=${value}` : "/products"}
+                          onClick={() => { setOpen(false); setMobileProductsOpen(false); }}
+                          className="ml-2 sm:ml-0 block py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                        >
+                          {label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="pt-3 pb-1 text-[10px] sm:text-[14px] mt-2 sm:mt-0 font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Collection</p>
+                  <ul className="space-y-0.5">
+                    {NAV_COLLECTIONS.map(({ label, href }) => (
+                      <li key={href}>
+                        <Link
+                          href={href}
+                          onClick={() => { setOpen(false); setMobileProductsOpen(false); }}
+                          className="ml-2 sm:ml-0 block py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                        >
+                          {label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="pt-3 pb-1 text-[10px] mt-2 sm:mt-0 sm:text-[14px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Services</p>
+                  <ul className="space-y-0.5">
+                    <li>
                       <Link
-                        href={value ? `/products?category=${value}` : "/products"}
+                        href="/custom-sourcing"
                         onClick={() => { setOpen(false); setMobileProductsOpen(false); }}
-                        className="block py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                        className="ml-2 sm:ml-0 block py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
                       >
-                        {label}
+                        Custom Sourcing
                       </Link>
                     </li>
-                  ))}
-                </ul>
+                  </ul>
+                </div>
               )}
             </li>
 
-            <li>
-              <Link
-                href="/custom-sourcing"
-                onClick={() => setOpen(false)}
-                className={`block py-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors ${pathname.startsWith("/custom-sourcing") ? "text-emerald-700 dark:text-emerald-400 font-semibold" : ""}`}
-              >
-                Custom Sourcing
-              </Link>
-            </li>
             <li>
               <Link
                 href="/blog"
                 onClick={() => setOpen(false)}
                 className={`block py-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors ${pathname.startsWith("/blog") ? "text-emerald-700 dark:text-emerald-400 font-semibold" : ""}`}
               >
-                Educational Blog
+                Jade Blog
               </Link>
             </li>
             <li>
@@ -550,6 +605,15 @@ export function Navbar() {
                 className={`block py-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors ${pathname === "/contact" ? "text-emerald-700 dark:text-emerald-400 font-semibold" : ""}`}
               >
                 Contact
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/rewards"
+                onClick={() => setOpen(false)}
+                className={`block py-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors ${pathname === "/rewards" ? "text-emerald-700 dark:text-emerald-400 font-semibold" : ""}`}
+              >
+                Rewards
               </Link>
             </li>
           </ul>
