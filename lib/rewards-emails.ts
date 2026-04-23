@@ -1,4 +1,12 @@
-import { getResend, getSiteUrl } from "./discount-emails";
+import { Resend } from "resend";
+
+function getResend() {
+  return process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+}
+
+function getSiteUrl() {
+  return (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
+}
 
 /**
  * Send a magic-link email for the /rewards lookup page.
