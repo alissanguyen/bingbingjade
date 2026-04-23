@@ -129,6 +129,7 @@ function buildWelcomeCouponHtml(params: {
             <p style="margin:0;font-size:12px;color:#9ca3af;">
               &copy; ${new Date().getFullYear()} BingBing Jade &middot;
               <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
+              &ensp;&middot;&ensp;<a href="${siteUrl}/rewards" style="color:#9ca3af;text-decoration:none;">Client Rewards</a>
             </p>
             <p style="margin:6px 0 0;font-size:10px;color:#d1d5db;">
               <a href="${unsubscribeUrl}" style="color:#d1d5db;text-decoration:none;">unsubscribe</a>
@@ -270,6 +271,7 @@ export function buildBroadcastHtml(params: {
             <p style="margin:0;font-size:12px;color:#9ca3af;">
               &copy; ${new Date().getFullYear()} BingBing Jade &middot;
               <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
+              &ensp;&middot;&ensp;<a href="${siteUrl}/rewards" style="color:#9ca3af;text-decoration:none;">Client Rewards</a>
             </p>
           </td>
         </tr>
@@ -392,6 +394,7 @@ export function buildCustomerCouponHtml(params: {
             <p style="margin:0;font-size:12px;color:#9ca3af;">
               &copy; ${new Date().getFullYear()} BingBing Jade &middot;
               <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
+              &ensp;&middot;&ensp;<a href="${siteUrl}/rewards" style="color:#9ca3af;text-decoration:none;">Client Rewards</a>
             </p>
           </td>
         </tr>
@@ -561,6 +564,7 @@ export function buildCustomerCouponReminderHtml(params: {
             <p style="margin:0;font-size:12px;color:#9ca3af;">
               &copy; ${new Date().getFullYear()} BingBing Jade &middot;
               <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
+              &ensp;&middot;&ensp;<a href="${siteUrl}/rewards" style="color:#9ca3af;text-decoration:none;">Client Rewards</a>
             </p>
           </td>
         </tr>
@@ -710,6 +714,7 @@ export async function sendReferralInviteEmail(params: {
             <p style="margin:0;font-size:12px;color:#9ca3af;">
               &copy; ${new Date().getFullYear()} BingBing Jade &middot;
               <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
+              &ensp;&middot;&ensp;<a href="${siteUrl}/rewards" style="color:#9ca3af;text-decoration:none;">Client Rewards</a>
             </p>
           </td>
         </tr>
@@ -815,6 +820,7 @@ export async function sendReferralRewardEmail(params: {
             <p style="margin:0;font-size:12px;color:#9ca3af;">
               &copy; ${new Date().getFullYear()} BingBing Jade &middot;
               <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
+              &ensp;&middot;&ensp;<a href="${siteUrl}/rewards" style="color:#9ca3af;text-decoration:none;">Client Rewards</a>
             </p>
           </td>
         </tr>

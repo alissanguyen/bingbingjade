@@ -237,6 +237,7 @@ export async function sendOrderConfirmationEmail(params: {
             <p style="margin:0;font-size:12px;color:#9ca3af;">
               &copy; ${new Date().getFullYear()} BingBing Jade &middot;
               <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
+              &ensp;&middot;&ensp;<a href="${siteUrl}/rewards" style="color:#9ca3af;text-decoration:none;">Client Rewards</a>
             </p>
           </td>
         </tr>
@@ -516,6 +517,7 @@ export async function sendOrderStatusEmail(params: {
             <p style="margin:0;font-size:12px;color:#9ca3af;">
               &copy; ${new Date().getFullYear()} BingBing Jade &middot;
               <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
+              &ensp;&middot;&ensp;<a href="${siteUrl}/rewards" style="color:#9ca3af;text-decoration:none;">Client Rewards</a>
             </p>
           </td>
         </tr>
@@ -622,6 +624,7 @@ export async function sendDeliveryDateEmail(params: {
             <p style="margin:0;font-size:12px;color:#9ca3af;">
               &copy; ${new Date().getFullYear()} BingBing Jade &middot;
               <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
+              &ensp;&middot;&ensp;<a href="${siteUrl}/rewards" style="color:#9ca3af;text-decoration:none;">Client Rewards</a>
             </p>
           </td>
         </tr>

@@ -12,7 +12,9 @@ import { CartDrawer } from "./components/CartDrawer";
 import { AnalyticsPageView } from "./components/analytics/AnalyticsPageView";
 import { AnnouncementBanner } from "./components/AnnouncementBanner";
 import { WhatsAppFloatingButton } from "./components/WhatsAppFloatingButton";
+import { RefCapture } from "./components/RefCapture";
 import { Analytics } from "@vercel/analytics/next";
+import { Suspense } from "react";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -109,6 +111,7 @@ export default async function RootLayout({
               <main className="flex-1">{children}</main>
 
               <WhatsAppFloatingButton />
+              <Suspense><RefCapture /></Suspense>
 
               <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
                 {/* ── Main footer body ── */}
@@ -152,6 +155,7 @@ export default async function RootLayout({
                         { href: "/size-guide", label: "Size Guide" },
                         { href: "/policy", label: "Store Policy" },
                         { href: "/privacy-policy", label: "Privacy Policy" },
+                        { href: "/rewards", label: "Client Rewards" },
                         
                       ].map(({ href, label }) => (
                         <li key={href}>

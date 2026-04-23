@@ -79,6 +79,15 @@ export function CheckoutClient() {
     return () => observer.disconnect();
   }, []);
 
+  // Pre-fill referral code from ?ref= landing (stored in localStorage by RefCapture)
+  useEffect(() => {
+    try {
+      const storedRef = localStorage.getItem("bingbing_ref");
+      if (storedRef && !discountCode) setDiscountCode(storedRef);
+    } catch { /* localStorage unavailable */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Submit
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
