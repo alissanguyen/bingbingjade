@@ -6,7 +6,9 @@
 import { Resend } from "resend";
 
 function getSiteUrl() {
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
+  return (
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com"
+  ).replace(/\/$/, "");
 }
 
 function getResend() {
@@ -14,7 +16,8 @@ function getResend() {
   return key ? new Resend(key) : null;
 }
 
-const JADE_BANNER = "https://images.unsplash.com/photo-1705931396849-93822983c1dc?q=80&w=1624&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
+const JADE_BANNER =
+  "https://images.unsplash.com/photo-1705931396849-93822983c1dc?q=80&w=1624&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
 
 // ── Welcome subscriber email ─────────────────────────────────────────────────
 
@@ -26,7 +29,11 @@ function buildWelcomeCouponHtml(params: {
 }): string {
   const { email, couponCode, expiresAt, siteUrl } = params;
   const unsubscribeUrl = `${siteUrl}/api/unsubscribe?e=${Buffer.from(email).toString("base64")}`;
-  const expiryStr = expiresAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const expiryStr = expiresAt.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric"
+  });
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -157,8 +164,15 @@ export async function sendWelcomeSubscriberEmail(
   if (!resend) return;
 
   const siteUrl = getSiteUrl();
-  const from = process.env.RESEND_FROM_EMAIL_GENERIC ?? "BingBing Jade <hello@bingbingjade.com>";
-  const html = buildWelcomeCouponHtml({ email, couponCode, expiresAt, siteUrl });
+  const from =
+    process.env.RESEND_FROM_EMAIL_GENERIC ??
+    "BingBing Jade <hello@bingbingjade.com>";
+  const html = buildWelcomeCouponHtml({
+    email,
+    couponCode,
+    expiresAt,
+    siteUrl
+  });
 
   try {
     await resend.emails.send({
@@ -166,7 +180,7 @@ export async function sendWelcomeSubscriberEmail(
       to: email,
       bcc: "contact@bingbingjade.com",
       subject: `Your BingBing Jade welcome coupon: ${couponCode}`,
-      html,
+      html
     });
   } catch (err) {
     console.error("[discount-emails] Failed to send welcome email:", err);
@@ -186,8 +200,15 @@ export async function resendSubscriberCouponEmail(
   if (!resend) return;
 
   const siteUrl = getSiteUrl();
-  const from = process.env.RESEND_FROM_EMAIL_GENERIC ?? "BingBing Jade <hello@bingbingjade.com>";
-  const html = buildWelcomeCouponHtml({ email, couponCode, expiresAt, siteUrl });
+  const from =
+    process.env.RESEND_FROM_EMAIL_GENERIC ??
+    "BingBing Jade <hello@bingbingjade.com>";
+  const html = buildWelcomeCouponHtml({
+    email,
+    couponCode,
+    expiresAt,
+    siteUrl
+  });
 
   try {
     await resend.emails.send({
@@ -195,7 +216,7 @@ export async function resendSubscriberCouponEmail(
       to: email,
       bcc: "contact@bingbingjade.com",
       subject: `Your BingBing Jade welcome coupon: ${couponCode}`,
-      html,
+      html
     });
   } catch (err) {
     console.error("[discount-emails] Failed to resend coupon email:", err);
@@ -216,7 +237,9 @@ export async function sendBulkSubscriberEmail(params: {
   const resend = getResend();
   if (!resend) return { sent: 0, failed: params.emails.length };
 
-  const from = process.env.RESEND_FROM_EMAIL_GENERIC ?? "BingBing Jade <hello@bingbingjade.com>";
+  const from =
+    process.env.RESEND_FROM_EMAIL_GENERIC ??
+    "BingBing Jade <hello@bingbingjade.com>";
   const BATCH_SIZE = 50;
   let sent = 0;
   let failed = 0;
@@ -229,12 +252,15 @@ export async function sendBulkSubscriberEmail(params: {
           from,
           to: email,
           subject: params.subject,
-          html: params.html,
+          html: params.html
         }))
       );
       sent += chunk.length;
     } catch (err) {
-      console.error(`[discount-emails] Bulk send batch ${i / BATCH_SIZE} failed:`, err);
+      console.error(
+        `[discount-emails] Bulk send batch ${i / BATCH_SIZE} failed:`,
+        err
+      );
       failed += chunk.length;
     }
   }
@@ -294,7 +320,9 @@ export function buildCustomerCouponHtml(params: {
   const { couponCode, purpose, discountLabel, expiresAt } = params;
 
   const isThankYou = purpose === "thank_you";
-  const eyebrow = isThankYou ? "BingBing Jade &nbsp;·&nbsp; Thank You" : "BingBing Jade &nbsp;·&nbsp; We Miss You";
+  const eyebrow = isThankYou
+    ? "BingBing Jade &nbsp;·&nbsp; Thank You"
+    : "BingBing Jade &nbsp;·&nbsp; We Miss You";
   const headline = isThankYou
     ? "A little gift,<br>just for you"
     : "It&rsquo;s been a while &mdash;<br>here&rsquo;s something special";
@@ -302,7 +330,11 @@ export function buildCustomerCouponHtml(params: {
     ? `Thank you so much for your order &mdash; it means the world to us. As a small token of our appreciation, we&rsquo;ve put together a personal discount, just for you. We hope to see you again soon!`
     : `We noticed it&rsquo;s been a while since your last visit, and we&rsquo;ve been thinking of you. Here&rsquo;s a personal discount code to welcome you back &mdash; we&rsquo;d love to have you shop with us again.`;
   const expiryStr = expiresAt
-    ? expiresAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+    ? expiresAt.toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric"
+      })
     : null;
 
   return `<!DOCTYPE html>
@@ -421,10 +453,22 @@ export async function sendCustomerCouponEmail(params: {
   const resend = getResend();
   if (!resend) return;
 
-  const { customerEmail, couponCode, purpose, discountLabel, expiresAt, scheduledAt } = params;
+  const {
+    customerEmail,
+    couponCode,
+    purpose,
+    discountLabel,
+    expiresAt,
+    scheduledAt
+  } = params;
   const isThankYou = purpose === "thank_you";
   const from = "BingBing Jade <notification@bingbingjade.com>";
-  const html = buildCustomerCouponHtml({ couponCode, purpose, discountLabel, expiresAt });
+  const html = buildCustomerCouponHtml({
+    couponCode,
+    purpose,
+    discountLabel,
+    expiresAt
+  });
 
   try {
     await resend.emails.send({
@@ -435,10 +479,13 @@ export async function sendCustomerCouponEmail(params: {
         ? `A thank-you gift from BingBing Jade: ${couponCode}`
         : `We miss you — here's ${discountLabel} on us: ${couponCode}`,
       html,
-      ...(scheduledAt ? { scheduledAt } : {}),
+      ...(scheduledAt ? { scheduledAt } : {})
     });
   } catch (err) {
-    console.error("[discount-emails] Failed to send customer coupon email:", err);
+    console.error(
+      "[discount-emails] Failed to send customer coupon email:",
+      err
+    );
     throw err;
   }
 }
@@ -453,7 +500,11 @@ export function buildCustomerCouponReminderHtml(params: {
 }): string {
   const siteUrl = getSiteUrl();
   const { couponCode, discountLabel, expiresAt, reminderNumber } = params;
-  const expiryStr = expiresAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const expiryStr = expiresAt.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric"
+  });
 
   const isLast = reminderNumber === 2;
   const eyebrowText = isLast
@@ -591,12 +642,23 @@ export async function sendCustomerCouponReminderEmail(params: {
   if (!resend) return;
 
   const from = "BingBing Jade <notification@bingbingjade.com>";
-  const { customerEmail, couponCode, discountLabel, expiresAt, reminderNumber } = params;
+  const {
+    customerEmail,
+    couponCode,
+    discountLabel,
+    expiresAt,
+    reminderNumber
+  } = params;
   const isLast = reminderNumber === 2;
   const subject = isLast
     ? `Last chance — your BingBing Jade coupon expires soon`
     : `Your BingBing Jade coupon is still valid`;
-  const html = buildCustomerCouponReminderHtml({ couponCode, discountLabel, expiresAt, reminderNumber });
+  const html = buildCustomerCouponReminderHtml({
+    couponCode,
+    discountLabel,
+    expiresAt,
+    reminderNumber
+  });
 
   try {
     await resend.emails.send({
@@ -604,10 +666,13 @@ export async function sendCustomerCouponReminderEmail(params: {
       to: customerEmail,
       bcc: "contact@bingbingjade.com",
       subject,
-      html,
+      html
     });
   } catch (err) {
-    console.error("[discount-emails] Failed to send coupon reminder email:", err);
+    console.error(
+      "[discount-emails] Failed to send coupon reminder email:",
+      err
+    );
     throw err;
   }
 }
@@ -641,7 +706,7 @@ export async function sendReferralInviteEmail(params: {
 
         <tr>
           <td style="background:#065f46;padding:32px 40px;text-align:center;">
-            <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:#6ee7b7;">Referral Program</p>
+            <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:#6ee7b7;">Client Rewards</p>
             <h1 style="margin:8px 0 0;font-size:26px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">BingBing Jade</h1>
           </td>
         </tr>
@@ -649,11 +714,17 @@ export async function sendReferralInviteEmail(params: {
         <tr>
           <td style="padding:36px 40px;">
             <p style="margin:0 0 20px;font-size:16px;color:#111827;">Hi ${firstName},</p>
+
             <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
-              Your order has been delivered — we hope your piece brings you lasting joy! 💚
+              Your order has been delivered — we hope your piece brings you lasting joy. 💚
             </p>
+
             <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
-              As a thank you for being part of our community, you now have a personal referral code. Share it with friends who are new to BingBing Jade — they get a discount on their first order, and you earn <strong>$10 store credit</strong> when their order is delivered.
+              As a BingBing Jade client, you now have a personal referral code to share with someone discovering us for the first time. When they place their first order using your code, they’ll receive a private welcome offer of <strong>$20 off</strong>, and you’ll receive a credit toward your next piece once their order is successfully delivered.
+            </p>
+
+            <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
+              Your reward is based on the piece they choose:
             </p>
 
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:28px;">
@@ -661,7 +732,30 @@ export async function sendReferralInviteEmail(params: {
                 <td style="padding:20px 24px;text-align:center;">
                   <p style="margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:#059669;">Your Referral Code</p>
                   <p style="margin:0;font-size:28px;font-weight:800;color:#065f46;letter-spacing:0.12em;">${params.referralCode}</p>
-                  <p style="margin:10px 0 0;font-size:12px;color:#6b7280;">Friends enter this code in the cart before checking out</p>
+                  <p style="margin:10px 0 0;font-size:12px;color:#6b7280;">Your code stays the same and can be shared anytime</p>
+                </td>
+              </tr>
+            </table>
+
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+              <tr>
+                <td style="padding:10px 0;border-bottom:1px solid #f3f4f6;font-size:14px;color:#374151;">
+                  Referred order under <strong>$500</strong> → you receive <strong style="color:#065f46;">$10 credit</strong>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:10px 0;border-bottom:1px solid #f3f4f6;font-size:14px;color:#374151;">
+                  Referred order from <strong>$500 to $999</strong> → you receive <strong style="color:#065f46;">$20 credit</strong>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:10px 0;border-bottom:1px solid #f3f4f6;font-size:14px;color:#374151;">
+                  Referred order from <strong>$1000 to $1999</strong> → you receive <strong style="color:#065f46;">$30 credit</strong>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:10px 0;font-size:14px;color:#374151;">
+                  Referred order of <strong>$2000+</strong> → you receive <strong style="color:#065f46;">$50+ credit</strong>
                 </td>
               </tr>
             </table>
@@ -671,7 +765,7 @@ export async function sendReferralInviteEmail(params: {
                 <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;">
                   <table cellpadding="0" cellspacing="0" width="100%"><tr>
                     <td style="font-size:13px;color:#6b7280;width:20px;padding-right:10px;">1.</td>
-                    <td style="font-size:14px;color:#374151;">Share your code with a friend who hasn't shopped with us</td>
+                    <td style="font-size:14px;color:#374151;">Share your code with someone new to BingBing Jade</td>
                   </tr></table>
                 </td>
               </tr>
@@ -679,7 +773,7 @@ export async function sendReferralInviteEmail(params: {
                 <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;">
                   <table cellpadding="0" cellspacing="0" width="100%"><tr>
                     <td style="font-size:13px;color:#6b7280;width:20px;padding-right:10px;">2.</td>
-                    <td style="font-size:14px;color:#374151;">They enter <strong>${params.referralCode}</strong> in the cart — they save $10&ndash;$20 on their first order</td>
+                    <td style="font-size:14px;color:#374151;">They use <strong>${params.referralCode}</strong> on their first order and receive <strong>$20 off</strong></td>
                   </tr></table>
                 </td>
               </tr>
@@ -687,7 +781,7 @@ export async function sendReferralInviteEmail(params: {
                 <td style="padding:8px 0;">
                   <table cellpadding="0" cellspacing="0" width="100%"><tr>
                     <td style="font-size:13px;color:#6b7280;width:20px;padding-right:10px;">3.</td>
-                    <td style="font-size:14px;color:#374151;">Once their order is delivered, you earn <strong style="color:#065f46;">$10 store credit</strong></td>
+                    <td style="font-size:14px;color:#374151;">Once their order is delivered, your credit is issued based on the value of the piece they selected</td>
                   </tr></table>
                 </td>
               </tr>
@@ -696,15 +790,19 @@ export async function sendReferralInviteEmail(params: {
             <table cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
               <tr>
                 <td style="background:#065f46;border-radius:999px;">
-                  <a href="${siteUrl}/products" style="display:inline-block;padding:13px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">
-                    Browse Our Collection &rarr;
+                  <a href="${siteUrl}/rewards" style="display:inline-block;padding:13px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">
+                    View Client Rewards &rarr;
                   </a>
                 </td>
               </tr>
             </table>
 
+            <p style="margin:0 0 14px;font-size:13px;color:#6b7280;line-height:1.6;">
+              Jade has always been something you share — with people you care about.
+            </p>
+
             <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.6;">
-              Referral discount is for first-time customers only. Store credit is issued after the referred order is delivered. Cannot be combined with other discounts.
+              Referral welcome offer is reserved for first-time customers and cannot be combined with other discounts. Client credit is issued after the referred order is successfully delivered.
             </p>
           </td>
         </tr>
@@ -731,10 +829,13 @@ export async function sendReferralInviteEmail(params: {
       to: params.customerEmail,
       bcc: "contact@bingbingjade.com",
       subject: `[Order Update] Your BingBing Jade referral code — share and earn $10`,
-      html,
+      html
     });
   } catch (err) {
-    console.error("[discount-emails] Failed to send referral invite email:", err);
+    console.error(
+      "[discount-emails] Failed to send referral invite email:",
+      err
+    );
   }
 }
 
@@ -756,7 +857,7 @@ export async function sendReferralRewardEmail(params: {
   const from = "BingBing Jade <notification@bingbingjade.com>";
   const firstName = params.referrerName.split(" ")[0];
 
-  const html = `<!DOCTYPE html>
+  const html = `<!DOCTYPE html> //TODO: FIX
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
@@ -837,9 +938,12 @@ export async function sendReferralRewardEmail(params: {
       to: params.referrerEmail,
       bcc: "contact@bingbingjade.com",
       subject: `[Order Update] You earned $${params.creditAmountDollars.toFixed(2)} store credit — BingBing Jade`,
-      html,
+      html
     });
   } catch (err) {
-    console.error("[discount-emails] Failed to send referral reward email:", err);
+    console.error(
+      "[discount-emails] Failed to send referral reward email:",
+      err
+    );
   }
 }

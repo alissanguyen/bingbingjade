@@ -78,7 +78,7 @@ export function GalleryGrid() {
         {/* Gradient fade + toggle button */}
         {hasMore && (
           <div
-            className={`absolute bottom-0 left-0 right-0 h-44 bg-gradient-to-b from-transparent via-white/80 to-white dark:via-gray-950/80 dark:to-gray-950 transition-opacity duration-500 ${expanded ? "opacity-0 pointer-events-none" : "opacity-100"}`}
+            className={`absolute bottom-0 left-0 right-0 h-44 bg-linear-to-b from-transparent via-white/80 to-white dark:via-gray-950/80 dark:to-gray-950 transition-opacity duration-500 ${expanded ? "opacity-0 pointer-events-none" : "opacity-100"}`}
           />
         )}
       </div>

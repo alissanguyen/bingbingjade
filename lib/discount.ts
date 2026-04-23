@@ -589,17 +589,31 @@ export async function commitDiscount(params: {
 // ── Post-delivery: issue referral rewards ─────────────────────────────────────
 
 /**
+ * Tiered referral reward based on the referred order's total.
+ *   < $500      → $10
+ *   $500–$999   → $20
+ *   $1000–$1999 → $30
+ *   $2000+      → $50
+ */
+export function getReferralRewardDollars(orderAmountCents: number): number {
+  if (orderAmountCents >= 200000) return 50;
+  if (orderAmountCents >= 100000) return 30;
+  if (orderAmountCents >= 50000)  return 20;
+  return 10;
+}
+
+/**
  * Called when an order's status changes to "delivered".
- * Issues the $10 store credit to the referrer if the referral qualifies.
+ * Issues tiered store credit to the referrer based on the order amount.
  * Idempotent: checks status before issuing credit.
  *
- * Returns the referral ID if a reward was issued, null otherwise.
+ * Returns { referrerCustomerId, rewardDollars } if a reward was issued, null otherwise.
  */
 export async function processReferralRewardOnDelivery(
   orderId: string,
-  referralId: string
-): Promise<string | null> {
-  // Fetch referral (lock row by checking status atomically via update)
+  referralId: string,
+  orderAmountCents: number
+): Promise<{ referrerCustomerId: string; rewardDollars: number } | null> {
   const { data: referral } = await supabaseAdmin
     .from("referrals")
     .select("id, status, referrer_customer_id, discount_amount_cents")
@@ -608,21 +622,19 @@ export async function processReferralRewardOnDelivery(
     .maybeSingle();
 
   if (!referral) return null;
-  // Only process once
   if (referral.status === "rewarded") return null;
   if (referral.status === "cancelled") return null;
 
-  const REFERRAL_REWARD_CENTS = 1000; // $10.00
-  const REFERRAL_REWARD_DOLLARS = 10.0;
+  const rewardDollars = getReferralRewardDollars(orderAmountCents);
 
   // Issue store credit to referrer
   await supabaseAdmin.from("store_credit_ledger").insert({
     customer_id: referral.referrer_customer_id,
     type: "referral_reward",
-    amount: REFERRAL_REWARD_DOLLARS,
+    amount: rewardDollars,
     order_id: orderId,
     referral_id: referralId,
-    notes: `Referral reward for order ${orderId}`,
+    notes: `Referral reward for order ${orderId} ($${rewardDollars})`,
   });
 
   // Increment referrer's credit balance
@@ -636,20 +648,20 @@ export async function processReferralRewardOnDelivery(
     await supabaseAdmin
       .from("customers")
       .update({
-        store_credit_balance: (referrer.store_credit_balance ?? 0) + REFERRAL_REWARD_DOLLARS,
+        store_credit_balance: (referrer.store_credit_balance ?? 0) + rewardDollars,
         updated_at: new Date().toISOString(),
       })
       .eq("id", referrer.id);
   }
 
-  // Mark referral as rewarded (atomic: only if still pending/qualified)
+  // Mark referral as rewarded
   await supabaseAdmin
     .from("referrals")
     .update({ status: "rewarded", credited_at: new Date().toISOString() })
     .eq("id", referralId)
     .in("status", ["pending", "qualified"]);
 
-  return referral.referrer_customer_id;
+  return { referrerCustomerId: referral.referrer_customer_id, rewardDollars };
 }
 
 // ── Referral code generation ──────────────────────────────────────────────────

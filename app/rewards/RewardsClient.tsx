@@ -135,12 +135,14 @@ function Dashboard({ data }: { data: RewardsData }) {
     <div className="w-full space-y-6">
       {/* Welcome */}
       <div className="text-center mb-2">
-        <p className="text-sm text-gray-500 dark:text-gray-400">Welcome back, <span className="font-medium text-gray-700 dark:text-gray-300">{firstName}</span></p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Welcome back, <span className="font-medium text-emerald-700 dark:text-emerald-300">{firstName}</span></p>
       </div>
-
+      <p className="mt-8 text-base sm:text-lg italic font-medium text-emerald-900 dark:text-white max-w-lg mx-auto leading-relaxed tracking-wide">
+        &ldquo;Because jade has always been something you share — with people you care about.&rdquo;
+      </p>
       {/* Credit summary */}
       <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 sm:p-8">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-6">Store Credit</p>
+        <p className="text-[10px] sm:text-sm font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-6">Store Credit</p>
         <div className="grid grid-cols-3 gap-4 divide-x divide-gray-100 dark:divide-gray-800">
           <Stat label="Available" value={`$${data.availableBalance.toFixed(2)}`} />
           <Stat label="Total Earned" value={`$${data.totalEarned.toFixed(2)}`} />
@@ -153,13 +155,43 @@ function Dashboard({ data }: { data: RewardsData }) {
         )}
       </div>
 
+      {/* How referrals work */}
+      <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 sm:p-8">
+        <p className="text-[10px] sm:text-sm font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-5">How It Works</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-1">
+          When someone you invite discovers BingBing Jade, they&rsquo;ll receive a private welcome offer.
+        </p>
+        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
+          As a thank you, you&rsquo;ll receive a credit toward your next piece — scaled to the piece they choose.
+        </p>
+        <div className="rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 text-sm">
+          <div className="grid grid-cols-3 bg-gray-50 dark:bg-gray-800 px-4 py-2.5 text-[10px] sm:text-[12px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+            <span>Their order</span>
+            <span className="text-center">Your credit</span>
+            <span className="text-right">Their discount</span>
+          </div>
+          {[
+            { range: "Under $500", you: "$10", them: "$20 off" },
+            { range: "$500 – $999", you: "$20", them: "$20 off" },
+            { range: "$1,000 – $1,999", you: "$30", them: "$20 off" },
+            { range: "$2,000+", you: "$50", them: "$20 off" },
+          ].map(({ range, you, them }, i) => (
+            <div key={i} className="grid grid-cols-3 px-4 py-3 border-t border-gray-100 dark:border-gray-800">
+              <span className="text-gray-500 dark:text-gray-400">{range}</span>
+              <span className="text-center font-semibold text-emerald-700 dark:text-emerald-400">{you}</span>
+              <span className="text-right text-gray-500 dark:text-gray-400">{them}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Referral code + link */}
       <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 sm:p-8">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-6">Your Referral Benefits</p>
+        <p className="text-[10px]  sm:text-sm font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-6">Your Referral Benefits</p>
 
         <div className="space-y-5">
           <div>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Your code</p>
+            <p className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 mb-1.5">Your code</p>
             <div className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 dark:bg-gray-800 px-4 py-3">
               <span className="font-mono text-base font-semibold tracking-widest text-gray-900 dark:text-gray-100">{data.referralCode}</span>
               <CopyButton text={data.referralCode} label="Copy code" />
@@ -167,9 +199,9 @@ function Dashboard({ data }: { data: RewardsData }) {
           </div>
 
           <div>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Shareable link</p>
+            <p className="text-xs  sm:text-sm text-gray-400 dark:text-gray-500 mb-1.5">Shareable link</p>
             <div className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 dark:bg-gray-800 px-4 py-3">
-              <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{referralLink}</span>
+              <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">{referralLink}</span>
               <CopyButton text={referralLink} label="Copy link" />
             </div>
           </div>
@@ -186,16 +218,12 @@ function Dashboard({ data }: { data: RewardsData }) {
             </div>
           </div>
 
-          <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
-            <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
-              When a friend places their first order using your link, they receive a discount. Once their order is delivered, you earn <span className="text-gray-600 dark:text-gray-400 font-medium">$10 store credit</span> — applied to your next purchase.
-            </p>
-          </div>
+
         </div>
       </div>
 
       <div className="text-center pt-2">
-        <Link href="/products" className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline">
+        <Link href="/products" className="text-xs sm:text-sm text-emerald-700 dark:text-emerald-400 hover:underline">
           Browse the collection &rarr;
         </Link>
       </div>

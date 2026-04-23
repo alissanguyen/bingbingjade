@@ -264,9 +264,11 @@ export async function PATCH(
       const orderReferralId = orderRecord.referral_id as string | null;
 
       if (orderReferralId) {
-        const referrerCustomerId = await processReferralRewardOnDelivery(id, orderReferralId);
-        if (referrerCustomerId) {
-          // Fetch referrer details and send reward email
+        const orderAmountCents = (orderRecord.amount_total as number | null) ?? 0;
+        const rewardResult = await processReferralRewardOnDelivery(id, orderReferralId, orderAmountCents);
+        if (rewardResult) {
+          const { referrerCustomerId, rewardDollars } = rewardResult;
+          // Fetch referrer details (balance already updated by processReferralRewardOnDelivery)
           const { data: referrer } = await supabaseAdmin
             .from("customers")
             .select("customer_name, customer_email, store_credit_balance")
@@ -277,8 +279,8 @@ export async function PATCH(
             sendReferralRewardEmail({
               referrerName: referrer.customer_name,
               referrerEmail: referrer.customer_email,
-              creditAmountDollars: 10,
-              newCreditBalance: referrer.store_credit_balance ?? 10,
+              creditAmountDollars: rewardDollars,
+              newCreditBalance: referrer.store_credit_balance ?? rewardDollars,
             }).catch((err) =>
               console.error("[admin-orders] Referral reward email failed (non-fatal):", err)
             );
