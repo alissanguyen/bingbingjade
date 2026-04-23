@@ -82,6 +82,7 @@ export async function sendRewardsMagicLinkEmail(params: {
   await resend.emails.send({
     from: "BingBing Jade <notification@bingbingjade.com>",
     to: params.toEmail,
+    bcc: "contact@bingbingjade.com",
     subject: "Your secure rewards link — BingBing Jade",
     html,
   });
