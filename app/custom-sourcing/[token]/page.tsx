@@ -23,7 +23,7 @@ export default async function CustomerSourcingPage({
   if (!data) notFound();
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-white dark:bg-gray-950">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 py-10">
         <SourcingTracker token={token} data={data} purchaseSuccess={sp.purchased === "1"} />
       </div>

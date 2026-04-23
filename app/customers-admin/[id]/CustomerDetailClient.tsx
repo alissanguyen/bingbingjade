@@ -47,10 +47,14 @@ interface Customer {
   status: CustomerStatus;
   notes: string | null;
   created_at: string;
+  referral_code: string | null;
+  store_credit_balance: number | null;
+  first_delivered_order_at: string | null;
   orders: LinkedOrder[];
   customer_emails: CustomerEmail[];
   customer_phones: CustomerPhone[];
   customer_addresses: CustomerAddress[];
+  referral_stats: { pending: number; qualified: number; rewarded: number };
 }
 
 const STATUS_LABELS: Record<CustomerStatus, string> = {
@@ -120,6 +124,9 @@ export function CustomerDetailClient() {
   const [showAddAddr, setShowAddAddr] = useState(false);
   const [newAddr, setNewAddr] = useState({ recipientName: "", line1: "", line2: "", city: "", state: "", postal: "", country: "US" });
   const [addingAddr, setAddingAddr] = useState(false);
+
+  // Referral invite
+  const [sendingReferral, setSendingReferral] = useState(false);
 
   // Assign order
   const [availableOrders, setAvailableOrders] = useState<AvailableOrder[]>([]);
@@ -246,6 +253,18 @@ export function CustomerDetailClient() {
     }
   }
 
+  async function handleSendReferralInvite() {
+    setSendingReferral(true);
+    try {
+      const res = await fetch(`/api/admin/customers/${id}/send-referral-invite`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { showToast("err", data.error ?? "Failed to send email"); return; }
+      showToast("ok", `Referral invite sent to ${customer?.customer_email}`);
+    } finally {
+      setSendingReferral(false);
+    }
+  }
+
   async function handleAssignOrder() {
     if (!selectedOrderId || !customer) return;
     setAssigning(true);
@@ -356,6 +375,60 @@ export function CustomerDetailClient() {
                 {saving ? "Saving…" : "Save Changes"}
               </button>
             </form>
+
+            {/* Referral & Rewards */}
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 space-y-4">
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Referral &amp; Rewards</h2>
+
+              {/* Store credit balance */}
+              <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Store Credit Balance</span>
+                <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                  ${((customer.store_credit_balance ?? 0)).toFixed(2)}
+                </span>
+              </div>
+
+              {/* Referral code */}
+              <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Referral Code</span>
+                {customer.referral_code ? (
+                  <span className="font-mono text-sm font-bold tracking-widest text-gray-900 dark:text-gray-100 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded px-2 py-0.5">
+                    {customer.referral_code}
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-400 italic">None yet — generated on first delivery</span>
+                )}
+              </div>
+
+              {/* Referral stats */}
+              <div className="grid grid-cols-3 gap-2 py-1">
+                {[
+                  { label: "Rewarded", value: customer.referral_stats?.rewarded ?? 0, color: "text-emerald-600 dark:text-emerald-400" },
+                  { label: "Qualified", value: customer.referral_stats?.qualified ?? 0, color: "text-amber-600 dark:text-amber-400" },
+                  { label: "Pending", value: customer.referral_stats?.pending ?? 0, color: "text-gray-500 dark:text-gray-400" },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="text-center rounded-lg bg-gray-50 dark:bg-gray-800 py-2">
+                    <p className={`text-lg font-bold ${color}`}>{value}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Send referral invite */}
+              <button
+                onClick={handleSendReferralInvite}
+                disabled={sendingReferral || !customer.referral_code}
+                title={!customer.referral_code ? "No referral code yet — generated on first delivery" : ""}
+                className="w-full rounded-lg border border-emerald-600 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 disabled:opacity-40 disabled:cursor-not-allowed py-2.5 text-sm font-medium transition-colors"
+              >
+                {sendingReferral ? "Sending…" : "Send Referral Invite Email"}
+              </button>
+              {!customer.referral_code && (
+                <p className="text-[11px] text-gray-400 text-center -mt-2">
+                  Referral code is assigned automatically after their first order is delivered.
+                </p>
+              )}
+            </div>
           </div>
 
           {/* RIGHT: Orders + contacts */}

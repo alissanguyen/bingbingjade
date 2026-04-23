@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function SizeGuidePage() {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-white dark:bg-gray-950">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h1 className="mb-2 text-2xl font-semibold text-gray-900 dark:text-white">

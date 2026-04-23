@@ -23,7 +23,7 @@ export async function GET(
 
   const { data, error } = await supabaseAdmin
     .from("customers")
-    .select("id, customer_name, customer_email, customer_phone, number_of_orders, status, notes, created_at, updated_at")
+    .select("id, customer_name, customer_email, customer_phone, number_of_orders, status, notes, created_at, updated_at, referral_code, store_credit_balance, first_delivered_order_at")
     .eq("id", id)
     .single();
 
@@ -32,7 +32,7 @@ export async function GET(
   }
 
   // Fetch all related data separately to avoid FK relationship dependencies
-  const [{ data: orders }, { data: emails }, { data: phones }, { data: addresses }] = await Promise.all([
+  const [{ data: orders }, { data: emails }, { data: phones }, { data: addresses }, { data: referrals }] = await Promise.all([
     supabaseAdmin
       .from("orders")
       .select("id, order_number, order_status, amount_total, currency, created_at")
@@ -53,7 +53,18 @@ export async function GET(
       .select("id, recipient_name, address_line1, address_line2, city, state_or_region, postal_code, country, is_default, created_at")
       .eq("customer_id", id)
       .order("created_at"),
+    supabaseAdmin
+      .from("referrals")
+      .select("id, status")
+      .eq("referrer_customer_id", id),
   ]);
+
+  const referralList = referrals ?? [];
+  const referralStats = {
+    pending: referralList.filter((r) => r.status === "pending").length,
+    qualified: referralList.filter((r) => r.status === "qualified").length,
+    rewarded: referralList.filter((r) => r.status === "rewarded").length,
+  };
 
   return NextResponse.json({
     customer: {
@@ -62,6 +73,7 @@ export async function GET(
       customer_emails: emails ?? [],
       customer_phones: phones ?? [],
       customer_addresses: addresses ?? [],
+      referral_stats: referralStats,
     },
   });
 }

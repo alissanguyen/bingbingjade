@@ -10,7 +10,6 @@ export async function GET(req: NextRequest) {
     .from("products")
     .select("id, name, slug, public_id, category, price_display_usd, sale_price_usd, status, images")
     .eq("is_published", true)
-    .neq("status", "sold")
     .ilike("name", `%${q}%`)
     .order("created_at", { ascending: false })
     .limit(6);
@@ -27,6 +26,7 @@ export async function GET(req: NextRequest) {
         price: p.status === "on_sale" ? p.sale_price_usd : p.price_display_usd,
         image,
         onSale: p.status === "on_sale",
+        sold: p.status === "sold",
       };
     })
   );

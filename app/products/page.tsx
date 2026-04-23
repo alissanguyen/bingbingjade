@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-html-link-for-pages */
 import { Suspense } from "react";
 import { productSlug } from "@/lib/slug";
 import { supabase } from "@/lib/supabase";

@@ -132,7 +132,7 @@ function Dashboard({ data }: { data: RewardsData }) {
   const firstName = data.customerName?.split(" ")[0] ?? "there";
 
   return (
-    <div className="mx-auto max-w-xl w-full space-y-6">
+    <div className="w-full space-y-6">
       {/* Welcome */}
       <div className="text-center mb-2">
         <p className="text-sm text-gray-500 dark:text-gray-400">Welcome back, <span className="font-medium text-gray-700 dark:text-gray-300">{firstName}</span></p>
@@ -232,9 +232,9 @@ export function RewardsClient({ token, sent }: { token: string | null; sent: boo
   }, [token, verify]);
 
   return (
-    <div className="min-h-[70vh] px-4 py-16 sm:py-24">
+    <div>
       {/* Header */}
-      <div className="text-center mb-12">
+      <div className="text-center mb-6">
         <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400 mb-3">
           BingBing Jade
         </p>
@@ -244,6 +244,37 @@ export function RewardsClient({ token, sent }: { token: string | null; sent: boo
         <p className="mt-3 text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto leading-relaxed">
           {token ? "Your private client benefits." : "Access your referral credit and exclusive benefits."}
         </p>
+
+        {!token && (
+          <>
+            {/* Quote */}
+            <p className="mt-8 text-base sm:text-lg italic font-medium text-emerald-900 dark:text-white max-w-xs mx-auto leading-relaxed tracking-wide">
+              &ldquo;Because jade has always been something you share — with people you care about.&rdquo;
+            </p>
+
+            {/* Reserved notice */}
+            <div className="mt-7 rounded-xl border border-emerald-100 dark:border-emerald-900/60 bg-emerald-50/60 dark:bg-emerald-950/30 px-5 py-4 text-center">
+              <p className="text-xs sm:text-sm font-semibold text-emerald-800 dark:text-emerald-300 tracking-wide">Reserved for BingBing Jade clients</p>
+              <p className="mt-1 text-xs sm:text-sm text-emerald-700/70 dark:text-emerald-400/70 leading-relaxed">
+                Your private referral benefits are unlocked after your first piece arrives.
+              </p>
+            </div>
+
+            {/* Perks */}
+            <div className="mt-5 flex flex-col gap-2 items-center">
+              <div className="inline-flex items-center gap-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                <span className="text-emerald-600 dark:text-emerald-400">✦</span>
+                Refer a friend and earn up to <span className="font-semibold text-gray-700 dark:text-gray-300">$50 in referral credits</span>
+              </div>
+              <div className="inline-flex items-center gap-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                <span className="text-emerald-600 dark:text-emerald-400">✦</span>
+                Your credits <span className="font-semibold text-gray-700 dark:text-gray-300">never expire</span>
+              </div>
+            </div>
+
+            <div className="mt-4 border-t border-gray-100 dark:border-gray-800" />
+          </>
+        )}
       </div>
 
       {/* States */}

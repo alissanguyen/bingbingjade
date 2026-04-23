@@ -16,6 +16,7 @@ interface SearchResult {
   price: number | null;
   image: string | null;
   onSale: boolean;
+  sold: boolean;
 }
 
 const NAV_CATEGORIES = [
@@ -479,16 +480,19 @@ export function Navbar() {
                   key={r.id}
                   href={`/products/${r.slug}`}
                   onClick={handleResultClick}
-                  className="flex items-center gap-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-900/60 transition-colors rounded-lg px-1 -mx-1"
+                  className={`flex items-center gap-3 py-2.5 transition-colors rounded-lg px-1 -mx-1 ${r.sold ? "opacity-50" : "hover:bg-gray-50 dark:hover:bg-gray-900/60"}`}
                 >
-                  <div className="w-10 h-10 overflow-hidden bg-emerald-50 dark:bg-emerald-950 shrink-0">
+                  <div className="w-10 h-10 overflow-hidden bg-emerald-50 dark:bg-emerald-950 shrink-0 relative">
                     {r.image ? (
-                      <Image src={r.image} alt="" className="w-full h-full object-cover" width={50} height={50}/>
+                      <Image src={r.image} alt="" className={`w-full h-full object-cover ${r.sold ? "grayscale" : ""}`} width={50} height={50}/>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-lg">🪨</div>
                     )}
                   </div>
                   <p className="flex-1 min-w-0 text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{r.name}</p>
+                  {r.sold && (
+                    <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5">Sold</span>
+                  )}
                 </Link>
               ))}
               {searchQuery.trim().length >= 2 && (
