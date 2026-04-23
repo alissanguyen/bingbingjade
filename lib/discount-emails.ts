@@ -842,7 +842,7 @@ export async function sendReferralInviteEmail(params: {
 // ── Referral reward email ─────────────────────────────────────────────────────
 
 /**
- * Sent to the referrer when they earn $10 store credit.
+ * Sent to the referrer when they earn tiered store credit based on the referred order amount.
  */
 export async function sendReferralRewardEmail(params: {
   referrerName: string;
@@ -857,7 +857,7 @@ export async function sendReferralRewardEmail(params: {
   const from = "BingBing Jade <notification@bingbingjade.com>";
   const firstName = params.referrerName.split(" ")[0];
 
-  const html = `<!DOCTYPE html> //TODO: FIX
+  const html = `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
@@ -865,57 +865,73 @@ export async function sendReferralRewardEmail(params: {
     <tr><td align="center">
       <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
 
+        <!-- Header -->
         <tr>
           <td style="background:#065f46;padding:32px 40px;text-align:center;">
-            <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:#6ee7b7;">Referral Reward</p>
-            <h1 style="margin:8px 0 0;font-size:26px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">BingBing Jade</h1>
+            <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:#6ee7b7;">Client Rewards</p>
+            <h1 style="margin:8px 0 0;font-size:26px;font-weight:700;color:#ffffff;">BingBing Jade</h1>
           </td>
         </tr>
 
+        <!-- Body -->
         <tr>
           <td style="padding:36px 40px;">
             <p style="margin:0 0 20px;font-size:16px;color:#111827;">Hi ${firstName},</p>
+
             <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
-              Great news! Someone you referred has received their order. Your referral reward has been added to your account.
+              Someone you invited has just completed their order — thank you for sharing BingBing Jade with them. 💚
             </p>
 
+            <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
+              Your referral credit has now been issued:
+            </p>
+
+            <!-- Reward Highlight -->
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:28px;">
               <tr>
-                <td style="padding:20px 24px;">
-                  <table cellpadding="0" cellspacing="0" width="100%">
-                    <tr>
-                      <td style="padding:6px 0;font-size:14px;color:#374151;">Reward earned</td>
-                      <td style="padding:6px 0;font-size:16px;font-weight:700;color:#065f46;text-align:right;">+$${params.creditAmountDollars.toFixed(2)} store credit</td>
-                    </tr>
-                    <tr>
-                      <td style="padding:6px 0;font-size:14px;color:#374151;">New credit balance</td>
-                      <td style="padding:6px 0;font-size:14px;font-weight:600;color:#374151;text-align:right;">$${params.newCreditBalance.toFixed(2)}</td>
-                    </tr>
-                  </table>
+                <td style="padding:24px;text-align:center;">
+                  <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:#059669;">
+                    Credit Earned
+                  </p>
+                  <p style="margin:0;font-size:34px;font-weight:800;color:#065f46;">
+                    $${rewardAmount}
+                  </p>
                 </td>
               </tr>
             </table>
 
             <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
-              Your store credit will be automatically applied to your next order. Keep sharing your referral code to earn more!
+              This credit has been added to your account and can be applied toward your next piece anytime.
             </p>
 
+            <!-- CTA -->
             <table cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
               <tr>
                 <td style="background:#065f46;border-radius:999px;">
-                  <a href="${siteUrl}/products" style="display:inline-block;padding:13px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">
-                    Shop Now &rarr;
+                  <a href="${siteUrl}/rewards" style="display:inline-block;padding:13px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">
+                    View My Rewards &rarr;
                   </a>
                 </td>
               </tr>
             </table>
 
-            <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.6;">
-              Questions? Reach out via <a href="${siteUrl}/contact" style="color:#059669;text-decoration:none;">our contact page</a>.
+            <!-- Soft reinforcement -->
+            <p style="margin:0 0 14px;font-size:14px;color:#374151;line-height:1.6;">
+              Your referral code is always available to share — and your rewards grow based on the pieces they choose.
+            </p>
+
+            <p style="margin:0 0 14px;font-size:13px;color:#6b7280;line-height:1.6;">
+              Jade has always been something you share — with people you care about.
+            </p>
+
+            <!-- Footer note -->
+            <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.6;">
+              Referral rewards are issued after successful orders and may not be combined with other offers.
             </p>
           </td>
         </tr>
 
+        <!-- Footer -->
         <tr>
           <td style="padding:20px 40px 28px;border-top:1px solid #f3f4f6;text-align:center;">
             <p style="margin:0;font-size:12px;color:#9ca3af;">
