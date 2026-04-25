@@ -33,7 +33,8 @@ export async function GET(req: NextRequest) {
       acct_vendors(id, vendor_code, vendor_display_name)
     `);
 
-  const costMap = new Map<string, typeof costs extends (infer T)[] ? T : never>();
+  type CostRow = NonNullable<typeof costs>[number];
+  const costMap = new Map<string, CostRow>();
   for (const c of costs ?? []) {
     costMap.set(c.product_id as string, c);
   }
