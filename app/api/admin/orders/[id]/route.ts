@@ -52,7 +52,10 @@ export async function GET(
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ order });
+  // Strip server-only cost fields before sending to any client
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { cogs_cents: _cogs, imported_price_vnd: _vnd, ...safeOrder } = order as typeof order & { cogs_cents?: unknown; imported_price_vnd?: unknown };
+  return NextResponse.json({ order: safeOrder });
 }
 
 export async function PATCH(
@@ -309,5 +312,8 @@ export async function PATCH(
     }
   }
 
-  return NextResponse.json({ order });
+  // Strip server-only cost fields before sending to any client
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { cogs_cents: _cogs, imported_price_vnd: _vnd, ...safeOrder } = order as typeof order & { cogs_cents?: unknown; imported_price_vnd?: unknown };
+  return NextResponse.json({ order: safeOrder });
 }

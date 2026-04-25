@@ -155,9 +155,11 @@ function buildTrackingUrl(carrier: string | null, trackingNumber: string | null,
 export function OrderDetailClient({
   order: initialOrder,
   productImages,
+  productCogs,
 }: {
   order: Order;
   productImages: Record<string, string>;
+  productCogs: Record<string, number>;
 }) {
   const router = useRouter();
   const [order, setOrder] = useState(initialOrder);
@@ -762,6 +764,7 @@ export function OrderDetailClient({
                   const imgSrc = item.product_id ? productImages[item.product_id] : "";
                   const draft = draftItems[idx];
                   const lineTotal = (item.line_total ?? (item.price_usd ?? 0) * item.quantity).toFixed(2);
+                  const cogs = item.product_id ? productCogs[item.product_id] : undefined;
                   return (
                     <div key={item.id} className="flex gap-3 px-4 py-3 items-center">
                       <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
@@ -785,6 +788,9 @@ export function OrderDetailClient({
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-snug line-clamp-2">{item.product_name}</p>
                         {item.option_label && <p className="text-xs text-gray-400 mt-0.5">{item.option_label}</p>}
+                        {cogs != null && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">COGS ${cogs.toFixed(2)}</p>
+                        )}
                         {!editingItems && item.quantity > 1 && <p className="text-xs text-gray-400">×{item.quantity}</p>}
                         {editingItems && draft && (
                           <div className="flex gap-2 mt-1.5">

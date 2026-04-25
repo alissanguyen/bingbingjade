@@ -270,7 +270,7 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
                         <span className="font-medium text-gray-500 dark:text-gray-400">
                           {salePrice != null
                             ? fmtPrice(salePrice)
-                            : rangeLabel ?? (basePrice != null ? fmtPrice(basePrice) : "—")}
+                            : rangeLabel ?? (basePrice != null ? fmtPrice(basePrice) : "Contact for price")}
                         </span>
                         {salePrice != null && basePrice != null && (
                           <>
@@ -354,7 +354,7 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
                         <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
                           {salePrice != null
                             ? fmtPrice(salePrice)
-                            : rangeLabel ?? (basePrice != null ? fmtPrice(basePrice) : "—")}
+                            : rangeLabel ?? (basePrice != null ? fmtPrice(basePrice) : "Contact for price")}
                         </span>
                         {salePrice != null && basePrice != null && (
                           <>

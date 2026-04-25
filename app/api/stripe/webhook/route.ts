@@ -368,25 +368,38 @@ export async function POST(req: NextRequest) {
   let feeBreakdown: Record<string, number | string> | null = null;
   try {
     const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 20 });
-    let shippingCents = 0;
+    let shippingCents  = 0;
     let insuranceCents = 0;
-    let txFeeCents = 0;
-    let discountCents = discountMeta?.amountCents ?? 0;
+    let txFeeCents     = 0;
+    let taxLineCents   = 0;
+    const discountCents = discountMeta?.amountCents ?? 0;
+
     for (const li of lineItems.data) {
-      const name = li.description ?? "";
+      // Always trim — Stripe description whitespace is inconsistent
+      const name = (li.description ?? "").trim();
+      // Check insurance BEFORE generic shipping (both start with "Shipping")
       if (name.startsWith("Shipping Insurance")) {
-        insuranceCents = li.amount_total;
+        insuranceCents += li.amount_total ?? 0;
       } else if (name.startsWith("Shipping") || name.startsWith("Priority Sourcing")) {
-        shippingCents = li.amount_total;
+        shippingCents += li.amount_total ?? 0;
+      } else if (name === "Sales Tax" || name === "Tax") {
+        // Custom tax line items (not Stripe Tax) — amount_total is what was charged
+        taxLineCents += li.amount_total ?? 0;
       } else if (name.startsWith("Transaction Fee")) {
-        txFeeCents = li.amount_total;
+        txFeeCents += li.amount_total ?? 0;
       }
     }
+
+    // Tax: prefer custom "Sales Tax" line item; fall back to Stripe Tax (total_details)
+    const stripeTaxCents = session.total_details?.amount_tax ?? 0;
+    const finalTaxCents  = taxLineCents > 0 ? taxLineCents : stripeTaxCents;
+
     const fees: Record<string, number | string> = {};
-    if (shippingCents > 0) fees.shipping = shippingCents / 100;
+    if (shippingCents  > 0) fees.shipping  = shippingCents  / 100;
     if (insuranceCents > 0) fees.insurance = insuranceCents / 100;
-    if (txFeeCents > 0) fees.paypal = txFeeCents / 100; // stored under 'paypal' = transaction fee slot
-    if (discountCents > 0) fees.discount = discountCents / 100;
+    if (txFeeCents     > 0) fees.paypal    = txFeeCents     / 100;
+    if (discountCents  > 0) fees.discount  = discountCents  / 100;
+    if (finalTaxCents  > 0) fees.tax       = finalTaxCents  / 100;
     if (Object.keys(fees).length > 0) feeBreakdown = fees;
   } catch (err) {
     console.error("[webhook] Failed to fetch line items for fee breakdown (non-fatal):", err);
@@ -440,6 +453,74 @@ export async function POST(req: NextRequest) {
     }
     console.error("[webhook] Failed to create order for session", session.id, orderErr);
     return NextResponse.json({ error: "Failed to create order." }, { status: 500 });
+  }
+
+  // ── Record payment in order_payments ledger ──────────────────────────────────
+  // Fetch the real Stripe fee from the balance transaction — this is the exact
+  // amount Stripe charged (accounts for card type, international, Pay Later, etc.)
+  if (paymentIntentId && session.amount_total && session.payment_status === "paid") {
+    try {
+      const amountUsd = session.amount_total / 100;
+      let feeUsd      = 0;
+      let netUsd      = amountUsd;
+      let receiptUrl: string | null = null;
+
+      // Retrieve the PI with charge + balance transaction to get exact fee
+      try {
+        const pi = await stripe.paymentIntents.retrieve(paymentIntentId, {
+          expand: ["latest_charge.balance_transaction"],
+        });
+        const charge = pi.latest_charge as import("stripe").Stripe.Charge | null;
+        const balTxn = charge?.balance_transaction as import("stripe").Stripe.BalanceTransaction | null;
+        if (balTxn) {
+          feeUsd = balTxn.fee / 100;
+          netUsd = balTxn.net / 100;
+        }
+        receiptUrl = charge?.receipt_url ?? null;
+      } catch {
+        // Balance transaction may not be settled yet at webhook time; sync will fix it later
+      }
+
+      const paymentRow = {
+        order_id:                order.id,
+        bbj_order_code:          orderNumber,
+        payment_provider:        "stripe" as const,
+        payment_type:            "checkout",
+        provider_transaction_id: paymentIntentId,
+        provider_receipt_id:     receiptUrl,
+        provider_invoice_id:     null as string | null,
+        amount_paid_usd:         amountUsd,
+        currency:                (session.currency ?? "usd").toUpperCase(),
+        payment_fee_usd:         feeUsd,
+        net_received_usd:        netUsd,
+        payment_date:            new Date(session.created * 1000).toISOString(),
+        payment_status:          "paid",
+        proof_url:               null as string | null,
+        notes:                   `Stripe Checkout ${session.id}`,
+      };
+
+      // Idempotent: only insert if no row exists for this payment intent
+      const { data: existingPayment } = await supabase
+        .from("order_payments")
+        .select("id")
+        .eq("payment_provider", "stripe")
+        .eq("provider_transaction_id", paymentIntentId)
+        .maybeSingle();
+
+      if (!existingPayment) {
+        await supabase.from("order_payments").insert(paymentRow);
+      } else {
+        // Update fee/net in case a prior insert had fee=0 (balance txn not settled yet)
+        if (feeUsd > 0) {
+          await supabase
+            .from("order_payments")
+            .update({ payment_fee_usd: feeUsd, net_received_usd: netUsd, provider_receipt_id: receiptUrl })
+            .eq("id", existingPayment.id);
+        }
+      }
+    } catch (err) {
+      console.error("[webhook] order_payments insert failed (non-fatal):", err);
+    }
   }
 
   // ── Commit discount ───────────────────────────────────────────────────────────

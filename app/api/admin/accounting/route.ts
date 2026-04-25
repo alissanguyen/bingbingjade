@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { getSessionUser } from "@/lib/approved-auth";
+import { getSessionUser, isAdmin } from "@/lib/approved-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  if (!(await getSessionUser())) {
+  const session = await getSessionUser();
+  if (!session || !isAdmin(session)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

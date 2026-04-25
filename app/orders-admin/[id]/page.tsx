@@ -56,11 +56,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     .filter((id): id is string => !!id);
 
   let productImages: Record<string, string> = {};
+  let productCogs: Record<string, number> = {};
   if (productIds.length > 0) {
-    const { data: products } = await supabaseAdmin
-      .from("products")
-      .select("id, images")
-      .in("id", productIds);
+    const [{ data: products }, { data: costs }] = await Promise.all([
+      supabaseAdmin.from("products").select("id, images").in("id", productIds),
+      supabaseAdmin.from("product_costs").select("product_id, total_cogs_usd").in("product_id", productIds),
+    ]);
 
     // resolveFirstImageUrl converts storage paths (wm/file.jpg) → full public URLs
     const resolved = await Promise.all(
@@ -70,12 +71,15 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       })
     );
     productImages = Object.fromEntries(resolved);
+    productCogs = Object.fromEntries(
+      (costs ?? []).map((c) => [c.product_id, Number(c.total_cogs_usd)])
+    );
   }
 
   return (
     <>
       <AdminBarServer />
-      <OrderDetailClient order={{ ...orderForClient, shipments }} productImages={productImages} />
+      <OrderDetailClient order={{ ...orderForClient, shipments }} productImages={productImages} productCogs={productCogs} />
     </>
   );
 }

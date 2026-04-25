@@ -32,9 +32,10 @@ const NAV_CATEGORIES = [
 ];
 
 const NAV_COLLECTIONS = [
-  { label: "Under $700", href: "/products?maxPrice=700" },
-  { label: "Signature Pieces", href: "/products?minPrice=2000&maxPrice=10000" },
-  { label: "Collector Grade", href: "/products?minPrice=10000" },
+  { label: "Under $700", href: "/products?maxPrice=699" },
+  { label: "Most Loved Pieces", href: "/products?minPrice=700&maxPrice=3999" },
+  { label: "Collector Picks", href: "/products?minPrice=4000&maxPrice=9999" },
+  { label: "Rare & Investment Jade", href: "/products?minPrice=10000" },
 ];
 
 export function Navbar() {

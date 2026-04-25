@@ -21,6 +21,7 @@ interface Product {
   size_detailed: (number | null)[] | null;
   price_display_usd: number | null;
   sale_price_usd: number | null;
+  show_price: boolean;
   description: string | null;
   blemishes: string | null;
   is_featured: boolean | null;
@@ -71,9 +72,9 @@ export async function generateMetadata(
 
   const { data: product } = await supabase
     .from("products")
-    .select("name, category, origin, description, color, tier, price_display_usd, images")
+    .select("name, category, origin, description, color, tier, price_display_usd, show_price, images")
     .eq("public_id", publicId)
-    .single<{ name: string; category: string; origin: string | null; description: string | null; color: string[] | null; tier: string[] | null; price_display_usd: number | null; images: string[] }>();
+    .single<{ name: string; category: string; origin: string | null; description: string | null; color: string[] | null; tier: string[] | null; price_display_usd: number | null; show_price: boolean; images: string[] }>();
 
   if (!product) return {};
 
@@ -83,7 +84,7 @@ export async function generateMetadata(
   if (product.category) descParts.push(product.category.charAt(0).toUpperCase() + product.category.slice(1));
   if (product.color?.length) descParts.push(product.color.join(", "));
   if (product.tier?.length) descParts.push(product.tier.join(", "));
-  if (product.price_display_usd != null) descParts.push(`$${product.price_display_usd}`);
+  if (product.show_price && product.price_display_usd != null) descParts.push(`$${product.price_display_usd}`);
   const fallbackDesc = descParts.length ? descParts.join(" · ") : "Authentic jade jewelry at BingBing Jade.";
   const description = product.description || fallbackDesc;
 
@@ -143,7 +144,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const { data: product } = await supabase
     .from("products")
-    .select("id, name, category, origin, images, videos, color, tier, size, size_detailed, price_display_usd, sale_price_usd, description, blemishes, is_featured, is_published, quick_ship, status, slug, public_id")
+    .select("id, name, category, origin, images, videos, color, tier, size, size_detailed, price_display_usd, sale_price_usd, show_price, description, blemishes, is_featured, is_published, quick_ship, status, slug, public_id")
     .eq("public_id", publicId)
     .single<Product>();
 
@@ -176,7 +177,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const currentColors = product.color ?? [];
   const { data: relatedRaw } = await supabase
     .from("products")
-    .select("id, name, slug, public_id, category, origin, color, tier, size, price_display_usd, sale_price_usd, status, quick_ship, images")
+    .select("id, name, slug, public_id, category, origin, color, tier, size, price_display_usd, sale_price_usd, show_price, status, quick_ship, images")
     .eq("category", product.category)
     .eq("is_published", true)
     .neq("id", product.id)
@@ -201,8 +202,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         color: p.color as string[] | null,
         tier: p.tier as string[] | null,
         size: p.size as number | null,
-        price_display_usd: p.price_display_usd as number | null,
-        sale_price_usd: p.sale_price_usd as number | null,
+        price_display_usd: (p.show_price as boolean) ? (p.price_display_usd as number | null) : null,
+        sale_price_usd:    (p.show_price as boolean) ? (p.sale_price_usd as number | null)    : null,
         status: p.status as string,
         quick_ship: (p.quick_ship as boolean) ?? false,
         cardImages: resolvedTwo,
@@ -216,16 +217,30 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     .sort((a, b) => b.colorOverlap - a.colorOverlap || a.name.localeCompare(b.name))
     .slice(0, 8);
 
+  // Security: strip actual prices before passing to the client component.
+  // ProductPageClient is a client component — its props are serialized into the browser's
+  // RSC payload. If show_price is false, prices must be null so they are never sent to clients.
+  const clientProduct = {
+    ...product,
+    price_display_usd: product.show_price ? product.price_display_usd : null,
+    sale_price_usd:    product.show_price ? product.sale_price_usd    : null,
+  };
+  const clientOptions = optionsWithResolvedImages.map((opt) => ({
+    ...opt,
+    price_usd:      product.show_price ? opt.price_usd      : null,
+    sale_price_usd: product.show_price ? opt.sale_price_usd : null,
+  }));
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
       {/* Back */}
       <BackToProductsLink />
 
       <ProductPageClient
-        product={product}
+        product={clientProduct}
         productImages={productImages}
         productVideos={productVideos}
-        options={optionsWithResolvedImages}
+        options={clientOptions}
       />
 
       {/* Quality assurance strip */}

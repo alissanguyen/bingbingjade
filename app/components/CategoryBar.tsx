@@ -17,9 +17,10 @@ const CATEGORIES = [
 ];
 
 const PRICE_TABS = [
-  { key: "under700", label: "Under $700", params: { maxPrice: "700" } },
-  { key: "signature", label: "Signature Pieces", params: { minPrice: "2000", maxPrice: "10000" } },
-  { key: "collector", label: "Collector Grade", params: { minPrice: "10000" } }
+  { key: "under700", label: "Under $700", params: { maxPrice: "699" } },
+  { key: "most-loved", label: "Most Loved Pieces", params: { minPrice: "700", maxPrice: "3999" } },
+  { key: "collector-picks", label: "Collector Picks", params: { minPrice: "4000", maxPrice: "9999" } },
+  { key: "rare-investment", label: "Rare & Investment Jade", params: { minPrice: "10000" } }
 ];
 
 function CategoryBarInner() {

@@ -30,6 +30,7 @@ interface ProductCard {
   size: number;
   price_display_usd: number | null;
   sale_price_usd: number | null;
+  show_price: boolean;
   description: string | null;
   is_featured: boolean;
   is_published: boolean;
@@ -93,7 +94,7 @@ export default async function Products({
 
   const productsQuery = supabase
     .from("products")
-    .select("id, name, category, origin, images, color, tier, size, price_display_usd, sale_price_usd, description, is_featured, status, slug, public_id, is_published, quick_ship")
+    .select("id, name, category, origin, images, color, tier, size, price_display_usd, sale_price_usd, show_price, description, is_featured, status, slug, public_id, is_published, quick_ship")
     .order("created_at", { ascending: false });
 
   if (!isDev) productsQuery.eq("is_published", true);
@@ -361,7 +362,7 @@ export default async function Products({
                         <div className="bg-red-500/90 backdrop-blur-sm text-white text-[10px] sm:text-[14px] font-semibold tracking-wide px-2.5 py-1">
                           Sale
                         </div>
-                        {product.price_display_usd != null && product.sale_price_usd != null && (
+                        {product.show_price && product.price_display_usd != null && product.sale_price_usd != null && (
                           <div className="bg-amber-500/90 backdrop-blur-sm text-white text-[10px] sm:text-[14px] font-semibold tracking-wide px-2.5 py-1 rounded-full">
                             −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
                           </div>
@@ -407,37 +408,40 @@ export default async function Products({
                     )}
                     <div className={`ProductCard_PriceRow mt-3 pt-3 border-t dark:border-gray-800 flex items-center justify-between ${product.status === "sold" ? "border-gray-200" : "border-gray-100"}`}>
                       {(() => {
-                        const vp = getVariantPrices(product);
+                        // Only expose prices to the browser when show_price is true
+                        const vp = product.show_price ? getVariantPrices(product) : [];
+                        const dp = product.show_price ? product.price_display_usd : null;
+                        const sp = product.show_price ? product.sale_price_usd : null;
                         const vMin = vp.length > 0 ? Math.min(...vp) : null;
                         const vMax = vp.length > 0 ? Math.max(...vp) : null;
                         const hasRange = vMin != null && vMax != null && vMin !== vMax;
                         const rangeLabel = hasRange ? fmtRangeLabel(vMin!, vMax!) : null;
                         if (product.status === "sold") {
-                          const base = product.sale_price_usd ?? (rangeLabel ? null : product.price_display_usd);
+                          const base = sp ?? (rangeLabel ? null : dp);
                           return (
                             <span className="flex items-center gap-2">
                               <span className="text-[17px] text-gray-400 dark:text-gray-500">
                                 {base != null ? fmtCardPrice(base) : rangeLabel ?? "—"}
                               </span>
-                              {product.sale_price_usd != null && product.price_display_usd != null && (
-                                <span className="text-[15px] text-gray-300 dark:text-gray-600 line-through">{fmtCardPrice(product.price_display_usd)}</span>
+                              {sp != null && dp != null && (
+                                <span className="text-[15px] text-gray-300 dark:text-gray-600 line-through">{fmtCardPrice(dp)}</span>
                               )}
                             </span>
                           );
                         }
-                        if (product.status === "on_sale" && product.sale_price_usd != null) {
+                        if (product.status === "on_sale" && sp != null) {
                           return (
                             <span className="flex items-center gap-2">
-                              <span className="text-[17px] font-semibold text-amber-600 dark:text-amber-400">{fmtCardPrice(product.sale_price_usd)}</span>
+                              <span className="text-[17px] font-semibold text-amber-600 dark:text-amber-400">{fmtCardPrice(sp)}</span>
                               <span className="text-[15px] text-gray-300 dark:text-gray-600 line-through">
-                                {rangeLabel ?? (product.price_display_usd != null ? fmtCardPrice(product.price_display_usd) : null)}
+                                {rangeLabel ?? (dp != null ? fmtCardPrice(dp) : null)}
                               </span>
                             </span>
                           );
                         }
                         return (
                           <span className="text-[17px] font-semibold text-gray-800 dark:text-gray-200">
-                            {rangeLabel ?? (product.price_display_usd != null ? fmtCardPrice(product.price_display_usd) : "Contact for price")}
+                            {rangeLabel ?? (dp != null ? fmtCardPrice(dp) : "Contact for price")}
                           </span>
                         );
                       })()}
@@ -468,32 +472,34 @@ export default async function Products({
                     )}
                     <div className={`ProductCard_PriceRow mt-2 pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between ${product.status === "sold" ? "border-gray-200" : "border-gray-100"}`}>
                       {(() => {
-                        const vp = getVariantPrices(product);
+                        const vp = product.show_price ? getVariantPrices(product) : [];
+                        const dp = product.show_price ? product.price_display_usd : null;
+                        const sp = product.show_price ? product.sale_price_usd : null;
                         const vMin = vp.length > 0 ? Math.min(...vp) : null;
                         const vMax = vp.length > 0 ? Math.max(...vp) : null;
                         const hasRange = vMin != null && vMax != null && vMin !== vMax;
                         const rangeLabel = hasRange ? fmtRangeLabel(vMin!, vMax!) : null;
                         if (product.status === "sold") {
-                          const base = product.sale_price_usd ?? (rangeLabel ? null : product.price_display_usd);
+                          const base = sp ?? (rangeLabel ? null : dp);
                           return (
                             <span className="text-[10px] text-gray-400 dark:text-gray-500">
                               {base != null ? fmtCardPrice(base) : rangeLabel ?? "—"}
                             </span>
                           );
                         }
-                        if (product.status === "on_sale" && product.sale_price_usd != null) {
+                        if (product.status === "on_sale" && sp != null) {
                           return (
                             <span className="flex items-center gap-1.5">
-                              <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">{fmtCardPrice(product.sale_price_usd)}</span>
+                              <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">{fmtCardPrice(sp)}</span>
                               <span className="text-[8px] text-gray-300 dark:text-gray-600 line-through">
-                                {rangeLabel ?? (product.price_display_usd != null ? fmtCardPrice(product.price_display_usd) : null)}
+                                {rangeLabel ?? (dp != null ? fmtCardPrice(dp) : null)}
                               </span>
                             </span>
                           );
                         }
                         return (
                           <span className="text-[10px] font-semibold text-gray-800 dark:text-gray-200">
-                            {rangeLabel ?? (product.price_display_usd != null ? fmtCardPrice(product.price_display_usd) : "Contact for price")}
+                            {rangeLabel ?? (dp != null ? fmtCardPrice(dp) : "Contact for price")}
                           </span>
                         );
                       })()}

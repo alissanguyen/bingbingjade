@@ -894,7 +894,7 @@ export async function sendReferralRewardEmail(params: {
                     Credit Earned
                   </p>
                   <p style="margin:0;font-size:34px;font-weight:800;color:#065f46;">
-                    $${rewardAmount}
+                    $${params.creditAmountDollars}
                   </p>
                 </td>
               </tr>

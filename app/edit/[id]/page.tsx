@@ -44,12 +44,14 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
 
   const initialOptions: InitialOption[] = optionsData ?? [];
 
+  const approvedUser = isApproved(session);
+
   const productWithUrls = {
     ...product,
     images: resolvedImages,
     videos: resolvedVideos,
-    // Strip profit margin data from approved user sessions — never serialized to client props
-    ...(isApproved(session) ? { imported_price_vnd: 0 } : {}),
+    // Strip cost/supplier fields from approved user sessions — never serialized to client props
+    ...(approvedUser ? { imported_price_vnd: 0, vendor_id: "" } : {}),
   };
 
   return (
@@ -60,9 +62,9 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
       </div>
       <EditForm
         product={productWithUrls}
-        vendors={vendors ?? []}
+        vendors={approvedUser ? [] : (vendors ?? [])}
         initialOptions={initialOptions}
-        isApprovedUser={isApproved(session)}
+        isApprovedUser={approvedUser}
         hasPendingApproval={product.pending_approval ?? false}
       />
     </div>

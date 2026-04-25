@@ -165,6 +165,7 @@ interface ProductData {
   price_display_usd: number | null;
   sale_price_usd: number | null;
   imported_price_vnd: number;
+  show_price: boolean;
   vendor_id: string;
   is_featured: boolean;
   is_published: boolean;
@@ -250,6 +251,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
   const [isFeatured, setIsFeatured] = useState(product.is_featured);
   const [isPublished, setIsPublished] = useState(product.is_published);
   const [isQuickShip, setIsQuickShip] = useState(product.quick_ship ?? false);
+  const [showPrice, setShowPrice] = useState(product.show_price ?? false);
   const [status, setStatus] = useState<"available" | "sold" | "on_sale">(product.status ?? "available");
 
   const [form, setForm] = useState({
@@ -268,6 +270,22 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
     product.size_detailed?.[1] != null ? String(product.size_detailed[1]) : "",
     product.size_detailed?.[2] != null ? String(product.size_detailed[2]) : "",
   ]);
+  const [priceHint, setPriceHint] = useState<string | null>(null);
+
+  function suggestPrice() {
+    const vnd = parseFloat(form.imported_price_vnd);
+    if (!vnd || vnd <= 0) return;
+    const costUsd = vnd / 26000;
+    const multiplier = costUsd < 1000 ? 3.0 : costUsd < 3000 ? 2.7 : costUsd < 8000 ? 2.3 : 2.0;
+    const raw = costUsd * multiplier;
+    const suggested = raw < 2000
+      ? Math.round(raw / 50) * 50
+      : Math.round(raw / 100) * 100;
+    setForm(prev => ({ ...prev, price_display_usd: String(suggested) }));
+    setPriceHint(
+      `Suggested from ₫${Number(vnd).toLocaleString()} import cost → $${costUsd.toLocaleString("en-US", { maximumFractionDigits: 0 })} cost • ${multiplier}× tier. You can edit this price manually.`
+    );
+  }
 
   const blankRow = (): OptionRow => ({
     label: "",
@@ -411,6 +429,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       fd.append("is_featured", String(isFeatured));
       fd.append("is_published", String(isPublished));
       fd.append("quick_ship", String(isQuickShip));
+      fd.append("show_price", String(showPrice));
       fd.append("status", status);
       sizeDetailed.forEach((v, i) => fd.append(`size_detailed_${i}`, v));
       selectedColors.forEach((c) => fd.append("color", c));
@@ -751,13 +770,55 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
         <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Pricing</h2>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>Display Price (USD)</label>
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
-              <input type="number" step="0.01" min="0" value={form.price_display_usd} onChange={set("price_display_usd")} placeholder="0.00" className={`${inputClass} pl-7`} />
+            <label className={labelClass}>Listing Price (USD) <span className="text-red-400">*</span></label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
+                <input
+                  required type="number" step="0.01" min="0"
+                  value={form.price_display_usd}
+                  onChange={e => { set("price_display_usd")(e); setPriceHint(null); }}
+                  placeholder="0.00"
+                  className={`${inputClass} pl-7`}
+                />
+              </div>
+              {!isApprovedUser && (
+                <button
+                  type="button"
+                  onClick={suggestPrice}
+                  className="shrink-0 px-3 py-2 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors whitespace-nowrap"
+                >
+                  Suggest Price
+                </button>
+              )}
             </div>
-            <p className="mt-1 text-xs text-gray-400">Leave blank to show &quot;Contact for price&quot;</p>
+            {priceHint ? (
+              <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500 leading-snug">{priceHint}</p>
+            ) : (
+              <p className="mt-1 text-xs text-gray-400">Always required. Control visibility with the toggle below.</p>
+            )}
           </div>
+          {!isApprovedUser && (
+            <div className="col-span-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowPrice((v) => !v)}
+                className="flex items-center gap-3 group"
+              >
+                <div className={`relative w-10 h-6 rounded-full transition-colors ${showPrice ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"}`}>
+                  <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${showPrice ? "translate-x-4" : ""}`} />
+                </div>
+                <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+                  {showPrice
+                    ? "Price visible to customers"
+                    : "Price hidden — customers see \"Contact for Price\""}
+                </span>
+              </button>
+              <p className="mt-1.5 ml-[52px] text-xs text-gray-400">
+                When hidden, the actual price is never sent to the browser.
+              </p>
+            </div>
+          )}
           {status === "on_sale" && (
             <div>
               <label className={labelClass}>Sale Price (USD)</label>
