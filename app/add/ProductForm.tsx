@@ -1052,7 +1052,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
                 <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
                   {showPrice
                     ? "Price visible to customers"
-                    : "Price hidden — customers see \"Contact for Price\""}
+                    : "Price hidden — customers see \"Inquire to purchase\""}
                 </span>
               </button>
               <p className="mt-1.5 ml-[52px] text-xs text-gray-400">

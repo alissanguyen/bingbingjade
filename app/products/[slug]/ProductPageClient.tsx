@@ -301,7 +301,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
             <span className="text-2xl font-semibold text-emerald-700 dark:text-emerald-400">
               {effectiveDisplayPrice != null
                 ? `$${Number(effectiveDisplayPrice).toFixed(2)}`
-                : "Contact for price"}
+                : "Available via consultation"}
             </span>
           )}
         </div>
@@ -424,7 +424,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
             )
           ) : (
             <div className="block w-full rounded-full py-3 text-center text-sm font-medium text-white bg-gray-400 dark:bg-gray-600 cursor-not-allowed">
-              {isEffectivelySold ? "This item has been sold" : "Contact for price"}
+              {isEffectivelySold ? "This item has been sold" : "Available via consultation"}
             </div>
           )}
 
