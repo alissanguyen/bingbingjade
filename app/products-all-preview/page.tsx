@@ -14,7 +14,7 @@ import { getCategoryLabel } from "@/app/products/categories";
 export const dynamic = "force-dynamic";
 
 function fmtCardPrice(price: number): string {
-  return requiresInquiry(price) ? obfuscatedPrice(price) : `$${price.toFixed(2)}`;
+  return requiresInquiry(price) ? "Inquire for Pricing" : `$${price.toFixed(2)}`;
 }
 function fmtRangeLabel(min: number, max: number): string {
   return `${fmtCardPrice(min)} – ${fmtCardPrice(max)}`;
@@ -336,7 +336,7 @@ export default async function ProductsAllPreview({
                             </span>
                           );
                         }
-                        return <span className="text-[17px] font-semibold text-gray-800 dark:text-gray-200">{rangeLabel ?? (product.price_display_usd != null ? fmtCardPrice(product.price_display_usd) : "Contact for price")}</span>;
+                        return <span className="text-[17px] font-semibold text-gray-800 dark:text-gray-200">{rangeLabel ?? (product.price_display_usd != null ? fmtCardPrice(product.price_display_usd) : "Inquire for Pricing")}</span>;
                       })()}
                       <span className="text-[15px] text-gray-400 dark:text-gray-500 text-right">
                         {product.size ? `${product.size}mm` : ""}

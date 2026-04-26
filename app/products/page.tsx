@@ -10,9 +10,9 @@ import { Pagination } from "./Pagination";
 import { ProductCardImage } from "./ProductCardImage";
 import { PaymentMessaging } from "@/app/components/PaymentMessaging";
 
-/** Format a card price, obfuscating high-value amounts. */
+/** Format a card price; $25k+ items show "Inquire for Pricing". */
 function fmtCardPrice(price: number): string {
-  return requiresInquiry(price) ? obfuscatedPrice(price) : `$${price.toFixed(2)}`;
+  return requiresInquiry(price) ? "Inquire for Pricing" : `$${price.toFixed(2)}`;
 }
 /** Build a range label, obfuscating if either bound is high-value. */
 function fmtRangeLabel(min: number, max: number): string {
@@ -441,7 +441,7 @@ export default async function Products({
                         }
                         return (
                           <span className="text-[17px] font-semibold text-gray-800 dark:text-gray-200">
-                            {rangeLabel ?? (dp != null ? fmtCardPrice(dp) : "Contact for price")}
+                            {rangeLabel ?? (dp != null ? fmtCardPrice(dp) : "Inquire for Pricing")}
                           </span>
                         );
                       })()}
@@ -499,7 +499,7 @@ export default async function Products({
                         }
                         return (
                           <span className="text-[10px] font-semibold text-gray-800 dark:text-gray-200">
-                            {rangeLabel ?? (dp != null ? fmtCardPrice(dp) : "Contact for price")}
+                            {rangeLabel ?? (dp != null ? fmtCardPrice(dp) : "Inquire for Pricing")}
                           </span>
                         );
                       })()}

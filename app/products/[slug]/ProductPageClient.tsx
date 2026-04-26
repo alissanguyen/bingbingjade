@@ -269,19 +269,15 @@ export function ProductPageClient({ product, productImages, productVideos, optio
 
         {/* Price */}
         <div className="IndividualProduct_PriceRow mt-3 flex items-baseline gap-3 flex-wrap">
-          {isOnSale && activeSalePrice != null ? (
+          {isOnSale && activeSalePrice != null && !requiresInquiry(activeSalePrice) ? (
             <>
               <span className={`text-xl sm:text-2xl font-semibold ${isProductSold ? "text-gray-400 dark:text-gray-600" : "text-amber-600 dark:text-amber-400"}`}>
-                {requiresInquiry(activeSalePrice)
-                  ? obfuscatedPrice(activeSalePrice)
-                  : `$${Number(activeSalePrice).toFixed(2)}`}
+                {`$${Number(activeSalePrice).toFixed(2)}`}
               </span>
-              {effectiveDisplayPrice != null && (
+              {effectiveDisplayPrice != null && !requiresInquiry(effectiveDisplayPrice) && (
                 <>
                   <span className="text-lg text-gray-400 line-through">
-                    {requiresInquiry(effectiveDisplayPrice)
-                      ? obfuscatedPrice(effectiveDisplayPrice)
-                      : `$${Number(effectiveDisplayPrice).toFixed(2)}`}
+                    {`$${Number(effectiveDisplayPrice).toFixed(2)}`}
                   </span>
                   <span className={`rounded-full px-2.5 py-0.5 text-xs sm:text-sm font-semibold text-white shadow-sm ${isProductSold ? "bg-gray-400 dark:bg-gray-600" : "bg-red-500/80"}`}>
                     −{Math.round((1 - activeSalePrice / effectiveDisplayPrice) * 100)}%
@@ -292,26 +288,21 @@ export function ProductPageClient({ product, productImages, productVideos, optio
           ) : isProductSold ? (
             <>
               <span className="text-2xl font-semibold text-gray-400 dark:text-gray-600">
-                {effectiveDisplayPrice != null
-                  ? requiresInquiry(effectiveDisplayPrice)
-                    ? obfuscatedPrice(effectiveDisplayPrice)
-                    : `$${Number(effectiveDisplayPrice).toFixed(2)}`
+                {effectiveDisplayPrice != null && !requiresInquiry(effectiveDisplayPrice)
+                  ? `$${Number(effectiveDisplayPrice).toFixed(2)}`
                   : "—"}
               </span>
             </>
+          ) : needsInquiry ? (
+            <span className="text-lg font-medium text-gray-500 dark:text-gray-400 italic">
+              Available via consultation
+            </span>
           ) : (
-            <>
-              <span className="text-2xl font-semibold text-emerald-700 dark:text-emerald-400">
-                {effectiveDisplayPrice != null
-                  ? needsInquiry
-                    ? obfuscatedPrice(effectiveDisplayPrice)
-                    : `$${Number(effectiveDisplayPrice).toFixed(2)}`
-                  : "Contact for price"}
-              </span>
-              {needsInquiry && effectiveDisplayPrice != null && (
-                <span className="text-xs text-gray-400 dark:text-gray-500">— inquire for exact price</span>
-              )}
-            </>
+            <span className="text-2xl font-semibold text-emerald-700 dark:text-emerald-400">
+              {effectiveDisplayPrice != null
+                ? `$${Number(effectiveDisplayPrice).toFixed(2)}`
+                : "Contact for price"}
+            </span>
           )}
         </div>
 
@@ -418,7 +409,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                 href={`/contact?product=${product.public_id}`}
                 className="block w-full rounded-full py-3 text-center text-sm font-medium text-white bg-emerald-700 hover:bg-emerald-800 transition-colors"
               >
-                Inquire to Purchase
+                Available via consultation
               </Link>
             ) : (
               <button

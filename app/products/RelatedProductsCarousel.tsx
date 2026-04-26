@@ -8,7 +8,7 @@ import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
 import { productSlug } from "@/lib/slug";
 
 function fmtCardPrice(price: number): string {
-  return requiresInquiry(price) ? obfuscatedPrice(price) : `$${price.toFixed(2)}`;
+  return requiresInquiry(price) ? "Inquire for Pricing" : `$${price.toFixed(2)}`;
 }
 
 const COLOR_SWATCHES: Record<string, string> = {
@@ -172,7 +172,7 @@ export function RelatedProductsCarousel({ products }: { products: RelatedProduct
                 )}
                 <div className={`mt-2 pt-2 sm:mt-3 sm:pt-3 border-t dark:border-gray-800 flex items-center justify-between ${p.status === "sold" ? "border-gray-200" : "border-gray-100"}`}>
                   <span className={`font-medium ${isSold ? "text-gray-400 dark:text-gray-500" : isOnSale ? "text-amber-600 dark:text-amber-400" : "text-gray-800 dark:text-gray-200"}`}>
-                    {displayPrice != null ? fmtCardPrice(displayPrice) : "Contact for price"}
+                    {displayPrice != null ? fmtCardPrice(displayPrice) : "Inquire for Pricing"}
                   </span>
                   <span className="text-xs text-gray-400 dark:text-gray-500 text-right">
                     {p.size ? `${p.size}mm` : ""}
@@ -203,7 +203,7 @@ export function RelatedProductsCarousel({ products }: { products: RelatedProduct
                 )}
                 <div className="mt-1">
                   <span className={`text-xs font-medium ${isSold ? "text-gray-500 dark:text-gray-400" : isOnSale ? "text-amber-600 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}`}>
-                    {displayPrice != null ? fmtCardPrice(displayPrice) : "Contact for price"}
+                    {displayPrice != null ? fmtCardPrice(displayPrice) : "Inquire for Pricing"}
                   </span>
                 </div>
               </div>

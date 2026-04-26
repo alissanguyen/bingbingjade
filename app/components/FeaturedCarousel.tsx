@@ -8,7 +8,7 @@ import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
 import { getCategoryLabel } from "../products/categories";
 
 function fmtPrice(price: number): string {
-  return requiresInquiry(price) ? obfuscatedPrice(price) : `$${price.toFixed(2)}`;
+  return requiresInquiry(price) ? "Inquire for Pricing" : `$${price.toFixed(2)}`;
 }
 
 function fmtRangeLabel(min: number, max: number): string {
@@ -270,7 +270,7 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
                         <span className="font-medium text-gray-500 dark:text-gray-400">
                           {salePrice != null
                             ? fmtPrice(salePrice)
-                            : rangeLabel ?? (basePrice != null ? fmtPrice(basePrice) : "Contact for price")}
+                            : rangeLabel ?? (basePrice != null ? fmtPrice(basePrice) : "Inquire for Pricing")}
                         </span>
                         {salePrice != null && basePrice != null && (
                           <>
@@ -295,9 +295,9 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
                         )}
                       </span>
                     ) : (
-                      <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                      <span className="font-medium text-[15px] 2xl:text-[17px] text-emerald-700 dark:text-emerald-400">
                         {rangeLabel ??
-                          (basePrice != null ? fmtPrice(basePrice) : "Contact for price")}
+                          (basePrice != null ? fmtPrice(basePrice) : "Inquire for Pricing")}
                       </span>
                     )}
 
@@ -354,7 +354,7 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
                         <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
                           {salePrice != null
                             ? fmtPrice(salePrice)
-                            : rangeLabel ?? (basePrice != null ? fmtPrice(basePrice) : "Contact for price")}
+                            : rangeLabel ?? (basePrice != null ? fmtPrice(basePrice) : "Inquire for Pricing")}
                         </span>
                         {salePrice != null && basePrice != null && (
                           <>
@@ -381,7 +381,7 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
                     ) : (
                       <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
                         {rangeLabel ??
-                          (basePrice != null ? fmtPrice(basePrice) : "Contact for price")}
+                          (basePrice != null ? fmtPrice(basePrice) : "Inquire for Pricing")}
                       </span>
                     )}
 

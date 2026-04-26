@@ -1,22 +1,17 @@
 /**
- * Price display helpers for high-value items.
+ * Price display helpers.
  *
- * $10,000–$29,999 → first 2 digits   e.g. $12,345  → "$12,XXX"
- * $30,000+        → first 1 digit    e.g. $34,567  → "$3X,XXX"
- *                                         $125,000  → "$12X,XXX"
+ * Under $25,000 → show full price.
+ * $25,000+      → hide price entirely; surface "Inquire for Pricing" on cards
+ *                 and "Available via consultation" on the product page.
  */
 
-export function obfuscatedPrice(price: number): string {
-  if (price >= 30_000) {
-    const leading = Math.floor(price / 10_000);
-    return `$${leading}X,XXX`;
-  }
-  // $10,000–$29,999: show first 2 digits (thousands place)
-  const leading = Math.floor(price / 1_000);
-  return `$${leading},XXX`;
+/** Returns true when a price should be hidden and direct purchase blocked. */
+export function requiresInquiry(price: number | null | undefined): boolean {
+  return price != null && price >= 25_000;
 }
 
-/** Returns true when a price should be obfuscated and direct purchase blocked. */
-export function requiresInquiry(price: number | null | undefined): boolean {
-  return price != null && price >= 10_000;
+/** @deprecated No longer used — prices are either shown in full or hidden. */
+export function obfuscatedPrice(_price: number): string {
+  return "Inquire for Pricing";
 }
