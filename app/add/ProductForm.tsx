@@ -324,6 +324,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
   const [isFeatured, setIsFeatured] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
   const [isQuickShip, setIsQuickShip] = useState(false);
+  const [showPrice, setShowPrice] = useState(true);
   const [status, setStatus] = useState<"available" | "sold" | "on_sale">("available");
 
   const [cropTarget, setCropTarget] = useState<{ index: number; src: string; fileName: string } | null>(null);
@@ -606,6 +607,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
       fd.append("is_featured", String(isFeatured));
       fd.append("is_published", String(isPublished));
       fd.append("quick_ship", String(isQuickShip));
+      fd.append("show_price", String(showPrice));
       fd.append("status", status);
       sizeDetailed.forEach((v, i) => fd.append(`size_detailed_${i}`, v));
       imageUrls.forEach((url) => fd.append("imageUrls", url));
@@ -1035,6 +1037,27 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">₫</span>
                 <input required type="number" min="0" value={form.imported_price_vnd} onChange={set("imported_price_vnd")} placeholder="0" className={`${inputClass} pl-7`} />
               </div>
+            </div>
+          )}
+          {!isApprovedUser && (
+            <div className="col-span-full pt-1">
+              <button
+                type="button"
+                onClick={() => setShowPrice((v) => !v)}
+                className="flex items-center gap-3 group"
+              >
+                <div className={`relative w-10 h-6 rounded-full transition-colors ${showPrice ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"}`}>
+                  <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${showPrice ? "translate-x-4" : ""}`} />
+                </div>
+                <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+                  {showPrice
+                    ? "Price visible to customers"
+                    : "Price hidden — customers see \"Contact for Price\""}
+                </span>
+              </button>
+              <p className="mt-1.5 ml-[52px] text-xs text-gray-400">
+                When hidden, the actual price is never sent to the browser.
+              </p>
             </div>
           )}
         </div>

@@ -251,7 +251,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
   const [isFeatured, setIsFeatured] = useState(product.is_featured);
   const [isPublished, setIsPublished] = useState(product.is_published);
   const [isQuickShip, setIsQuickShip] = useState(product.quick_ship ?? false);
-  const [showPrice, setShowPrice] = useState(product.show_price ?? false);
+  const [showPrice, setShowPrice] = useState(product.show_price ?? true);
   const [status, setStatus] = useState<"available" | "sold" | "on_sale">(product.status ?? "available");
 
   const [form, setForm] = useState({
