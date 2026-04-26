@@ -215,6 +215,58 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
   const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
   const [cropTarget, setCropTarget] = useState<{ index: number; src: string; fileName: string } | null>(null);
   const [trimTarget, setTrimTarget] = useState<{ index: number; file: File } | null>(null);
+  // AI background processing — per-image loading state; null = idle
+  const [aiBgLoading, setAiBgLoading] = useState<Record<number, "navy" | "beige" | null>>({});
+
+  async function processImageBg(index: number, mode: "navy" | "beige") {
+    const item = allImages[index];
+    setAiBgLoading((prev) => ({ ...prev, [index]: mode }));
+    try {
+      let body: { imageBase64?: string; imageUrl?: string; backgroundMode: "navy" | "beige" };
+
+      if (item.kind === "existing") {
+        // Existing Supabase image — server fetches it by URL
+        body = { imageUrl: item.url, backgroundMode: mode };
+      } else if (item.file) {
+        // New local file — read as base64 (blob: URLs are not server-accessible)
+        const imageBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(item.file);
+        });
+        body = { imageBase64, backgroundMode: mode };
+      } else {
+        return;
+      }
+
+      const res = await fetch("/api/image/process-background", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json() as { success: boolean; processedBase64?: string; error?: string };
+      if (!json.success || !json.processedBase64) throw new Error(json.error ?? "Processing failed");
+
+      // Convert base64 → File and append to allImages as a new item
+      const byteStr = atob(json.processedBase64);
+      const bytes = new Uint8Array(byteStr.length);
+      for (let i = 0; i < byteStr.length; i++) bytes[i] = byteStr.charCodeAt(i);
+      const blob = new Blob([bytes], { type: "image/png" });
+      const origName = item.kind === "existing"
+        ? (item.url.split("/").pop()?.split("?")[0] ?? "image")
+        : item.file.name;
+      const stem = origName.replace(/\.[^.]+$/, "");
+      const processedFile = new File([blob], `${stem}_ai_${mode}.png`, { type: "image/png" });
+      const preview = URL.createObjectURL(processedFile);
+      setAllImages((prev) => [...prev, { kind: "new" as const, file: processedFile, preview }]);
+    } catch (err) {
+      console.error("[AI Background]", err);
+      // Non-blocking: failure is silent — original image is untouched
+    } finally {
+      setAiBgLoading((prev) => ({ ...prev, [index]: null }));
+    }
+  }
   const handleCropConfirm = (croppedFile: File) => {
     if (!cropTarget) return;
     const preview = URL.createObjectURL(croppedFile);
@@ -673,6 +725,23 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
                     >
                       <CropIcon />
                     </button>
+                  )}
+                  {/* AI Background buttons — Navy and Beige */}
+                  {(item.kind === "existing" || (item.preview && !item.broken)) && (
+                    <div className="absolute bottom-1 left-1 flex flex-col gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      {(["navy", "beige"] as const).map((mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          disabled={aiBgLoading[i] != null}
+                          onClick={(e) => { e.stopPropagation(); processImageBg(i, mode); }}
+                          className="px-1 py-0.5 rounded text-[8px] font-bold uppercase tracking-wide text-white bg-black/70 hover:bg-indigo-600 disabled:opacity-50 leading-none whitespace-nowrap"
+                          title={`AI background: ${mode === "navy" ? "Dark Navy (#061B35)" : "Warm Beige (#F3E8D3)"}`}
+                        >
+                          {aiBgLoading[i] === mode ? "…" : mode === "navy" ? "AI Navy" : "AI Beige"}
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
               ))}
