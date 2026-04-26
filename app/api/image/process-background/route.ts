@@ -4,6 +4,12 @@
  * Replaces the background of a product image using OpenAI gpt-image-1.
  * Two background modes: "navy" (#061B35) or "beige" (#F3E8D3).
  *
+ * LOGO HANDLING:
+ *   When imageUrl points to a wm/ (watermarked) Supabase path, we fetch the
+ *   original unwatermarked file from originals/ instead. The returned base64
+ *   has no logo — it re-enters the upload queue as a new file, and the normal
+ *   /api/upload-image route re-applies the watermark at save time.
+ *
  * This is an OPTIONAL, ISOLATED feature. It does not affect any existing
  * upload, product creation, or database logic. If it fails, nothing breaks.
  *
@@ -23,30 +29,63 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/approved-auth";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+import { IMAGE_BUCKET, toStoragePath } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120; // OpenAI image editing can be slow
+export const maxDuration = 120;
 
 // ── Feature flag ──────────────────────────────────────────────────────────────
-// Set to false to disable the feature entirely (returns an error immediately).
 const USE_AI_BACKGROUND = true;
 
 // ── Prompts ───────────────────────────────────────────────────────────────────
 const PROMPTS: Record<"navy" | "beige", string> = {
-  navy: "Replace only the background with a smooth luxury dark navy blue studio background (#061B35). Keep the jade item exactly unchanged: color, translucency, texture, veining, cotton, blemishes, shape, polish, size, and reflections. Do not enhance, recolor, redraw, resize, or reinterpret the jade. Keep the hand/arm natural if present. Only remove and replace the background.",
-  beige: "Replace only the background with a smooth warm beige studio background (#F3E8D3). Keep the jade item exactly unchanged: color, translucency, texture, veining, cotton, blemishes, shape, polish, size, and reflections. Do not enhance, recolor, redraw, resize, or reinterpret the jade. Keep the hand/arm natural if present. Only remove and replace the background.",
+  navy: [
+    "TASK: Replace ONLY the background pixels with a smooth luxury dark navy blue studio background color #061B35.",
+    "STRICT RULES — violating any of these is a failure:",
+    "- Do NOT touch, redraw, re-render, recolor, or alter any pixel of the jade bangle or jewelry item.",
+    "- Do NOT change the jade's color, translucency, texture, veining, inclusions, polish, shape, or size.",
+    "- Do NOT enhance or beautify the jade in any way.",
+    "- Do NOT remove or alter any hand or arm holding the piece.",
+    "- Do NOT add any reflections, shadows, or effects to the jade that were not in the original.",
+    "- The jade must look IDENTICAL to the input image — only the background changes.",
+    "OUTPUT: The subject (jade item and hand if present) is unchanged. The background is solid navy #061B35.",
+  ].join(" "),
+  beige: [
+    "TASK: Replace ONLY the background pixels with a smooth warm beige studio background color #F3E8D3.",
+    "STRICT RULES — violating any of these is a failure:",
+    "- Do NOT touch, redraw, re-render, recolor, or alter any pixel of the jade bangle or jewelry item.",
+    "- Do NOT change the jade's color, translucency, texture, veining, inclusions, polish, shape, or size.",
+    "- Do NOT enhance or beautify the jade in any way.",
+    "- Do NOT remove or alter any hand or arm holding the piece.",
+    "- Do NOT add any reflections, shadows, or effects to the jade that were not in the original.",
+    "- The jade must look IDENTICAL to the input image — only the background changes.",
+    "OUTPUT: The subject (jade item and hand if present) is unchanged. The background is solid warm beige #F3E8D3.",
+  ].join(" "),
 };
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Given a wm/ storage path (e.g. "wm/1234-abc.jpg"), derive the originals/ path.
+ * Upload route stores: originals/${id}  and  wm/${id}.jpg
+ * So: "wm/1234-abc.jpg" → "originals/1234-abc"
+ */
+function wmPathToOriginalPath(wmPath: string): string {
+  const file = wmPath.replace(/^wm\//, "");       // "1234-abc.jpg"
+  const stem = file.replace(/\.[^.]+$/, "");       // "1234-abc"
+  return `originals/${stem}`;
+}
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 interface RequestBody {
-  imageBase64?: string; // data URL ("data:image/...;base64,...") or raw base64
-  imageUrl?: string;   // full https:// URL — server will fetch it
+  imageBase64?: string;
+  imageUrl?: string;
   backgroundMode: "navy" | "beige";
 }
 
 export async function POST(req: NextRequest) {
-  // Auth
   if (!(await getSessionUser())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -81,18 +120,41 @@ export async function POST(req: NextRequest) {
     let imageBytes: Buffer;
 
     if (imageBase64) {
-      // Strip data URL prefix if present (e.g. "data:image/jpeg;base64,...")
+      // Local file from /add — no watermark yet, use as-is
       const raw = imageBase64.replace(/^data:[^;]+;base64,/, "");
       imageBytes = Buffer.from(raw, "base64");
     } else {
-      const fetchRes = await fetch(imageUrl!);
-      if (!fetchRes.ok) throw new Error(`Failed to fetch image: HTTP ${fetchRes.status}`);
-      imageBytes = Buffer.from(await fetchRes.arrayBuffer());
+      // Existing Supabase image from /edit — imageUrl is the public wm/ URL.
+      // Fetch the original (unwatermarked) file from originals/ instead so
+      // OpenAI never sees the logo and the returned image re-enters the upload
+      // queue cleanly (watermark is re-applied by /api/upload-image on save).
+      const storagePath = toStoragePath(imageUrl!); // e.g. "wm/1234-abc.jpg"
+
+      if (storagePath.startsWith("wm/")) {
+        const originalPath = wmPathToOriginalPath(storagePath);
+        const { data, error } = await supabaseAdmin.storage
+          .from(IMAGE_BUCKET)
+          .download(originalPath);
+        if (error || !data) {
+          // Original not found (e.g. old product uploaded before originals were stored)
+          // Fall back to fetching the watermarked URL — better than failing entirely
+          console.warn("[process-background] originals/ not found, falling back to wm/ URL:", originalPath);
+          const fetchRes = await fetch(imageUrl!);
+          if (!fetchRes.ok) throw new Error(`Failed to fetch image: HTTP ${fetchRes.status}`);
+          imageBytes = Buffer.from(await fetchRes.arrayBuffer());
+        } else {
+          imageBytes = Buffer.from(await data.arrayBuffer());
+        }
+      } else {
+        // Legacy public URL or non-wm path — fetch directly
+        const fetchRes = await fetch(imageUrl!);
+        if (!fetchRes.ok) throw new Error(`Failed to fetch image: HTTP ${fetchRes.status}`);
+        imageBytes = Buffer.from(await fetchRes.arrayBuffer());
+      }
     }
 
     // ── 2. Call OpenAI Images Edit API ────────────────────────────────────────
     const formData = new FormData();
-    // gpt-image-1 accepts PNG; send as PNG regardless of original format
     const imageBlob = new Blob([new Uint8Array(imageBytes)], { type: "image/png" });
     formData.append("image[]", imageBlob, "image.png");
     formData.append("model", "gpt-image-1");
@@ -115,19 +177,16 @@ export async function POST(req: NextRequest) {
       throw new Error(openaiJson.error?.message ?? `OpenAI error ${openaiRes.status}`);
     }
 
-    // ── 3. Extract result ─────────────────────────────────────────────────────
     const resultItem = openaiJson.data?.[0];
     if (!resultItem) throw new Error("No result from OpenAI");
 
-    // gpt-image-1 returns b64_json by default; fall back to fetching the URL
     let processedBase64: string;
     if (resultItem.b64_json) {
       processedBase64 = resultItem.b64_json;
     } else if (resultItem.url) {
       const imgRes = await fetch(resultItem.url);
       if (!imgRes.ok) throw new Error("Failed to download processed image");
-      const buf = await imgRes.arrayBuffer();
-      processedBase64 = Buffer.from(buf).toString("base64");
+      processedBase64 = Buffer.from(await imgRes.arrayBuffer()).toString("base64");
     } else {
       throw new Error("OpenAI returned no image data");
     }
