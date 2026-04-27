@@ -30,6 +30,7 @@ interface Product {
   status: string;
   slug: string;
   public_id: string;
+  sku: string | null;
 }
 
 interface RelatedProduct {
@@ -144,7 +145,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const { data: product } = await supabase
     .from("products")
-    .select("id, name, category, origin, images, videos, color, tier, size, size_detailed, price_display_usd, sale_price_usd, show_price, description, blemishes, is_featured, is_published, quick_ship, status, slug, public_id")
+    .select("id, name, category, origin, images, videos, color, tier, size, size_detailed, price_display_usd, sale_price_usd, show_price, description, blemishes, is_featured, is_published, quick_ship, status, slug, public_id, sku")
     .eq("public_id", publicId)
     .single<Product>();
 

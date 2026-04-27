@@ -1,8 +1,56 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { adminLogout } from "@/app/admin-login/actions";
 import { revalidateAll } from "@/app/admin-login/actions";
+
+function ChevronDown() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
+
+function DropdownMenu({ label, links }: { label: string; links: { href: string; label: string }[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
+      >
+        {label}
+        <ChevronDown />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1.5 z-50 min-w-[160px] rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg overflow-hidden py-1">
+          {links.map((l) => (
+            <a
+              key={l.href}
+              href={l.href}
+              onClick={() => setOpen(false)}
+              className="block px-4 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
+            >
+              {l.label}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function AdminBar({
   showUsersLink = true,
@@ -29,14 +77,16 @@ export function AdminBar({
     }
   };
 
-  // Flat list used for mobile dropdown only
+  // Flat list for mobile dropdown
   const allLinks = [
     { href: "/products-admin", label: "Products" },
     { href: "/vendors", label: "Vendors" },
     { href: "/orders-admin", label: "Orders" },
-    { href: "/accounting-admin", label: "Accounting" },
     { href: "/customers-admin", label: "Customers" },
     { href: "/sourcing-admin", label: "Sourcing" },
+    { href: "/item-origin-lookup", label: "Origin Lookup" },
+    { href: "/accounting-admin", label: "Finance Snapshot" },
+    { href: "/full-detailed-accounting", label: "Full Accounting" },
     ...(showUsersLink ? [
       { href: "/approved-users", label: "Users" },
       { href: "/coupons-admin", label: "Coupons" },
@@ -47,40 +97,60 @@ export function AdminBar({
   ];
 
   const linkCls = "hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors whitespace-nowrap";
-  const divider = <span className="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0" />;
 
   return (
     <div className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6">
 
         {/* Desktop nav */}
-        <div className="hidden sm:flex items-center justify-between py-2 gap-3">
+        <div className="hidden sm:flex items-center justify-between py-2 gap-2">
 
           {/* Left: grouped links */}
-          <div className="flex items-center gap-3 text-xs font-medium text-gray-500 dark:text-gray-400 min-w-0 flex-wrap">
+          <div className="flex items-center gap-2.5 text-xs font-medium text-gray-500 dark:text-gray-400 min-w-0 flex-wrap">
 
-            {/* Group 1 — Catalog & Operations */}
+            {/* Group 1 — Catalog */}
             <a href="/products-admin" className={linkCls}>Products</a>
             <a href="/vendors" className={linkCls}>Vendors</a>
+
+            <span className="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0" />
+
+            {/* Group 2 — Sales & Ops */}
             <a href="/orders-admin" className={linkCls}>Orders</a>
-            <a href="/accounting-admin" className={linkCls}>Accounting</a>
             <a href="/customers-admin" className={linkCls}>Customers</a>
             <a href="/sourcing-admin" className={linkCls}>Sourcing</a>
+            <a href="/item-origin-lookup" className={linkCls}>Origin Lookup</a>
+
+            <span className="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0" />
+
+            {/* Group 3 — Finance (dropdown) */}
+            <DropdownMenu
+              label="Finance"
+              links={[
+                { href: "/accounting-admin", label: "Finance Snapshot" },
+                { href: "/full-detailed-accounting", label: "Full Accounting Details" },
+              ]}
+            />
 
             {showUsersLink && (
               <>
-                {divider}
-                {/* Group 2 — Marketing & Users */}
-                <a href="/approved-users" className={linkCls}>Users</a>
-                <a href="/coupons-admin" className={linkCls}>Coupons</a>
-                <a href="/subscribers-admin" className={linkCls}>Subscribers</a>
-                <a href="/custom-emails-admin" className={linkCls}>Custom Emails</a>
+                <span className="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0" />
+                {/* Group 4 — Marketing & Users (dropdown) */}
+                <DropdownMenu
+                  label="More"
+                  links={[
+                    { href: "/approved-users", label: "Users" },
+                    { href: "/coupons-admin", label: "Coupons" },
+                    { href: "/subscribers-admin", label: "Subscribers" },
+                    { href: "/custom-emails-admin", label: "Custom Emails" },
+                    ...(profileHref ? [{ href: profileHref, label: "Profile" }] : []),
+                  ]}
+                />
               </>
             )}
 
-            {profileHref && (
+            {!showUsersLink && profileHref && (
               <>
-                {divider}
+                <span className="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0" />
                 <a href={profileHref} className={linkCls}>Profile</a>
               </>
             )}

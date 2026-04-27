@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { updateProduct, deleteProduct } from "./actions";
 import { ImageCropModal, VideoTrimModal } from "@/app/add/MediaCroppers";
 import type { Vendor } from "@/types/vendor";
@@ -190,23 +189,31 @@ interface Props {
   initialOptions?: InitialOption[];
   isApprovedUser?: boolean;
   hasPendingApproval?: boolean;
+  sku?: string | null;
 }
 
-export function EditForm({ product, vendors, initialOptions = [], isApprovedUser = false, hasPendingApproval = false }: Props) {
+export function EditForm({ product, vendors, initialOptions = [], isApprovedUser = false, hasPendingApproval = false, sku }: Props) {
   const router = useRouter();
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
-  type ImageItem =
-    | { kind: "existing"; url: string }
-    | { kind: "new"; file: File; preview: string | null; broken?: boolean };
+  // ── Two-queue image system ────────────────────────────────────────────────────
+  type PendingItem =
+    | { id: string; kind: "local"; file: File; preview: string | null; processing: "navy" | "beige" | null; error?: string | null }
+    | { id: string; kind: "existing"; url: string; processing: "navy" | "beige" | null; error?: string | null };
+  type AcceptedItem =
+    | { id: string; kind: "existing"; url: string }
+    | { id: string; kind: "new"; file: File; preview: string | null; broken?: boolean };
 
-  // Unified ordered image list (existing URLs + new files together for drag-to-reorder)
-  const [allImages, setAllImages] = useState<ImageItem[]>(
-    (product.images ?? []).map((url) => ({ kind: "existing" as const, url }))
+  const eNewId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+  // Existing product images start in Accepted
+  const [pendingImages, setPendingImages] = useState<PendingItem[]>([]);
+  const [acceptedImages, setAcceptedImages] = useState<AcceptedItem[]>(
+    (product.images ?? []).map((url) => ({ id: eNewId(), kind: "existing" as const, url }))
   );
-  const imgDragRef = useRef<number | null>(null);
-  const [imgDragOver, setImgDragOver] = useState<number | null>(null);
+  const acceptedDragRef = useRef<number | null>(null);
+  const [acceptedDragOver, setAcceptedDragOver] = useState<number | null>(null);
 
   const [existingVideos, setExistingVideos] = useState<string[]>(product.videos ?? []);
   const [newVideos, setNewVideos] = useState<File[]>([]);
@@ -215,20 +222,62 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
   const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
   const [cropTarget, setCropTarget] = useState<{ index: number; src: string; fileName: string } | null>(null);
   const [trimTarget, setTrimTarget] = useState<{ index: number; file: File } | null>(null);
-  // AI background processing — per-image loading state; null = idle
-  const [aiBgLoading, setAiBgLoading] = useState<Record<number, "navy" | "beige" | null>>({});
 
-  async function processImageBg(index: number, mode: "navy" | "beige") {
-    const item = allImages[index];
-    setAiBgLoading((prev) => ({ ...prev, [index]: mode }));
+  const addImages = (files: FileList | null) => {
+    if (!files) return;
+    Array.from(files).forEach((file) => {
+      const preview = URL.createObjectURL(file);
+      setPendingImages((prev) => [...prev, { id: eNewId(), kind: "local", file, preview, processing: null }]);
+    });
+  };
+
+  const moveToPending = (id: string) => {
+    const item = acceptedImages.find((a) => a.id === id);
+    if (!item) return;
+    setAcceptedImages((prev) => prev.filter((a) => a.id !== id));
+    if (item.kind === "existing") {
+      setPendingImages((prev) => [...prev, { id: eNewId(), kind: "existing", url: item.url, processing: null }]);
+    } else {
+      setPendingImages((prev) => [...prev, { id: eNewId(), kind: "local", file: item.file, preview: item.preview, processing: null }]);
+    }
+  };
+
+  const removeFromPending = (id: string) => {
+    setPendingImages((prev) => {
+      const item = prev.find((p) => p.id === id);
+      if (item?.kind === "local" && item.preview) URL.revokeObjectURL(item.preview);
+      return prev.filter((p) => p.id !== id);
+    });
+  };
+
+  const removeFromAccepted = (id: string) => {
+    setAcceptedImages((prev) => {
+      const item = prev.find((a) => a.id === id);
+      if (item?.kind === "new" && item.preview) URL.revokeObjectURL(item.preview);
+      return prev.filter((a) => a.id !== id);
+    });
+  };
+
+  const skipImage = (id: string) => {
+    const item = pendingImages.find((p) => p.id === id);
+    if (!item) return;
+    if (item.kind === "existing") {
+      setAcceptedImages((prev) => [...prev, { id: eNewId(), kind: "existing", url: item.url }]);
+    } else {
+      setAcceptedImages((prev) => [...prev, { id: eNewId(), kind: "new", file: item.file, preview: item.preview }]);
+    }
+  };
+
+  async function processImageBg(id: string, mode: "navy" | "beige") {
+    const item = pendingImages.find((p) => p.id === id);
+    if (!item) return;
+    setPendingImages((prev) => prev.map((p) => p.id === id ? { ...p, processing: mode, error: null } : p));
     try {
       let body: { imageBase64?: string; imageUrl?: string; backgroundMode: "navy" | "beige" };
-
       if (item.kind === "existing") {
-        // Existing Supabase image — server fetches it by URL
+        // Route fetches originals/ for existing wm/ images — no logo sent to OpenAI
         body = { imageUrl: item.url, backgroundMode: mode };
-      } else if (item.file) {
-        // New local file — read as base64 (blob: URLs are not server-accessible)
+      } else {
         const imageBase64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result as string);
@@ -236,10 +285,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
           reader.readAsDataURL(item.file);
         });
         body = { imageBase64, backgroundMode: mode };
-      } else {
-        return;
       }
-
       const res = await fetch("/api/image/process-background", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -247,34 +293,33 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       });
       const json = await res.json() as { success: boolean; processedBase64?: string; error?: string };
       if (!json.success || !json.processedBase64) throw new Error(json.error ?? "Processing failed");
-
-      // Convert base64 → File and append to allImages as a new item
       const byteStr = atob(json.processedBase64);
       const bytes = new Uint8Array(byteStr.length);
       for (let i = 0; i < byteStr.length; i++) bytes[i] = byteStr.charCodeAt(i);
       const blob = new Blob([bytes], { type: "image/png" });
-      const origName = item.kind === "existing"
+      const stem = (item.kind === "existing"
         ? (item.url.split("/").pop()?.split("?")[0] ?? "image")
-        : item.file.name;
-      const stem = origName.replace(/\.[^.]+$/, "");
+        : item.file.name
+      ).replace(/\.[^.]+$/, "");
       const processedFile = new File([blob], `${stem}_ai_${mode}.png`, { type: "image/png" });
       const preview = URL.createObjectURL(processedFile);
-      setAllImages((prev) => [...prev, { kind: "new" as const, file: processedFile, preview }]);
+      setAcceptedImages((prev) => [...prev, { id: eNewId(), kind: "new", file: processedFile, preview }]);
     } catch (err) {
-      console.error("[AI Background]", err);
-      // Non-blocking: failure is silent — original image is untouched
+      const msg = err instanceof Error ? err.message : "Processing failed";
+      setPendingImages((prev) => prev.map((p) => p.id === id ? { ...p, error: msg } : p));
     } finally {
-      setAiBgLoading((prev) => ({ ...prev, [index]: null }));
+      setPendingImages((prev) => prev.map((p) => p.id === id ? { ...p, processing: null } : p));
     }
   }
+
   const handleCropConfirm = (croppedFile: File) => {
     if (!cropTarget) return;
     const preview = URL.createObjectURL(croppedFile);
-    setAllImages((prev) => {
+    setAcceptedImages((prev) => {
       const updated = [...prev];
-      const item = updated[cropTarget.index];
-      if (item.kind === "new" && item.preview) URL.revokeObjectURL(item.preview);
-      updated[cropTarget.index] = { kind: "new", file: croppedFile, preview };
+      const old = updated[cropTarget.index];
+      if (old?.kind === "new" && old.preview) URL.revokeObjectURL(old.preview);
+      updated[cropTarget.index] = { id: old?.id ?? eNewId(), kind: "new", file: croppedFile, preview };
       return updated;
     });
     setCropTarget(null);
@@ -407,29 +452,13 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
   const toggleColor = (color: string) =>
     setSelectedColors((prev) => prev.includes(color) ? prev.filter((c) => c !== color) : [...prev, color]);
 
-  const addImages = (files: FileList | null) => {
-    if (!files) return;
-    Array.from(files).forEach((file) => {
-      const preview = URL.createObjectURL(file);
-      setAllImages((prev) => [...prev, { kind: "new", file, preview }]);
-    });
-  };
-
-  const removeImage = (i: number) => {
-    setAllImages((prev) => {
-      const item = prev[i];
-      if (item.kind === "new" && item.preview) URL.revokeObjectURL(item.preview);
-      return prev.filter((_, idx) => idx !== i);
-    });
-  };
-
   const removeExistingVideo = (i: number) => setExistingVideos((prev) => prev.filter((_, idx) => idx !== i));
   const removeNewVideo = (i: number) => setNewVideos((prev) => prev.filter((_, idx) => idx !== i));
 
   const uploadNewFiles = async () => {
-    // Upload new images in the user-defined order, preserving existing URL positions
+    // Upload accepted images in order
     const orderedImageUrls: string[] = [];
-    for (const item of allImages) {
+    for (const item of acceptedImages) {
       if (item.kind === "existing") {
         orderedImageUrls.push(item.url);
       } else {
@@ -445,6 +474,29 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
         orderedImageUrls.push(path);
       }
     }
+
+    // Save pending originals
+    for (const item of pendingImages) {
+      if (!sku) continue;
+      if (item.kind === "local") {
+        // New file — upload raw bytes to originals/ and record
+        const fd = new FormData();
+        fd.append("file", item.file);
+        fd.append("sku", sku);
+        if (vendorId) fd.append("vendor_id", vendorId);
+        await fetch("/api/image/record-original", { method: "POST", body: fd })
+          .catch((e) => console.warn("[record-original] local:", e));
+      } else {
+        // Existing Supabase image — already in originals/; just record the DB row
+        await fetch("/api/image/record-original", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ wmUrl: item.url, sku, vendor_id: vendorId || null }),
+        }).catch((e) => console.warn("[record-original] existing:", e));
+      }
+    }
+
+    // Videos
     const videoUrls: string[] = [];
     for (const file of newVideos) {
       const urlRes = await fetch("/api/create-upload-url", {
@@ -454,11 +506,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       });
       if (!urlRes.ok) throw new Error("Failed to get video upload URL");
       const { signedUrl, path } = await urlRes.json();
-      const uploadRes = await fetch(signedUrl, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type },
-      });
+      const uploadRes = await fetch(signedUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
       if (!uploadRes.ok) throw new Error("Video upload failed");
       videoUrls.push(path);
     }
@@ -646,118 +694,177 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-4 sm:px-6 sm:py-6">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Media</h2>
 
-        {/* Images — unified draggable grid (existing + new together) */}
-        <div className="mb-6">
+        {/* Image Upload */}
+        <div className="mb-6 space-y-4">
           <label className={labelClass}>Images</label>
-          {allImages.length > 0 && (
-            <div className="mb-3 grid grid-cols-4 gap-3 sm:grid-cols-6">
-              {allImages.map((item, i) => (
-                <div
-                  key={item.kind === "existing" ? item.url : i}
-                  draggable
-                  onDragStart={() => { imgDragRef.current = i; }}
-                  onDragOver={(e) => { e.preventDefault(); setImgDragOver(i); }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const from = imgDragRef.current;
-                    if (from === null || from === i) { setImgDragOver(null); return; }
-                    setAllImages((prev) => {
-                      const next = [...prev];
-                      const [moved] = next.splice(from, 1);
-                      next.splice(i, 0, moved);
-                      return next;
-                    });
-                    imgDragRef.current = null;
-                    setImgDragOver(null);
-                  }}
-                  onDragEnd={() => { imgDragRef.current = null; setImgDragOver(null); }}
-                  className={`relative group aspect-square cursor-grab active:cursor-grabbing rounded-lg transition-all ${imgDragOver === i ? "ring-2 ring-emerald-500 scale-95" : ""
-                    } ${i === 0 ? "ring-2 ring-emerald-400/60" : ""}`}
-                >
-                  {i === 0 && (
-                    <span className="absolute top-1 left-1 z-10 text-[9px] font-bold uppercase tracking-wider bg-emerald-500 text-white px-1.5 py-0.5 rounded-sm leading-none pointer-events-none">Cover</span>
-                  )}
-                  {item.kind === "existing" ? (
-                    <Image
-                      src={item.url}
-                      alt=""
-                      fill
-                      unoptimized
-                      className="rounded-lg object-cover pointer-events-none"
-                      sizes="120px"
-                      loading="lazy"
-                    />
-                  ) : item.preview && !item.broken ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={item.preview}
-                      alt={item.file.name}
-                      className="w-full h-full rounded-lg object-cover pointer-events-none"
-                      onError={() => setAllImages((prev) => prev.map((img, idx) => idx === i ? { ...img, broken: true } : img))}
-                    />
-                  ) : (
-                    <div className="w-full h-full rounded-lg bg-gray-100 dark:bg-gray-800 flex flex-col items-center justify-center gap-1">
-                      <span className="text-lg">🪨</span>
-                      <span className="text-[10px] text-gray-400">HEIC</span>
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); removeImage(i); }}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow"
-                  >
-                    <XIcon />
-                  </button>
-                  {(item.kind === "existing" || (item.preview && !item.broken)) && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (item.kind === "existing") {
-                          const fileName = item.url.split("/").pop()?.split("?")[0] ?? "image.jpg";
-                          setCropTarget({ index: i, src: item.url, fileName });
-                        } else {
-                          setCropTarget({ index: i, src: item.preview!, fileName: item.file.name });
-                        }
-                      }}
-                      className="absolute bottom-1 right-1 w-6 h-6 rounded-md bg-black/60 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-emerald-600"
-                      title="Crop image"
-                    >
-                      <CropIcon />
-                    </button>
-                  )}
-                  {/* AI Background buttons — Navy and Beige */}
-                  {(item.kind === "existing" || (item.preview && !item.broken)) && (
-                    <div className="absolute bottom-1 left-1 flex flex-col gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                      {(["navy", "beige"] as const).map((mode) => (
+
+          {/* ── Pending Process ────────────────────────────────────── */}
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2">
+              Pending Process — originals preserved
+            </p>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setImageDragging(true); }}
+              onDragLeave={() => setImageDragging(false)}
+              onDrop={(e) => { e.preventDefault(); setImageDragging(false); addImages(e.dataTransfer.files); }}
+              onClick={() => imageInputRef.current?.click()}
+              className={`relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-6 cursor-pointer transition-colors ${
+                imageDragging
+                  ? "border-amber-400 bg-amber-50 dark:bg-amber-950/20"
+                  : "border-gray-200 dark:border-gray-700 hover:border-amber-400 dark:hover:border-amber-600 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+              }`}
+            >
+              <UploadIcon />
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-[12px]">Drop new images or <span className="text-amber-500 dark:text-amber-400 font-medium">browse</span></p>
+              <input ref={imageInputRef} type="file" multiple accept=".heic,.jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf" className="hidden" onChange={(e) => addImages(e.target.files)} />
+            </div>
+
+            {pendingImages.length > 0 && (
+              <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4">
+                {pendingImages.map((item) => {
+                  const preview = item.kind === "local" ? item.preview : item.url;
+                  return (
+                    <div key={item.id} className="relative group rounded-xl border-2 border-dashed border-amber-300 dark:border-amber-700 bg-amber-50/30 dark:bg-amber-950/10 overflow-hidden">
+                      <div className="aspect-square">
+                        {preview ? (
+                          <img src={preview} alt="pending" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-2xl bg-gray-100 dark:bg-gray-800">📄</div>
+                        )}
+                        {item.processing && (
+                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                            <span className="text-white text-xs font-semibold animate-pulse">
+                              {item.processing === "navy" ? "AI Navy…" : "AI Beige…"}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeFromPending(item.id)}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow text-xs"
+                      >
+                        <XIcon />
+                      </button>
+                      <div className="flex border-t border-amber-200 dark:border-amber-800">
+                        {(["navy", "beige"] as const).map((mode) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            disabled={item.processing != null}
+                            onClick={() => processImageBg(item.id, mode)}
+                            className="flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wide text-white disabled:opacity-40 transition-colors leading-none"
+                            style={{ background: mode === "navy" ? "#061B35" : "#D4B896" }}
+                          >
+                            {item.processing === mode ? "…" : mode === "navy" ? "Navy" : "Beige"}
+                          </button>
+                        ))}
                         <button
-                          key={mode}
                           type="button"
-                          disabled={aiBgLoading[i] != null}
-                          onClick={(e) => { e.stopPropagation(); processImageBg(i, mode); }}
-                          className="px-1 py-0.5 rounded text-[8px] font-bold uppercase tracking-wide text-white bg-black/70 hover:bg-indigo-600 disabled:opacity-50 leading-none whitespace-nowrap"
-                          title={`AI background: ${mode === "navy" ? "Dark Navy (#061B35)" : "Warm Beige (#F3E8D3)"}`}
+                          disabled={item.processing != null}
+                          onClick={() => skipImage(item.id)}
+                          className="flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wide bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-40 transition-colors leading-none"
                         >
-                          {aiBgLoading[i] === mode ? "…" : mode === "navy" ? "AI Navy" : "AI Beige"}
+                          Skip
                         </button>
-                      ))}
+                      </div>
+                      {item.error && (
+                        <p className="px-2 py-1 text-[10px] text-red-600 dark:text-red-400 leading-snug bg-red-50 dark:bg-red-950/30 border-t border-red-200 dark:border-red-800">
+                          {item.error}
+                        </p>
+                      )}
                     </div>
-                  )}
-                </div>
-              ))}
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* ── Accepted ───────────────────────────────────────────── */}
+          {acceptedImages.length > 0 && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-2">
+                Accepted — saved to listing
+              </p>
+              <div className="grid grid-cols-4 gap-3 sm:grid-cols-6">
+                {acceptedImages.map((item, i) => {
+                  const preview = item.kind === "existing" ? item.url : item.preview;
+                  const broken = item.kind === "new" ? item.broken : false;
+                  return (
+                    <div
+                      key={item.id}
+                      draggable
+                      onDragStart={() => { acceptedDragRef.current = i; }}
+                      onDragOver={(e) => { e.preventDefault(); setAcceptedDragOver(i); }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const from = acceptedDragRef.current;
+                        if (from === null || from === i) { setAcceptedDragOver(null); return; }
+                        setAcceptedImages((prev) => {
+                          const next = [...prev];
+                          const [moved] = next.splice(from, 1);
+                          next.splice(i, 0, moved);
+                          return next;
+                        });
+                        acceptedDragRef.current = null;
+                        setAcceptedDragOver(null);
+                      }}
+                      onDragEnd={() => { acceptedDragRef.current = null; setAcceptedDragOver(null); }}
+                      className={`relative group aspect-square cursor-grab active:cursor-grabbing rounded-lg transition-all ${
+                        acceptedDragOver === i ? "ring-2 ring-emerald-500 scale-95" : ""
+                      } ${i === 0 ? "ring-2 ring-emerald-400/60" : ""}`}
+                    >
+                      {i === 0 && (
+                        <span className="absolute top-1 left-1 z-10 text-[9px] font-bold uppercase tracking-wider bg-emerald-500 text-white px-1.5 py-0.5 rounded-sm leading-none">Cover</span>
+                      )}
+                      {preview && !broken ? (
+                        <img
+                          src={preview}
+                          alt="accepted"
+                          className="w-full h-full rounded-lg object-cover pointer-events-none"
+                          onError={() => {
+                            if (item.kind === "new") {
+                              setAcceptedImages((prev) => prev.map((a) => a.id === item.id ? { ...a, broken: true } : a));
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-lg">🪨</div>
+                      )}
+                      {/* Remove */}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); removeFromAccepted(item.id); }}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow"
+                      >
+                        <XIcon />
+                      </button>
+                      {/* Crop (new images only) */}
+                      {item.kind === "new" && preview && !broken && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setCropTarget({ index: i, src: preview, fileName: item.file.name }); }}
+                          className="absolute bottom-1 right-1 w-6 h-6 rounded-md bg-black/60 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-emerald-600"
+                          title="Crop"
+                        >
+                          <CropIcon />
+                        </button>
+                      )}
+                      {/* Re-process: move to pending */}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); moveToPending(item.id); }}
+                        className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wide bg-amber-500/80 text-white opacity-0 group-hover:opacity-100 transition-opacity leading-none"
+                        title="Move to Pending to re-process"
+                      >
+                        Re-process
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
-          <div
-            onDragOver={(e) => { e.preventDefault(); setImageDragging(true); }}
-            onDragLeave={() => setImageDragging(false)}
-            onDrop={(e) => { e.preventDefault(); setImageDragging(false); addImages(e.dataTransfer.files); }}
-            onClick={() => imageInputRef.current?.click()}
-            className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-6 cursor-pointer transition-colors ${imageDragging ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30" : "border-gray-200 dark:border-gray-700 hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-gray-50 dark:hover:bg-gray-800/50"}`}
-          >
-            <UploadIcon />
-            <p className="text-sm text-gray-500 dark:text-gray-400">Drop or <span className="text-emerald-600 dark:text-emerald-400 font-medium">browse</span></p>
-            <input ref={imageInputRef} type="file" multiple accept=".heic,.jpg,.jpeg,image/jpeg" className="hidden" onChange={(e) => addImages(e.target.files)} />
-          </div>
         </div>
 
         {/* Existing videos */}
@@ -837,7 +944,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       {/* Pricing */}
       <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-4 sm:px-6 sm:py-6">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Pricing</h2>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Listing Price (USD) <span className="text-red-400">*</span></label>
             <div className="flex gap-2">
@@ -965,13 +1072,13 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
                 </div>
 
                 {/* Link to a product image (optional) */}
-                {allImages.length > 0 && (
+                {acceptedImages.length > 0 && (
                   <div className="mb-2">
                     <p className="text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
                       Link to image <span className="font-normal text-gray-400">(optional — jumps gallery to this image when variant is selected)</span>
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {allImages.map((img, imgIdx) => {
+                      {acceptedImages.map((img, imgIdx) => {
                         const src = img.kind === "existing" ? img.url : (img.preview ?? undefined);
                         return (
                           <button

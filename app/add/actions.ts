@@ -59,17 +59,34 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
       is_featured: formData.get("is_featured") === "true",
       // Admin: respect the published toggle. Approved user: always draft + pending approval.
       is_published: adminUser ? formData.get("is_published") === "true" : false,
+      show_price: formData.get("show_price") === "true",
       pending_approval: approvedUser,
       created_by: approvedUser ? approvedCreatedBy(approvedUserId!) : "admin",
       quick_ship: formData.get("quick_ship") === "true",
       status: productStatus,
       images: imageUrls,
       videos: videoUrls,
+      sku: (formData.get("sku") as string) || null,
     })
     .select("id")
     .single();
 
   if (error) return { error: error.message };
+
+  // Record SKU → vendor mapping in product_originals (non-fatal)
+  const sku = (formData.get("sku") as string) || null;
+  if (sku && vendor_id) {
+    const { data: vendorRow } = await supabaseAdmin
+      .from("vendors")
+      .select("name")
+      .eq("id", vendor_id)
+      .single();
+    await supabaseAdmin.from("product_originals").upsert({
+      sku,
+      vendor_id,
+      vendor_name: vendorRow?.name ?? "",
+    }, { onConflict: "sku" });
+  }
 
   // Bust the products listing cache so a newly published product appears immediately
   if (adminUser && formData.get("is_published") === "true") {

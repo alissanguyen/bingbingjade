@@ -39,29 +39,29 @@ export const maxDuration = 120;
 const USE_AI_BACKGROUND = true;
 
 // ── Prompts ───────────────────────────────────────────────────────────────────
+const SHARED_RULES = [
+  "STRICT RULES — every rule below is mandatory, violating any one is a complete failure:",
+  "- Do NOT touch, redraw, re-render, smooth, sharpen, denoise, or alter ANY pixel of the jade bangle or jewelry piece itself — no smoothing filter may be applied to the bangle under any circumstance.",
+  "- Do NOT change the jade's color, hue, saturation, brightness, or contrast in any way.",
+  "- Do NOT alter the jade's natural grain, crystal structure, micro-texture, veining, inclusions, cloudiness, or translucency — not even slightly.",
+  "- Do NOT enhance, clarify, or 'improve' the jade texture — natural graininess and crystal facets must remain exactly as-is.",
+  "- Do NOT reduce, soften, or make grain/crystals more or less visible — preserve them pixel-for-pixel.",
+  "- If the original image is blurry or low-resolution, leave it blurry — do NOT sharpen or upscale any part of the subject.",
+  "- If the hand or arm has any tattoos, ink, or visible markings, remove them and replace with natural skin tone matching the surrounding skin.",
+  "- Treat every non-background pixel as read-only. Copy them through to the output without modification."
+].join(" ");
+
 const PROMPTS: Record<"navy" | "beige", string> = {
   navy: [
-    "TASK: Replace ONLY the background pixels with a smooth luxury dark navy blue studio background color #061B35.",
-    "STRICT RULES — violating any of these is a failure:",
-    "- Do NOT touch, redraw, re-render, recolor, or alter any pixel of the jade bangle or jewelry item.",
-    "- Do NOT change the jade's color, translucency, texture, veining, inclusions, polish, shape, or size.",
-    "- Do NOT enhance or beautify the jade in any way.",
-    "- Do NOT remove or alter any hand or arm holding the piece.",
-    "- Do NOT add any reflections, shadows, or effects to the jade that were not in the original.",
-    "- The jade must look IDENTICAL to the input image — only the background changes.",
-    "OUTPUT: The subject (jade item and hand if present) is unchanged. The background is solid navy #061B35.",
+    "TASK: Replace ONLY the background with a generic dark blue background. Remove price tags (if exists) from the image. Everything else is untouched. We do not want the image to look AI generated, so it should look realistic.",
+    SHARED_RULES,
+    "OUTPUT: Background is generic dark blue. The jade piece, hand, and all non-background pixels are untouched, think of yourself like a professional background remover. Make the image a tiny bit grainy while sharp to make it looks realistic and not AI generated."
   ].join(" "),
   beige: [
-    "TASK: Replace ONLY the background pixels with a smooth warm beige studio background color #F3E8D3.",
-    "STRICT RULES — violating any of these is a failure:",
-    "- Do NOT touch, redraw, re-render, recolor, or alter any pixel of the jade bangle or jewelry item.",
-    "- Do NOT change the jade's color, translucency, texture, veining, inclusions, polish, shape, or size.",
-    "- Do NOT enhance or beautify the jade in any way.",
-    "- Do NOT remove or alter any hand or arm holding the piece.",
-    "- Do NOT add any reflections, shadows, or effects to the jade that were not in the original.",
-    "- The jade must look IDENTICAL to the input image — only the background changes.",
-    "OUTPUT: The subject (jade item and hand if present) is unchanged. The background is solid warm beige #F3E8D3.",
-  ].join(" "),
+    "TASK: Replace ONLY the background with solid warm beige #F3E8D3. Everything else is untouched.",
+    SHARED_RULES,
+    "OUTPUT: Background is solid #F3E8D3. The jade piece, hand, and all non-background pixels are untouched, think of yourself like a professional background remover."
+  ].join(" ")
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -72,8 +72,8 @@ const PROMPTS: Record<"navy" | "beige", string> = {
  * So: "wm/1234-abc.jpg" → "originals/1234-abc"
  */
 function wmPathToOriginalPath(wmPath: string): string {
-  const file = wmPath.replace(/^wm\//, "");       // "1234-abc.jpg"
-  const stem = file.replace(/\.[^.]+$/, "");       // "1234-abc"
+  const file = wmPath.replace(/^wm\//, ""); // "1234-abc.jpg"
+  const stem = file.replace(/\.[^.]+$/, ""); // "1234-abc"
   return `originals/${stem}`;
 }
 
@@ -91,28 +91,43 @@ export async function POST(req: NextRequest) {
   }
 
   if (!USE_AI_BACKGROUND) {
-    return NextResponse.json({ success: false, error: "AI background feature is disabled" });
+    return NextResponse.json({
+      success: false,
+      error: "AI background feature is disabled"
+    });
   }
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ success: false, error: "OPENAI_API_KEY not configured" });
+    return NextResponse.json({
+      success: false,
+      error: "OPENAI_API_KEY not configured"
+    });
   }
 
   let body: RequestBody;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ success: false, error: "Invalid JSON body" }, { status: 400 });
+    return NextResponse.json(
+      { success: false, error: "Invalid JSON body" },
+      { status: 400 }
+    );
   }
 
   const { imageBase64, imageUrl, backgroundMode } = body;
 
   if (!backgroundMode || !PROMPTS[backgroundMode]) {
-    return NextResponse.json({ success: false, error: "backgroundMode must be 'navy' or 'beige'" }, { status: 400 });
+    return NextResponse.json(
+      { success: false, error: "backgroundMode must be 'navy' or 'beige'" },
+      { status: 400 }
+    );
   }
   if (!imageBase64 && !imageUrl) {
-    return NextResponse.json({ success: false, error: "imageBase64 or imageUrl is required" }, { status: 400 });
+    return NextResponse.json(
+      { success: false, error: "imageBase64 or imageUrl is required" },
+      { status: 400 }
+    );
   }
 
   try {
@@ -138,9 +153,13 @@ export async function POST(req: NextRequest) {
         if (error || !data) {
           // Original not found (e.g. old product uploaded before originals were stored)
           // Fall back to fetching the watermarked URL — better than failing entirely
-          console.warn("[process-background] originals/ not found, falling back to wm/ URL:", originalPath);
+          console.warn(
+            "[process-background] originals/ not found, falling back to wm/ URL:",
+            originalPath
+          );
           const fetchRes = await fetch(imageUrl!);
-          if (!fetchRes.ok) throw new Error(`Failed to fetch image: HTTP ${fetchRes.status}`);
+          if (!fetchRes.ok)
+            throw new Error(`Failed to fetch image: HTTP ${fetchRes.status}`);
           imageBytes = Buffer.from(await fetchRes.arrayBuffer());
         } else {
           imageBytes = Buffer.from(await data.arrayBuffer());
@@ -148,14 +167,17 @@ export async function POST(req: NextRequest) {
       } else {
         // Legacy public URL or non-wm path — fetch directly
         const fetchRes = await fetch(imageUrl!);
-        if (!fetchRes.ok) throw new Error(`Failed to fetch image: HTTP ${fetchRes.status}`);
+        if (!fetchRes.ok)
+          throw new Error(`Failed to fetch image: HTTP ${fetchRes.status}`);
         imageBytes = Buffer.from(await fetchRes.arrayBuffer());
       }
     }
 
     // ── 2. Call OpenAI Images Edit API ────────────────────────────────────────
     const formData = new FormData();
-    const imageBlob = new Blob([new Uint8Array(imageBytes)], { type: "image/png" });
+    const imageBlob = new Blob([new Uint8Array(imageBytes)], {
+      type: "image/png"
+    });
     formData.append("image[]", imageBlob, "image.png");
     formData.append("model", "gpt-image-1");
     formData.append("prompt", PROMPTS[backgroundMode]);
@@ -165,16 +187,18 @@ export async function POST(req: NextRequest) {
     const openaiRes = await fetch("https://api.openai.com/v1/images/edits", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}` },
-      body: formData,
+      body: formData
     });
 
-    const openaiJson = await openaiRes.json().catch(() => ({})) as {
+    const openaiJson = (await openaiRes.json().catch(() => ({}))) as {
       data?: { b64_json?: string; url?: string }[];
       error?: { message: string };
     };
 
     if (!openaiRes.ok) {
-      throw new Error(openaiJson.error?.message ?? `OpenAI error ${openaiRes.status}`);
+      throw new Error(
+        openaiJson.error?.message ?? `OpenAI error ${openaiRes.status}`
+      );
     }
 
     const resultItem = openaiJson.data?.[0];
@@ -186,18 +210,19 @@ export async function POST(req: NextRequest) {
     } else if (resultItem.url) {
       const imgRes = await fetch(resultItem.url);
       if (!imgRes.ok) throw new Error("Failed to download processed image");
-      processedBase64 = Buffer.from(await imgRes.arrayBuffer()).toString("base64");
+      processedBase64 = Buffer.from(await imgRes.arrayBuffer()).toString(
+        "base64"
+      );
     } else {
       throw new Error("OpenAI returned no image data");
     }
 
     return NextResponse.json({ success: true, processedBase64 });
-
   } catch (err) {
     console.error("[process-background] error:", err);
     return NextResponse.json({
       success: false,
-      error: err instanceof Error ? err.message : "Processing failed",
+      error: err instanceof Error ? err.message : "Processing failed"
     });
   }
 }

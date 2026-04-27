@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
   const category = (formData.get("category") as string | null) ?? "";
+  const sku = (formData.get("sku") as string | null) ?? "";
 
   // ── Process ───────────────────────────────────────────────────────────────
   try {
@@ -68,6 +69,17 @@ export async function POST(req: NextRequest) {
 
     if (uploadErr) {
       return NextResponse.json({ error: uploadErr.message }, { status: 500 });
+    }
+
+    // ── Record original in product_original_images (keyed by product SKU) ─
+    if (sku) {
+      const { error: originErr } = await supabaseAdmin
+        .from("product_original_images")
+        .insert({ sku, original_storage_path: originalPath });
+      if (originErr) {
+        // Non-fatal — log but don't fail the upload
+        console.warn("[upload-image] product_original_images insert failed:", originErr.message);
+      }
     }
 
     // Return the watermarked path — this is what gets saved to the database

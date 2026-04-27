@@ -41,6 +41,7 @@ interface ProductClient {
   status: string;
   slug: string;
   public_id: string;
+  sku: string | null;
 }
 
 const ORIGIN_BADGE: Record<string, string> = {
@@ -466,6 +467,11 @@ export function ProductPageClient({ product, productImages, productVideos, optio
             <Accordion label="Blemishes">
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">{product.blemishes}</p>
             </Accordion>
+          )}
+          {product.sku && (
+            <p className="text-[11px] text-gray-400 dark:text-gray-600 font-mono mt-4">
+              SKU: {product.sku}
+            </p>
           )}
 
           <p className="italic text-xs sm:text-sm text-emerald-600 font-semibold mt-8">** We can provide more pictures and videos of different lighting upon request.</p>

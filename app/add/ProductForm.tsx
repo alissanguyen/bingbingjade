@@ -21,6 +21,7 @@ interface OptionRow {
 interface Props {
   vendors: Vendor[];
   isApprovedUser?: boolean;
+  sku: string;
 }
 
 const CATEGORIES: ProductCategory[] = ["bracelet", "bangle", "ring", "pendant", "necklace", "set", "earring", "raw_material"];
@@ -309,16 +310,36 @@ function VendorSearch({ vendors: initialVendors, value, onChange }: { vendors: V
   );
 }
 
-export function ProductForm({ vendors, isApprovedUser = false }: Props) {
+export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
-  const dragIndexRef = useRef<number | null>(null);
 
-  const [images, setImages] = useState<{ file: File; preview: string | null; broken?: boolean }[]>([]);
+  // ── Two-queue image system ────────────────────────────────────────────────────
+  // Pending Process: originals land here — never leave, saved to originals/ on submit
+  // Accepted: processed/skipped images that go into products.images
+  type PendingItem = {
+    id: string;
+    file: File;
+    preview: string | null;
+    processing: "navy" | "beige" | null;
+    error?: string | null;
+  };
+  type AcceptedItem = {
+    id: string;
+    file: File;
+    preview: string | null;
+    broken?: boolean;
+  };
+  const [pendingImages, setPendingImages] = useState<PendingItem[]>([]);
+  const [acceptedImages, setAcceptedImages] = useState<AcceptedItem[]>([]);
+  // Every original file added by the user — never removed, always saved to originals/ on submit
+  const originalsRef = useRef<File[]>([]);
+  const acceptedDragRef = useRef<number | null>(null);
+  const [acceptedDragOver, setAcceptedDragOver] = useState<number | null>(null);
+
   const [videos, setVideos] = useState<File[]>([]);
   const [imageDragging, setImageDragging] = useState(false);
   const [videoDragging, setVideoDragging] = useState(false);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ success?: boolean; error?: string; pendingApproval?: boolean } | null>(null);
   const [isFeatured, setIsFeatured] = useState(false);
@@ -329,22 +350,53 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
 
   const [cropTarget, setCropTarget] = useState<{ index: number; src: string; fileName: string } | null>(null);
   const [trimTarget, setTrimTarget] = useState<{ index: number; file: File } | null>(null);
-  // AI background processing — per-image loading state; null = idle
-  const [aiBgLoading, setAiBgLoading] = useState<Record<number, "navy" | "beige" | null>>({});
 
-  async function processImageBg(index: number, mode: "navy" | "beige") {
-    const img = images[index];
-    if (!img.file) return;
-    setAiBgLoading((prev) => ({ ...prev, [index]: mode }));
+  const newId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+  const addImages = (files: FileList | null) => {
+    if (!files) return;
+    Array.from(files).forEach((file) => {
+      const isPdf = file.name.toLowerCase().endsWith(".pdf");
+      const preview = isPdf ? null : URL.createObjectURL(file);
+      setPendingImages((prev) => [...prev, { id: newId(), file, preview, processing: null }]);
+      // Always accumulate originals — survives Skip/remove from pending queue
+      originalsRef.current.push(file);
+    });
+  };
+
+  const removeFromPending = (id: string) => {
+    setPendingImages((prev) => {
+      const item = prev.find((p) => p.id === id);
+      if (item?.preview) URL.revokeObjectURL(item.preview);
+      return prev.filter((p) => p.id !== id);
+    });
+  };
+
+  const removeFromAccepted = (id: string) => {
+    setAcceptedImages((prev) => {
+      const item = prev.find((a) => a.id === id);
+      if (item?.preview) URL.revokeObjectURL(item.preview);
+      return prev.filter((a) => a.id !== id);
+    });
+  };
+
+  const skipImage = (id: string) => {
+    const item = pendingImages.find((p) => p.id === id);
+    if (!item) return;
+    setAcceptedImages((prev) => [...prev, { id: newId(), file: item.file, preview: item.preview }]);
+  };
+
+  async function processImageBg(id: string, mode: "navy" | "beige") {
+    const item = pendingImages.find((p) => p.id === id);
+    if (!item || !item.file) return;
+    setPendingImages((prev) => prev.map((p) => p.id === id ? { ...p, processing: mode, error: null } : p));
     try {
-      // Read the local file as a data URL (base64) — blob: URLs are not accessible server-side
       const imageBase64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
         reader.onerror = reject;
-        reader.readAsDataURL(img.file);
+        reader.readAsDataURL(item.file);
       });
-
       const res = await fetch("/api/image/process-background", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -352,21 +404,19 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
       });
       const json = await res.json() as { success: boolean; processedBase64?: string; error?: string };
       if (!json.success || !json.processedBase64) throw new Error(json.error ?? "Processing failed");
-
-      // Convert base64 → File and append to the image list as a normal upload
       const byteStr = atob(json.processedBase64);
       const bytes = new Uint8Array(byteStr.length);
       for (let i = 0; i < byteStr.length; i++) bytes[i] = byteStr.charCodeAt(i);
       const blob = new Blob([bytes], { type: "image/png" });
-      const stem = img.file.name.replace(/\.[^.]+$/, "");
+      const stem = item.file.name.replace(/\.[^.]+$/, "");
       const processedFile = new File([blob], `${stem}_ai_${mode}.png`, { type: "image/png" });
       const preview = URL.createObjectURL(processedFile);
-      setImages((prev) => [...prev, { file: processedFile, preview }]);
+      setAcceptedImages((prev) => [...prev, { id: newId(), file: processedFile, preview }]);
     } catch (err) {
-      console.error("[AI Background]", err);
-      // Non-blocking: failure is silent — original image is untouched
+      const msg = err instanceof Error ? err.message : "Processing failed";
+      setPendingImages((prev) => prev.map((p) => p.id === id ? { ...p, error: msg } : p));
     } finally {
-      setAiBgLoading((prev) => ({ ...prev, [index]: null }));
+      setPendingImages((prev) => prev.map((p) => p.id === id ? { ...p, processing: null } : p));
     }
   }
 
@@ -420,7 +470,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
     try {
       // Encode up to 3 images for Claude vision (resize to 1024px — AI-only, upload is unaffected)
       const imagePayloads: { data: string; mediaType: "image/jpeg" }[] = [];
-      for (const img of images.slice(0, 3)) {
+      for (const img of pendingImages.slice(0, 3)) {
         const b64 = await resizeImageForAI(img.file);
         if (b64) imagePayloads.push({ data: b64, mediaType: "image/jpeg" });
       }
@@ -470,11 +520,11 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
   const handleCropConfirm = (croppedFile: File) => {
     if (!cropTarget) return;
     const preview = URL.createObjectURL(croppedFile);
-    setImages((prev) => {
+    setAcceptedImages((prev) => {
       const updated = [...prev];
       const old = updated[cropTarget.index];
-      if (old.preview) URL.revokeObjectURL(old.preview);
-      updated[cropTarget.index] = { file: croppedFile, preview };
+      if (old?.preview) URL.revokeObjectURL(old.preview);
+      updated[cropTarget.index] = { ...old, file: croppedFile, preview };
       return updated;
     });
     setCropTarget(null);
@@ -564,32 +614,14 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
 
-  const addImages = (files: FileList | null) => {
-    if (!files) return;
-    Array.from(files).forEach((file) => {
-      const isPdf = file.name.toLowerCase().endsWith(".pdf");
-      const preview = isPdf ? null : URL.createObjectURL(file);
-      setImages((prev) => [...prev, { file, preview }]);
-    });
-  };
-
-  const removeImage = (i: number) => {
-    setImages((prev) => {
-      const url = prev[i].preview;
-      if (url) URL.revokeObjectURL(url);
-      return prev.filter((_, idx) => idx !== i);
-    });
-  };
-
   const removeVideo = (i: number) => setVideos((prev) => prev.filter((_, idx) => idx !== i));
 
   const uploadFiles = async () => {
-    // Images — routed through /api/upload-image which applies watermark and
-    // stores in the private jade-images bucket. Returns a storage path.
+    // Upload accepted images (watermarked) → products.images
     const imageUrls: string[] = [];
-    for (const { file } of images) {
+    for (const item of acceptedImages) {
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", item.file);
       fd.append("category", form.category);
       const res = await fetch("/api/upload-image", { method: "POST", body: fd });
       if (!res.ok) {
@@ -600,8 +632,20 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
       imageUrls.push(path);
     }
 
-    // Videos — use a Supabase signed upload URL so large files don't pass
-    // through the Next.js server. Returns a storage path.
+    // Upload ALL original files → originals/ bucket + product_original_images
+    // Uses originalsRef so originals are saved even if the user removed them from Pending
+    if (sku) {
+      for (const file of originalsRef.current) {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("sku", sku);
+        if (vendorId) fd.append("vendor_id", vendorId);
+        await fetch("/api/image/record-original", { method: "POST", body: fd })
+          .catch((e) => console.warn("[record-original]", e));
+      }
+    }
+
+    // Videos
     const videoUrls: string[] = [];
     for (const file of videos) {
       const urlRes = await fetch("/api/create-upload-url", {
@@ -611,16 +655,10 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
       });
       if (!urlRes.ok) throw new Error("Failed to get video upload URL");
       const { signedUrl, path } = await urlRes.json();
-
-      const uploadRes = await fetch(signedUrl, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type },
-      });
+      const uploadRes = await fetch(signedUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
       if (!uploadRes.ok) throw new Error("Video upload failed");
       videoUrls.push(path);
     }
-
     return { imageUrls, videoUrls };
   };
 
@@ -650,6 +688,7 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
       fd.append("quick_ship", String(isQuickShip));
       fd.append("show_price", String(showPrice));
       fd.append("status", status);
+      fd.append("sku", sku);
       sizeDetailed.forEach((v, i) => fd.append(`size_detailed_${i}`, v));
       imageUrls.forEach((url) => fd.append("imageUrls", url));
       videoUrls.forEach((url) => fd.append("videoUrls", url));
@@ -675,7 +714,9 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
         setForm({ name: "", category: "bracelet", origin: "Myanmar", size: "", description: "", blemishes: "", price_display_usd: "", sale_price_usd: "", imported_price_vnd: "" });
         setVendorId("");
         setSelectedColors([]);
-        setImages([]);
+        setPendingImages([]);
+        setAcceptedImages([]);
+        originalsRef.current = [];
         setVideos([]);
         setIsFeatured(false);
         setSizeDetailed(["", "", ""]);
@@ -818,103 +859,157 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
         <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Media</h2>
 
         {/* Image Upload */}
-        <div className="mb-6">
-          <label className={labelClass}>Images (.heic, .jpg, .jpeg, .png, .pdf)</label>
-          <div
-            onDragOver={(e) => { e.preventDefault(); setImageDragging(true); }}
-            onDragLeave={() => setImageDragging(false)}
-            onDrop={(e) => { e.preventDefault(); setImageDragging(false); addImages(e.dataTransfer.files); }}
-            onClick={() => imageInputRef.current?.click()}
-            className={`relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 cursor-pointer transition-colors ${imageDragging
-                ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30"
-                : "border-gray-200 dark:border-gray-700 hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-gray-50 dark:hover:bg-gray-800/50"
-              }`}
-          >
-            <UploadIcon />
-            <p className="text-sm text-gray-500 dark:text-gray-400 text-[12px] sm:text-sm">Drop images here or <span className="text-emerald-600 dark:text-emerald-400 font-medium">browse</span></p>
-            <p className="text-xs text-gray-400 dark:text-gray-60 text-[12px] sm:text-sm0">.heic · .jpg · .jpeg · .png · .pdf</p>
-            <input ref={imageInputRef} type="file" multiple accept=".heic,.jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf" className="hidden" onChange={(e) => addImages(e.target.files)} />
-          </div>
+        <div className="mb-6 space-y-4">
+          <label className={labelClass}>Images</label>
 
-          {images.length > 0 && (
-            <div className="mt-3 grid grid-cols-4 gap-3 sm:grid-cols-6">
-              {images.map(({ file, preview, broken }, i) => (
-                <div
-                  key={i}
-                  draggable
-                  onDragStart={() => { dragIndexRef.current = i; }}
-                  onDragOver={(e) => { e.preventDefault(); setDragOverIndex(i); }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const from = dragIndexRef.current;
-                    if (from === null || from === i) { setDragOverIndex(null); return; }
-                    setImages((prev) => {
-                      const next = [...prev];
-                      const [moved] = next.splice(from, 1);
-                      next.splice(i, 0, moved);
-                      return next;
-                    });
-                    dragIndexRef.current = null;
-                    setDragOverIndex(null);
-                  }}
-                  onDragEnd={() => { dragIndexRef.current = null; setDragOverIndex(null); }}
-                  className={`relative group aspect-square cursor-grab active:cursor-grabbing rounded-lg transition-all ${dragOverIndex === i ? "ring-2 ring-emerald-500 scale-95" : ""
-                    } ${i === 0 ? "ring-2 ring-emerald-400/60" : ""}`}
-                >
-                  {i === 0 && (
-                    <span className="absolute top-1 left-1 z-10 text-[9px] font-bold uppercase tracking-wider bg-emerald-500 text-white px-1.5 py-0.5 rounded-sm leading-none">Cover</span>
-                  )}
-                  {preview && !broken ? (
-                    <img
-                      src={preview}
-                      alt={file.name}
-                      className="w-full h-full rounded-lg object-cover pointer-events-none"
-                      onError={() => setImages((prev) => prev.map((img, idx) => idx === i ? { ...img, broken: true } : img))}
-                    />
-                  ) : (
-                    <div className="w-full h-full rounded-lg bg-gray-100 dark:bg-gray-800 flex flex-col items-center justify-center gap-1 p-1">
-                      <span className="text-lg">{file.name.toLowerCase().endsWith(".pdf") ? "📄" : "🪨"}</span>
-                      <span className="text-[10px] text-gray-400 truncate w-full text-center">
-                        {file.name.toLowerCase().endsWith(".pdf") ? "PDF" : "HEIC"}
-                      </span>
+          {/* ── Pending Process ────────────────────────────────────── */}
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2">
+              Pending Process — originals preserved
+            </p>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setImageDragging(true); }}
+              onDragLeave={() => setImageDragging(false)}
+              onDrop={(e) => { e.preventDefault(); setImageDragging(false); addImages(e.dataTransfer.files); }}
+              onClick={() => imageInputRef.current?.click()}
+              className={`relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-6 cursor-pointer transition-colors ${
+                imageDragging
+                  ? "border-amber-400 bg-amber-50 dark:bg-amber-950/20"
+                  : "border-gray-200 dark:border-gray-700 hover:border-amber-400 dark:hover:border-amber-600 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+              }`}
+            >
+              <UploadIcon />
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-[12px]">Drop images here or <span className="text-amber-500 dark:text-amber-400 font-medium">browse</span></p>
+              <p className="text-xs text-gray-400 text-[11px]">.heic · .jpg · .jpeg · .png · .pdf</p>
+              <input ref={imageInputRef} type="file" multiple accept=".heic,.jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf" className="hidden" onChange={(e) => addImages(e.target.files)} />
+            </div>
+
+            {pendingImages.length > 0 && (
+              <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4">
+                {pendingImages.map((item) => (
+                  <div key={item.id} className="relative group rounded-xl border-2 border-dashed border-amber-300 dark:border-amber-700 bg-amber-50/30 dark:bg-amber-950/10 overflow-hidden">
+                    <div className="aspect-square">
+                      {item.preview ? (
+                        <img src={item.preview} alt={item.file.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-2xl bg-gray-100 dark:bg-gray-800">
+                          {item.file.name.toLowerCase().endsWith(".pdf") ? "📄" : "🪨"}
+                        </div>
+                      )}
+                      {item.processing && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                          <span className="text-white text-xs font-semibold animate-pulse">
+                            {item.processing === "navy" ? "AI Navy…" : "AI Beige…"}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); removeImage(i); }}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow"
-                  >
-                    <XIcon />
-                  </button>
-                  {preview && !broken && (
+                    {/* Remove button */}
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); setCropTarget({ index: i, src: preview, fileName: file.name }); }}
-                      className="absolute bottom-1 right-1 w-6 h-6 rounded-md bg-black/60 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-emerald-600"
-                      title="Crop image"
+                      onClick={() => removeFromPending(item.id)}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow text-xs"
                     >
-                      <CropIcon />
+                      <XIcon />
                     </button>
-                  )}
-                  {/* AI Background buttons — Navy and Beige */}
-                  {preview && !broken && (
-                    <div className="absolute bottom-1 left-1 flex flex-col gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                    {/* Action buttons */}
+                    <div className="flex border-t border-amber-200 dark:border-amber-800">
                       {(["navy", "beige"] as const).map((mode) => (
                         <button
                           key={mode}
                           type="button"
-                          disabled={aiBgLoading[i] != null}
-                          onClick={(e) => { e.stopPropagation(); processImageBg(i, mode); }}
-                          className="px-1 py-0.5 rounded text-[8px] font-bold uppercase tracking-wide text-white bg-black/70 hover:bg-indigo-600 disabled:opacity-50 leading-none whitespace-nowrap"
-                          title={`AI background: ${mode === "navy" ? "Dark Navy (#061B35)" : "Warm Beige (#F3E8D3)"}`}
+                          disabled={item.processing != null}
+                          onClick={() => processImageBg(item.id, mode)}
+                          className="flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wide text-white disabled:opacity-40 transition-colors leading-none"
+                          style={{ background: mode === "navy" ? "#061B35" : "#D4B896" }}
                         >
-                          {aiBgLoading[i] === mode ? "…" : mode === "navy" ? "AI Navy" : "AI Beige"}
+                          {item.processing === mode ? "…" : mode === "navy" ? "Navy" : "Beige"}
                         </button>
                       ))}
+                      <button
+                        type="button"
+                        disabled={item.processing != null}
+                        onClick={() => skipImage(item.id)}
+                        className="flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wide bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-40 transition-colors leading-none"
+                      >
+                        Skip
+                      </button>
                     </div>
-                  )}
-                </div>
-              ))}
+                    {item.error && (
+                      <p className="px-2 py-1 text-[10px] text-red-600 dark:text-red-400 leading-snug bg-red-50 dark:bg-red-950/30 border-t border-red-200 dark:border-red-800">
+                        {item.error}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── Accepted ───────────────────────────────────────────── */}
+          {acceptedImages.length > 0 && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-2">
+                Accepted — will be saved to listing
+              </p>
+              <div className="grid grid-cols-4 gap-3 sm:grid-cols-6">
+                {acceptedImages.map((item, i) => (
+                  <div
+                    key={item.id}
+                    draggable
+                    onDragStart={() => { acceptedDragRef.current = i; }}
+                    onDragOver={(e) => { e.preventDefault(); setAcceptedDragOver(i); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const from = acceptedDragRef.current;
+                      if (from === null || from === i) { setAcceptedDragOver(null); return; }
+                      setAcceptedImages((prev) => {
+                        const next = [...prev];
+                        const [moved] = next.splice(from, 1);
+                        next.splice(i, 0, moved);
+                        return next;
+                      });
+                      acceptedDragRef.current = null;
+                      setAcceptedDragOver(null);
+                    }}
+                    onDragEnd={() => { acceptedDragRef.current = null; setAcceptedDragOver(null); }}
+                    className={`relative group aspect-square cursor-grab active:cursor-grabbing rounded-lg transition-all ${
+                      acceptedDragOver === i ? "ring-2 ring-emerald-500 scale-95" : ""
+                    } ${i === 0 ? "ring-2 ring-emerald-400/60" : ""}`}
+                  >
+                    {i === 0 && (
+                      <span className="absolute top-1 left-1 z-10 text-[9px] font-bold uppercase tracking-wider bg-emerald-500 text-white px-1.5 py-0.5 rounded-sm leading-none">Cover</span>
+                    )}
+                    {item.preview && !item.broken ? (
+                      <img
+                        src={item.preview}
+                        alt={item.file.name}
+                        className="w-full h-full rounded-lg object-cover pointer-events-none"
+                        onError={() => setAcceptedImages((prev) => prev.map((a, idx) => idx === i ? { ...a, broken: true } : a))}
+                      />
+                    ) : (
+                      <div className="w-full h-full rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-lg">🪨</div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); removeFromAccepted(item.id); }}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow"
+                    >
+                      <XIcon />
+                    </button>
+                    {item.preview && !item.broken && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setCropTarget({ index: i, src: item.preview!, fileName: item.file.name }); }}
+                        className="absolute bottom-1 right-1 w-6 h-6 rounded-md bg-black/60 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-emerald-600"
+                        title="Crop"
+                      >
+                        <CropIcon />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -1189,13 +1284,13 @@ export function ProductForm({ vendors, isApprovedUser = false }: Props) {
                   </div>
 
                   {/* Link to a product image (optional) */}
-                  {images.length > 0 && (
+                  {acceptedImages.length > 0 && (
                     <div className="mb-2">
                       <p className="text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
                         Link to image <span className="font-normal text-gray-400">(optional — jumps gallery to this image when variant is selected)</span>
                       </p>
                       <div className="flex flex-wrap gap-2">
-                        {images.map((img, imgIdx) => (
+                        {acceptedImages.map((img, imgIdx) => (
                           <button
                             key={imgIdx}
                             type="button"
