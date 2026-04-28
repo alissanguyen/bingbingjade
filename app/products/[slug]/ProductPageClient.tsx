@@ -96,8 +96,8 @@ export function ProductPageClient({ product, productImages, productVideos, optio
   const { addToCart, items: cartItems } = useCart();
   const [addedToCart, setAddedToCart] = useState(false);
 
-  // Show selector if there are multiple options or any option has a label
-  const hasSelector = options.length > 1 || (options.length === 1 && options[0].label !== null);
+  // Show selector if there are multiple options or the single option has a label or size
+  const hasSelector = options.length > 1 || (options.length === 1 && (options[0].label !== null || options[0].size !== null));
   // Default to the first non-sold option
   const firstAvailableIdx = options.findIndex((o) => o.status !== "sold");
   const [selectedIdx, setSelectedIdx] = useState(firstAvailableIdx >= 0 ? firstAvailableIdx : 0);
@@ -251,7 +251,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                         : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-400 dark:hover:border-emerald-600 cursor-pointer"
                       }`}
                   >
-                    {opt.label}
+                    {opt.label ?? (opt.size != null ? `${opt.size}mm` : `Option ${i + 1}`)}
                     {discountPct != null && !unavailable && (
                       <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-semibold text-white leading-none">
                         −{discountPct}%
@@ -403,6 +403,22 @@ export function ProductPageClient({ product, productImages, productVideos, optio
           }
 
 
+          {/* Buy with confidence */}
+          <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40 px-4 py-3.5 space-y-1.5 mb-4">
+            <p className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Buy with confidence</p>
+            {[
+              "Need more photos/videos? We'll send them before you purchase",
+              "Questions about quality or fit? We'll walk you through it",
+              "Every piece is verified Type A jadeite with certification",
+              "No pressure — we want you to be 100% sure",
+            ].map((line) => (
+              <p key={line} className="flex items-start gap-2 text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">
+                <span className="text-emerald-500 font-bold shrink-0">✔</span>
+                {line}
+              </p>
+            ))}
+          </div>
+
           {/* Add to Cart / Inquire to Purchase */}
           {!isEffectivelySold && checkoutPrice != null ? (
             needsInquiry ? (
@@ -474,7 +490,8 @@ export function ProductPageClient({ product, productImages, productVideos, optio
             </p>
           )}
 
-          <p className="italic text-xs sm:text-sm text-emerald-600 font-semibold mt-8">** We can provide more pictures and videos of different lighting upon request.</p>
+          <p className="text-xs text-emerald-600 font-semibold mt-8">** Want to see this piece in different lighting?</p>
+          <p className="text-xs text-black dark:text-gray-300">We’ll send real videos before you buy.</p>
           {product.category === 'bangle' || product.category === 'raw_material' ? (<div className="text-sm">
 
             <p className="text-gray-400 text-xs sm:text-sm dark:text-gray-500 mt-2"><span className="mr-2 text-emerald-600">Not your styles?</span>Some pieces can be <span className="font-semibold text-gray-500">reshaped</span> or <span className="font-semibold text-gray-500">widened</span>, contact us for more details.</p>
@@ -504,7 +521,8 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                 <div>
                   <p className="text-sm font-semibold text-indigo-800 dark:text-indigo-300 tracking-wide">Sourced for You</p>
                   <ul className="mt-1.5 space-y-0.5">
-                    <li className="text-xs sm:text-[15px] text-indigo-600 dark:text-indigo-200/80">✔ Inspected and certified upon order</li>
+                    <li className="text-xs sm:text-[15px] text-indigo-600 dark:text-indigo-200/80">✔ Carefully selected from trusted partners</li>
+                    <li className="text-xs sm:text-[15px] text-indigo-600 dark:text-indigo-200/80">✔ Personally inspected before shipment</li>
                     <li className="text-xs sm:text-[15px] text-indigo-600 dark:text-indigo-200/80">✔ Typically arrives in 2–4 weeks</li>
                   </ul>
                 </div>
@@ -520,83 +538,84 @@ export function ProductPageClient({ product, productImages, productVideos, optio
               <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Authenticity Guarantee</p>
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-              Every piece is natural Jadeite (Type A), untreated and unenhanced. Each is backed by our lifetime authenticity guarantee and accompanied by certification for complete confidence.
+              <span className="font-bold">Natural jadeite, always clearly disclosed. </span>
+               Every piece is backed by our lifetime authenticity guarantee and certification, so you know exactly what you’re buying.
             </p>
           </div>
           <div className="spacer-div h-4"></div>
           <Accordion label="Jade Meaning & Cultural Significance">
-              <div className="space-y-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
-                <p>
-                  Beyond its beauty, jade carries deep cultural meaning shaped over
-                  thousands of years. In many traditions, it is associated with protection,
-                  balance, prosperity, and quiet strength — often chosen not just for how
-                  it looks, but for what it represents.
-                </p>
+            <div className="space-y-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
+              <p>
+                Beyond its beauty, jade carries deep cultural meaning shaped over
+                thousands of years. In many traditions, it is associated with protection,
+                balance, prosperity, and quiet strength — often chosen not just for how
+                it looks, but for what it represents.
+              </p>
 
-                <p className="mt-4">
-                  Certain shapes and forms are believed to carry specific intentions.
-                  The <span className="italic">Ping An Kou (平安扣)</span>, for example,
-                  symbolizes peace, protection, and safe passage — its continuous circle
-                  representing harmony and wholeness. Bangles are often worn as a form of
-                  protection, believed to stay with the wearer through different stages of life.
-                </p>
+              <p className="mt-4">
+                Certain shapes and forms are believed to carry specific intentions.
+                The <span className="italic">Ping An Kou (平安扣)</span>, for example,
+                symbolizes peace, protection, and safe passage — its continuous circle
+                representing harmony and wholeness. Bangles are often worn as a form of
+                protection, believed to stay with the wearer through different stages of life.
+              </p>
 
-                <p className="mt-4">
-                  Color also plays a meaningful role. Green jade is commonly associated
-                  with prosperity and growth, lavender tones with calm and emotional balance,
-                  and icy or clear jade with purity and clarity of mind. Each piece carries
-                  a slightly different feeling — something many choose intuitively.
-                </p>
+              <p className="mt-4">
+                Color also plays a meaningful role. Green jade is commonly associated
+                with prosperity and growth, lavender tones with calm and emotional balance,
+                and icy or clear jade with purity and clarity of mind. Each piece carries
+                a slightly different feeling — something many choose intuitively.
+              </p>
 
-                <p className="mt-4">
-                  Because no two pieces are ever identical, selecting jade often becomes
-                  a personal process — choosing what resonates, rather than simply what
-                  looks perfect.
-                </p>
+              <p className="mt-4">
+                Because no two pieces are ever identical, selecting jade often becomes
+                a personal process — choosing what resonates, rather than simply what
+                looks perfect.
+              </p>
 
-                <p className="mt-4 italic">
-                  Many of our clients choose jade not only for themselves, but as a
-                  meaningful gift — something to protect, to celebrate, or to carry forward.
-                </p>
-                <p className="mt-4 text-slate-500">
-                  If you&apos;re looking for a piece with a specific meaning or intention, we’re
-                  happy to help you find the right one.
-                </p>
-              </div>
-            </Accordion>
-            <Accordion label="Authenticity & Natural Jadeite Guarantee">
-              <div className="space-y-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
-                <p>
-                  At BingBing Jade, authenticity is not a marketing phrase — it is the
-                  foundation of everything we do. We offer natural jadeite only, and every
-                  piece is represented as untreated Type A jadeite with certification.
-                </p>
+              <p className="mt-4 italic">
+                Many of our clients choose jade not only for themselves, but as a
+                meaningful gift — something to protect, to celebrate, or to carry forward.
+              </p>
+              <p className="mt-4 text-slate-500">
+                If you&apos;re looking for a piece with a specific meaning or intention, we’re
+                happy to help you find the right one.
+              </p>
+            </div>
+          </Accordion>
+          <Accordion label="Authenticity & Natural Jadeite Guarantee">
+            <div className="space-y-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
+              <p>
+                At BingBing Jade, authenticity is not a marketing phrase — it is the
+                foundation of everything we do. We offer natural jadeite only, and every
+                piece is represented as untreated Type A jadeite with certification.
+              </p>
 
-                <p className="mt-4 font-bold">
-                  In practical terms, this means no dye, no bleaching, no polymer
-                  impregnation, and no chemical enhancement. We value honesty, careful
-                  selection, and thoughtful presentation at every stage.
-                </p>
+              <p className="mt-4 font-bold">
+                In practical terms, this means no dye, no bleaching, no polymer
+                impregnation, and no chemical enhancement. We value honesty, careful
+                selection, and thoughtful presentation at every stage.
+              </p>
 
-                <p className="mt-4">
-                  Each piece is backed by our lifetime authenticity guarantee. If a piece is
-                  ever professionally tested and believed not to be Type A jadeite, you can return the piece to us for a full refund in accordance
-                  with our guarantee terms.
-                </p>
+              <p className="mt-4">
+                Each piece is backed by our lifetime authenticity guarantee. If a piece is
+                ever professionally tested and believed not to be Type A jadeite, you can return the piece to us for a full refund in accordance
+                with our guarantee terms.
+              </p>
 
-                <p className="mt-4">
-                  Natural jadeite is never perfectly uniform, and that is part of its beauty.
-                  Slight differences in color, glow, translucency, grain, and internal structure are
-                  natural characteristics of genuine jadeite and may appear differently across
-                  lighting conditions and environments. We provide many pictures and videos of different lighting conditions to best present the texture and conditions of our jades.
-                </p>
+              <p className="mt-4">
+                Natural jadeite is never perfectly uniform, and that is part of its beauty.
+                Slight differences in color, glow, translucency, grain, and internal structure are
+                natural characteristics of genuine jadeite and may appear differently across
+                lighting conditions and environments. We provide many pictures and videos of different lighting conditions to best present the texture and conditions of our jades.
+              </p>
 
-                <p className="mt-4">
-                  Every piece comes with certification from trusted laboratories, with additional GIA or NGTC certification
-                  available for eligible items at additional cost. For items over $5000, GIA/NGTC Certification is provided as a complimentary.
-                </p>
-              </div>
-            </Accordion>
+              <p className="mt-4">
+                Every piece comes with certification from trusted laboratories, with additional GIA or NGTC certification
+                available for eligible items at additional cost. For items over $5000, GIA/NGTC Certification is provided as a complimentary.
+              </p>
+            </div>
+          </Accordion>
 
           <div className="spacer-div h-3"></div>
           <Accordion label="Selection & Purchase">

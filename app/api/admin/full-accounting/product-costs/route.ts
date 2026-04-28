@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       id, product_id, vendor_id, purchase_price_original, purchase_currency,
       exchange_rate_to_usd, purchase_price_usd, import_cost_usd,
       certification_cost_usd, inbound_shipping_cost_usd, other_cost_usd,
-      total_cogs_usd, cost_last_updated_at, notes, updated_at,
+      label_cost_usd, total_cogs_usd, cost_last_updated_at, notes, updated_at,
       acct_vendors(id, vendor_code, vendor_display_name)
     `);
 
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
   const {
     product_id, vendor_id, purchase_price_original, purchase_currency,
     exchange_rate_to_usd, purchase_price_usd, import_cost_usd,
-    certification_cost_usd, inbound_shipping_cost_usd, other_cost_usd, notes,
+    certification_cost_usd, inbound_shipping_cost_usd, other_cost_usd, label_cost_usd, notes,
   } = body as {
     product_id: string;
     vendor_id?: string | null;
@@ -83,6 +83,7 @@ export async function POST(req: NextRequest) {
     certification_cost_usd?: number;
     inbound_shipping_cost_usd?: number;
     other_cost_usd?: number;
+    label_cost_usd?: number;
     notes?: string;
   };
 
@@ -102,6 +103,7 @@ export async function POST(req: NextRequest) {
       certification_cost_usd:   certification_cost_usd ?? 0,
       inbound_shipping_cost_usd:inbound_shipping_cost_usd ?? 0,
       other_cost_usd:           other_cost_usd ?? 0,
+      label_cost_usd:           label_cost_usd ?? 0,
       cost_last_updated_at:     now,
       notes:                    notes ?? null,
       updated_at:               now,

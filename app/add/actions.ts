@@ -111,7 +111,8 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
           : (o.status || "available"),
         sort_order: i,
       }));
-      const { data: inserted } = await supabaseAdmin.from("product_options").insert(optionsToInsert).select("id");
+      const { data: inserted, error: insertError } = await supabaseAdmin.from("product_options").insert(optionsToInsert).select("id");
+      if (insertError) throw new Error(`Variants save failed: ${insertError.message}`);
       if (inserted) {
         for (let i = 0; i < parsedOptions.length; i++) {
           const indices = parsedOptions[i].comboOf;
@@ -124,8 +125,8 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
           }
         }
       }
-    } catch {
-      // options_json parse failure is non-fatal
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : "Failed to save variants" };
     }
   }
 

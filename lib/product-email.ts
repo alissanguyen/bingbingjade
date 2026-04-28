@@ -35,6 +35,7 @@ export interface EmailProduct {
   name: string;
   category: string;
   slug: string;         // full slug-publicId segment
+  show_price: boolean;
   price_display_usd: number | null;
   sale_price_usd: number | null;
   status: string;
@@ -51,7 +52,7 @@ function productCard(product: EmailProduct, siteUrl: string): string {
   const displayPrice = product.sale_price_usd ?? product.price_display_usd;
   const catLabel = categoryLabel(product.category);
 
-  const priceHtml = displayPrice != null
+  const priceHtml = product.show_price && displayPrice != null
     ? `<span style="font-size:20px;font-weight:700;color:${isOnSale ? "#d97706" : "#065f46"};">${fmtPrice(displayPrice)}</span>${
         isOnSale && product.price_display_usd != null
           ? ` <span style="font-size:16px;color:#9ca3af;text-decoration:line-through;">${fmtPrice(product.price_display_usd)}</span>`

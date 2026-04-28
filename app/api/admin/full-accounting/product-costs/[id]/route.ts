@@ -20,7 +20,7 @@ export async function PATCH(
   const fields = [
     "vendor_id", "purchase_price_original", "purchase_currency",
     "exchange_rate_to_usd", "purchase_price_usd", "import_cost_usd",
-    "certification_cost_usd", "inbound_shipping_cost_usd", "other_cost_usd", "notes",
+    "certification_cost_usd", "inbound_shipping_cost_usd", "other_cost_usd", "label_cost_usd", "notes",
   ] as const;
 
   for (const f of fields) {

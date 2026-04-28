@@ -374,8 +374,17 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
 
   const removeFromAccepted = (id: string) => {
     setAcceptedImages((prev) => {
-      const item = prev.find((a) => a.id === id);
+      const removedIdx = prev.findIndex((a) => a.id === id);
+      const item = prev[removedIdx];
       if (item?.preview) URL.revokeObjectURL(item.preview);
+      if (removedIdx >= 0) {
+        setOptionRows((rows) => rows.map((row) => {
+          if (row.imageIndex === null) return row;
+          if (row.imageIndex === removedIdx) return { ...row, imageIndex: null };
+          if (row.imageIndex > removedIdx) return { ...row, imageIndex: row.imageIndex - 1 };
+          return row;
+        }));
+      }
       return prev.filter((a) => a.id !== id);
     });
   };
@@ -720,6 +729,7 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
         setVideos([]);
         setIsFeatured(false);
         setSizeDetailed(["", "", ""]);
+        setHasVariants(false);
         setOptionRows([blankRow()]);
       }
     } catch (err) {
@@ -963,12 +973,21 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
                       e.preventDefault();
                       const from = acceptedDragRef.current;
                       if (from === null || from === i) { setAcceptedDragOver(null); return; }
+                      const to = i;
                       setAcceptedImages((prev) => {
                         const next = [...prev];
                         const [moved] = next.splice(from, 1);
-                        next.splice(i, 0, moved);
+                        next.splice(to, 0, moved);
                         return next;
                       });
+                      setOptionRows((rows) => rows.map((row) => {
+                        if (row.imageIndex === null) return row;
+                        const idx = row.imageIndex;
+                        if (idx === from) return { ...row, imageIndex: to };
+                        if (from < to && idx > from && idx <= to) return { ...row, imageIndex: idx - 1 };
+                        if (from > to && idx >= to && idx < from) return { ...row, imageIndex: idx + 1 };
+                        return row;
+                      }));
                       acceptedDragRef.current = null;
                       setAcceptedDragOver(null);
                     }}

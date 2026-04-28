@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   // Fetch selected products
   const { data: products, error: prodError } = await supabaseAdmin
     .from("products")
-    .select("id, name, category, slug, public_id, price_display_usd, sale_price_usd, status, images")
+    .select("id, name, category, slug, public_id, show_price, price_display_usd, sale_price_usd, status, images")
     .in("id", productIds);
 
   if (prodError) return NextResponse.json({ error: prodError.message }, { status: 500 });
@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
       name: p.name,
       category: p.category,
       slug: productSlug(p),
+      show_price: p.show_price ?? false,
       price_display_usd: p.price_display_usd,
       sale_price_usd: p.sale_price_usd,
       status: p.status,

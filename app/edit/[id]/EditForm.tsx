@@ -252,8 +252,17 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
 
   const removeFromAccepted = (id: string) => {
     setAcceptedImages((prev) => {
-      const item = prev.find((a) => a.id === id);
+      const removedIdx = prev.findIndex((a) => a.id === id);
+      const item = prev[removedIdx];
       if (item?.kind === "new" && item.preview) URL.revokeObjectURL(item.preview);
+      if (removedIdx >= 0) {
+        setOptionRows((rows) => rows.map((row) => {
+          if (row.imageIndex === null) return row;
+          if (row.imageIndex === removedIdx) return { ...row, imageIndex: null };
+          if (row.imageIndex > removedIdx) return { ...row, imageIndex: row.imageIndex - 1 };
+          return row;
+        }));
+      }
       return prev.filter((a) => a.id !== id);
     });
   };
@@ -800,12 +809,21 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
                         e.preventDefault();
                         const from = acceptedDragRef.current;
                         if (from === null || from === i) { setAcceptedDragOver(null); return; }
+                        const to = i;
                         setAcceptedImages((prev) => {
                           const next = [...prev];
                           const [moved] = next.splice(from, 1);
-                          next.splice(i, 0, moved);
+                          next.splice(to, 0, moved);
                           return next;
                         });
+                        setOptionRows((rows) => rows.map((row) => {
+                          if (row.imageIndex === null) return row;
+                          const idx = row.imageIndex;
+                          if (idx === from) return { ...row, imageIndex: to };
+                          if (from < to && idx > from && idx <= to) return { ...row, imageIndex: idx - 1 };
+                          if (from > to && idx >= to && idx < from) return { ...row, imageIndex: idx + 1 };
+                          return row;
+                        }));
                         acceptedDragRef.current = null;
                         setAcceptedDragOver(null);
                       }}
@@ -995,16 +1013,14 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
               </p>
             </div>
           )}
-          {status === "on_sale" && (
-            <div>
-              <label className={labelClass}>Sale Price (USD)</label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-amber-400">$</span>
-                <input type="number" step="0.01" min="0" value={form.sale_price_usd} onChange={set("sale_price_usd")} placeholder="0.00" className={`${inputClass} pl-7 border-amber-300 dark:border-amber-700 focus:border-amber-500 focus:ring-amber-500`} />
-              </div>
-              <p className="mt-1 text-xs text-gray-400">Shown as the discounted price</p>
+          <div>
+            <label className={labelClass}>Sale Price (USD)</label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-amber-400">$</span>
+              <input type="number" step="0.01" min="0" value={form.sale_price_usd} onChange={set("sale_price_usd")} placeholder="0.00" className={`${inputClass} pl-7 border-amber-300 dark:border-amber-700 focus:border-amber-500 focus:ring-amber-500`} />
             </div>
-          )}
+            <p className="mt-1 text-xs text-gray-400">Shown as the discounted price when status is On Sale</p>
+          </div>
           {!isApprovedUser && (
             <div>
               <label className={labelClass}>Imported Price (VND) <span className="text-red-400">*</span></label>

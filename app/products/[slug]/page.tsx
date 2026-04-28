@@ -169,9 +169,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     .from("product_options")
     .select("id, label, size, price_usd, sale_price_usd, image_index, status, sort_order")
     .eq("product_id", product.id)
-    .order("sort_order")
-    .returns<ProductOptionRaw[]>();
-
+    .order("sort_order") as { data: ProductOptionRaw[] | null };
   const optionsWithResolvedImages = (rawOptions ?? []);
 
   // Fetch related products: same category, exclude current, published only

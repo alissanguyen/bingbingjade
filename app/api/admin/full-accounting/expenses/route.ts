@@ -30,7 +30,25 @@ export async function GET(req: NextRequest) {
   const { data, count, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ expenses: data ?? [], total: count ?? 0, page, limit });
+  // Shipping delta: total shipping expenses vs shipping collected from customers
+  let shippingExpQuery = supabaseAdmin
+    .from("business_expenses")
+    .select("amount_usd")
+    .eq("category", "shipping");
+  if (from) shippingExpQuery = shippingExpQuery.gte("expense_date", from);
+  if (to)   shippingExpQuery = shippingExpQuery.lte("expense_date", to);
+  const { data: shippingExpRows } = await shippingExpQuery;
+  const shippingExpenses = (shippingExpRows ?? []).reduce((s, r) => s + Number(r.amount_usd), 0);
+
+  let shippingRevQuery = supabaseAdmin
+    .from("stripe_accounting_snapshots")
+    .select("amount_shipping_cents");
+  if (from) shippingRevQuery = shippingRevQuery.gte("stripe_created_at", from);
+  if (to)   shippingRevQuery = shippingRevQuery.lte("stripe_created_at", to + "T23:59:59Z");
+  const { data: shippingRevRows } = await shippingRevQuery;
+  const shippingRevenue = (shippingRevRows ?? []).reduce((s, r) => s + Number(r.amount_shipping_cents ?? 0), 0) / 100;
+
+  return NextResponse.json({ expenses: data ?? [], total: count ?? 0, page, limit, shippingExpenses, shippingRevenue });
 }
 
 export async function POST(req: NextRequest) {

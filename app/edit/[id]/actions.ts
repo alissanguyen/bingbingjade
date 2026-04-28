@@ -39,10 +39,11 @@ async function applyOptions(productId: string, optionsJson: string, productStatu
     sort_order: i,
   }));
 
-  const { data: inserted } = await supabaseAdmin
+  const { data: inserted, error: insertError } = await supabaseAdmin
     .from("product_options")
     .insert(optionsToInsert)
     .select("id");
+  if (insertError) throw new Error(insertError.message);
 
   const allSold = optionsToInsert.length > 0 && optionsToInsert.every((o) => o.status === "sold");
   if (allSold && productStatus !== "sold") {

@@ -31,16 +31,17 @@ type EditState = {
 const THIS_YEAR = new Date().getFullYear().toString();
 
 export function FulfillmentTab() {
-  const [rows, setRows]     = useState<FulfillmentRow[]>([]);
-  const [total, setTotal]   = useState(0);
-  const [page, setPage]     = useState(1);
+  const [rows, setRows] = useState<FulfillmentRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalLabelCost, setTotalLabelCost] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [from, setFrom]     = useState(`${THIS_YEAR}-01-01`);
-  const [to, setTo]         = useState(`${THIS_YEAR}-12-31`);
+  const [from, setFrom] = useState(`${THIS_YEAR}-01-01`);
+  const [to, setTo] = useState(`${THIS_YEAR}-12-31`);
   const [editing, setEditing] = useState<string | null>(null);
   const [editState, setEditState] = useState<EditState | null>(null);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg]       = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
   const LIMIT = 50;
 
   const load = useCallback(async (p = 1) => {
@@ -50,6 +51,7 @@ export function FulfillmentTab() {
       const json = await res.json();
       setRows(json.rows ?? []);
       setTotal(json.total ?? 0);
+      setTotalLabelCost(json.totalLabelCost ?? 0);
       setPage(p);
     } finally {
       setLoading(false);
@@ -61,12 +63,12 @@ export function FulfillmentTab() {
   function startEdit(row: FulfillmentRow) {
     setEditing(row.order_id);
     setEditState({
-      label_cost:     String(row.label_cost),
+      label_cost: String(row.label_cost),
       insurance_cost: String(row.insurance_cost),
-      supplies_cost:  String(row.supplies_cost),
-      dropoff_cost:   String(row.dropoff_cost),
-      other_cost:     String(row.other_cost),
-      notes:          row.notes ?? "",
+      supplies_cost: String(row.supplies_cost),
+      dropoff_cost: String(row.dropoff_cost),
+      other_cost: String(row.other_cost),
+      notes: row.notes ?? "",
     });
     setMsg(null);
   }
@@ -79,24 +81,40 @@ export function FulfillmentTab() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          order_id:                             orderId,
-          label_cost_usd:                       parseFloat(editState.label_cost)     || 0,
+          order_id: orderId,
+          label_cost_usd: parseFloat(editState.label_cost) || 0,
           business_shipping_insurance_cost_usd: parseFloat(editState.insurance_cost) || 0,
-          supplies_cost_usd:                    parseFloat(editState.supplies_cost)  || 20,
-          dropoff_transport_cost_usd:           parseFloat(editState.dropoff_cost)   || 0,
-          other_fulfillment_cost_usd:           parseFloat(editState.other_cost)     || 0,
-          notes:                                editState.notes || null,
+          supplies_cost_usd: parseFloat(editState.supplies_cost) || 20,
+          dropoff_transport_cost_usd: parseFloat(editState.dropoff_cost) || 0,
+          other_fulfillment_cost_usd: parseFloat(editState.other_cost) || 0,
+          notes: editState.notes || null,
         }),
       });
       if (res.ok) {
+        const labelVal = parseFloat(editState.label_cost) || 0;
+        const insuranceVal = parseFloat(editState.insurance_cost) || 0;
+        const suppliesVal = parseFloat(editState.supplies_cost) || 20;
+        const dropoffVal = parseFloat(editState.dropoff_cost) || 0;
+        const otherVal = parseFloat(editState.other_cost) || 0;
+        setRows((prev) => prev.map((r) =>
+          r.order_id === orderId
+            ? { ...r, label_cost: labelVal, insurance_cost: insuranceVal, supplies_cost: suppliesVal, dropoff_cost: dropoffVal, other_cost: otherVal, notes: editState.notes || null, has_entry: true }
+            : r
+        ));
         setEditing(null);
         setEditState(null);
         setMsg("Saved");
         load(page);
       } else {
-        const json = await res.json();
-        setMsg(`Error: ${json.error}`);
+        let errMsg = `HTTP ${res.status}`;
+        try {
+          const json = await res.json();
+          errMsg = json.error ?? errMsg;
+        } catch { /* non-JSON body */ }
+        setMsg(`Error: ${errMsg}`);
       }
+    } catch (err) {
+      setMsg(`Error: ${err instanceof Error ? err.message : "Network error"}`);
     } finally {
       setSaving(false);
     }
@@ -118,6 +136,22 @@ export function FulfillmentTab() {
           Apply
         </button>
         {msg && <span className="text-xs text-gray-500 ml-auto">{msg}</span>}
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+          <p className="text-xs text-gray-500 uppercase tracking-wide">Total Label Cost</p>
+          <p className="text-xl font-semibold text-gray-900 dark:text-gray-100 mt-1">${totalLabelCost.toFixed(2)}</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">across {total} orders in period</p>
+        </div>
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+          <p className="text-xs text-gray-500 uppercase tracking-wide">Avg Label / Order</p>
+          <p className="text-xl font-semibold text-gray-900 dark:text-gray-100 mt-1">
+            {total > 0 ? `$${(totalLabelCost / total).toFixed(2)}` : "—"}
+          </p>
+          <p className="text-[11px] text-gray-400 mt-0.5">only orders with label cost entered</p>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
@@ -230,7 +264,7 @@ export function FulfillmentTab() {
         </div>
       )}
       <p className="text-xs text-gray-400 dark:text-gray-500">
-        Supplies cost defaults to $20 per order if not entered. "(est.)" = not yet recorded.
+        Supplies cost defaults to $20 per order if not entered. &quot;(est.)&quot; = not yet recorded.
       </p>
     </div>
   );

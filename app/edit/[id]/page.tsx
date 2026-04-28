@@ -27,8 +27,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
       .from("product_options")
       .select("id, label, size, price_usd, sale_price_usd, status, image_index")
       .eq("product_id", id)
-      .order("sort_order")
-      .returns<InitialOptionRaw[]>(),
+      .order("sort_order") as Promise<{ data: InitialOptionRaw[] | null; error: unknown }>,
     getSessionUser(),
   ]);
 

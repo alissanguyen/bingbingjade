@@ -20,6 +20,7 @@ interface ProductRow {
     certification_cost_usd: number;
     inbound_shipping_cost_usd: number;
     other_cost_usd: number;
+    label_cost_usd: number;
     total_cogs_usd: number;
     notes: string | null;
   } | null;
@@ -41,6 +42,7 @@ type EditState = {
   certification_cost_usd: string;
   inbound_shipping_cost_usd: string;
   other_cost_usd: string;
+  label_cost_usd: string;
   notes: string;
 };
 
@@ -55,6 +57,7 @@ function emptyEdit(cost: ProductRow["cost"]): EditState {
     certification_cost_usd:     String(cost?.certification_cost_usd ?? "0"),
     inbound_shipping_cost_usd:  String(cost?.inbound_shipping_cost_usd ?? "0"),
     other_cost_usd:             String(cost?.other_cost_usd ?? "0"),
+    label_cost_usd:             String(cost?.label_cost_usd ?? "0"),
     notes:                      cost?.notes ?? "",
   };
 }
@@ -122,6 +125,7 @@ export function ProductCostsTab() {
         certification_cost_usd:    parseFloat(editState.certification_cost_usd) || 0,
         inbound_shipping_cost_usd: parseFloat(editState.inbound_shipping_cost_usd) || 0,
         other_cost_usd:            parseFloat(editState.other_cost_usd) || 0,
+        label_cost_usd:            parseFloat(editState.label_cost_usd) || 0,
         notes:                     editState.notes || null,
       };
 
@@ -190,6 +194,7 @@ export function ProductCostsTab() {
                   <th className="px-3 py-3 text-right">Cert.</th>
                   <th className="px-3 py-3 text-right">Inbound Ship.</th>
                   <th className="px-3 py-3 text-right">Other</th>
+                  <th className="px-3 py-3 text-right">Label</th>
                   <th className="px-3 py-3 text-right font-semibold">Total COGS</th>
                   <th className="px-3 py-3 text-left">Vendor</th>
                   <th className="pr-4 pl-3 py-3 text-left">Notes</th>
@@ -240,6 +245,11 @@ export function ProductCostsTab() {
                           ).toFixed(2)}
                         </td>
                         <td className="px-2 py-1.5">
+                          <input type="number" step="0.01" value={editState.label_cost_usd}
+                            onChange={(e) => updateField("label_cost_usd", e.target.value)}
+                            className="w-20 text-xs border border-gray-300 dark:border-gray-700 rounded px-2 py-1 bg-white dark:bg-gray-800 text-right" />
+                        </td>
+                        <td className="px-2 py-1.5">
                           <select value={editState.vendor_id}
                             onChange={(e) => updateField("vendor_id", e.target.value)}
                             className="text-xs border border-gray-300 dark:border-gray-700 rounded px-1.5 py-1 bg-white dark:bg-gray-800 max-w-[120px]">
@@ -288,6 +298,7 @@ export function ProductCostsTab() {
                             <td className="px-3 py-2.5 text-right tabular-nums text-gray-500">{row.cost.certification_cost_usd > 0 ? `$${row.cost.certification_cost_usd.toFixed(2)}` : "—"}</td>
                             <td className="px-3 py-2.5 text-right tabular-nums text-gray-500">{row.cost.inbound_shipping_cost_usd > 0 ? `$${row.cost.inbound_shipping_cost_usd.toFixed(2)}` : "—"}</td>
                             <td className="px-3 py-2.5 text-right tabular-nums text-gray-500">{row.cost.other_cost_usd > 0 ? `$${row.cost.other_cost_usd.toFixed(2)}` : "—"}</td>
+                            <td className="px-3 py-2.5 text-right tabular-nums text-gray-500">{row.cost.label_cost_usd > 0 ? `$${row.cost.label_cost_usd.toFixed(2)}` : "—"}</td>
                             <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">${row.cost.total_cogs_usd?.toFixed(2)}</td>
                             <td className="px-3 py-2.5 text-gray-500 text-xs">
                               {(row.cost as { acct_vendors?: { vendor_code: string } }).acct_vendors?.vendor_code ?? "—"}
@@ -295,7 +306,7 @@ export function ProductCostsTab() {
                             <td className="px-3 py-2.5 text-gray-400 text-xs max-w-[120px] truncate">{row.cost.notes ?? "—"}</td>
                           </>
                         ) : (
-                          <td colSpan={11} className="px-3 py-2.5">
+                          <td colSpan={12} className="px-3 py-2.5">
                             <span className="text-xs text-amber-600 dark:text-amber-400">⚠ No cost data — click Edit</span>
                           </td>
                         )}

@@ -92,8 +92,7 @@ export default async function ProductsAllPreview({
       .order("created_at", { ascending: false }),
     supabaseAdmin
       .from("product_options")
-      .select("product_id, price_usd, sale_price_usd, status")
-      .returns<OptionPriceRow[]>(),
+      .select("product_id, price_usd, sale_price_usd, status") as Promise<{ data: OptionPriceRow[] | null; error: unknown }>,
   ]);
 
   const optionMap = new Map<string, OptionPriceRow[]>();

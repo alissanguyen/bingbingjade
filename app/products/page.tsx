@@ -103,8 +103,7 @@ export default async function Products({
     productsQuery,
     supabase
       .from("product_options")
-      .select("product_id, price_usd, sale_price_usd, status")
-      .returns<OptionPriceRow[]>(),
+      .select("product_id, price_usd, sale_price_usd, status") as Promise<{ data: OptionPriceRow[] | null; error: unknown }>,
   ]);
 
   if (error) {

@@ -34,8 +34,10 @@ const EMPTY_FORM = {
 const THIS_YEAR = new Date().getFullYear().toString();
 
 export function ExpensesTab() {
-  const [expenses, setExpenses]   = useState<Expense[]>([]);
-  const [total, setTotal]         = useState(0);
+  const [expenses, setExpenses]         = useState<Expense[]>([]);
+  const [total, setTotal]               = useState(0);
+  const [shippingExpenses, setShippingExpenses] = useState(0);
+  const [shippingRevenue, setShippingRevenue]   = useState(0);
   const [loading, setLoading]     = useState(true);
   const [page, setPage]           = useState(1);
   const [from, setFrom]           = useState(`${THIS_YEAR}-01-01`);
@@ -59,6 +61,8 @@ export function ExpensesTab() {
       const json = await res.json();
       setExpenses(json.expenses ?? []);
       setTotal(json.total ?? 0);
+      setShippingExpenses(json.shippingExpenses ?? 0);
+      setShippingRevenue(json.shippingRevenue ?? 0);
       setPage(p);
     } finally {
       setLoading(false);
@@ -176,6 +180,37 @@ export function ExpensesTab() {
         <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
           <p className="text-xs text-gray-500 uppercase tracking-wide">Entries shown</p>
           <p className="text-xl font-semibold text-gray-900 dark:text-gray-100 mt-1">{total}</p>
+        </div>
+      </div>
+
+      {/* Shipping delta */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Shipping Cost Delta (period)</p>
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <p className="text-[11px] text-gray-400 uppercase tracking-wide">Collected from customers</p>
+            <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-0.5">${shippingRevenue.toFixed(2)}</p>
+            <p className="text-[11px] text-gray-400">via Stripe</p>
+          </div>
+          <div>
+            <p className="text-[11px] text-gray-400 uppercase tracking-wide">Spent on shipping</p>
+            <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-0.5">${shippingExpenses.toFixed(2)}</p>
+            <p className="text-[11px] text-gray-400">from expenses (category: shipping)</p>
+          </div>
+          <div>
+            <p className="text-[11px] text-gray-400 uppercase tracking-wide">Delta</p>
+            {(() => {
+              const delta = shippingRevenue - shippingExpenses;
+              return (
+                <>
+                  <p className={`text-lg font-semibold mt-0.5 ${delta >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+                    {delta >= 0 ? "+" : ""}${delta.toFixed(2)}
+                  </p>
+                  <p className="text-[11px] text-gray-400">{delta >= 0 ? "customers covered shipping" : "you subsidized shipping"}</p>
+                </>
+              );
+            })()}
+          </div>
         </div>
       </div>
 
