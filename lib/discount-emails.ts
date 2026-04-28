@@ -716,15 +716,15 @@ export async function sendReferralInviteEmail(params: {
             <p style="margin:0 0 20px;font-size:16px;color:#111827;">Hi ${firstName},</p>
 
             <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
-              Your order has been delivered — we hope your piece brings you lasting joy. 💚
+              Your order has been delivered — we hope your piece stays with you for years to come. 💚 Most of our clients come through word of mouth — from people who care about getting it right.
             </p>
 
             <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
-              As a BingBing Jade client, you now have a personal referral code to share with someone discovering us for the first time. When they place their first order using your code, they’ll receive a private welcome offer of <strong>$20 off</strong>, and you’ll receive a credit toward your next piece once their order is successfully delivered.
+              As part of BingBing Jade, you now have a personal referral code to share with someone discovering jade for the first time. When they place their first order with your code, they’ll receive a private welcome offer of <strong>$20 off</strong>, and you’ll receive a credit toward your next piece once their order is successfully delivered.
             </p>
 
             <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
-              Your reward is based on the piece they choose:
+              Your reward reflects the piece they choose:
             </p>
 
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:28px;">
@@ -732,7 +732,7 @@ export async function sendReferralInviteEmail(params: {
                 <td style="padding:20px 24px;text-align:center;">
                   <p style="margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:#059669;">Your Referral Code</p>
                   <p style="margin:0;font-size:28px;font-weight:800;color:#065f46;letter-spacing:0.12em;">${params.referralCode}</p>
-                  <p style="margin:10px 0 0;font-size:12px;color:#6b7280;">Your code stays the same and can be shared anytime</p>
+                  <p style="margin:10px 0 0;font-size:12px;color:#6b7280;">Your code stays with you and can be shared anytime</p>
                 </td>
               </tr>
             </table>
@@ -740,22 +740,22 @@ export async function sendReferralInviteEmail(params: {
             <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
               <tr>
                 <td style="padding:10px 0;border-bottom:1px solid #f3f4f6;font-size:14px;color:#374151;">
-                  Referred order under <strong>$500</strong> → you receive <strong style="color:#065f46;">$10 credit</strong>
+                  Referred order under <strong>$500</strong> → you receive <strong style="color:#065f46;">$10 in credits</strong>
                 </td>
               </tr>
               <tr>
                 <td style="padding:10px 0;border-bottom:1px solid #f3f4f6;font-size:14px;color:#374151;">
-                  Referred order from <strong>$500 to $999</strong> → you receive <strong style="color:#065f46;">$20 credit</strong>
+                  Referred order from <strong>$500 to $999</strong> → you receive <strong style="color:#065f46;">$20 in credits</strong>
                 </td>
               </tr>
               <tr>
                 <td style="padding:10px 0;border-bottom:1px solid #f3f4f6;font-size:14px;color:#374151;">
-                  Referred order from <strong>$1000 to $1999</strong> → you receive <strong style="color:#065f46;">$30 credit</strong>
+                  Referred order from <strong>$1000 to $1999</strong> → you receive <strong style="color:#065f46;">$30 in credits</strong>
                 </td>
               </tr>
               <tr>
                 <td style="padding:10px 0;font-size:14px;color:#374151;">
-                  Referred order of <strong>$2000+</strong> → you receive <strong style="color:#065f46;">$50+ credit</strong>
+                  Referred order of <strong>$2000+</strong> → you receive <strong style="color:#065f46;">$50 in credits</strong>
                 </td>
               </tr>
             </table>
@@ -773,7 +773,7 @@ export async function sendReferralInviteEmail(params: {
                 <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;">
                   <table cellpadding="0" cellspacing="0" width="100%"><tr>
                     <td style="font-size:13px;color:#6b7280;width:20px;padding-right:10px;">2.</td>
-                    <td style="font-size:14px;color:#374151;">They use <strong>${params.referralCode}</strong> on their first order and receive <strong>$20 off</strong></td>
+                    <td style="font-size:14px;color:#374151;">They use <strong>your code</strong> on their first order and receive <strong>$20 off</strong></td>
                   </tr></table>
                 </td>
               </tr>
@@ -781,7 +781,7 @@ export async function sendReferralInviteEmail(params: {
                 <td style="padding:8px 0;">
                   <table cellpadding="0" cellspacing="0" width="100%"><tr>
                     <td style="font-size:13px;color:#6b7280;width:20px;padding-right:10px;">3.</td>
-                    <td style="font-size:14px;color:#374151;">Once their order is delivered, your credit is issued based on the value of the piece they selected</td>
+                    <td style="font-size:14px;color:#374151;">Once their order is delivered, your credit is issued based on the piece they chose</td>
                   </tr></table>
                 </td>
               </tr>
@@ -798,7 +798,7 @@ export async function sendReferralInviteEmail(params: {
             </table>
 
             <p style="margin:0 0 14px;font-size:13px;color:#6b7280;line-height:1.6;">
-              Jade has always been something you share — with people you care about.
+              Jade has always been something meant to be shared — with people you care about.
             </p>
 
             <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.6;">
@@ -828,7 +828,7 @@ export async function sendReferralInviteEmail(params: {
       from,
       to: params.customerEmail,
       bcc: "contact@bingbingjade.com",
-      subject: `[Order Update] Your BingBing Jade referral code — share and earn $10`,
+      subject: `[You've Been Invited] Your BingBing Jade referral code — share and earn up to $50 in credits`,
       html
     });
   } catch (err) {

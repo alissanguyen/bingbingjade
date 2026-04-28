@@ -68,7 +68,18 @@
       "Bash(find /Users/nouveau/Documents/workspaces/jade-shop/app/api/admin/orders -name *.ts)",
       "Bash(find /Users/nouveau/Documents/workspaces/jade-shop/app/checkout -type f -name *.tsx -o -name *.ts)",
       "Bash(/dev/null --include=*.tsx)",
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "Bash(find /Users/nouveau/Documents/workspaces/jade-shop/supabase -type f -name *.sql)",
+      "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -type f \\\\\\(-name *stripe* -o -name *payment* \\\\\\))",
+      "Bash(sed -i '' 's/r\\\\.orders as { customer_name: string | null; customer_email: string | null; amount_total: number | null } | null/r.orders as unknown as { customer_name: string | null; customer_email: string | null; amount_total: number | null } | null/g' app/api/admin/full-accounting/export/route.ts)",
+      "Bash(__NEW_LINE_93b9fe17c5120d60__ grep:*)",
+      "Bash(PGPASSWORD=\"\" npx supabase db push)",
+      "Bash(curl:*)",
+      "Bash(for f:*)",
+      "Bash(do echo:*)",
+      "Read(//Users/nouveau/Documents/workspaces/jade-shop/**)",
+      "Bash(done)",
+      "Bash(git log:*)"
     ]
   }
 }

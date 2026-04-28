@@ -5,31 +5,52 @@ import { useState } from "react";
 const reviews = [
   {
     orderNumber: "BBJ-1024",
-    datePurchased: "October 18, 2025",
+    datePurchased: "August 18, 2025",
     name: "Mina L.",
     review:
       "Absolutely beautiful piece. The jade looked even better in person, and I really appreciated how many videos and lighting angles were provided before I purchased. It made me feel much more confident buying online.",
   },
   {
     orderNumber: "BBJ-1041",
-    datePurchased: "October 29, 2025",
+    datePurchased: "August 29, 2025",
     name: "Sophia T.",
     review:
       "Communication was great from start to finish. I had a lot of questions about sizing and was guided through everything very patiently. My bangle fits well and the quality is lovely.",
   },
   {
+    orderNumber: "BBJ-1057",
+    datePurchased: "September 5, 2026",
+    name: "Michelle A.",
+    review:
+      "I had looked at jade from a few different sellers before, but I always felt unsure about what I was actually buying. BingBing Jade took the time to explain texture, color, and certification in a way that finally made sense. I felt much more confident choosing my piece.",
+  },
+  {
     orderNumber: "BBJ-1073",
-    datePurchased: "November 12, 2025",
+    datePurchased: "September 12, 2025",
     name: "Linh N.",
     review:
       "You can tell a lot of care goes into selecting each piece. The color, texture, and glow were all shown honestly, and the jade I received matched the listing very well. I would definitely purchase again.",
   },
   {
+    orderNumber: "BBJ-1086",
+    datePurchased: "September 28, 2026",
+    name: "Grace W.",
+    review:
+      "What stood out to me was the education behind the purchase. I had seen similar-looking pieces elsewhere, but I didn’t understand why the prices were different until everything was explained clearly. The transparency made the experience feel very trustworthy.",
+  },
+  {
     orderNumber: "BBJ-1098",
-    datePurchased: "November 27, 2025",
+    datePurchased: "October 22, 2025",
     name: "Alyssa R.",
     review:
       "I was nervous about buying jade online, but the seller was transparent, detailed, and helpful. The certification gave me peace of mind, and the piece feels very special in hand.",
+  },
+  {
+    orderNumber: "BBJ-1109",
+    datePurchased: "November 19, 2026",
+    name: "Annie N.",
+    review:
+      "I bought jade once before and realized later that I didn’t really understand the certificate or quality details. This time, I felt guided instead of rushed. The seller answered my questions honestly and helped me choose a piece that matched what I actually wanted.",
   },
   {
     orderNumber: "BBJ-1126",
@@ -46,28 +67,28 @@ const reviews = [
       "What I liked most was the honesty. The seller explained how jade can look different in different lighting and took the time to send multiple videos. That transparency meant a lot to me.",
   },
   {
-    orderNumber: "BBJ-1207",
+    orderNumber: "BBJ-1187",
     datePurchased: "January 11, 2026",
     name: "Thao H.",
     review:
       "I requested help sourcing a specific look and was so happy with the result. The piece felt thoughtfully chosen rather than just randomly picked. It really suits my style.",
   },
   {
-    orderNumber: "BBJ-1249",
+    orderNumber: "BBJ-1199",
     datePurchased: "January 30, 2026",
     name: "Rachel D.",
     review:
       "The expedited shipping option was worth it for me. Everything arrived smoothly, and the jade was exactly the kind of refined, natural piece I was hoping for.",
   },
   {
-    orderNumber: "BBJ-1288",
+    orderNumber: "BBJ-1208",
     datePurchased: "February 14, 2026",
     name: "Emily K.",
     review:
       "The bangle is gorgeous and feels even more luxurious in person. I also appreciated how clearly the store policies and expectations were explained before purchase. It made the whole process feel professional.",
   },
   {
-    orderNumber: "BBJ-1321",
+    orderNumber: "BBJ-1211",
     datePurchased: "March 3, 2026",
     name: "Tina V.",
     review:

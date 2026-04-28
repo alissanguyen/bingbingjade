@@ -105,7 +105,7 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
               Handpicked
             </p>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Featured Pieces
+              Our featured Pieces
             </h2>
           </div>
 
