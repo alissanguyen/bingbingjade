@@ -99,11 +99,14 @@ export default async function Products({
 
   if (!isDev) productsQuery.eq("is_published", true);
 
+  const optionsQuery = supabase
+    .from("product_options")
+    .select("product_id, price_usd, sale_price_usd, status")
+    .returns<OptionPriceRow[]>();
+
   const [{ data: allProducts, error }, { data: allOptions }] = await Promise.all([
     productsQuery,
-    supabase
-      .from("product_options")
-      .select("product_id, price_usd, sale_price_usd, status") as Promise<{ data: OptionPriceRow[] | null; error: unknown }>,
+    optionsQuery,
   ]);
 
   if (error) {
@@ -194,13 +197,13 @@ export default async function Products({
 
     // Interleave in batches of 12: 12 newest → 12 ship now → 12 newest → ...
     const newlyAdded = unsold.filter((p) => !p.quick_ship);
-    const quickship  = unsold.filter((p) => p.quick_ship);
+    const quickship = unsold.filter((p) => p.quick_ship);
     const BATCH = 12;
     sorted = [];
     let ni = 0, qi = 0;
     while (ni < newlyAdded.length || qi < quickship.length) {
       for (let k = 0; k < BATCH && ni < newlyAdded.length; k++, ni++) sorted.push(newlyAdded[ni]);
-      for (let k = 0; k < BATCH && qi < quickship.length;  k++, qi++) sorted.push(quickship[qi]);
+      for (let k = 0; k < BATCH && qi < quickship.length; k++, qi++) sorted.push(quickship[qi]);
     }
     // Sold always last
     sorted.push(...sold);
