@@ -20,16 +20,17 @@ type InitialOption = InitialOptionRaw;
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const [{ data: product }, { data: vendors }, { data: optionsData }, session] = await Promise.all([
+  const [{ data: product }, { data: vendors }, optionsResult, session] = await Promise.all([
     supabaseAdmin.from("products").select("*").eq("id", id).single(),
     supabaseAdmin.from("vendors").select("*").order("name"),
     supabaseAdmin
       .from("product_options")
       .select("id, label, size, price_usd, sale_price_usd, status, image_index")
       .eq("product_id", id)
-      .order("sort_order") as Promise<{ data: InitialOptionRaw[] | null; error: unknown }>,
+      .order("sort_order"),
     getSessionUser(),
   ]);
+  const optionsData = (optionsResult.data ?? []) as InitialOptionRaw[];
 
   if (!product) notFound();
 
@@ -41,7 +42,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     videoPaths.some(isStoragePath) ? resolveVideoUrls(videoPaths) : Promise.resolve(videoPaths),
   ]);
 
-  const initialOptions: InitialOption[] = optionsData ?? [];
+  const initialOptions: InitialOption[] = optionsData;
 
   const approvedUser = isApproved(session);
 
