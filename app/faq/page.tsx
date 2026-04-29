@@ -14,13 +14,16 @@ const faqs = [
       <>
         Yes. All jade sold on this website is{" "}
         <strong className="text-emerald-600 dark:text-emerald-500">
-          natural, untreated Jadeite (Type A)
+          natural Jadeite
         </strong>{" "}
         and{" "}
         <strong className="text-emerald-600 dark:text-emerald-500">
           guaranteed authentic for life
         </strong>
-        . No dye, bleaching, polymer infusion, or chemical treatment is used in the production process.
+        . BingBing Jade does not sell dyed jade. If a piece has any disclosed
+        treatment, such as heat treatment, this will be clearly stated before
+        purchase. We do not sell jade treated with dye, bleaching, polymer
+        infusion, or undisclosed chemical enhancement.
       </>
     ),
   },
@@ -38,9 +41,12 @@ const faqs = [
           lifetime authenticity guarantee
         </strong>
         .{" "}
-        <strong className="text-emerald-600 dark:text-emerald-500">GIA</strong> or{" "}
+        <strong className="text-emerald-600 dark:text-emerald-500">GIA</strong>{" "}
+        or{" "}
         <strong className="text-emerald-600 dark:text-emerald-500">NGTC</strong>{" "}
-        certification may also be requested at additional cost. Please contact us for more details.
+        certification may also be requested at additional cost when available.
+        Certification timelines may vary depending on the item, lab, and
+        shipping route.
       </>
     ),
   },
@@ -49,92 +55,126 @@ const faqs = [
     question: "Do you guarantee your jade is Type A?",
     answer: (
       <>
-        Yes. All pieces are backed by a{" "}
+        Yes. Pieces sold as Type A Jadeite are backed by a{" "}
         <strong className="text-emerald-700 dark:text-emerald-500 italic">
           lifetime Type A Jadeite guarantee
         </strong>
-        . If a piece is professionally tested at any time and believed not to be Type A, it may be returned to us for review, re-certification, and verification. If the returned results confirm otherwise, a refund will be issued.
+        . If a piece is professionally tested at any time and believed not to
+        match our authenticity guarantee, it may be submitted to us for review,
+        re-certification, and verification. If the final verified results
+        confirm the item was not as guaranteed, an appropriate resolution or
+        refund will be issued.
       </>
     ),
   },
   {
     id: "inventory-types",
-    question: `What is the difference between "Ship Now” and “Sourced for You”?`,
+    question: `What is the difference between "Ship Now" and "Sourced for You"?`,
     answer:
-      "Ship Now” pieces are already in our U.S. inventory and typically ship within 2–5 business days. “Sourced for You” pieces are carefully selected and prepared upon order, with an estimated delivery timeframe of 2–4 weeks. This allows us to offer a wider range of unique and high-quality jade while maintaining strict quality control.",
+      "“Ship Now” pieces are already in our U.S. inventory and typically ship within 2–5 business days. “Sourced for You” pieces are curated special-order pieces from our trusted supplier network. These pieces are not always held in our U.S. inventory at the time of purchase and may require additional time for logistic coordination, availability confirmation, quality review, certification when applicable, international handling, and final fulfillment. This allows us to offer a wider range of jade while still carefully reviewing what we list.",
   },
   {
     id: "natural-variation",
     question: "Why doesn't my jade look exactly the same in person?",
     answer:
-      "Jade naturally appears different depending on lighting, environment, and skin tone. We present each piece through multiple photos, videos, and lighting conditions; however, slight variations in color, glow, and translucency are inherent to untreated jade and part of its unique character.",
+      "Jade naturally appears different depending on lighting, camera settings, environment, and skin tone. We present each piece through multiple photos, videos, and lighting conditions whenever possible. Slight differences in color, tone, glow, translucency, cotton, crystal structure, stone lines, or natural minor inclusions are normal characteristics of jade and do not constitute damage or misrepresentation.",
   },
   {
     id: "payment-methods",
     question: "What payment methods do you accept?",
     answer:
-      "We accept payment via Stripe through our website or through manual Stripe invoices, as well as Zelle and wire transfer. Payments processed through our website may be subject to transaction fees. No other payment methods are accepted. Applicable sales tax may apply based on the delivery destination.",
+      "We accept payment via Stripe through our website or through manual Stripe invoices, as well as Zelle and wire transfer when approved. Payments processed through our website may be subject to transaction or processing fees where applicable. Sales tax, if applicable, will be charged based on the delivery destination and in accordance with applicable law.",
   },
   {
     id: "standard-shipping",
     question: "How does shipping work?",
     answer:
-      "Shipping time depends on the type of piece you select. Items labeled “Ship Now” are already in our U.S. inventory and typically ship within 2–5 business days. Pieces labeled “Sourced for You” are carefully prepared upon order and typically arrive within 2–4 weeks, allowing time for quality inspection, certification, and international handling.",
+      "Shipping time depends on the type of piece you select. Items labeled “Ship Now” are already in our U.S. inventory and typically ship within 2–5 business days. Pieces labeled “Sourced for You” are curated special-order pieces from our supplier network and typically have an estimated delivery timeframe of 2–4 weeks. This timeline allows for availability confirmation, logistic coordination, quality review, certification when applicable, international handling, and final fulfillment. Some sourced pieces may ship through our fulfillment partners rather than directly from our U.S. inventory.",
   },
   {
     id: "expedited-sourcing",
     question: "Priority Sourcing / Expedited Shipping: What is it and how does it work?",
     answer:
-      "For pieces labeled “Sourced for You,” priority sourcing is available for $100 (plus $10 per additional item). With this option, your order is prioritized at every stage — including sourcing, preparation, and dispatch — to reduce overall processing time. This is recommended for time-sensitive orders or special occasions. Priority sourcing does not apply to items labeled “Ship Now,” which are already ready for immediate shipment from our U.S. inventory.",
+      "Expedited shipping is available for “Sourced for You” items for $100 (plus $10 per additional item). With this option, your piece is prioritized and dispatched without delay. This is recommended for time-sensitive orders, high-value pieces, or special occasions.",
   },
   {
     id: "shipping-insurance",
     question: "Do you offer shipping insurance?",
     answer:
-      "Yes. Optional shipping insurance is available for an additional fee and must be requested before shipment. If insurance is declined, the buyer accepts responsibility for any loss, theft, or damage in transit once the package has been shipped.",
+      "Yes. Shipping insurance may be available for an additional fee and must be requested before shipment. We carefully package and document each order before dispatch. If insurance is declined, carrier loss, theft, or transit damage may limit the remedies available through the carrier or our shop. For high-value pieces, we strongly recommend insured shipping and signature confirmation.",
   },
   {
     id: "returns-exchanges",
     question: "Can I return or exchange an item if I change my mind?",
     answer:
-      "Returns or exchanges may be considered for eligible pieces if requested within 24–48 hours of confirmed delivery. All requests are subject to review. Approved returns may be subject to a restocking fee, along with original and return shipping costs.",
+      "Return eligibility depends on the order type. Eligible “Ship Now” pieces may be considered for return or exchange if requested within 24–48 hours of confirmed delivery. Approved returns must be unworn, unaltered, and returned in the same condition received with all included packaging, certificates, and accessories. A restocking fee, original shipping, payment processing fees, and return shipping costs may apply. “Sourced for You,” custom, resized, altered, final sale, and specially requested pieces are not eligible for change-of-mind returns.",
+  },
+  {
+    id: "sourced-for-you-returns",
+    question: "Can I return a Sourced for You piece?",
+    answer:
+      "Sourced for You pieces are curated special-order pieces from our supplier network. They may be listed because BingBing Jade believes the piece meets our standards for quality, value, beauty, or rarity, but they are not always held in our U.S. inventory at the time of purchase. Once a Sourced for You order is approved and processed, the item may be reserved, purchased, inspected, certified, or prepared specifically for that order. For this reason, Sourced for You pieces are not eligible for change-of-mind returns, cancellations, or exchanges. However, if a sourced item arrives damaged, incorrect, or materially different from what was shown and approved, please contact us within 24 hours of delivery so we can review the concern.",
   },
   {
     id: "custom-final-sale",
     question: "Can customized or resized items be returned?",
     answer:
-      "No. Customized, resized, reshaped, altered, or made-to-order pieces are final sale and not eligible for return, exchange, or refund.",
+      "Customized, resized, reshaped, altered, made-to-order, specially requested, or modified pieces are final sale and are not eligible for change-of-mind return, exchange, or refund. If a custom or altered piece arrives damaged, incorrect, or materially different from the approved details, please contact us within 24 hours of delivery for review.",
   },
   {
     id: "damaged-claims",
     question: "What if my item arrives damaged or seems different from what was shown?",
     answer:
-      "Please notify us within 24 hours of confirmed delivery and provide a full, clear, uncut unboxing video showing the unopened package, shipping label, and complete unboxing in one continuous recording. This documentation allows us to properly review and assess any shipping or condition-related concerns.",
+      "Please contact us within 24 hours of confirmed delivery with clear photos of the item, inner and outer packaging, shipping label, and any visible package damage. An unboxing video is strongly recommended because it helps us review shipping damage, missing items, or packaging concerns faster, but it is not meant to be a “gotcha” requirement. Each case is reviewed fairly based on all available evidence, including our pre-shipment photos/videos, item records, packaging records, certificate details, carrier scans, and customer-provided photos or videos.",
+  },
+  {
+    id: "not-covered-damage",
+    question: "What types of damage are not covered?",
+    answer:
+      "Damage caused after delivery is not covered. This includes dropping, impact, improper handling, wear, storage issues, attempted resizing, alteration, third-party repair, or damage that occurs after the item has been received. Approved claims are reviewed using available documentation from both our pre-shipment records and the customer’s submitted evidence.",
   },
   {
     id: "refund-timeline",
     question: "How long do refunds take?",
     answer:
-      "Refunds are issued only after the returned item has been received, re-examined, and confirmed to qualify under our shop terms. In certain cases, additional verification or re-certification may be required.",
+      "Refunds are issued only after the returned item has been received, inspected, and confirmed to qualify under our shop terms. In certain cases, additional verification or re-certification may be required to confirm authenticity, condition, and that the same piece has been returned.",
   },
   {
     id: "shipping-refundable",
     question: "Is shipping refundable?",
     answer:
-      "Shipping charges are generally non-refundable unless otherwise determined as part of an approved claim review.",
+      "Shipping charges, return shipping, payment processing fees, insurance fees, expedited service fees, certification fees, and priority handling fees are generally non-refundable unless otherwise determined as part of an approved claim review or required by law.",
+  },
+  {
+    id: "high-value-orders",
+    question: "Do high-value orders have special requirements?",
+    answer:
+      "Yes. For high-value orders, additional verification, insured shipping, signature confirmation, identity confirmation, wire transfer, or special handling may be required. BingBing Jade reserves the right to request additional documentation or decline a transaction when necessary to protect both the buyer and the business.",
   },
   {
     id: "how-to-buy",
     question: "How do I buy a piece?",
     answer: (
       <>
-        You can purchase directly through our website for a seamless checkout experience via{" "}
-        <strong className="text-emerald-600 dark:text-emerald-500">Stripe</strong>.{" "}
-        We also accept payment through{" "}
-        <strong className="text-emerald-600 dark:text-emerald-500">manual Stripe invoices</strong>,{" "}
-        <strong className="text-emerald-600 dark:text-emerald-500">Zelle</strong>, and{" "}
-        <strong className="text-emerald-600 dark:text-emerald-500">Wire Transfer</strong>.{" "}
-        Payments processed through our website may be subject to transaction fees.
+        You can purchase directly through our website for a seamless checkout
+        experience via{" "}
+        <strong className="text-emerald-600 dark:text-emerald-500">
+          Stripe
+        </strong>
+        . We also accept payment through{" "}
+        <strong className="text-emerald-600 dark:text-emerald-500">
+          manual Stripe invoices
+        </strong>
+        ,{" "}
+        <strong className="text-emerald-600 dark:text-emerald-500">
+          Zelle
+        </strong>
+        , and{" "}
+        <strong className="text-emerald-600 dark:text-emerald-500">
+          Wire Transfer
+        </strong>{" "}
+        when approved. Payments processed through our website may be subject to
+        transaction fees.
         <br />
         <br />
         To proceed, please visit the{" "}
@@ -155,9 +195,14 @@ const faqs = [
     question: "Can I ask you to source a specific piece for me?",
     answer: (
       <>
-        Yes — we offer a dedicated custom sourcing service for clients seeking something truly specific or rare. Each request is handled with care by our team, who search extensively across trusted networks to find pieces that meet your criteria.
-        <br /><br />
-        This is an intensive and selective process designed to deliver exceptional results. To begin, please submit your request here:{" "}
+        Yes — we offer a dedicated custom sourcing service for clients seeking
+        something truly specific or rare. Each request is handled with care
+        through our trusted supplier network to find pieces that match your
+        preferences, budget, sizing needs, and quality expectations.
+        <br />
+        <br />
+        This is an intensive and selective process designed to deliver
+        exceptional results. To begin, please submit your request here:{" "}
         <a
           href="/custom-sourcing"
           target="_blank"
@@ -165,10 +210,11 @@ const faqs = [
           className="font-medium underline underline-offset-4 decoration-emerald-500/60 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
         >
           Custom Sourcing Request
-        </a>.
+        </a>
+        .
       </>
     ),
-  }
+  },
 ];
 
 export default function FAQ() {
