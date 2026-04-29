@@ -71,7 +71,7 @@ const faqs = [
     id: "inventory-types",
     question: `What is the difference between "Ship Now" and "Sourced for You"?`,
     answer:
-      "“Ship Now” pieces are already in our U.S. inventory and typically ship within 2–5 business days. “Sourced for You” pieces are curated special-order pieces from our trusted supplier network. These pieces are not always held in our U.S. inventory at the time of purchase and may require additional time for logistic coordination, availability confirmation, quality review, certification when applicable, international handling, and final fulfillment. This allows us to offer a wider range of jade while still carefully reviewing what we list.",
+      "“Ship Now” pieces are held in our U.S. inventory and typically ship within 2–5 business days. “Sourced for You” pieces are curated special-order pieces made available through our trusted sourcing network. These pieces allow us to offer a wider range of jade beyond our U.S. inventory and typically have an estimated delivery timeframe of 2–4 weeks.",
   },
   {
     id: "natural-variation",
@@ -89,7 +89,7 @@ const faqs = [
     id: "standard-shipping",
     question: "How does shipping work?",
     answer:
-      "Shipping time depends on the type of piece you select. Items labeled “Ship Now” are already in our U.S. inventory and typically ship within 2–5 business days. Pieces labeled “Sourced for You” are curated special-order pieces from our supplier network and typically have an estimated delivery timeframe of 2–4 weeks. This timeline allows for availability confirmation, logistic coordination, quality review, certification when applicable, international handling, and final fulfillment. Some sourced pieces may ship through our fulfillment partners rather than directly from our U.S. inventory.",
+      "Shipping time depends on the type of piece you select. Ship Now pieces are held in our U.S. inventory and typically ship within 2–5 business days. Sourced for You pieces are curated special-order pieces and typically have an estimated delivery timeframe of 2–4 weeks. Delivery estimates may vary due to sourcing timelines, certification, customs, carrier delays, or other circumstances outside our control.",
   },
   {
     id: "expedited-sourcing",
@@ -101,19 +101,19 @@ const faqs = [
     id: "shipping-insurance",
     question: "Do you offer shipping insurance?",
     answer:
-      "Yes. Shipping insurance may be available for an additional fee and must be requested before shipment. We carefully package and document each order before dispatch. If insurance is declined, carrier loss, theft, or transit damage may limit the remedies available through the carrier or our shop. For high-value pieces, we strongly recommend insured shipping and signature confirmation.",
+      "Yes. Shipping insurance may be available for an additional fee and must be requested before shipment. For high-value pieces, we strongly recommend insured shipping and signature confirmation, as declined insurance may limit the remedies available in the event of carrier loss, theft, or transit damage.",
   },
   {
     id: "returns-exchanges",
     question: "Can I return or exchange an item if I change my mind?",
     answer:
-      "Return eligibility depends on the order type. Eligible “Ship Now” pieces may be considered for return or exchange if requested within 24–48 hours of confirmed delivery. Approved returns must be unworn, unaltered, and returned in the same condition received with all included packaging, certificates, and accessories. A restocking fee, original shipping, payment processing fees, and return shipping costs may apply. “Sourced for You,” custom, resized, altered, final sale, and specially requested pieces are not eligible for change-of-mind returns.",
+      "Return eligibility depends on the order type. Eligible Ship Now pieces may be considered for return or exchange within 24–48 hours of confirmed delivery if they are unworn, unaltered, and in original condition. A restocking fee, original shipping, payment processing fees, and return shipping costs may apply. Sourced for You, custom, resized, altered, final sale, and specially requested pieces are not eligible for change-of-mind returns.",
   },
   {
     id: "sourced-for-you-returns",
     question: "Can I return a Sourced for You piece?",
     answer:
-      "Sourced for You pieces are curated special-order pieces from our supplier network. They may be listed because BingBing Jade believes the piece meets our standards for quality, value, beauty, or rarity, but they are not always held in our U.S. inventory at the time of purchase. Once a Sourced for You order is approved and processed, the item may be reserved, purchased, inspected, certified, or prepared specifically for that order. For this reason, Sourced for You pieces are not eligible for change-of-mind returns, cancellations, or exchanges. However, if a sourced item arrives damaged, incorrect, or materially different from what was shown and approved, please contact us within 24 hours of delivery so we can review the concern.",
+      "Sourced for You pieces are curated special-order pieces made available through our sourcing network. Once approved and processed, these pieces may be reserved, prepared, certified, or fulfilled specifically for that order. For this reason, they are not eligible for change-of-mind returns, cancellations, or exchanges. If the item arrives damaged, incorrect, or materially different from what was shown and approved, please contact us within 24 hours of delivery for review.",
   },
   {
     id: "custom-final-sale",
@@ -125,13 +125,13 @@ const faqs = [
     id: "damaged-claims",
     question: "What if my item arrives damaged or seems different from what was shown?",
     answer:
-      "Please contact us within 24 hours of confirmed delivery with clear photos of the item, inner and outer packaging, shipping label, and any visible package damage. An unboxing video is strongly recommended because it helps us review shipping damage, missing items, or packaging concerns faster, but it is not meant to be a “gotcha” requirement. Each case is reviewed fairly based on all available evidence, including our pre-shipment photos/videos, item records, packaging records, certificate details, carrier scans, and customer-provided photos or videos.",
+      "Please contact us within 24 hours of confirmed delivery with clear photos of the item, packaging, and shipping label. An unboxing video is strongly recommended, especially for shipping damage or missing-item concerns. Each case is reviewed with care based on the available evidence.",
   },
   {
     id: "not-covered-damage",
     question: "What types of damage are not covered?",
     answer:
-      "Damage caused after delivery is not covered. This includes dropping, impact, improper handling, wear, storage issues, attempted resizing, alteration, third-party repair, or damage that occurs after the item has been received. Approved claims are reviewed using available documentation from both our pre-shipment records and the customer’s submitted evidence.",
+      "Damage that occurs after delivery is not covered. This includes impact, improper handling, wear, attempted resizing, alteration, third-party repair, or damage after the item has been received. Claims are reviewed using the available documentation from both the order record and the customer’s submitted evidence.",
   },
   {
     id: "refund-timeline",
