@@ -198,12 +198,13 @@ export default async function Products({
     // Interleave in batches of 12: 12 newest → 12 ship now → 12 newest → ...
     const newlyAdded = unsold.filter((p) => !p.quick_ship);
     const quickship = unsold.filter((p) => p.quick_ship);
-    const BATCH = 12;
+    const BATCH = 3;
     sorted = [];
     let ni = 0, qi = 0;
     while (ni < newlyAdded.length || qi < quickship.length) {
-      for (let k = 0; k < BATCH && ni < newlyAdded.length; k++, ni++) sorted.push(newlyAdded[ni]);
       for (let k = 0; k < BATCH && qi < quickship.length; k++, qi++) sorted.push(quickship[qi]);
+      for (let k = 0; k < BATCH && ni < newlyAdded.length; k++, ni++) sorted.push(newlyAdded[ni]);
+
     }
     // Sold always last
     sorted.push(...sold);
