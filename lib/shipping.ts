@@ -1,4 +1,4 @@
-export type ShippingZone = "domestic" | "canada" | "far";
+export type ShippingZone = "domestic" | "canada" | "europe" | "australia" | "far";
 
 // Countries available for shipping, with display names
 export const ALLOWED_COUNTRIES: { code: string; name: string }[] = [
@@ -33,28 +33,40 @@ export const ALLOWED_COUNTRIES: { code: string; name: string }[] = [
   { code: "VN", name: "Vietnam" },
 ];
 
-// Asian/Pacific countries use the "far" (higher) shipping rate
 const FAR_COUNTRIES = new Set([
   "CN", "HK", "IN", "ID", "JP", "KR", "MY", "PH", "SG", "TW", "TH", "VN",
 ]);
 
+const EUROPE_COUNTRIES = new Set([
+  "GB", "AT", "BE", "DK", "FI", "FR", "DE", "IT", "NL", "NO", "ES", "SE", "CH",
+]);
+
+const AUSTRALIA_COUNTRIES = new Set(["AU", "NZ"]);
+
 export function getShippingZone(country: string): ShippingZone {
   if (country === "US") return "domestic";
+  if (country === "CA") return "canada";
+  if (EUROPE_COUNTRIES.has(country)) return "europe";
+  if (AUSTRALIA_COUNTRIES.has(country)) return "australia";
   if (FAR_COUNTRIES.has(country)) return "far";
-  return "canada";
+  return "far"; // fallback for any unlisted country
 }
 
 /**
  * Shipping fee in whole dollars.
- * - Domestic (US):   $20 base + $10 per additional item
- * - Canada/nearby:   $35 base + $10 per additional item
- * - Far (Asia etc.): $75 first item + $20 per additional item
+ * - Domestic (US):        $20 base + $10 per additional item
+ * - Canada:               $35 base + $10 per additional item
+ * - Europe (UK + EU):     $40 base + $10 per additional item
+ * - Australia / NZ:       $50 base + $10 per additional item
+ * - Far (Asia/Pacific):   $75 base + $20 per additional item
  */
 export function calculateShipping(zone: ShippingZone, itemCount: number): number {
   const n = Math.max(1, itemCount);
-  if (zone === "domestic") return 20 + (n - 1) * 10;
-  if (zone === "canada") return 35 + (n - 1) * 10;
-  return 75 + (n - 1) * 20;
+  if (zone === "domestic")  return 20 + (n - 1) * 10;
+  if (zone === "canada")    return 35 + (n - 1) * 10;
+  if (zone === "europe")    return 40 + (n - 1) * 10;
+  if (zone === "australia") return 50 + (n - 1) * 10;
+  return 75 + (n - 1) * 20; // far
 }
 
 /**

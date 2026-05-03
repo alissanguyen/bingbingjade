@@ -756,7 +756,11 @@ export function CheckoutClient() {
                         {isPriority
                           ? "$100 base + $10 per piece"
                           : zone === "far"
-                          ? "$75 first piece + $20 per additional"
+                          ? "$75 base + $20 per additional"
+                          : zone === "australia"
+                          ? "$50 base + $10 per piece"
+                          : zone === "europe"
+                          ? "$40 base + $10 per piece"
                           : zone === "canada"
                           ? "$35 base + $10 per piece"
                           : "$20 base + $10 per piece"}
