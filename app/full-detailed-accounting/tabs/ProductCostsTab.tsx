@@ -183,7 +183,8 @@ export function ProductCostsTab() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                  <th className="pl-4 pr-3 py-3 text-left">Product</th>
+                  <th className="pl-4 pr-3 py-3"></th>
+                  <th className="px-3 py-3 text-left">Product</th>
                   <th className="px-3 py-3 text-left">Cat.</th>
                   <th className="px-3 py-3 text-left">Status</th>
                   <th className="px-3 py-3 text-right">Orig. Price</th>
@@ -198,7 +199,6 @@ export function ProductCostsTab() {
                   <th className="px-3 py-3 text-right font-semibold">Total COGS</th>
                   <th className="px-3 py-3 text-left">Vendor</th>
                   <th className="pr-4 pl-3 py-3 text-left">Notes</th>
-                  <th className="pr-4 pl-3 py-3"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
@@ -279,7 +279,13 @@ export function ProductCostsTab() {
                     ) : (
                       // ── Display row ────────────────────────────────────────
                       <>
-                        <td className="pl-4 pr-3 py-2.5 text-gray-900 dark:text-gray-100 font-medium max-w-[200px] truncate" title={row.product_name}>
+                        <td className="pl-4 pr-3 py-2.5">
+                          <button onClick={() => startEdit(row)}
+                            className="text-xs px-2.5 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400">
+                            Edit
+                          </button>
+                        </td>
+                        <td className="px-3 py-2.5 text-gray-900 dark:text-gray-100 font-medium max-w-[200px] truncate" title={row.product_name}>
                           {row.product_name}
                         </td>
                         <td className="px-3 py-2.5 text-gray-500 capitalize">{row.category}</td>
@@ -303,19 +309,13 @@ export function ProductCostsTab() {
                             <td className="px-3 py-2.5 text-gray-500 text-xs">
                               {(row.cost as { acct_vendors?: { vendor_code: string } }).acct_vendors?.vendor_code ?? "—"}
                             </td>
-                            <td className="px-3 py-2.5 text-gray-400 text-xs max-w-[120px] truncate">{row.cost.notes ?? "—"}</td>
+                            <td className="pr-4 pl-3 py-2.5 text-gray-400 text-xs max-w-[120px] truncate">{row.cost.notes ?? "—"}</td>
                           </>
                         ) : (
                           <td colSpan={12} className="px-3 py-2.5">
                             <span className="text-xs text-amber-600 dark:text-amber-400">⚠ No cost data — click Edit</span>
                           </td>
                         )}
-                        <td className="pr-4 pl-3 py-2.5">
-                          <button onClick={() => startEdit(row)}
-                            className="text-xs px-2.5 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400">
-                            {row.has_cost ? "Edit" : "Add"}
-                          </button>
-                        </td>
                       </>
                     )}
                   </tr>

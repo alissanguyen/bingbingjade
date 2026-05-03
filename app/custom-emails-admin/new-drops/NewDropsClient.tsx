@@ -138,7 +138,7 @@ export function NewDropsClient({
       </Link>
 
       <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-1">New Drops</h1>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">Feature available products in a showcase email. Only available pieces are shown.</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">Feature available products in a showcase email. Available and on-sale pieces are shown (not sold).</p>
 
       <div className="space-y-6">
         {/* Email details */}
