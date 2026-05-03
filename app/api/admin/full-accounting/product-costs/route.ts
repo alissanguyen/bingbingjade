@@ -14,10 +14,27 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const missingOnly = searchParams.get("missing") === "1";
 
-  // Fetch all products
+  // Only include products that appear in at least one order recorded in orders-admin
+  const { data: orderItems } = await supabaseAdmin
+    .from("order_items")
+    .select("product_id")
+    .not("product_id", "is", null);
+
+  const orderedProductIds = [...new Set((orderItems ?? []).map((i) => i.product_id as string))];
+
+  if (orderedProductIds.length === 0) {
+    const { data: vendors } = await supabaseAdmin
+      .from("acct_vendors")
+      .select("id, vendor_code, vendor_display_name")
+      .order("vendor_code");
+    return NextResponse.json({ products: [], vendors: vendors ?? [] });
+  }
+
+  // Fetch only products that have been ordered
   const { data: products, error: pErr } = await supabaseAdmin
     .from("products")
     .select("id, name, category, status, imported_price_vnd")
+    .in("id", orderedProductIds)
     .order("created_at", { ascending: false });
 
   if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 });
