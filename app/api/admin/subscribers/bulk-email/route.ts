@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
 
   const target = body.target ?? "all";
 
-  let query = supabaseAdmin.from("email_subscribers").select("email, unsubscribe_token");
+  let query = supabaseAdmin.from("email_subscribers").select("email, unsubscribe_token").is("unsubscribed_at", null);
   if (target === "unused") {
     query = query.is("welcome_discount_redeemed_at", null);
   }

@@ -20,10 +20,11 @@ export default async function ProductEmailAdminPage() {
     .order("created_at", { ascending: false })
     .limit(40);
 
-  // Fetch subscriber count
+  // Fetch active subscriber count (excludes unsubscribed)
   const { count } = await supabaseAdmin
     .from("email_subscribers")
-    .select("id", { count: "exact", head: true });
+    .select("id", { count: "exact", head: true })
+    .is("unsubscribed_at", null);
 
   const products: EmailableProduct[] = await Promise.all(
     (raw ?? []).map(async (p) => ({

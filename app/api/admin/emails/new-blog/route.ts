@@ -48,7 +48,8 @@ export async function POST(req: NextRequest) {
   } else {
     const { data: subs } = await supabaseAdmin
       .from("email_subscribers")
-      .select("email, unsubscribe_token");
+      .select("email, unsubscribe_token")
+      .is("unsubscribed_at", null);
     subscribers = (subs ?? []).map((s) => ({ email: s.email, unsubscribeToken: s.unsubscribe_token }));
   }
 

@@ -57,7 +57,8 @@ export async function POST(req: NextRequest) {
   // Fetch all subscriber emails + unsubscribe tokens
   const { data: subs, error: subError } = await supabaseAdmin
     .from("email_subscribers")
-    .select("email, unsubscribe_token");
+    .select("email, unsubscribe_token")
+    .is("unsubscribed_at", null);
 
   if (subError) return NextResponse.json({ error: subError.message }, { status: 500 });
   const subscribers = (subs ?? []).map((s) => ({ email: s.email, unsubscribeToken: s.unsubscribe_token }));

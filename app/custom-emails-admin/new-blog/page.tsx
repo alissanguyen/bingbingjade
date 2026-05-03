@@ -12,10 +12,12 @@ export default async function NewBlogPage() {
     supabaseAdmin
       .from("email_subscribers")
       .select("id, email, subscribed_at")
+      .is("unsubscribed_at", null)
       .order("subscribed_at", { ascending: false }),
     supabaseAdmin
       .from("email_subscribers")
-      .select("id", { count: "exact", head: true }),
+      .select("id", { count: "exact", head: true })
+      .is("unsubscribed_at", null),
   ]);
 
   const posts: BlogPost[] = (rawPosts ?? []).map((p: {

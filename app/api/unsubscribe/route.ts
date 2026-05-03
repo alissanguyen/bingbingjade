@@ -4,12 +4,14 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 /**
  * GET /api/unsubscribe?token=<uuid>
  *
- * Removes the subscriber matched by their unsubscribe_token.
+ * Soft-deletes the subscriber by setting unsubscribed_at — the row is kept so
+ * coupon history is preserved and re-subscribing cannot yield a new coupon.
  * Falls back to legacy ?e=<base64-email> param for emails sent before migration_067.
  */
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token");
   const raw = req.nextUrl.searchParams.get("e");
+  const now = new Date().toISOString();
 
   if (token && token !== "preview") {
     // Token-based unsubscribe (new path)
@@ -26,7 +28,10 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    await supabaseAdmin.from("email_subscribers").delete().eq("unsubscribe_token", token);
+    await supabaseAdmin
+      .from("email_subscribers")
+      .update({ unsubscribed_at: now })
+      .eq("unsubscribe_token", token);
 
     return new NextResponse(unsubscribePage(subscriber.email, true), {
       status: 200,
@@ -49,7 +54,10 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  await supabaseAdmin.from("email_subscribers").delete().eq("email", email);
+  await supabaseAdmin
+    .from("email_subscribers")
+    .update({ unsubscribed_at: now })
+    .eq("email", email);
 
   return new NextResponse(unsubscribePage(email, true), {
     status: 200,

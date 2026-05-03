@@ -14,6 +14,7 @@ export default async function SubscribersAdminPage() {
   const { data } = await supabaseAdmin
     .from("email_subscribers")
     .select("id, email, subscribed_at, welcome_coupon_code, welcome_coupon_expires_at, welcome_discount_redeemed_at, source, used_fingerprint")
+    .is("unsubscribed_at", null)
     .order("subscribed_at", { ascending: false });
 
   return (

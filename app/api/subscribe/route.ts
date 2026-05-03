@@ -23,19 +23,41 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid email address." }, { status: 400 });
   }
 
-  // Idempotent: check if already subscribed
+  // Check if this email has ever subscribed (including previously unsubscribed rows)
   const { data: existing } = await supabaseAdmin
     .from("email_subscribers")
-    .select("id, subscribed_at")
+    .select("id, unsubscribed_at, welcome_coupon_code")
     .eq("email", email)
     .maybeSingle();
 
   if (existing) {
-    // Already subscribed — return success without re-sending email
-    return NextResponse.json({ success: true, alreadySubscribed: true });
+    if (!existing.unsubscribed_at) {
+      // Currently subscribed — no-op
+      return NextResponse.json({ success: true, alreadySubscribed: true });
+    }
+
+    // Previously unsubscribed — reactivate without issuing a new coupon.
+    // The existing coupon history (welcome_coupon_code, welcome_discount_redeemed_at)
+    // is intentionally preserved to prevent subscribe→coupon→unsubscribe→repeat abuse.
+    await supabaseAdmin
+      .from("email_subscribers")
+      .update({ unsubscribed_at: null, subscribed_at: new Date().toISOString() })
+      .eq("id", existing.id);
+
+    await supabaseAdmin
+      .from("customers")
+      .update({
+        marketing_opt_in: true,
+        marketing_opt_in_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("customer_email", email)
+      .eq("marketing_opt_in", false);
+
+    return NextResponse.json({ success: true, alreadySubscribed: false });
   }
 
-  // Insert subscriber
+  // New subscriber — insert row
   const { error: insertError } = await supabaseAdmin.from("email_subscribers").insert({
     email,
     source: body.source ?? "website",
