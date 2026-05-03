@@ -2,15 +2,39 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 /**
- * GET /api/unsubscribe?e=<base64-encoded-email>
+ * GET /api/unsubscribe?token=<uuid>
  *
- * Removes the subscriber from the email_subscribers table.
- * URL is only included in outbound emails, so possession of the link
- * is sufficient authorization — no additional token needed.
+ * Removes the subscriber matched by their unsubscribe_token.
+ * Falls back to legacy ?e=<base64-email> param for emails sent before migration_067.
  */
 export async function GET(req: NextRequest) {
+  const token = req.nextUrl.searchParams.get("token");
   const raw = req.nextUrl.searchParams.get("e");
 
+  if (token && token !== "preview") {
+    // Token-based unsubscribe (new path)
+    const { data: subscriber, error } = await supabaseAdmin
+      .from("email_subscribers")
+      .select("email")
+      .eq("unsubscribe_token", token)
+      .single();
+
+    if (error || !subscriber) {
+      return new NextResponse(unsubscribePage("Invalid or expired unsubscribe link.", false), {
+        status: 400,
+        headers: { "Content-Type": "text/html" },
+      });
+    }
+
+    await supabaseAdmin.from("email_subscribers").delete().eq("unsubscribe_token", token);
+
+    return new NextResponse(unsubscribePage(subscriber.email, true), {
+      status: 200,
+      headers: { "Content-Type": "text/html" },
+    });
+  }
+
+  // Legacy base64-email fallback
   let email: string | null = null;
   try {
     if (raw) email = atob(raw).trim().toLowerCase();
@@ -26,7 +50,6 @@ export async function GET(req: NextRequest) {
   }
 
   await supabaseAdmin.from("email_subscribers").delete().eq("email", email);
-  // Non-fatal — if the email wasn't in the list, the delete is a no-op.
 
   return new NextResponse(unsubscribePage(email, true), {
     status: 200,

@@ -3,6 +3,8 @@ import { getSessionUser, isAdmin } from "@/lib/approved-auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { sendBulkSubscriberEmail, buildBroadcastHtml } from "@/lib/discount-emails";
 
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
+
 // POST /api/admin/subscribers/bulk-email
 // Body: { subject, message, target: "all" | "unused" }
 export async function POST(req: NextRequest) {
@@ -21,29 +23,29 @@ export async function POST(req: NextRequest) {
 
   const target = body.target ?? "all";
 
-  let query = supabaseAdmin.from("email_subscribers").select("email");
+  let query = supabaseAdmin.from("email_subscribers").select("email, unsubscribe_token");
   if (target === "unused") {
     query = query.is("welcome_discount_redeemed_at", null);
   }
 
-  const { data: subscribers, error } = await query;
+  const { data: subs, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const emails = (subscribers ?? []).map((s) => s.email);
-  if (emails.length === 0) {
+  const subscribers = (subs ?? []).map((s) => ({ email: s.email, unsubscribeToken: s.unsubscribe_token }));
+  if (subscribers.length === 0) {
     return NextResponse.json({ sent: 0, failed: 0, total: 0 });
   }
 
-  // Build branded HTML from the admin's message
+  // Build branded HTML from the admin's message (per-recipient for unsubscribe link)
   const bodyHtml = message
     .split("\n\n")
     .filter(Boolean)
     .map((para) => `<p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">${para.replace(/\n/g, "<br>")}</p>`)
     .join("");
 
-  const html = buildBroadcastHtml({ subject, bodyHtml, emails });
+  const renderHtml = (unsubscribeUrl: string) => buildBroadcastHtml({ subject, bodyHtml, unsubscribeUrl });
 
-  const { sent, failed } = await sendBulkSubscriberEmail({ emails, subject, html });
+  const { sent, failed } = await sendBulkSubscriberEmail({ subscribers, subject, renderHtml, siteUrl: SITE_URL });
 
-  return NextResponse.json({ sent, failed, total: emails.length });
+  return NextResponse.json({ sent, failed, total: subscribers.length });
 }

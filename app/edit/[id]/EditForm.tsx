@@ -221,6 +221,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
   const [cropTarget, setCropTarget] = useState<{ index: number; src: string; fileName: string } | null>(null);
+  const [pendingCropTarget, setPendingCropTarget] = useState<{ id: string; src: string; fileName: string } | null>(null);
   const [trimTarget, setTrimTarget] = useState<{ index: number; file: File } | null>(null);
 
   const addImages = (files: FileList | null) => {
@@ -332,6 +333,17 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       return updated;
     });
     setCropTarget(null);
+  };
+
+  const handlePendingCropConfirm = (croppedFile: File) => {
+    if (!pendingCropTarget) return;
+    const preview = URL.createObjectURL(croppedFile);
+    setPendingImages((prev) => prev.map((p) => {
+      if (p.id !== pendingCropTarget.id || p.kind !== "local") return p;
+      if (p.preview) URL.revokeObjectURL(p.preview);
+      return { ...p, file: croppedFile, preview };
+    }));
+    setPendingCropTarget(null);
   };
 
   const handleTrimConfirm = (trimmedFile: File) => {
@@ -755,6 +767,16 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
                       >
                         <XIcon />
                       </button>
+                      {item.kind === "local" && item.preview && !item.processing && (
+                        <button
+                          type="button"
+                          onClick={() => setPendingCropTarget({ id: item.id, src: item.preview!, fileName: item.file.name })}
+                          className="absolute bottom-1 right-1 w-6 h-6 rounded-md bg-black/60 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-emerald-600"
+                          title="Crop"
+                        >
+                          <CropIcon />
+                        </button>
+                      )}
                       <div className="flex border-t border-amber-200 dark:border-amber-800">
                         {(["navy", "beige"] as const).map((mode) => (
                           <button
@@ -1336,6 +1358,15 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
           fileName={cropTarget.fileName}
           onConfirm={handleCropConfirm}
           onClose={() => setCropTarget(null)}
+        />
+      )}
+
+      {pendingCropTarget && (
+        <ImageCropModal
+          src={pendingCropTarget.src}
+          fileName={pendingCropTarget.fileName}
+          onConfirm={handlePendingCropConfirm}
+          onClose={() => setPendingCropTarget(null)}
         />
       )}
 

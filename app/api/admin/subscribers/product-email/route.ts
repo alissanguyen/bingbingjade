@@ -54,19 +54,16 @@ export async function POST(req: NextRequest) {
     }))
   );
 
-  // Fetch all subscriber emails
-  const { data: subscribers, error: subError } = await supabaseAdmin
+  // Fetch all subscriber emails + unsubscribe tokens
+  const { data: subs, error: subError } = await supabaseAdmin
     .from("email_subscribers")
-    .select("email");
+    .select("email, unsubscribe_token");
 
   if (subError) return NextResponse.json({ error: subError.message }, { status: 500 });
-  const emails = (subscribers ?? []).map((s) => s.email);
-  if (emails.length === 0) return NextResponse.json({ sent: 0, failed: 0, total: 0 });
+  const subscribers = (subs ?? []).map((s) => ({ email: s.email, unsubscribeToken: s.unsubscribe_token }));
+  if (subscribers.length === 0) return NextResponse.json({ sent: 0, failed: 0, total: 0 });
 
-  // Build per-subscriber HTML (unsubscribe link uses base64-encoded email)
-  // For bulk sends we use a generic unsubscribe path — same pattern as existing broadcast
-  const unsubscribeUrl = `${SITE_URL}/api/unsubscribe`;
-  const html = buildProductShowcaseHtml({
+  const renderHtml = (unsubscribeUrl: string) => buildProductShowcaseHtml({
     subject,
     intro: body.intro?.trim() ?? "",
     products: emailProducts,
@@ -74,6 +71,6 @@ export async function POST(req: NextRequest) {
     siteUrl: SITE_URL,
   });
 
-  const { sent, failed } = await sendBulkSubscriberEmail({ emails, subject, html });
-  return NextResponse.json({ sent, failed, total: emails.length });
+  const { sent, failed } = await sendBulkSubscriberEmail({ subscribers, subject, renderHtml, siteUrl: SITE_URL });
+  return NextResponse.json({ sent, failed, total: subscribers.length });
 }

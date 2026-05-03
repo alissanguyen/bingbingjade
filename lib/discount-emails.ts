@@ -224,18 +224,25 @@ export async function resendSubscriberCouponEmail(
   }
 }
 
+export type BulkSubscriber = { email: string; unsubscribeToken?: string };
+
 /**
  * Admin bulk broadcast: send a campaign/promo email to a list of subscribers.
- * Accepts a custom subject and HTML body (pre-rendered by the caller).
- * Batches in groups of 50 to stay within Resend limits.
+ * Renders HTML per-recipient so each unsubscribe link is personalized.
+ *
+ * - `renderHtml(unsubscribeUrl)` is called once per subscriber.
+ * - If a subscriber has no `unsubscribeToken`, falls back to a base64-encoded
+ *   email param (`?e=…`) for backward compatibility.
+ * - Batches in groups of 50 to stay within Resend limits.
  */
 export async function sendBulkSubscriberEmail(params: {
-  emails: string[];
+  subscribers: BulkSubscriber[];
   subject: string;
-  html: string;
+  renderHtml: (unsubscribeUrl: string) => string;
+  siteUrl: string;
 }): Promise<{ sent: number; failed: number }> {
   const resend = getResend();
-  if (!resend) return { sent: 0, failed: params.emails.length };
+  if (!resend) return { sent: 0, failed: params.subscribers.length };
 
   const from =
     process.env.RESEND_FROM_EMAIL_GENERIC ??
@@ -244,16 +251,21 @@ export async function sendBulkSubscriberEmail(params: {
   let sent = 0;
   let failed = 0;
 
-  for (let i = 0; i < params.emails.length; i += BATCH_SIZE) {
-    const chunk = params.emails.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < params.subscribers.length; i += BATCH_SIZE) {
+    const chunk = params.subscribers.slice(i, i + BATCH_SIZE);
     try {
       await resend.batch.send(
-        chunk.map((email) => ({
-          from,
-          to: email,
-          subject: params.subject,
-          html: params.html
-        }))
+        chunk.map(({ email, unsubscribeToken }) => {
+          const unsubscribeUrl = unsubscribeToken
+            ? `${params.siteUrl}/api/unsubscribe?token=${unsubscribeToken}`
+            : `${params.siteUrl}/api/unsubscribe?e=${Buffer.from(email).toString("base64")}`;
+          return {
+            from,
+            to: email,
+            subject: params.subject,
+            html: params.renderHtml(unsubscribeUrl),
+          };
+        })
       );
       sent += chunk.length;
     } catch (err) {
@@ -272,7 +284,7 @@ export async function sendBulkSubscriberEmail(params: {
 export function buildBroadcastHtml(params: {
   subject: string;
   bodyHtml: string;
-  emails: string[]; // for per-email unsubscribe links we skip — use a generic one
+  unsubscribeUrl: string;
 }): string {
   const siteUrl = getSiteUrl();
   return `<!DOCTYPE html>
@@ -298,6 +310,9 @@ export function buildBroadcastHtml(params: {
               &copy; ${new Date().getFullYear()} BingBing Jade &middot;
               <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
               &ensp;&middot;&ensp;<a href="${siteUrl}/rewards" style="color:#9ca3af;text-decoration:none;">Client Rewards</a>
+            </p>
+            <p style="margin:6px 0 0;font-size:10px;color:#d1d5db;">
+              <a href="${params.unsubscribeUrl}" style="color:#d1d5db;text-decoration:none;">Unsubscribe</a>
             </p>
           </td>
         </tr>

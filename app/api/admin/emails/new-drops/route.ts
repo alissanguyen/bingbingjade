@@ -48,27 +48,29 @@ export async function POST(req: NextRequest) {
     }))
   );
 
-  const html = buildProductShowcaseHtml({
+  const renderHtml = (unsubscribeUrl: string) => buildProductShowcaseHtml({
     subject,
     intro: body.intro?.trim() ?? "",
     products: emailProducts,
-    unsubscribeUrl: `${SITE_URL}/api/unsubscribe`,
+    unsubscribeUrl,
     siteUrl: SITE_URL,
   });
 
-  if (preview) return NextResponse.json({ html });
+  if (preview) return NextResponse.json({ html: renderHtml(`${SITE_URL}/api/unsubscribe?token=preview`) });
 
   // Determine recipients
-  let emails: string[];
+  let subscribers: { email: string; unsubscribeToken?: string }[];
   if (body.targetEmails && body.targetEmails.length > 0) {
-    emails = body.targetEmails;
+    subscribers = body.targetEmails.map((email) => ({ email }));
   } else {
-    const { data: subs } = await supabaseAdmin.from("email_subscribers").select("email");
-    emails = (subs ?? []).map((s) => s.email);
+    const { data: subs } = await supabaseAdmin
+      .from("email_subscribers")
+      .select("email, unsubscribe_token");
+    subscribers = (subs ?? []).map((s) => ({ email: s.email, unsubscribeToken: s.unsubscribe_token }));
   }
 
-  if (emails.length === 0) return NextResponse.json({ sent: 0, failed: 0, total: 0 });
+  if (subscribers.length === 0) return NextResponse.json({ sent: 0, failed: 0, total: 0 });
 
-  const { sent, failed } = await sendBulkSubscriberEmail({ emails, subject, html });
-  return NextResponse.json({ sent, failed, total: emails.length });
+  const { sent, failed } = await sendBulkSubscriberEmail({ subscribers, subject, renderHtml, siteUrl: SITE_URL });
+  return NextResponse.json({ sent, failed, total: subscribers.length });
 }
