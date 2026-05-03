@@ -20,37 +20,25 @@ export async function POST(
   const { id } = await params;
   const body = (await req.json().catch(() => ({}))) as {
     sendEmail?: boolean;
-    reason?: string;
+    reason?: "piece_unavailable" | "customer_cancelled";
     restoreItems?: boolean;
   };
   const { sendEmail, reason, restoreItems } = body;
 
-  const REASON_LABELS: Record<string, string> = {
-    customer_changed_mind: "Customer changed their mind",
-    payment_not_completed: "Customer did not complete payment on time",
-    admin_mistake: "Order created by mistake by admin",
-    product_unavailable: "Product no longer available",
-  };
+  if (!reason) {
+    return NextResponse.json({ error: "Cancellation reason is required" }, { status: 400 });
+  }
 
-  // Fetch current order (for notes) and items (for restore)
-  const [{ data: currentOrder }, { data: orderItems }] = await Promise.all([
-    supabaseAdmin.from("orders").select("notes").eq("id", id).single(),
-    restoreItems
-      ? supabaseAdmin.from("order_items").select("product_id").eq("order_id", id)
-      : Promise.resolve({ data: [] }),
-  ]);
-
-  // Append cancellation reason to notes
-  const reasonLabel = reason ? REASON_LABELS[reason] ?? reason : null;
-  const existingNotes = currentOrder?.notes ?? "";
-  const reasonNote = reasonLabel ? `[Cancellation reason: ${reasonLabel}]` : null;
-  const updatedNotes = [existingNotes, reasonNote].filter(Boolean).join("\n").trim() || null;
+  // Fetch items for optional restore
+  const { data: orderItems } = restoreItems
+    ? await supabaseAdmin.from("order_items").select("product_id").eq("order_id", id)
+    : { data: [] };
 
   const { data: order, error } = await supabaseAdmin
     .from("orders")
     .update({
       order_status: "order_cancelled",
-      ...(updatedNotes !== existingNotes ? { notes: updatedNotes } : {}),
+      cancellation_reason: reason,
     })
     .eq("id", id)
     .select("*")

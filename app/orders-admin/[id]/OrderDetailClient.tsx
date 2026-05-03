@@ -218,7 +218,7 @@ export function OrderDetailClient({
 
   // Cancel modal state
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [cancelReason, setCancelReason] = useState("customer_changed_mind");
+  const [cancelReason, setCancelReason] = useState<"piece_unavailable" | "customer_cancelled">("customer_cancelled");
   const [restoreItems, setRestoreItems] = useState(false);
 
   function getShipmentDraft(id: string, shipment: Shipment) {
@@ -331,6 +331,13 @@ export function OrderDetailClient({
   }
 
   async function handleSave() {
+    // If status is being changed to cancelled, require a reason via the modal
+    if (editStatus === "order_cancelled" && order.order_status !== "order_cancelled") {
+      setCancelReason("customer_cancelled");
+      setRestoreItems(false);
+      setShowCancelModal(true);
+      return;
+    }
     setSaving(true);
     try {
       const statusChanged = editStatus !== order.order_status;
@@ -717,7 +724,7 @@ export function OrderDetailClient({
 
               {!isCancelled && (
                 <button
-                  onClick={() => { setCancelReason("customer_changed_mind"); setRestoreItems(false); setShowCancelModal(true); }}
+                  onClick={() => { setCancelReason("customer_cancelled"); setRestoreItems(false); setShowCancelModal(true); }}
                   disabled={actionLoading === "cancel"}
                   className="w-full rounded-lg border border-red-200 dark:border-red-800/50 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-60 text-red-600 dark:text-red-400 py-2.5 text-sm font-medium transition-colors"
                 >
@@ -1354,13 +1361,11 @@ export function OrderDetailClient({
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Reason for Cancellation</label>
               <select
                 value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
+                onChange={(e) => setCancelReason(e.target.value as "piece_unavailable" | "customer_cancelled")}
                 className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2.5 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-red-400"
               >
-                <option value="customer_changed_mind">Customer changed their mind</option>
-                <option value="payment_not_completed">Customer did not complete payment on time</option>
-                <option value="admin_mistake">Order created by mistake by admin</option>
-                <option value="product_unavailable">Product no longer available</option>
+                <option value="customer_cancelled">Customer request / other reason</option>
+                <option value="piece_unavailable">Piece became unavailable</option>
               </select>
             </div>
 

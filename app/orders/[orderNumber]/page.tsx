@@ -151,6 +151,7 @@ async function getOrder(orderNumber: string) {
       currency,
       order_status,
       order_type,
+      cancellation_reason,
       estimated_delivery_date,
       customer_name,
       fee_breakdown,
@@ -255,6 +256,7 @@ export default async function TrackOrderPage({
   const currentIdx = statusIndex(currentStatus, isCustom);
   const isDelivered = currentStatus === "delivered";
   const isPreConfirm = currentStatus === "order_created";
+  const isCancelled = currentStatus === "order_cancelled";
   const statusSteps = getSteps(isCustom);
 
   const orderDate = new Date(order.created_at).toLocaleDateString("en-US", {
@@ -328,8 +330,61 @@ export default async function TrackOrderPage({
         </div>
       )}
 
+      {/* Cancelled notice */}
+      {isCancelled && (() => {
+        const isPieceUnavailable = (order as Record<string, unknown>).cancellation_reason === "piece_unavailable";
+        return (
+          <div className="rounded-xl border border-[#7c2d3e]/30 dark:border-[#9b3a50]/40 bg-[#fdf2f4] dark:bg-[#2a1018]/50 px-5 py-5 mb-10">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-[#f3d0d7] dark:bg-[#5c1a28]/60 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#9b3a50] dark:text-[#c4748a]"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-[#7c2d3e] dark:text-[#c4748a] mb-2">Order Cancelled</p>
+
+                {isPieceUnavailable ? (
+                  <>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mb-1.5">
+                      We&apos;re truly sorry — this piece became unavailable before we were able to fulfill your order. We’ve processed your refund and should return to your original payment method within a few business days.
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                      If you still love this style, we&apos;d be happy to help source a similar piece for you, with photos and videos reviewed before purchase.
+                    </p>
+                    <Link
+                      href="/custom-sourcing"
+                      className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#7c2d3e] hover:bg-[#6b2535] text-white text-xs font-semibold px-4 py-2 transition-colors"
+                    >
+                      Help me find a similar piece
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mb-1.5">
+                      This order was cancelled per your request. We&apos;ve processed your refund, and it should return to your original payment method within a few business days.
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                      If you were still considering this piece or something similar, we&apos;d be happy to assist — including sourcing options, additional photos and videos, or helping you find the perfect fit. You can always reach us via our{" "}
+                      <Link href="/contact" className="text-[#9b3a50] dark:text-[#c4748a] hover:underline">contact form</Link>
+                      {" "}or WhatsApp — we&apos;re here whenever you&apos;re ready.
+                    </p>
+                    <Link
+                      href="/products"
+                      className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#7c2d3e] hover:bg-[#6b2535] text-white text-xs font-semibold px-4 py-2 transition-colors"
+                    >
+                      Find a similar piece
+                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Per-shipment timeline cards */}
-      {!isPreConfirm && shipments.length > 0 && (
+      {!isPreConfirm && !isCancelled && shipments.length > 0 && (
         <div className="mb-10 space-y-6">
           {shipments.map((shipment) => {
             const sortedEvents = [...shipment.shipment_events].sort((a, b) => a.sort_order - b.sort_order);
@@ -470,7 +525,7 @@ export default async function TrackOrderPage({
       )}
 
       {/* Fallback: old single timeline (when no shipments yet) */}
-      {!isPreConfirm && shipments.length === 0 && (
+      {!isPreConfirm && !isCancelled && shipments.length === 0 && (
         <div className="mb-10">
           <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-5">
             Progress
@@ -600,21 +655,23 @@ export default async function TrackOrderPage({
       )}
 
       {/* Reassurance note */}
-      <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/60 px-5 py-4 text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-8">
-        <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">About your order timeline</p>
-        <p>
-          Authentic jadeite requires careful sourcing, independent certification, and international
-          shipping — each step takes time. This page will reflect your order&apos;s progress. If you have
-          questions at any point, please reach out via{" "}
-          <Link
-            href="/contact"
-            className="text-emerald-600 dark:text-emerald-400 hover:underline"
-          >
-            our contact form
-          </Link>{" "}
-          or WhatsApp. We&apos;re always happy to provide a personal update.
-        </p>
-      </div>
+      {!isCancelled && (
+        <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/60 px-5 py-4 text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-8">
+          <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">About your order timeline</p>
+          <p>
+            Authentic jadeite requires careful sourcing, independent certification, and international
+            shipping — each step takes time. This page will reflect your order&apos;s progress. If you have
+            questions at any point, please reach out via{" "}
+            <Link
+              href="/contact"
+              className="text-emerald-600 dark:text-emerald-400 hover:underline"
+            >
+              our contact form
+            </Link>{" "}
+            or WhatsApp. We&apos;re always happy to provide a personal update.
+          </p>
+        </div>
+      )}
 
       {/* Review form — delivered orders only */}
       {isDelivered && (
