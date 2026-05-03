@@ -236,6 +236,7 @@ export function buildProductShowcaseHtml(params: {
             <p style="margin:10px 0 0;font-size:10px;color:#d1d5db;">
               <a href="${unsubscribeUrl}" style="color:#d1d5db;text-decoration:none;">Unsubscribe</a>
             </p>
+            <p style="margin:6px 0 0;font-size:10px;color:#9ca3af;">This is a no-reply address. For inquiries, contact <a href="mailto:contact@bingbingjade.com" style="color:#9ca3af;text-decoration:none;">contact@bingbingjade.com</a>.</p>
           </td>
         </tr>
 

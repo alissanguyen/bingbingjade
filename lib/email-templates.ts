@@ -33,6 +33,7 @@ function brandedWrapper(contentHtml: string, siteUrl: string, unsubscribeUrl?: s
               <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
             </p>
             ${footer}
+            <p style="margin:6px 0 0;font-size:10px;color:#9ca3af;">This is a no-reply address. For inquiries, contact <a href="mailto:contact@bingbingjade.com" style="color:#9ca3af;text-decoration:none;">contact@bingbingjade.com</a>.</p>
           </td>
         </tr>
       </table>
@@ -179,6 +180,7 @@ export function buildOrderDelayHtml(params: {
               &copy; ${YEAR} &middot;
               <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
             </p>
+            <p style="margin:6px 0 0;font-size:10px;color:#9ca3af;">This is a no-reply address. For inquiries, contact <a href="mailto:contact@bingbingjade.com" style="color:#9ca3af;text-decoration:none;">contact@bingbingjade.com</a>.</p>
           </td>
         </tr>
 
@@ -296,6 +298,7 @@ export function buildBlogAnnouncementHtml(params: {
             <p style="margin:10px 0 0;font-size:10px;color:#d1d5db;">
               <a href="${params.unsubscribeUrl}" style="color:#d1d5db;text-decoration:none;">Unsubscribe</a>
             </p>
+            <p style="margin:6px 0 0;font-size:10px;color:#9ca3af;">This is a no-reply address. For inquiries, contact <a href="mailto:contact@bingbingjade.com" style="color:#9ca3af;text-decoration:none;">contact@bingbingjade.com</a>.</p>
           </td>
         </tr>
 
@@ -435,6 +438,7 @@ export function buildCareTipsHtml(params: {
               &copy; ${YEAR} &middot;
               <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
             </p>
+            <p style="margin:6px 0 0;font-size:10px;color:#9ca3af;">This is a no-reply address. For inquiries, contact <a href="mailto:contact@bingbingjade.com" style="color:#9ca3af;text-decoration:none;">contact@bingbingjade.com</a>.</p>
           </td>
         </tr>
 
