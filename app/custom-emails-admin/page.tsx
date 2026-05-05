@@ -29,6 +29,13 @@ const EMAIL_TYPES = [
     description: "Send jade care instructions to customers whose orders were recently delivered.",
     color: "violet",
   },
+  {
+    href: "/custom-emails-admin/campaign",
+    icon: "◆",
+    label: "New Campaign",
+    description: "Launch seasonal promotions and special campaigns — Black Friday, Mother's Day, Flash Sales, and more.",
+    color: "rose",
+  },
 ];
 
 const colorMap: Record<string, { card: string; icon: string; badge: string }> = {
@@ -51,6 +58,11 @@ const colorMap: Record<string, { card: string; icon: string; badge: string }> = 
     card: "hover:border-violet-300 dark:hover:border-violet-700",
     icon: "bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400",
     badge: "text-violet-700 dark:text-violet-400",
+  },
+  rose: {
+    card: "hover:border-rose-300 dark:hover:border-rose-700",
+    icon: "bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400",
+    badge: "text-rose-700 dark:text-rose-400",
   },
 };
 
