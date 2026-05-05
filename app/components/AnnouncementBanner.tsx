@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import type { BannerConfig, BannerStyle, TimeLeft } from "@/lib/banner-config";
+import { useEffect, useState } from "react";
+import type { BannerConfig, TimeLeft } from "@/lib/banner-config";
 import { resolveStyle, getTimeLeft } from "@/lib/banner-config";
 
 const DISMISS_KEY = "bbj_banner_dismissed_v2";
@@ -19,35 +19,12 @@ function useCountdown(startDate: string | null): TimeLeft | null {
   return timeLeft;
 }
 
-// ── Message rotator hook ──────────────────────────────────────────────────────
-
-function useMessageRotator(messages: string[], intervalMs = 4500) {
-  const [current, setCurrent] = useState(0);
-  const [exiting, setExiting] = useState<number | null>(null);
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    if (messages.length <= 1) { setCurrent(0); setExiting(null); return; }
-    timer.current = setInterval(() => {
-      setCurrent((prev) => {
-        const next = (prev + 1) % messages.length;
-        setExiting(prev);
-        setTimeout(() => setExiting(null), 420);
-        return next;
-      });
-    }, intervalMs);
-    return () => { if (timer.current) clearInterval(timer.current); };
-  }, [messages.length, intervalMs]);
-
-  return { current, exiting };
-}
-
-// ── Countdown display ─────────────────────────────────────────────────────────
+// ── Countdown flip digits ─────────────────────────────────────────────────────
 
 function SlideDigit({ digit, accentColor }: { digit: string; accentColor: string }) {
-  const [cur, setCur]         = useState(digit);
-  const [next, setNext]       = useState(digit);
-  const [animating, setAnim]  = useState(false);
+  const [cur, setCur]        = useState(digit);
+  const [next, setNext]      = useState(digit);
+  const [animating, setAnim] = useState(false);
   useEffect(() => {
     if (digit === cur) return;
     setNext(digit);
@@ -80,9 +57,11 @@ export function AnnouncementBanner() {
   const [config, setConfig] = useState<BannerConfig | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    try { setReducedMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch {}
     try { if (sessionStorage.getItem(DISMISS_KEY) === "1") { setDismissed(true); return; } } catch {}
     fetch("/api/banner")
       .then((r) => r.json())
@@ -91,123 +70,163 @@ export function AnnouncementBanner() {
   }, []);
 
   const messages = Array.isArray(config?.messages) ? config!.messages.filter(Boolean) : [];
-  const { current, exiting } = useMessageRotator(messages);
-
   const countdown = useCountdown(config?.start_date ?? null);
-  const isCountdown = !!countdown; // start_date is in the future
+  const isCountdown = !!countdown;
 
   if (!mounted || !config || dismissed || messages.length === 0) return null;
-
-  // Auto-hide if end_date has passed
   if (config.end_date && new Date(config.end_date) < new Date()) return null;
 
   const style = resolveStyle(config.style);
-
-  const cssVars = {
-    "--banner-bg":     style.backgroundColor,
-    "--banner-text":   style.textColor,
-    "--banner-accent": style.accentColor,
-    "--banner-border": style.borderColor,
-  } as React.CSSProperties;
+  const hasCta = !!(config.cta_text && config.cta_link);
 
   const dismiss = () => {
     try { sessionStorage.setItem(DISMISS_KEY, "1"); } catch {}
     setDismissed(true);
   };
 
-  return (
-    <div
-      className="relative w-full select-none"
-      style={{
-        ...cssVars,
-        backgroundColor: style.backgroundColor,
-        borderBottom: `1px solid ${style.borderColor}`,
-      }}
+  const bannerStyle: React.CSSProperties = {
+    backgroundColor: style.backgroundColor,
+    borderBottom: `1px solid ${style.borderColor}`,
+  };
+
+  const DismissBtn = () => (
+    <button
+      type="button"
+      onClick={dismiss}
+      aria-label="Dismiss banner"
+      className="shrink-0 w-5 h-5 flex items-center justify-center text-base leading-none transition-opacity hover:opacity-50"
+      style={{ color: style.textColor }}
     >
-      <div className="flex items-center justify-center gap-2 sm:gap-4 px-10 py-2.5 min-h-[2.5rem]">
+      ×
+    </button>
+  );
 
-        {/* Rotating messages */}
-        <div className="relative overflow-hidden flex items-center justify-center" style={{ minHeight: "1.375rem" }}>
-          {/* Invisible spacer — maintains container width/height without layout shift */}
-          <span className="invisible pointer-events-none text-xs sm:text-[13px] font-medium tracking-[0.04em] whitespace-nowrap px-px">
-            {messages[current]}
+  // ── Countdown — static centered layout ───────────────────────────────────
+  if (isCountdown) {
+    return (
+      <div className="relative w-full select-none" style={bannerStyle}>
+        <div className="flex items-center justify-center gap-2 sm:gap-3 px-10 py-2.5 min-h-[2.5rem]">
+          <span className="text-xs sm:text-[13px] font-medium tracking-[0.04em]" style={{ color: style.textColor }}>
+            {messages[0]}
           </span>
-
-          {/* Exiting message */}
-          {exiting !== null && (
-            <span
-              key={`out-${exiting}`}
-              className="banner-msg-out absolute inset-0 flex items-center justify-center text-xs sm:text-[13px] font-medium tracking-[0.04em] whitespace-nowrap"
-              style={{ color: style.textColor }}
-            >
-              {messages[exiting]}
-              {isCountdown && " —"}
-            </span>
-          )}
-
-          {/* Current message */}
-          <span
-            key={`in-${current}`}
-            className={`${messages.length > 1 ? "banner-msg-in" : ""} absolute inset-0 flex items-center justify-center text-xs sm:text-[13px] font-medium tracking-[0.04em] whitespace-nowrap`}
-            style={{ color: style.textColor }}
-          >
-            {messages[current]}
-            {isCountdown && " —"}
+          <span className="text-[10px] tracking-widest" style={{ color: `${style.accentColor}90` }}>·</span>
+          <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: style.accentColor }}>
+            Starting in
           </span>
-        </div>
-
-        {/* Countdown */}
-        {isCountdown && countdown && (
-          <div className="flex items-center gap-1 shrink-0">
-            <span className="text-[10px] font-semibold uppercase tracking-widest mr-1" style={{ color: style.accentColor }}>
-              Starting in
-            </span>
+          <div className="flex items-center gap-1.5">
             {countdown.d > 0 && (
-              <>
-                <SlideUnit value={countdown.d} accentColor={style.accentColor} />
-                <span className="text-xs font-bold" style={{ color: `${style.textColor}80` }}>d</span>
-              </>
+              <><SlideUnit value={countdown.d} accentColor={style.accentColor} /><span className="text-[10px] font-medium" style={{ color: `${style.textColor}60` }}>d</span></>
             )}
             {(countdown.d > 0 || countdown.h > 0) && (
-              <>
-                <SlideUnit value={countdown.h} accentColor={style.accentColor} />
-                <span className="text-xs font-bold" style={{ color: `${style.textColor}80` }}>h</span>
-              </>
+              <><SlideUnit value={countdown.h} accentColor={style.accentColor} /><span className="text-[10px] font-medium" style={{ color: `${style.textColor}60` }}>h</span></>
             )}
             <SlideUnit value={countdown.m} accentColor={style.accentColor} />
-            <span className="text-xs font-bold" style={{ color: `${style.textColor}80` }}>m</span>
+            <span className="text-[10px] font-medium" style={{ color: `${style.textColor}60` }}>m</span>
             {countdown.d === 0 && (
-              <>
-                <SlideUnit value={countdown.s} accentColor={style.accentColor} />
-                <span className="text-xs font-bold" style={{ color: `${style.textColor}80` }}>s</span>
-              </>
+              <><SlideUnit value={countdown.s} accentColor={style.accentColor} /><span className="text-[10px] font-medium" style={{ color: `${style.textColor}60` }}>s</span></>
             )}
           </div>
-        )}
-
-        {/* CTA */}
-        {!isCountdown && config.cta_text && config.cta_link && (
-          <Link
-            href={config.cta_link}
-            className="shrink-0 hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold tracking-wider uppercase border-b pb-px transition-opacity hover:opacity-70"
-            style={{ color: style.accentColor, borderColor: `${style.accentColor}60` }}
-          >
-            {config.cta_text}
-            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </Link>
-        )}
+        </div>
+        <div className="absolute right-3 top-1/2 -translate-y-1/2"><DismissBtn /></div>
       </div>
+    );
+  }
 
-      {/* Dismiss */}
-      <button
-        type="button"
-        onClick={dismiss}
-        aria-label="Dismiss banner"
-        className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-base leading-none transition-opacity hover:opacity-60"
-        style={{ color: style.textColor }}
-      >
-        ×
-      </button>
+  // ── Reduced motion — first message static ────────────────────────────────
+  if (reducedMotion) {
+    return (
+      <div className="relative w-full select-none" style={bannerStyle}>
+        <div className="flex items-center justify-center gap-3 sm:gap-5 px-10 py-2.5 min-h-[2.5rem]">
+          <span className="text-xs sm:text-[13px] font-medium tracking-[0.04em] text-center" style={{ color: style.textColor }}>
+            {messages[0]}
+          </span>
+          {hasCta && (
+            <Link href={config.cta_link!}
+              className="hidden sm:inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-wider border-b pb-px hover:opacity-70 transition-opacity"
+              style={{ color: style.accentColor, borderColor: `${style.accentColor}50` }}>
+              {config.cta_text}
+            </Link>
+          )}
+        </div>
+        <div className="absolute right-3 top-1/2 -translate-y-1/2"><DismissBtn /></div>
+      </div>
+    );
+  }
+
+  // ── Ticker — continuous right-to-left flow ────────────────────────────────
+  //
+  // Strategy: inline-flex track containing messages × 2 (doubled for seamless loop).
+  // CSS animation: translateX(0) → translateX(-50%) linear infinite.
+  // -50% of the doubled track = exactly one copy's width → perfectly seamless.
+  //
+  // Duration: estimated at ~7.5px per character, scrolling at 75px/s.
+  // Minimum 14s to ensure even very short banners feel deliberate, not frantic.
+
+  const singleText = messages.join("◆") + (config.cta_text ?? "");
+  const estimatedPx = singleText.length * 7.5 + messages.length * 96; // chars + separator gaps
+  const duration = Math.max(14, estimatedPx / 75);
+
+  // One complete pass of all messages with separators
+  const TickerPass = ({ ariaHidden }: { ariaHidden?: boolean }) => (
+    <div className="inline-flex items-center shrink-0" aria-hidden={ariaHidden}>
+      {messages.map((m, i) => (
+        <span key={i} className="inline-flex items-center">
+          <span
+            className="text-xs sm:text-[13px] font-medium tracking-[0.04em] whitespace-nowrap"
+            style={{ color: style.textColor }}
+          >
+            {m}
+          </span>
+          {/* Separator gem — also wraps CTA after the last message */}
+          {i === messages.length - 1 && hasCta ? (
+            <Link
+              href={config.cta_link!}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 ml-8 sm:ml-10 mr-8 sm:mr-10 text-[11px] font-semibold uppercase tracking-wider border-b pb-px hover:opacity-70 transition-opacity whitespace-nowrap"
+              style={{ color: style.accentColor, borderColor: `${style.accentColor}50` }}
+            >
+              {config.cta_text}
+              <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </Link>
+          ) : (
+            <span
+              className="inline-block mx-8 sm:mx-10 text-[8px] leading-none shrink-0"
+              style={{ color: style.accentColor }}
+              aria-hidden="true"
+            >
+              ◆
+            </span>
+          )}
+        </span>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="w-full select-none" style={bannerStyle}>
+      <div className="flex items-center">
+        {/* Ticker area — clips the scrolling track */}
+        <div className="flex-1 overflow-hidden relative min-w-0" style={{ height: "2.5rem" }}>
+          {/* Scrolling track: two identical passes for seamless loop */}
+          <div
+            className="banner-ticker-track inline-flex items-center h-full"
+            style={{ animationDuration: `${duration}s` }}
+          >
+            <TickerPass />
+            <TickerPass ariaHidden />
+          </div>
+          {/* Right-edge fade so text doesn't hard-cut at the dismiss button */}
+          <div
+            className="absolute inset-y-0 right-0 w-10 pointer-events-none"
+            style={{ background: `linear-gradient(to right, transparent, ${style.backgroundColor})` }}
+          />
+        </div>
+
+        {/* Dismiss — outside the overflow container so it's always visible */}
+        <div className="shrink-0 px-3 flex items-center h-10" style={{ backgroundColor: style.backgroundColor }}>
+          <DismissBtn />
+        </div>
+      </div>
     </div>
   );
 }

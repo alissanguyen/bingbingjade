@@ -232,17 +232,18 @@ body {
 .fc-digit-out { animation: fc-slide-out 0.28s ease-in  forwards; }
 .fc-digit-in  { animation: fc-slide-in  0.28s ease-out forwards; }
 
-/* Banner message rotation — right-to-left luxury slide */
-@keyframes banner-msg-in {
-  from { opacity: 0; transform: translateX(28px); }
-  to   { opacity: 1; transform: translateX(0); }
+/* Banner ticker — continuous right-to-left flow */
+@keyframes banner-ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
 }
-@keyframes banner-msg-out {
-  from { opacity: 1; transform: translateX(0); }
-  to   { opacity: 0; transform: translateX(-28px); }
+.banner-ticker-track {
+  animation: banner-ticker linear infinite;
+  will-change: transform;
 }
-.banner-msg-in  { animation: banner-msg-in  0.52s cubic-bezier(0.16,1,0.3,1) forwards; }
-.banner-msg-out { animation: banner-msg-out 0.38s cubic-bezier(0.4,0,1,1)    forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .banner-ticker-track { animation: none; }
+}
 
 @keyframes wa-vibrate {
   0%, 100% { transform: translateX(0) rotate(0deg); }
