@@ -29,6 +29,15 @@ export function DateTimePicker({ value, onChange }: Props) {
   const [hour, setHour]     = useState(selected ? selected.getHours() : 12);
   const [minute, setMinute] = useState(selected ? selected.getMinutes() : 0);
 
+  // Sync hour/minute when value loads from server (initial state is set before fetch completes)
+  useEffect(() => {
+    if (value) {
+      const d = new Date(value);
+      setHour(d.getHours());
+      setMinute(d.getMinutes());
+    }
+  }, [value]);
+
   // Close on outside click
   useEffect(() => {
     function handler(e: MouseEvent) {

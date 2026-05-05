@@ -3,12 +3,11 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/banner — public, returns active banner config (or {is_active:false})
 export async function GET() {
   try {
     const { data } = await supabaseAdmin
       .from("site_banners")
-      .select("is_active, template, target_date, background")
+      .select("is_active, preset, messages, start_date, end_date, cta_text, cta_link, style")
       .eq("id", "main")
       .maybeSingle();
 

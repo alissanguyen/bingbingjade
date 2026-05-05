@@ -1,158 +1,114 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import type { BannerConfig, BannerStyle, TimeLeft } from "@/lib/banner-config";
+import { resolveStyle, getTimeLeft } from "@/lib/banner-config";
 
-interface BannerConfig {
-  is_active: boolean;
-  template: string;
-  target_date: string | null;
-  background: "black" | "white";
-}
+const DISMISS_KEY = "bbj_banner_dismissed_v2";
 
-const DISMISS_KEY = "bbj_banner_dismissed_v1";
+// ── Countdown hook ────────────────────────────────────────────────────────────
 
-export const BANNER_TEMPLATES: {
-  value: string;
-  label: string;
-  text: string;
-  hasDate: boolean;
-}[] = [
-  { value: "restock",        label: "Next Restock",              text: "Next Restock Drops",                   hasDate: true  },
-  { value: "releasing_soon", label: "New Pieces Releasing Soon", text: "New Pieces Releasing Soon",            hasDate: true  },
-  { value: "next_favorite",  label: "Your Next Favorite Piece",  text: "Your Next Favorite Piece Drops",       hasDate: true  },
-  { value: "black_friday",   label: "Black Friday Sale",         text: "🛍 Black Friday Sale Starting",        hasDate: true  },
-  { value: "christmas",      label: "Christmas Sale",            text: "🎄 Christmas Deals Starting",          hasDate: true  },
-  { value: "new_year",       label: "New Year Sale",             text: "🎊 New Year Sale Starting",            hasDate: true  },
-  { value: "valentines",     label: "Valentine's Day",           text: "💝 Valentine's Day Special Starting",  hasDate: true  },
-  { value: "mothers_day",    label: "Mother's Day",              text: "💐 Mother's Day Sale Starting",        hasDate: true  },
-  { value: "lunar_new_year", label: "Lunar New Year",            text: "🧧 Lunar New Year Sale Starting",      hasDate: true  },
-];
-
-function useCountdown(targetDate: string | null) {
-  const getRemaining = () => {
-    if (!targetDate) return null;
-    const diff = new Date(targetDate).getTime() - Date.now();
-    if (diff <= 0) return null;
-    return {
-      d: Math.floor(diff / 86_400_000),
-      h: Math.floor((diff % 86_400_000) / 3_600_000),
-      m: Math.floor((diff % 3_600_000) / 60_000),
-      s: Math.floor((diff % 60_000) / 1_000),
-    };
-  };
-
-  const [timeLeft, setTimeLeft] = useState<ReturnType<typeof getRemaining>>(null);
-
+function useCountdown(startDate: string | null): TimeLeft | null {
+  const [timeLeft, setTimeLeft] = useState<TimeLeft | null>(null);
   useEffect(() => {
-    setTimeLeft(getRemaining());
-    const id = setInterval(() => setTimeLeft(getRemaining()), 1000);
+    setTimeLeft(getTimeLeft(startDate));
+    const id = setInterval(() => setTimeLeft(getTimeLeft(startDate)), 1000);
     return () => clearInterval(id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targetDate]);
-
+  }, [startDate]);
   return timeLeft;
 }
 
-// ── Slide countdown cards ─────────────────────────────────────────────────────
+// ── Message rotator hook ──────────────────────────────────────────────────────
 
-function SlideDigit({ digit, cardBg, digitClr }: { digit: string; cardBg: string; digitClr: string }) {
-  const [current, setCurrent] = useState(digit);
-  const [next, setNext]       = useState(digit);
-  const [animating, setAnimating] = useState(false);
+function useMessageRotator(messages: string[], intervalMs = 4500) {
+  const [current, setCurrent] = useState(0);
+  const [exiting, setExiting] = useState<number | null>(null);
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (digit === current) return;
+    if (messages.length <= 1) { setCurrent(0); setExiting(null); return; }
+    timer.current = setInterval(() => {
+      setCurrent((prev) => {
+        const next = (prev + 1) % messages.length;
+        setExiting(prev);
+        setTimeout(() => setExiting(null), 420);
+        return next;
+      });
+    }, intervalMs);
+    return () => { if (timer.current) clearInterval(timer.current); };
+  }, [messages.length, intervalMs]);
+
+  return { current, exiting };
+}
+
+// ── Countdown display ─────────────────────────────────────────────────────────
+
+function SlideDigit({ digit, accentColor }: { digit: string; accentColor: string }) {
+  const [cur, setCur]         = useState(digit);
+  const [next, setNext]       = useState(digit);
+  const [animating, setAnim]  = useState(false);
+  useEffect(() => {
+    if (digit === cur) return;
     setNext(digit);
-    setAnimating(true);
-    const t = setTimeout(() => {
-      setCurrent(digit);
-      setAnimating(false);
-    }, 280);
+    setAnim(true);
+    const t = setTimeout(() => { setCur(digit); setAnim(false); }, 280);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [digit]);
-
   return (
-    <div className="fc-card" style={{ background: cardBg }}>
-      <span className={`fc-digit ${animating ? "fc-digit-out" : ""}`} style={{ color: digitClr }}>
-        {current}
-      </span>
-      {animating && (
-        <span className="fc-digit fc-digit-in" style={{ color: digitClr }}>
-          {next}
-        </span>
-      )}
+    <div className="fc-card" style={{ background: "rgba(0,0,0,0.22)" }}>
+      <span className={`fc-digit ${animating ? "fc-digit-out" : ""}`} style={{ color: accentColor }}>{cur}</span>
+      {animating && <span className="fc-digit fc-digit-in" style={{ color: accentColor }}>{next}</span>}
     </div>
   );
 }
 
-function SlideUnit({ value, cardBg, digitClr }: { value: number; cardBg: string; digitClr: string }) {
+function SlideUnit({ value, accentColor }: { value: number; accentColor: string }) {
   const s = String(value).padStart(2, "0");
   return (
     <div className="flex gap-[2px]">
-      <SlideDigit digit={s[0]} cardBg={cardBg} digitClr={digitClr} />
-      <SlideDigit digit={s[1]} cardBg={cardBg} digitClr={digitClr} />
+      <SlideDigit digit={s[0]} accentColor={accentColor} />
+      <SlideDigit digit={s[1]} accentColor={accentColor} />
     </div>
   );
 }
 
-function SlideSep({ color }: { color: string }) {
-  return (
-    <span className="font-bold text-xs self-center" style={{ color }}>:</span>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Main Component ────────────────────────────────────────────────────────────
 
 export function AnnouncementBanner() {
   const [config, setConfig] = useState<BannerConfig | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const timeLeft = useCountdown(config?.target_date ?? null);
 
   useEffect(() => {
     setMounted(true);
-    try {
-      if (sessionStorage.getItem(DISMISS_KEY) === "1") {
-        setDismissed(true);
-        return;
-      }
-    } catch {}
+    try { if (sessionStorage.getItem(DISMISS_KEY) === "1") { setDismissed(true); return; } } catch {}
     fetch("/api/banner")
       .then((r) => r.json())
-      .then((data) => { if (data?.is_active) setConfig(data); })
+      .then((data) => { if (data?.is_active) setConfig(data as BannerConfig); })
       .catch(() => {});
   }, []);
 
-  if (!mounted || !config || dismissed) return null;
+  const messages = Array.isArray(config?.messages) ? config!.messages.filter(Boolean) : [];
+  const { current, exiting } = useMessageRotator(messages);
 
-  // Hide once date has passed
-  if (config.target_date && new Date(config.target_date) < new Date() && !timeLeft) return null;
+  const countdown = useCountdown(config?.start_date ?? null);
+  const isCountdown = !!countdown; // start_date is in the future
 
-  const tpl = BANNER_TEMPLATES.find((t) => t.value === config.template);
-  const text = tpl?.text ?? config.template;
-  const hasDate = tpl?.hasDate ?? false;
+  if (!mounted || !config || dismissed || messages.length === 0) return null;
 
-  const formattedDate = config.target_date
-    ? new Date(config.target_date).toLocaleString("en-US", {
-        month: "short", day: "numeric", year: "numeric",
-        hour: "numeric", minute: "2-digit", timeZoneName: "short",
-      })
-    : null;
+  // Auto-hide if end_date has passed
+  if (config.end_date && new Date(config.end_date) < new Date()) return null;
 
-  const isBlack = config.background !== "white";
+  const style = resolveStyle(config.style);
 
-  // Emerald dark: bg-emerald-800, white text, dark card bg, white digits
-  // Light: bg-white, gray-900 text, light card bg, emerald-600 digits
-  const bannerCls = isBlack
-    ? "bg-emerald-800 text-white"
-    : "bg-white text-gray-900 border-b border-gray-200 dark:border-gray-800";
-  const cardBg    = isBlack ? "rgba(0,0,0,0.25)"          : "rgba(0,0,0,0.07)";
-  const digitClr  = isBlack ? "#ffffff"                    : "#059669";
-  const sepClr    = isBlack ? "rgba(255,255,255,0.35)"     : "rgba(0,0,0,0.25)";
-  const dismissCls = isBlack
-    ? "text-emerald-300 hover:text-white"
-    : "text-gray-400 hover:text-gray-700";
+  const cssVars = {
+    "--banner-bg":     style.backgroundColor,
+    "--banner-text":   style.textColor,
+    "--banner-accent": style.accentColor,
+    "--banner-border": style.borderColor,
+  } as React.CSSProperties;
 
   const dismiss = () => {
     try { sessionStorage.setItem(DISMISS_KEY, "1"); } catch {}
@@ -160,37 +116,95 @@ export function AnnouncementBanner() {
   };
 
   return (
-    <div className={`relative flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-3 px-10 py-2 select-none ${bannerCls}`}>
-      {/* Message */}
-      <span className="text-xs sm:text-sm font-medium tracking-wide text-center leading-snug">
-        {text}
-        {hasDate && !timeLeft && formattedDate ? ` on ${formattedDate}` : ""}
-        {hasDate && timeLeft ? " in" : ""}
-      </span>
+    <div
+      className="relative w-full select-none"
+      style={{
+        ...cssVars,
+        backgroundColor: style.backgroundColor,
+        borderBottom: `1px solid ${style.borderColor}`,
+      }}
+    >
+      <div className="flex items-center justify-center gap-2 sm:gap-4 px-10 py-2.5 min-h-[2.5rem]">
 
-      {/* Slide countdown */}
-      {timeLeft && (
-        <div className="flex items-center gap-1">
-          {timeLeft.d > 0 && (
-            <>
-              <SlideUnit value={timeLeft.d} cardBg={cardBg} digitClr={digitClr} />
-              <SlideSep color={sepClr} />
-            </>
+        {/* Rotating messages */}
+        <div className="relative overflow-hidden flex items-center justify-center" style={{ minHeight: "1.375rem" }}>
+          {/* Invisible spacer — maintains container width/height without layout shift */}
+          <span className="invisible pointer-events-none text-xs sm:text-[13px] font-medium tracking-[0.04em] whitespace-nowrap px-px">
+            {messages[current]}
+          </span>
+
+          {/* Exiting message */}
+          {exiting !== null && (
+            <span
+              key={`out-${exiting}`}
+              className="banner-msg-out absolute inset-0 flex items-center justify-center text-xs sm:text-[13px] font-medium tracking-[0.04em] whitespace-nowrap"
+              style={{ color: style.textColor }}
+            >
+              {messages[exiting]}
+              {isCountdown && " —"}
+            </span>
           )}
-          <SlideUnit value={timeLeft.h} cardBg={cardBg} digitClr={digitClr} />
-          <SlideSep color={sepClr} />
-          <SlideUnit value={timeLeft.m} cardBg={cardBg} digitClr={digitClr} />
-          <SlideSep color={sepClr} />
-          <SlideUnit value={timeLeft.s} cardBg={cardBg} digitClr={digitClr} />
+
+          {/* Current message */}
+          <span
+            key={`in-${current}`}
+            className={`${messages.length > 1 ? "banner-msg-in" : ""} absolute inset-0 flex items-center justify-center text-xs sm:text-[13px] font-medium tracking-[0.04em] whitespace-nowrap`}
+            style={{ color: style.textColor }}
+          >
+            {messages[current]}
+            {isCountdown && " —"}
+          </span>
         </div>
-      )}
+
+        {/* Countdown */}
+        {isCountdown && countdown && (
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="text-[10px] font-semibold uppercase tracking-widest mr-1" style={{ color: style.accentColor }}>
+              Starting in
+            </span>
+            {countdown.d > 0 && (
+              <>
+                <SlideUnit value={countdown.d} accentColor={style.accentColor} />
+                <span className="text-xs font-bold" style={{ color: `${style.textColor}80` }}>d</span>
+              </>
+            )}
+            {(countdown.d > 0 || countdown.h > 0) && (
+              <>
+                <SlideUnit value={countdown.h} accentColor={style.accentColor} />
+                <span className="text-xs font-bold" style={{ color: `${style.textColor}80` }}>h</span>
+              </>
+            )}
+            <SlideUnit value={countdown.m} accentColor={style.accentColor} />
+            <span className="text-xs font-bold" style={{ color: `${style.textColor}80` }}>m</span>
+            {countdown.d === 0 && (
+              <>
+                <SlideUnit value={countdown.s} accentColor={style.accentColor} />
+                <span className="text-xs font-bold" style={{ color: `${style.textColor}80` }}>s</span>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* CTA */}
+        {!isCountdown && config.cta_text && config.cta_link && (
+          <Link
+            href={config.cta_link}
+            className="shrink-0 hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold tracking-wider uppercase border-b pb-px transition-opacity hover:opacity-70"
+            style={{ color: style.accentColor, borderColor: `${style.accentColor}60` }}
+          >
+            {config.cta_text}
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </Link>
+        )}
+      </div>
 
       {/* Dismiss */}
       <button
         type="button"
         onClick={dismiss}
-        aria-label="Dismiss"
-        className={`absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-base leading-none transition-colors ${dismissCls}`}
+        aria-label="Dismiss banner"
+        className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-base leading-none transition-opacity hover:opacity-60"
+        style={{ color: style.textColor }}
       >
         ×
       </button>
