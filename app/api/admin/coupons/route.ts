@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
     customer_email?: string | null;
     coupon_purpose?: "thank_you" | "retention" | null;
     scheduled_send_at?: string | null;
+    never_expires?: boolean;
   };
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
@@ -78,8 +79,8 @@ export async function POST(req: NextRequest) {
   const scheduledSendAt = body.scheduled_send_at || null;
   const isFutureSchedule = scheduledSendAt && new Date(scheduledSendAt) > new Date();
 
-  // All customer coupons are valid for exactly 3 months
-  const endsAt = customerEmail
+  // Customer coupons expire in 3 months — unless never_expires is set (e.g. giveaways)
+  const endsAt = customerEmail && !body.never_expires
     ? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString()
     : (body.ends_at || null);
 

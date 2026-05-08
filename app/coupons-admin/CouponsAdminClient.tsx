@@ -79,6 +79,14 @@ const EMPTY_CUSTOMER_FORM = {
   send_at: "",
 };
 
+const EMPTY_GIVEAWAY_FORM = {
+  recipientName: "",
+  recipientEmail: "",
+  discount_type: "fixed" as "fixed" | "percent",
+  discount_value: "",
+  code: "",
+};
+
 // ── Customer search combobox ──────────────────────────────────────────────────
 
 function CustomerSearchField({
@@ -199,6 +207,10 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
   const [customerForm, setCustomerForm] = useState(EMPTY_CUSTOMER_FORM);
   const [customerSubmitting, setCustomerSubmitting] = useState(false);
   const [customerError, setCustomerError] = useState<string | null>(null);
+  const [showGiveawayForm, setShowGiveawayForm] = useState(false);
+  const [giveawayForm, setGiveawayForm] = useState(EMPTY_GIVEAWAY_FORM);
+  const [giveawaySubmitting, setGiveawaySubmitting] = useState(false);
+  const [giveawayError, setGiveawayError] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [resendTarget, setResendTarget] = useState<Campaign | null>(null);
@@ -379,6 +391,47 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
     }
   }
 
+  async function handleGiveaway(e: React.FormEvent) {
+    e.preventDefault();
+    setGiveawaySubmitting(true);
+    setGiveawayError(null);
+    try {
+      const code = giveawayForm.code.trim().toUpperCase() || genCode();
+      const res = await fetch("/api/admin/coupons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          name: `Giveaway — ${giveawayForm.recipientName.trim() || giveawayForm.recipientEmail}`,
+          discount_type: giveawayForm.discount_type,
+          discount_value: Number(giveawayForm.discount_value) || null,
+          active: true,
+          starts_at: null,
+          ends_at: null,
+          never_expires: true,
+          new_customers_only: false,
+          minimum_order_amount: null,
+          max_redemptions_per_customer: 1,
+          max_total_redemptions: 1,
+          notes: "Giveaway — never expires",
+          customer_email: giveawayForm.recipientEmail.trim().toLowerCase(),
+          coupon_purpose: "thank_you",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setGiveawayError(data.error ?? "Something went wrong.");
+      } else {
+        setCampaigns((prev) => [{ ...data, redemption_count: 0 }, ...prev]);
+        setGiveawayForm({ ...EMPTY_GIVEAWAY_FORM, code: genCode() });
+        setShowGiveawayForm(false);
+        showToast("Giveaway coupon created & email sent.");
+      }
+    } finally {
+      setGiveawaySubmitting(false);
+    }
+  }
+
   async function handlePreview(reminderNumber?: 1 | 2) {
     setPreviewing(true);
     try {
@@ -417,21 +470,28 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
         <div className="flex flex-wrap gap-2 self-start sm:self-auto">
           <button
             type="button"
-            onClick={() => { setShowRedeem((v) => !v); setRedeemResult(null); setShowForm(false); setShowCustomerForm(false); }}
+            onClick={() => { setShowRedeem((v) => !v); setRedeemResult(null); setShowForm(false); setShowCustomerForm(false); setShowGiveawayForm(false); }}
             className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             {showRedeem ? "Cancel" : "Manual Redemption"}
           </button>
           <button
             type="button"
-            onClick={() => { setShowCustomerForm((v) => !v); setCustomerError(null); setShowForm(false); setShowRedeem(false); if (!showCustomerForm) setCustomerForm({ ...EMPTY_CUSTOMER_FORM, code: genCode() }); }}
+            onClick={() => { setShowCustomerForm((v) => !v); setCustomerError(null); setShowForm(false); setShowRedeem(false); setShowGiveawayForm(false); if (!showCustomerForm) setCustomerForm({ ...EMPTY_CUSTOMER_FORM, code: genCode() }); }}
             className="text-sm font-medium px-4 py-2 rounded-lg border border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors"
           >
             {showCustomerForm ? "Cancel" : "Customer Coupon"}
           </button>
           <button
             type="button"
-            onClick={() => { setShowForm((v) => !v); setError(null); setShowRedeem(false); setShowCustomerForm(false); }}
+            onClick={() => { setShowGiveawayForm((v) => !v); setGiveawayError(null); setShowForm(false); setShowRedeem(false); setShowCustomerForm(false); if (!showGiveawayForm) setGiveawayForm({ ...EMPTY_GIVEAWAY_FORM, code: genCode() }); }}
+            className="text-sm font-medium px-4 py-2 rounded-lg border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+          >
+            {showGiveawayForm ? "Cancel" : "Giveaway"}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setShowForm((v) => !v); setError(null); setShowRedeem(false); setShowCustomerForm(false); setShowGiveawayForm(false); }}
             className="text-sm font-medium px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
           >
             {showForm ? "Cancel" : "New Campaign"}
@@ -600,6 +660,82 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
         </form>
       )}
 
+      {/* Giveaway form */}
+      {showGiveawayForm && (
+        <form onSubmit={handleGiveaway} className="bg-white dark:bg-gray-900 rounded-xl border border-amber-200 dark:border-amber-800 p-6 space-y-5">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Giveaway Coupon</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Single-use, never-expires coupon sent to any email — for contests, giveaways, or gifting to non-clients.</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Recipient email">
+              <input
+                type="email"
+                value={giveawayForm.recipientEmail}
+                onChange={(e) => setGiveawayForm((f) => ({ ...f, recipientEmail: e.target.value }))}
+                placeholder="winner@example.com"
+                required
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Recipient name (optional)">
+              <input
+                type="text"
+                value={giveawayForm.recipientName}
+                onChange={(e) => setGiveawayForm((f) => ({ ...f, recipientName: e.target.value }))}
+                placeholder="e.g. Sarah"
+                className={inputCls}
+              />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Discount type">
+              <select
+                value={giveawayForm.discount_type}
+                onChange={(e) => setGiveawayForm((f) => ({ ...f, discount_type: e.target.value as "fixed" | "percent" }))}
+                className={inputCls}
+              >
+                <option value="fixed">Fixed ($)</option>
+                <option value="percent">Percent (%)</option>
+              </select>
+            </Field>
+            <Field label={giveawayForm.discount_type === "percent" ? "Percentage off" : "Amount off ($)"}>
+              <input
+                type="number"
+                min={1}
+                value={giveawayForm.discount_value}
+                onChange={(e) => setGiveawayForm((f) => ({ ...f, discount_value: e.target.value }))}
+                required
+                className={inputCls}
+              />
+            </Field>
+          </div>
+
+          <Field label="Coupon code (auto-generated if blank)">
+            <input
+              value={giveawayForm.code}
+              onChange={(e) => setGiveawayForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
+              placeholder={giveawayForm.code || "Leave blank to auto-generate"}
+              className={`${inputCls} font-mono uppercase tracking-widest`}
+            />
+          </Field>
+
+          <p className="text-xs text-amber-700 dark:text-amber-400 -mt-2">Never expires · Single use · Email sent immediately</p>
+
+          {giveawayError && <p className="text-sm text-red-600 dark:text-red-400">{giveawayError}</p>}
+
+          <button
+            type="submit"
+            disabled={giveawaySubmitting}
+            className="text-sm font-medium px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50 transition-colors"
+          >
+            {giveawaySubmitting ? "Creating…" : "Create & Send"}
+          </button>
+        </form>
+      )}
+
       {/* Create form */}
       {showForm && (
         <form onSubmit={handleCreate} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-5">
@@ -754,8 +890,12 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
                     <div className="flex flex-wrap gap-1.5 mt-1">
                       {c.new_customers_only && <span className="text-xs text-amber-600 dark:text-amber-400">New customers only</span>}
                       {c.customer_email && (
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 font-medium">
-                          {c.coupon_purpose === "thank_you" ? "Thank You" : "Retention"} · {c.customer_email}
+                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                          !c.ends_at && c.coupon_purpose === "thank_you"
+                            ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
+                            : "bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300"
+                        }`}>
+                          {!c.ends_at && c.coupon_purpose === "thank_you" ? "Giveaway" : c.coupon_purpose === "thank_you" ? "Thank You" : "Retention"} · {c.customer_email}
                         </span>
                       )}
                       {c.customer_email && c.email_sent_at && new Date(c.email_sent_at) > new Date() && (
