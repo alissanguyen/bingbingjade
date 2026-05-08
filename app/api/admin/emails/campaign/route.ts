@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
     subscribers = (subs ?? []).map((s) => ({ email: s.email, unsubscribeToken: s.unsubscribe_token }));
   }
 
-  if (subscribers.length === 0) return NextResponse.json({ sent: 0, failed: 0, total: 0 });
+  if (subscribers.length === 0) return NextResponse.json({ sent: 0, failed: 0, total: 0, couponCreated: false });
 
   const { sent, failed } = await sendBulkSubscriberEmail({
     subscribers,
@@ -117,5 +117,44 @@ export async function POST(req: NextRequest) {
     siteUrl: SITE_URL,
   });
 
-  return NextResponse.json({ sent, failed, total: subscribers.length });
+  // Auto-create coupon if a discount code was included.
+  // Uses ignoreDuplicates so an existing coupon with the same code is never overwritten.
+  let couponCreated = false;
+  const couponCode = body.discountCode?.trim().toUpperCase();
+  if (couponCode && body.discountType && body.discountValue && body.discountValue > 0) {
+    const dbDiscountType = body.discountType === "percentage" ? "percent" : "fixed";
+
+    let endsAt: string | null = null;
+    if (body.expiryDate) {
+      const parsed = new Date(body.expiryDate);
+      if (!isNaN(parsed.getTime())) endsAt = parsed.toISOString();
+    }
+
+    const { error: couponError } = await supabaseAdmin
+      .from("coupon_campaigns")
+      .upsert(
+        {
+          code: couponCode,
+          name: `Campaign: ${subject}`,
+          discount_type: dbDiscountType,
+          discount_value: body.discountValue,
+          active: true,
+          ends_at: endsAt,
+          max_redemptions_per_customer: 1,
+          max_total_redemptions: null,
+          new_customers_only: false,
+          minimum_order_amount: null,
+          notes: "Auto-created via campaign email",
+          created_by: "campaign",
+          customer_email: null,
+          coupon_purpose: null,
+        },
+        { onConflict: "code", ignoreDuplicates: true }
+      );
+
+    if (!couponError) couponCreated = true;
+    else console.error("[campaign] Failed to upsert coupon:", couponError.message);
+  }
+
+  return NextResponse.json({ sent, failed, total: subscribers.length, couponCreated });
 }

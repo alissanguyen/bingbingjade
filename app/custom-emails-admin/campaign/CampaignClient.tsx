@@ -100,7 +100,7 @@ export function CampaignClient({
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [previewing, setPreviewing] = useState(false);
-  const [result, setResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
+  const [result, setResult] = useState<{ sent: number; failed: number; total: number; couponCreated: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function selectPreset(id: string) {
@@ -495,9 +495,21 @@ export function CampaignClient({
           </div>
         )}
         {result && (
-          <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
-            ✓ Sent to <strong>{result.sent}</strong> subscriber{result.sent !== 1 ? "s" : ""}.
-            {result.failed > 0 ? ` ${result.failed} failed.` : ""}
+          <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400 space-y-1">
+            <p>
+              ✓ Sent to <strong>{result.sent}</strong> subscriber{result.sent !== 1 ? "s" : ""}.
+              {result.failed > 0 ? ` ${result.failed} failed.` : ""}
+            </p>
+            {result.couponCreated && form.discountCode && (
+              <p className="text-xs text-emerald-600 dark:text-emerald-500">
+                Coupon <strong className="font-mono tracking-wide">{form.discountCode.toUpperCase()}</strong> created and active in your coupon system.
+              </p>
+            )}
+            {!result.couponCreated && form.discountType !== "none" && form.discountCode && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                Note: coupon <strong className="font-mono tracking-wide">{form.discountCode.toUpperCase()}</strong> already existed — existing settings were kept.
+              </p>
+            )}
           </div>
         )}
 
