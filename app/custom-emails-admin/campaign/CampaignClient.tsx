@@ -58,6 +58,8 @@ interface FormState {
   urgencyLine: string;
   ctaText: string;
   ctaLink: string;
+  discountType: "none" | "fixed" | "percentage";
+  discountValue: string;
   discountCode: string;
   expiryDate: string;
 }
@@ -69,6 +71,8 @@ const EMPTY_FORM: FormState = {
   urgencyLine: "",
   ctaText: "Shop the Collection",
   ctaLink: "/products",
+  discountType: "none",
+  discountValue: "",
   discountCode: "",
   expiryDate: "",
 };
@@ -104,14 +108,16 @@ export function CampaignClient({
     if (!preset) return;
     setSelectedPreset(id);
     setForm({
-      subject:     preset.subject,
-      headline:    preset.headline,
-      intro:       preset.intro,
-      urgencyLine: preset.urgency ?? "",
-      ctaText:     preset.cta,
-      ctaLink:     preset.ctaLink,
-      discountCode: "",
-      expiryDate:  "",
+      subject:      preset.subject,
+      headline:     preset.headline,
+      intro:        preset.intro,
+      urgencyLine:  preset.urgency ?? "",
+      ctaText:      preset.cta,
+      ctaLink:      preset.ctaLink,
+      discountType:  "none",
+      discountValue: "",
+      discountCode:  "",
+      expiryDate:    "",
     });
     setError(null);
   }
@@ -143,17 +149,20 @@ export function CampaignClient({
   }
 
   function buildBody(includeTargetEmails = true) {
+    const hasDiscount = form.discountType !== "none" && form.discountValue.trim() !== "" && parseFloat(form.discountValue) > 0;
     return {
-      subject:      form.subject.trim(),
-      headline:     form.headline.trim(),
-      intro:        form.intro.trim(),
-      urgencyLine:  form.urgencyLine.trim() || undefined,
-      ctaText:      form.ctaText.trim(),
-      ctaLink:      form.ctaLink.trim(),
-      discountCode: form.discountCode.trim() || undefined,
-      expiryDate:   form.expiryDate.trim() || undefined,
-      productIds:   selectedProducts.size > 0 ? [...selectedProducts] : undefined,
-      targetEmails: includeTargetEmails && targetMode === "selected" ? [...selectedEmails] : null,
+      subject:       form.subject.trim(),
+      headline:      form.headline.trim(),
+      intro:         form.intro.trim(),
+      urgencyLine:   form.urgencyLine.trim() || undefined,
+      ctaText:       form.ctaText.trim(),
+      ctaLink:       form.ctaLink.trim(),
+      discountType:  hasDiscount ? (form.discountType as "fixed" | "percentage") : undefined,
+      discountValue: hasDiscount ? parseFloat(form.discountValue) : undefined,
+      discountCode:  hasDiscount && form.discountCode.trim() ? form.discountCode.trim() : undefined,
+      expiryDate:    hasDiscount && form.expiryDate.trim() ? form.expiryDate.trim() : undefined,
+      productIds:    selectedProducts.size > 0 ? [...selectedProducts] : undefined,
+      targetEmails:  includeTargetEmails && targetMode === "selected" ? [...selectedEmails] : null,
     };
   }
 
@@ -304,16 +313,10 @@ export function CampaignClient({
                 placeholder="Write your campaign message…" className={`${inputCls} resize-none`} />
             </Field>
 
-            <div className="grid sm:grid-cols-2 gap-4">
-              <Field label="Urgency Line" optional hint="Shown in small caps below intro. e.g. 'Ends Sunday · Limited pieces'">
-                <input type="text" value={form.urgencyLine} onChange={(e) => setField("urgencyLine", e.target.value)}
-                  placeholder="Ends Sunday · Limited pieces available" className={inputCls} />
-              </Field>
-              <Field label="Expiry Date" optional hint="Shown below discount code if provided.">
-                <input type="text" value={form.expiryDate} onChange={(e) => setField("expiryDate", e.target.value)}
-                  placeholder="e.g. May 12, 2026" className={inputCls} />
-              </Field>
-            </div>
+            <Field label="Urgency Line" optional hint="Shown in small caps below intro. e.g. 'Ends Sunday · Limited pieces'">
+              <input type="text" value={form.urgencyLine} onChange={(e) => setField("urgencyLine", e.target.value)}
+                placeholder="Ends Sunday · Limited pieces available" className={inputCls} />
+            </Field>
 
             <div className="grid sm:grid-cols-2 gap-4">
               <Field label="CTA Button Text">
@@ -326,10 +329,80 @@ export function CampaignClient({
               </Field>
             </div>
 
-            <Field label="Discount Code" optional hint="Displayed in a highlighted box in the email.">
-              <input type="text" value={form.discountCode} onChange={(e) => setField("discountCode", e.target.value.toUpperCase())}
-                placeholder="e.g. JADE20" className={`${inputCls} font-mono uppercase tracking-widest`} />
-            </Field>
+            {/* ── Discount ── */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Discount <span className="ml-1 text-gray-400 font-normal">(optional)</span>
+              </label>
+              {/* Type picker */}
+              <div className="flex gap-2 mb-3">
+                {(["none", "percentage", "fixed"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setField("discountType", t)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                      form.discountType === t
+                        ? "bg-emerald-700 border-emerald-700 text-white"
+                        : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-400"
+                    }`}
+                  >
+                    {t === "none" ? "No discount" : t === "percentage" ? "% Off" : "$ Off (fixed)"}
+                  </button>
+                ))}
+              </div>
+
+              {form.discountType !== "none" && (
+                <div className="rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-900/10 p-4 space-y-3">
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        {form.discountType === "percentage" ? "Percentage off" : "Amount off (USD)"}
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">
+                          {form.discountType === "percentage" ? "%" : "$"}
+                        </span>
+                        <input
+                          type="number"
+                          min="1"
+                          max={form.discountType === "percentage" ? "100" : undefined}
+                          step={form.discountType === "percentage" ? "1" : "0.01"}
+                          value={form.discountValue}
+                          onChange={(e) => setField("discountValue", e.target.value)}
+                          placeholder={form.discountType === "percentage" ? "20" : "50"}
+                          className={`${inputCls} pl-8`}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        Discount code <span className="text-gray-400 font-normal">(optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={form.discountCode}
+                        onChange={(e) => setField("discountCode", e.target.value.toUpperCase())}
+                        placeholder="e.g. JADE20"
+                        className={`${inputCls} font-mono uppercase tracking-widest`}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      Valid through <span className="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={form.expiryDate}
+                      onChange={(e) => setField("expiryDate", e.target.value)}
+                      placeholder="e.g. May 31, 2026"
+                      className={inputCls}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </section>
 

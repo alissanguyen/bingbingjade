@@ -22,6 +22,8 @@ export async function POST(req: NextRequest) {
     urgencyLine?: string;
     ctaText?: string;
     ctaLink?: string;
+    discountType?: "fixed" | "percentage";
+    discountValue?: number;
     discountCode?: string;
     expiryDate?: string;
     productIds?: string[];
@@ -81,6 +83,8 @@ export async function POST(req: NextRequest) {
       urgencyLine: body.urgencyLine?.trim() || undefined,
       ctaText: ctaText!,
       ctaLink: ctaLink!,
+      discountType: body.discountType,
+      discountValue: body.discountValue,
       discountCode: body.discountCode?.trim() || undefined,
       expiryDate: body.expiryDate?.trim() || undefined,
       products: products.length > 0 ? products : undefined,

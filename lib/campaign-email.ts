@@ -13,6 +13,8 @@ export interface CampaignEmailParams {
   urgencyLine?: string;
   ctaText: string;
   ctaLink: string;
+  discountType?: "fixed" | "percentage";
+  discountValue?: number;
   discountCode?: string;
   expiryDate?: string;
   products?: EmailProduct[];
@@ -89,7 +91,7 @@ function campaignProductCard(product: EmailProduct, siteUrl: string): string {
 }
 
 export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
-  const { subject, headline, intro, urgencyLine, ctaText, ctaLink, discountCode, expiryDate, products, unsubscribeUrl, siteUrl } = params;
+  const { subject, headline, intro, urgencyLine, ctaText, ctaLink, discountType, discountValue, discountCode, expiryDate, products, unsubscribeUrl, siteUrl } = params;
 
   const ctaHref = resolveCtaHref(ctaLink, siteUrl);
   const hasProducts = Array.isArray(products) && products.length > 0;
@@ -110,23 +112,46 @@ export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
       .join("\n");
   }
 
-  const discountBlock = discountCode
+  // Build discount block
+  const showDiscount = (discountType === "fixed" || discountType === "percentage") && discountValue != null && discountValue > 0;
+  const discountLabel = showDiscount
+    ? discountType === "percentage"
+      ? `${discountValue}% Off`
+      : `$${discountValue} Off`
+    : "";
+  const discountSubtitle = discountType === "percentage"
+    ? "Applied automatically at checkout"
+    : "Deducted at checkout";
+
+  const discountBlock = showDiscount
     ? `
-        <!-- Discount code box -->
+        <!-- ═══ DISCOUNT OFFER ═══ -->
         <tr>
-          <td style="padding:0 40px 8px;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="border:1.5px solid #059669;border-radius:10px;background:#f0fdf4;">
+          <td style="padding:0 48px;">
+            <!-- Gold top rule -->
+            <div style="height:1px;background:linear-gradient(to right,transparent,#c9a84c,transparent);margin-bottom:0;"></div>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fdfbf5;border-left:1px solid rgba(201,168,76,0.35);border-right:1px solid rgba(201,168,76,0.35);border-bottom:1px solid rgba(201,168,76,0.35);border-radius:0 0 12px 12px;">
               <tr>
-                <td style="padding:20px 24px;text-align:center;">
-                  <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#047857;">Your Code</p>
-                  <p style="margin:0 0 8px;font-size:26px;font-weight:700;letter-spacing:0.12em;font-family:ui-monospace,'Courier New',monospace;color:#064e3b;">${discountCode}</p>
-                  ${expiryDate ? `<p style="margin:0;font-size:11px;color:#6b7280;font-style:italic;">Valid through ${expiryDate}</p>` : ""}
+                <td style="padding:28px 32px 24px;text-align:center;">
+                  <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#92754a;">Exclusive Offer</p>
+                  <p style="margin:0 0 4px;font-size:38px;font-weight:700;color:#0d2e22;letter-spacing:-0.02em;font-family:Georgia,'Times New Roman',serif;">${discountLabel}</p>
+                  <p style="margin:0 0 ${discountCode ? "20px" : "4px"};font-size:13px;color:#78716c;">${discountSubtitle}</p>
+                  ${discountCode ? `
+                  <table cellpadding="0" cellspacing="0" style="margin:0 auto 8px;">
+                    <tr>
+                      <td style="background:#ffffff;border:1.5px dashed #c9a84c;border-radius:8px;padding:10px 28px;">
+                        <span style="font-size:20px;font-weight:700;letter-spacing:0.18em;color:#0d2e22;font-family:ui-monospace,'Courier New',monospace;">${discountCode}</span>
+                      </td>
+                    </tr>
+                  </table>
+                  <p style="margin:0 0 0;font-size:11px;color:#a8a29e;letter-spacing:0.04em;">Enter this code at checkout</p>` : ""}
+                  ${expiryDate ? `<p style="margin:${discountCode ? "10px" : "0"} 0 0;font-size:11px;color:#a8a29e;font-style:italic;">Valid through ${expiryDate}</p>` : ""}
                 </td>
               </tr>
             </table>
           </td>
         </tr>
-        <tr><td style="height:8px;"></td></tr>`
+        <tr><td style="height:40px;"></td></tr>`
     : "";
 
   return `<!DOCTYPE html>
@@ -231,13 +256,7 @@ export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
           </td>
         </tr>
 
-        ${discountBlock ? `
-        <!-- ═══ DISCOUNT CODE ═══ -->
-        <tr>
-          <td style="padding:48px 48px 0;">
-            ${discountBlock}
-          </td>
-        </tr>` : ""}
+        ${discountBlock}
 
         ${
           hasProducts
@@ -263,7 +282,7 @@ export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
 
         <!-- ═══ DIVIDER ═══ -->
         <tr>
-          <td style="padding:${hasProducts || discountCode ? "8px" : "48px"} 32px 0;">
+          <td style="padding:${hasProducts || showDiscount ? "8px" : "48px"} 32px 0;">
             <div style="height:1px;background:#f3f4f6;"></div>
           </td>
         </tr>
