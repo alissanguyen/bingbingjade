@@ -54,7 +54,7 @@ export const CAMPAIGN_PRESETS = {
     urgency: "Arrives in time for Valentine's Day",
     cta: "Explore Gifts",
     ctaLink: "/products",
-    bannerImage: "/campaign_banners/valentines3.jpg"
+    bannerImage: "/campaign_banners/valentines.jpg"
   },
 
   MOTHERS_DAY: {
@@ -110,7 +110,7 @@ export const CAMPAIGN_PRESETS = {
     urgency: "New Year release · Limited availability",
     cta: "Start the Year Well",
     ctaLink: "/products",
-    bannerImage: undefined  // no banner image yet — falls back to default
+    bannerImage: "/campaign_banners/lny2.jpg"
   },
 
   CHRISTMAS: {
@@ -166,7 +166,7 @@ export const CAMPAIGN_PRESETS = {
     urgency: "Private access · Limited circulation",
     cta: "Enter Private Access",
     ctaLink: "/products",
-    bannerImage: undefined  // no VIP-specific banner yet — falls back to default
+    bannerImage: "/campaign_banners/vip.jpg"
   },
 
   LAST_CHANCE: {
