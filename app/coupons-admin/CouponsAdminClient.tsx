@@ -20,7 +20,7 @@ export type Campaign = {
   created_at: string;
   redemption_count: number;
   customer_email: string | null;
-  coupon_purpose: "thank_you" | "retention" | null;
+  coupon_purpose: "thank_you" | "retention" | "giveaway" | null;
   email_sent_at: string | null;
 };
 
@@ -416,7 +416,7 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
           max_total_redemptions: 1,
           notes: "Giveaway — never expires",
           customer_email: giveawayForm.recipientEmail.trim().toLowerCase(),
-          coupon_purpose: "thank_you",
+          coupon_purpose: "giveaway",
         }),
       });
       const data = await res.json();
@@ -440,7 +440,7 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          purpose: "thank_you",
+          purpose: "giveaway",
           discount_type: giveawayForm.discount_type,
           discount_value: Number(giveawayForm.discount_value) || null,
           coupon_code: giveawayForm.code || undefined,
@@ -860,7 +860,7 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
             </div>
             <div className="space-y-2">
               {([
-                { type: "initial", label: "Initial email", desc: resendTarget.coupon_purpose === "thank_you" ? "Thank you + coupon code" : "Retention + coupon code" },
+                { type: "initial", label: "Initial email", desc: resendTarget.coupon_purpose === "thank_you" ? "Thank you + coupon code" : resendTarget.coupon_purpose === "giveaway" ? "Giveaway winner + coupon code" : "Retention + coupon code" },
                 { type: "reminder1", label: "Reminder", desc: "Gentle nudge — coupon still valid" },
                 { type: "reminder2", label: "Expiring soon", desc: "Last chance — expires soon" },
               ] as const).map(({ type, label, desc }) => (
@@ -923,11 +923,11 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
                       {c.new_customers_only && <span className="text-xs text-amber-600 dark:text-amber-400">New customers only</span>}
                       {c.customer_email && (
                         <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                          !c.ends_at && c.coupon_purpose === "thank_you"
+                          c.coupon_purpose === "giveaway"
                             ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
                             : "bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300"
                         }`}>
-                          {!c.ends_at && c.coupon_purpose === "thank_you" ? "Giveaway" : c.coupon_purpose === "thank_you" ? "Thank You" : "Retention"} · {c.customer_email}
+                          {c.coupon_purpose === "giveaway" ? "Giveaway" : c.coupon_purpose === "thank_you" ? "Thank You" : "Retention"} · {c.customer_email}
                         </span>
                       )}
                       {c.customer_email && c.email_sent_at && new Date(c.email_sent_at) > new Date() && (

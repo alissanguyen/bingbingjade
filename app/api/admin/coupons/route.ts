@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     max_total_redemptions?: number | null;
     notes?: string | null;
     customer_email?: string | null;
-    coupon_purpose?: "thank_you" | "retention" | null;
+    coupon_purpose?: "thank_you" | "retention" | "giveaway" | null;
     scheduled_send_at?: string | null;
     never_expires?: boolean;
   };

@@ -329,23 +329,31 @@ export function buildBroadcastHtml(params: {
 
 export function buildCustomerCouponHtml(params: {
   couponCode: string;
-  purpose: "thank_you" | "retention";
+  purpose: "thank_you" | "retention" | "giveaway";
   discountLabel: string;
   expiresAt?: Date | null;
 }): string {
   const siteUrl = getSiteUrl();
   const { couponCode, purpose, discountLabel, expiresAt } = params;
 
-  const isThankYou = purpose === "thank_you";
-  const eyebrow = isThankYou
-    ? "BingBing Jade &nbsp;·&nbsp; Thank You"
-    : "BingBing Jade &nbsp;·&nbsp; We Miss You";
-  const headline = isThankYou
-    ? "A little gift,<br>just for you"
-    : "It&rsquo;s been a while &mdash;<br>here&rsquo;s something special";
-  const bodyText = isThankYou
-    ? `We&rsquo;d love to offer you something special &mdash; a personal discount, just for you. We hope you enjoy it, and we look forward to welcoming you at BingBing Jade.`
-    : `We noticed it&rsquo;s been a while since your last visit, and we&rsquo;ve been thinking of you. Here&rsquo;s a personal discount code to welcome you back &mdash; we&rsquo;d love to have you shop with us again.`;
+  const eyebrow =
+    purpose === "thank_you"
+      ? "BingBing Jade &nbsp;·&nbsp; Thank You"
+      : purpose === "giveaway"
+      ? "BingBing Jade &nbsp;·&nbsp; A Gift for You"
+      : "BingBing Jade &nbsp;·&nbsp; We Miss You";
+  const headline =
+    purpose === "thank_you"
+      ? "A little gift,<br>just for you"
+      : purpose === "giveaway"
+      ? "Enjoy your gift"
+      : "It&rsquo;s been a while &mdash;<br>here&rsquo;s something special";
+  const bodyText =
+    purpose === "thank_you"
+      ? `Thank you so much for your order &mdash; it means the world to us. As a small token of our appreciation, we&rsquo;ve put together a personal discount, just for you. We hope to see you again soon!`
+      : purpose === "giveaway"
+      ? `We&rsquo;re so happy to share this with you. Here&rsquo;s your personal coupon &mdash; a little something we hope you&rsquo;ll enjoy. Use it whenever you&rsquo;re ready; there&rsquo;s no rush.`
+      : `We noticed it&rsquo;s been a while since your last visit, and we&rsquo;ve been thinking of you. Here&rsquo;s a personal discount code to welcome you back &mdash; we&rsquo;d love to have you shop with us again.`;
   const expiryStr = expiresAt
     ? expiresAt.toLocaleDateString("en-US", {
         month: "long",
@@ -463,7 +471,7 @@ export function buildCustomerCouponHtml(params: {
 export async function sendCustomerCouponEmail(params: {
   customerEmail: string;
   couponCode: string;
-  purpose: "thank_you" | "retention";
+  purpose: "thank_you" | "retention" | "giveaway";
   discountLabel: string;
   expiresAt?: Date | null;
   scheduledAt?: string | null;
@@ -479,7 +487,6 @@ export async function sendCustomerCouponEmail(params: {
     expiresAt,
     scheduledAt
   } = params;
-  const isThankYou = purpose === "thank_you";
   const from = "BingBing Jade <notification@bingbingjade.com>";
   const html = buildCustomerCouponHtml({
     couponCode,
@@ -488,14 +495,19 @@ export async function sendCustomerCouponEmail(params: {
     expiresAt
   });
 
+  const subject =
+    purpose === "thank_you"
+      ? `A thank-you gift from BingBing Jade: ${couponCode}`
+      : purpose === "giveaway"
+      ? `Your ${discountLabel} gift from BingBing Jade`
+      : `We miss you — here's ${discountLabel} on us: ${couponCode}`;
+
   try {
     await resend.emails.send({
       from,
       to: customerEmail,
       bcc: "contact@bingbingjade.com",
-      subject: isThankYou
-        ? `A thank-you gift from BingBing Jade: ${couponCode}`
-        : `We miss you — here's ${discountLabel} on us: ${couponCode}`,
+      subject,
       html,
       ...(scheduledAt ? { scheduledAt } : {})
     });

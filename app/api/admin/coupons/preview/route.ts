@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   if (!isAdmin(session)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: {
-    purpose?: "thank_you" | "retention";
+    purpose?: "thank_you" | "retention" | "giveaway";
     discount_type?: "fixed" | "percent";
     discount_value?: number | null;
     coupon_code?: string;
