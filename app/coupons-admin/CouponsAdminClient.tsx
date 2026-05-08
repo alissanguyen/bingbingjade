@@ -210,6 +210,7 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
   const [showGiveawayForm, setShowGiveawayForm] = useState(false);
   const [giveawayForm, setGiveawayForm] = useState(EMPTY_GIVEAWAY_FORM);
   const [giveawaySubmitting, setGiveawaySubmitting] = useState(false);
+  const [giveawayPreviewing, setGiveawayPreviewing] = useState(false);
   const [giveawayError, setGiveawayError] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState(false);
@@ -429,6 +430,27 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
       }
     } finally {
       setGiveawaySubmitting(false);
+    }
+  }
+
+  async function handleGiveawayPreview() {
+    setGiveawayPreviewing(true);
+    try {
+      const res = await fetch("/api/admin/coupons/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          purpose: "thank_you",
+          discount_type: giveawayForm.discount_type,
+          discount_value: Number(giveawayForm.discount_value) || null,
+          coupon_code: giveawayForm.code || undefined,
+          reminder_number: null,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) setPreviewHtml(data.html);
+    } finally {
+      setGiveawayPreviewing(false);
     }
   }
 
@@ -726,13 +748,23 @@ export function CouponsAdminClient({ campaigns: initial }: { campaigns: Campaign
 
           {giveawayError && <p className="text-sm text-red-600 dark:text-red-400">{giveawayError}</p>}
 
-          <button
-            type="submit"
-            disabled={giveawaySubmitting}
-            className="text-sm font-medium px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50 transition-colors"
-          >
-            {giveawaySubmitting ? "Creating…" : "Create & Send"}
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="submit"
+              disabled={giveawaySubmitting}
+              className="text-sm font-medium px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50 transition-colors"
+            >
+              {giveawaySubmitting ? "Creating…" : "Create & Send"}
+            </button>
+            <button
+              type="button"
+              disabled={giveawayPreviewing}
+              onClick={handleGiveawayPreview}
+              className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
+            >
+              {giveawayPreviewing ? "Loading…" : "Preview Email"}
+            </button>
+          </div>
         </form>
       )}
 
