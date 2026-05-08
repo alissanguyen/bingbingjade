@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
     expiryDate?: string;
     productIds?: string[];
     targetEmails?: string[] | null;
+    bannerImage?: string;
   };
 
   try { body = await req.json(); } catch {
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest) {
   const intro = body.intro?.trim();
   const ctaText = body.ctaText?.trim();
   const ctaLink = body.ctaLink?.trim();
+  const bannerImage = body.bannerImage;
 
   if (!subject)   return NextResponse.json({ error: "Subject is required." }, { status: 400 });
   if (!headline)  return NextResponse.json({ error: "Headline is required." }, { status: 400 });
@@ -90,6 +92,7 @@ export async function POST(req: NextRequest) {
       products: products.length > 0 ? products : undefined,
       unsubscribeUrl,
       siteUrl: SITE_URL,
+      bannerImage: bannerImage,
     });
 
   if (preview) {

@@ -87,6 +87,7 @@ export function CampaignClient({
   subscriberCount: number;
 }) {
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
+  const [bannerImage, setBannerImage] = useState<string>("");
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
 
   // Products
@@ -107,6 +108,7 @@ export function CampaignClient({
     const preset = CAMPAIGN_PRESETS[id as keyof typeof CAMPAIGN_PRESETS];
     if (!preset) return;
     setSelectedPreset(id);
+    setBannerImage(preset.bannerImage ?? "");
     setForm({
       subject:      preset.subject,
       headline:     preset.headline,
@@ -161,6 +163,7 @@ export function CampaignClient({
       discountValue: hasDiscount ? parseFloat(form.discountValue) : undefined,
       discountCode:  hasDiscount && form.discountCode.trim() ? form.discountCode.trim() : undefined,
       expiryDate:    hasDiscount && form.expiryDate.trim() ? form.expiryDate.trim() : undefined,
+      bannerImage:   bannerImage || undefined,
       productIds:    selectedProducts.size > 0 ? [...selectedProducts] : undefined,
       targetEmails:  includeTargetEmails && targetMode === "selected" ? [...selectedEmails] : null,
     };

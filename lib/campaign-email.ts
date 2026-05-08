@@ -20,10 +20,8 @@ export interface CampaignEmailParams {
   products?: EmailProduct[];
   unsubscribeUrl: string;
   siteUrl: string;
+  bannerImage?: string;
 }
-
-const BANNER_IMAGE =
-  "https://images.unsplash.com/photo-1705931396849-93822983c1dc?q=80&w=1624&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
 
 const CATEGORY_LABELS: Record<string, string> = {
   bracelet: "Bracelet",
@@ -33,7 +31,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   necklace: "Necklace",
   set: "Set",
   earring: "Earrings",
-  raw_material: "Raw Material",
+  raw_material: "Raw Material"
 };
 
 function resolveCtaHref(link: string, siteUrl: string): string {
@@ -91,16 +89,39 @@ function campaignProductCard(product: EmailProduct, siteUrl: string): string {
 }
 
 export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
-  const { subject, headline, intro, urgencyLine, ctaText, ctaLink, discountType, discountValue, discountCode, expiryDate, products, unsubscribeUrl, siteUrl } = params;
+  const {
+    subject,
+    headline,
+    intro,
+    urgencyLine,
+    ctaText,
+    ctaLink,
+    discountType,
+    discountValue,
+    discountCode,
+    expiryDate,
+    products,
+    unsubscribeUrl,
+    siteUrl,
+    bannerImage
+  } = params;
 
   const ctaHref = resolveCtaHref(ctaLink, siteUrl);
   const hasProducts = Array.isArray(products) && products.length > 0;
+
+  // Resolve banner image to absolute URL — email clients require full URLs, not relative paths
+  const resolvedBannerImage = bannerImage
+    ? bannerImage.startsWith("/")
+      ? `${siteUrl}${bannerImage}`
+      : bannerImage
+    : "https://images.unsplash.com/photo-1705931396849-93822983c1dc?q=80&w=1624&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
 
   // Product grid — pairs of 2 per row
   let productRowsHtml = "";
   if (hasProducts) {
     const rows: EmailProduct[][] = [];
-    for (let i = 0; i < products!.length; i += 2) rows.push(products!.slice(i, i + 2));
+    for (let i = 0; i < products!.length; i += 2)
+      rows.push(products!.slice(i, i + 2));
     productRowsHtml = rows
       .map(
         (row) => `
@@ -113,15 +134,19 @@ export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
   }
 
   // Build discount block
-  const showDiscount = (discountType === "fixed" || discountType === "percentage") && discountValue != null && discountValue > 0;
+  const showDiscount =
+    (discountType === "fixed" || discountType === "percentage") &&
+    discountValue != null &&
+    discountValue > 0;
   const discountLabel = showDiscount
     ? discountType === "percentage"
       ? `${discountValue}% Off`
       : `$${discountValue} Off`
     : "";
-  const discountSubtitle = discountType === "percentage"
-    ? "Applied automatically at checkout"
-    : "Deducted at checkout";
+  const discountSubtitle =
+    discountType === "percentage"
+      ? "Applied automatically at checkout"
+      : "Deducted at checkout";
 
   const discountBlock = showDiscount
     ? `
@@ -136,7 +161,9 @@ export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
                   <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#92754a;">Exclusive Offer</p>
                   <p style="margin:0 0 4px;font-size:38px;font-weight:700;color:#0d2e22;letter-spacing:-0.02em;font-family:Georgia,'Times New Roman',serif;">${discountLabel}</p>
                   <p style="margin:0 0 ${discountCode ? "20px" : "4px"};font-size:13px;color:#78716c;">${discountSubtitle}</p>
-                  ${discountCode ? `
+                  ${
+                    discountCode
+                      ? `
                   <table cellpadding="0" cellspacing="0" style="margin:0 auto 8px;">
                     <tr>
                       <td style="background:#ffffff;border:1.5px dashed #c9a84c;border-radius:8px;padding:10px 28px;">
@@ -144,7 +171,9 @@ export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
                       </td>
                     </tr>
                   </table>
-                  <p style="margin:0 0 0;font-size:11px;color:#a8a29e;letter-spacing:0.04em;">Enter this code at checkout</p>` : ""}
+                  <p style="margin:0 0 0;font-size:11px;color:#a8a29e;letter-spacing:0.04em;">Enter this code at checkout</p>`
+                      : ""
+                  }
                   ${expiryDate ? `<p style="margin:${discountCode ? "10px" : "0"} 0 0;font-size:11px;color:#a8a29e;font-style:italic;">Valid through ${expiryDate}</p>` : ""}
                 </td>
               </tr>
@@ -202,10 +231,10 @@ export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
           <td style="padding:0;margin:0;">
             <!--[if mso]>
             <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:1200px;height:560px;">
-              <v:fill type="frame" src="${BANNER_IMAGE}" color="#1a3d35"/>
+              <v:fill type="frame" src="${resolvedBannerImage}" color="#1a3d35"/>
               <v:textbox inset="0,0,0,0">
             <![endif]-->
-            <div style="background-image:url('${BANNER_IMAGE}');background-size:cover;background-position:center;background-color:#1a3d35;">
+            <div style="background-image:url('${resolvedBannerImage}');background-size:cover;background-position:center;background-color:#1a3d35;">
               <table width="100%" cellpadding="0" cellspacing="0" style="min-height:560px;">
                 <tr>
                   <td height="560" style="background:linear-gradient(to bottom,rgba(6,20,14,0.72) 0%,rgba(6,20,14,0.52) 60%,rgba(6,20,14,0.68) 100%);padding:100px 80px 96px;text-align:center;vertical-align:middle;">
@@ -216,7 +245,7 @@ export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
                     </p>
 
                     <!-- Headline -->
-                    <h1 class="banner-heading" style="margin:0 0 28px;font-size:48px;font-weight:700;color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;letter-spacing:-0.02em;line-height:1.15;font-family:Georgia,'Times New Roman',serif;">
+                    <h1 class="banner-heading" style="margin:0;font-size:52px;font-weight:700;color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;letter-spacing:-0.02em;line-height:1.2;">
                       <font color="#ffffff">${headline}</font>
                     </h1>
 

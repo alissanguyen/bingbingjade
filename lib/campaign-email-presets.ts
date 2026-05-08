@@ -11,6 +11,7 @@ export interface CampaignPreset {
   urgency?: string;
   cta: string;
   ctaLink: string;
+  bannerImage?: string;
 }
 
 export const CAMPAIGN_PRESETS = {
@@ -25,6 +26,7 @@ export const CAMPAIGN_PRESETS = {
     urgency: "Limited release · While pieces remain",
     cta: "Enter Private Access",
     ctaLink: "/products",
+    bannerImage: "/campaign_banners/black_friday.jpg"
   },
 
   CYBER_MONDAY: {
@@ -38,6 +40,7 @@ export const CAMPAIGN_PRESETS = {
     urgency: "Today only · While pieces remain",
     cta: "View Available Pieces",
     ctaLink: "/products",
+    bannerImage: "/campaign_banners/cyber_monday.jpg"
   },
 
   VALENTINES: {
@@ -51,6 +54,7 @@ export const CAMPAIGN_PRESETS = {
     urgency: "Arrives in time for Valentine's Day",
     cta: "Explore Gifts",
     ctaLink: "/products",
+    bannerImage: "/campaign_banners/valentines3.jpg"
   },
 
   MOTHERS_DAY: {
@@ -64,6 +68,7 @@ export const CAMPAIGN_PRESETS = {
     urgency: "Mother's Day is approaching",
     cta: "Find Her Piece",
     ctaLink: "/products",
+    bannerImage: "/campaign_banners/mothers_day.jpg"
   },
 
   WOMENS_DAY: {
@@ -77,6 +82,7 @@ export const CAMPAIGN_PRESETS = {
     urgency: "International Women's Day · March 8",
     cta: "Celebrate With Jade",
     ctaLink: "/products",
+    bannerImage: "/campaign_banners/womens_day.jpg"
   },
 
   BINGBING_BDAY: {
@@ -90,6 +96,7 @@ export const CAMPAIGN_PRESETS = {
     urgency: "Anniversary release · Limited pieces",
     cta: "Celebrate With Us",
     ctaLink: "/products",
+    bannerImage: "/campaign_banners/birthday.jpg"
   },
 
   LUNAR_NEW_YEAR: {
@@ -103,6 +110,7 @@ export const CAMPAIGN_PRESETS = {
     urgency: "New Year release · Limited availability",
     cta: "Start the Year Well",
     ctaLink: "/products",
+    bannerImage: undefined  // no banner image yet — falls back to default
   },
 
   CHRISTMAS: {
@@ -116,6 +124,7 @@ export const CAMPAIGN_PRESETS = {
     urgency: "Arrives in time for Christmas",
     cta: "Shop Holiday Pieces",
     ctaLink: "/products",
+    bannerImage: "/campaign_banners/christmas.jpg"
   },
 
   ANNIVERSARY: {
@@ -129,6 +138,7 @@ export const CAMPAIGN_PRESETS = {
     urgency: "Anniversary release · While available",
     cta: "View Anniversary Pieces",
     ctaLink: "/products",
+    bannerImage: "/campaign_banners/anniversary.jpg"
   },
 
   FLASH_SALE: {
@@ -142,6 +152,7 @@ export const CAMPAIGN_PRESETS = {
     urgency: "Short window · While pieces remain",
     cta: "View Pieces",
     ctaLink: "/products",
+    bannerImage: "/campaign_banners/flash_sale.jpg"
   },
 
   VIP: {
@@ -155,6 +166,7 @@ export const CAMPAIGN_PRESETS = {
     urgency: "Private access · Limited circulation",
     cta: "Enter Private Access",
     ctaLink: "/products",
+    bannerImage: undefined  // no VIP-specific banner yet — falls back to default
   },
 
   LAST_CHANCE: {
@@ -168,6 +180,7 @@ export const CAMPAIGN_PRESETS = {
     urgency: "Final release · No restocks",
     cta: "View Final Pieces",
     ctaLink: "/products",
+    bannerImage: "/campaign_banners/last_chance.jpg"
   },
 } satisfies Record<string, CampaignPreset>;
 
