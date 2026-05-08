@@ -494,8 +494,8 @@ export async function sendCustomerCouponEmail(params: {
       to: customerEmail,
       bcc: "contact@bingbingjade.com",
       subject: isThankYou
-        ? `A gift from BingBing Jade — ${discountLabel} coupon`
-        : `We miss you — here's a ${discountLabel} coupon from BingBing Jade`,
+        ? `A thank-you gift from BingBing Jade: ${couponCode}`
+        : `We miss you — here's ${discountLabel} on us: ${couponCode}`,
       html,
       ...(scheduledAt ? { scheduledAt } : {})
     });
