@@ -65,8 +65,20 @@ The application is split into a **customer storefront** and a **password-protect
 - **Expedited / Priority Sourcing toggle** in cart drawer with link to `/faq#expedited-shipping` policy
 - **Discount code entry** in cart drawer — validated live against `/api/validate-discount`; supports welcome, referral, campaign, and store credit sources
 - **Stripe Checkout** integration — cart contents are re-validated server-side before the Stripe session is created, preventing price manipulation; discount is re-validated server-side too
+- **Announcement banner** (`AnnouncementBanner`) — configurable site-wide banner managed from `/admin`:
+  - Presets: New Drops, Mother's Day, Valentine's Day, Black Friday, Custom
+  - Supports multiple rotating messages displayed as a seamless right-to-left ticker (CSS `translateX(0→-50%)` loop over doubled content — no fade, true marquee)
+  - Optional CTA button scrolls with the ticker as the last item per pass
+  - Optional start/end dates; banner stays active until manually removed if no end date set
+  - Per-preset theming: dark/light/auto mode, custom hex background + text + accent colors
+  - `prefers-reduced-motion` support — first message shown statically; countdown mode renders a static centered layout
+  - Dismiss button sits outside the overflow container; right-edge gradient mask prevents overlap
+  - Config type in `lib/banner-config.ts`; stored in `site_config` table
 - **Subscribe popup** — appears 2.5 seconds after first visit to homepage; localStorage-gated (shows once per browser); auto-dismisses 1.8s after successful subscription
-- **Order tracking page** at `/orders/[orderNumber]` — animated timeline with staggered fade-in, ping ripple on the current step, shimmer flowing down connector lines
+- **Order tracking page** at `/orders/[orderNumber]` — animated timeline with staggered fade-in, ping ripple on the current step, shimmer flowing down connector lines; cancelled orders show a tailored full-width banner instead of the timeline:
+  - `piece_unavailable` — warm apology, refund notice, custom sourcing CTA linking to `/custom-sourcing`
+  - `customer_cancelled` — confirmation tone, refund notice, re-engagement CTA linking to `/products`
+  - Wine/burgundy palette (distinct from the generic red) with variant-specific iconography and messaging
 - **Hash-based accordion navigation** on `/faq` and `/policy` — clicking an accordion section updates the URL hash; sharing a hash link auto-opens and scrolls to that section
 - **WhatsApp inquiry** links that auto-compose a message with product details and a deep link
 - **BNPL payment messaging** — `PaymentMessaging` component shows estimated monthly payments using Afterpay (orders < $500) and Affirm, with tiered calculation (4 payments at 5% APR / 12 / 24 months depending on order size); compact one-line variant on product cards, full logo row on product detail pages; hides for inquiry-priced and sold items
@@ -90,7 +102,7 @@ The application is split into a **customer storefront** and a **password-protect
 - **Draft/publish workflow** — products default to draft and are hidden from the storefront until explicitly published
 - **Bulk operations** — select multiple products to batch-update status (available / on sale / sold) or bulk delete
 - **Order management** — admin panel at `/orders-admin` lists all orders sorted by order number descending; two-column amount display separates "Items" (sum of `order_items.price_usd × quantity`) from "Total" (full `amount_total` including shipping/fees/tax); search, status filtering, and pagination; each order has a full detail/edit page supporting:
-  - Status updates with optional email notification to customer
+  - Status updates with optional email notification to customer; changing status to `order_cancelled` opens a mandatory reason picker modal — `piece_unavailable` or `customer_cancelled` — stored on the order and used to render the correct cancellation state on the tracking page
   - Estimated delivery date (triggers automatic delivery-date email)
   - Inline editing of order items (price, quantity) with auto-recalculated total
   - Shipping address edit (create or update linked `customer_addresses` record)
@@ -183,6 +195,13 @@ A production-hardened discount engine with no stacking (exactly one discount sou
 - Optional scheduled send — leave blank to send immediately, or pick a future datetime; a Vercel cron job picks up pending sends hourly
 - **Automatic reminder emails** — sent at 30 days ("still waiting", green) and 60 days ("expires soon", amber warning) after the original send, only if the coupon hasn't been redeemed and is still valid; tracked via `reminder1_sent_at` / `reminder2_sent_at` columns
 
+**Giveaway coupons:** admin can issue never-expiring single-use coupons to anyone (including non-clients) from `/coupons-admin` → "Giveaway":
+- Free-text recipient email — no customer search required; works for contest winners, influencers, or anyone not yet in the system
+- Optional recipient name for internal labelling
+- `never_expires: true` flag bypasses the 3-month auto-expiry that normally applies to customer coupons; `ends_at` is stored as `null`
+- Sends the thank-you coupon email immediately on creation
+- Shown with an amber "Giveaway" badge in the campaign table (distinguished from "Thank You" by `ends_at IS NULL`)
+
 **Email subscribers (`/api/subscribe`):**
 - Upserts email into `email_subscribers`; returns `{ alreadySubscribed: true }` for duplicates (idempotent, handles `23505` race)
 - Generates and assigns a 6-digit coupon code with 30-day expiry (non-blocking; email failure does not fail subscription)
@@ -215,6 +234,13 @@ All transactional emails use custom branded HTML templates and are BCC'd to `con
 - **Order Delay** (`/custom-emails-admin/order-delays`) — 600px transactional email with jade hero banner, order number displayed in banner, "Track My Order" button linking to customer's `/orders/[orderNumber]` page; supports multi-order batch send
 - **Care Tips** (`/custom-emails-admin/care-tips`) — 600px transactional email with jade hero banner "Caring Tips for Your New Piece"; sent to customers with recently delivered orders (last 90 days by `created_at`)
 - **Customer coupon emails** — initial send (thank you / retention copy), plus automated reminders at 30 and 60 days
+- **Campaign emails** (`/custom-emails-admin/campaign`) — seasonal and promotional broadcast emails with a 4-step compose UI:
+  - **Step 1 — Preset picker:** 12 presets (Black Friday, Cyber Monday, Valentine's Day, Mother's Day, Women's Day, Birthday, Lunar New Year, Christmas, Anniversary, Flash Sale, VIP, Last Chance); each auto-populates subject, headline, intro, urgency line, CTA, and banner image; all fields editable
+  - **Step 2 — Content editor:** subject, headline, intro paragraph, urgency line, CTA button text + link; optional discount block (fixed $ off or % off) with discount value, optional code, and optional expiry — displayed in the email as a luxury gold-bordered offer box with serif amount and dashed code box; on send, the discount code is automatically upserted into `coupon_campaigns` (`ignoreDuplicates: true` so existing codes are not overwritten)
+  - **Step 3 — Featured products (optional):** multi-select grid of available products; selected products rendered as a 2-column card grid below the hero
+  - **Step 4 — Recipients:** all subscribers or a manually selected subset via `SubscriberPicker`
+  - Full-width hero banner: each preset has a corresponding image from `public/campaign_banners/` (JPEG); relative paths are resolved to absolute URLs at render time; falls back to the default jade Unsplash photo if no image is set
+  - Preview modal before send; per-recipient HTML rendering (personalised unsubscribe tokens)
 
 **Unsubscribe:** `/api/unsubscribe?e=<base64-email>` removes the subscriber record and renders a confirmation page. A subtle 10px light-gray link is embedded in welcome email footers (CAN-SPAM compliant, intentionally unobtrusive).
 
@@ -301,7 +327,7 @@ jade-shop/
 │   └── discount.test.ts                # 34 Vitest tests — logic, abuse, flow
 │
 ├── supabase/
-│   └── migration_001.sql → migration_048.sql
+│   └── migration_001.sql → migration_071.sql
 │
 ├── middleware.ts
 └── next.config.ts
