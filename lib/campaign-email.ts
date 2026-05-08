@@ -1,6 +1,6 @@
 /**
  * Campaign email HTML builder.
- * Produces a dark-header, clean-body luxury email for seasonal/promotional campaigns.
+ * Full-width hero banner with dark overlay — matches New Drops email style.
  * Table-based layout, inline styles — safe for all major email clients.
  */
 
@@ -19,6 +19,9 @@ export interface CampaignEmailParams {
   unsubscribeUrl: string;
   siteUrl: string;
 }
+
+const BANNER_IMAGE =
+  "https://images.unsplash.com/photo-1705931396849-93822983c1dc?q=80&w=1624&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
 
 const CATEGORY_LABELS: Record<string, string> = {
   bracelet: "Bracelet",
@@ -107,9 +110,8 @@ export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
       .join("\n");
   }
 
-  const discountBlock =
-    discountCode
-      ? `
+  const discountBlock = discountCode
+    ? `
         <!-- Discount code box -->
         <tr>
           <td style="padding:0 40px 8px;">
@@ -125,7 +127,7 @@ export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
           </td>
         </tr>
         <tr><td style="height:8px;"></td></tr>`
-      : "";
+    : "";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -136,101 +138,121 @@ export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
   <meta name="supported-color-schemes" content="light">
   <title>${subject}</title>
   <style>
+    /* Force light-only rendering */
     :root { color-scheme: light only; }
-    .campaign-headline { color: #111827 !important; -webkit-text-fill-color: #111827 !important; }
+
+    /* Hero text always white regardless of dark mode */
+    .banner-eyebrow { color: #6ee7b7 !important; -webkit-text-fill-color: #6ee7b7 !important; }
+    .banner-heading { color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; }
+    .banner-body    { color: rgba(255,255,255,0.88) !important; -webkit-text-fill-color: rgba(255,255,255,0.88) !important; }
+    .banner-urgency { color: #fde68a !important; -webkit-text-fill-color: #fde68a !important; }
+
+    /* Gmail dark mode overrides */
+    [data-ogsc] .banner-eyebrow,
+    [data-ogsb] .banner-eyebrow { color: #6ee7b7 !important; -webkit-text-fill-color: #6ee7b7 !important; }
+    [data-ogsc] .banner-heading,
+    [data-ogsb] .banner-heading { color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; }
+    [data-ogsc] .banner-body,
+    [data-ogsb] .banner-body    { color: rgba(255,255,255,0.88) !important; -webkit-text-fill-color: rgba(255,255,255,0.88) !important; }
+    [data-ogsc] .banner-urgency,
+    [data-ogsb] .banner-urgency { color: #fde68a !important; -webkit-text-fill-color: #fde68a !important; }
+
+    /* Mobile */
     @media only screen and (max-width: 480px) {
-      .campaign-headline { font-size: 28px !important; }
-      .campaign-intro    { font-size: 15px !important; }
-      .campaign-padding  { padding-left: 24px !important; padding-right: 24px !important; }
+      .banner-heading { font-size: 30px !important; }
+      .banner-body    { font-size: 15px !important; }
+      .card-inner     { padding: 10px 10px 14px !important; }
     }
   </style>
 </head>
-<body style="margin:0;padding:0;background:#f0f2f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
 
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f2f0;">
-    <tr><td align="center" style="padding:32px 16px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;">
+    <tr><td align="center" style="padding:0;">
 
-      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.08);">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:1200px;background:#ffffff;">
 
-        <!-- ═══ HEADER ═══ -->
+        <!-- ═══ HERO BANNER ═══ -->
         <tr>
-          <td style="background:#0a1f19;padding:0;">
-            <!-- Gold accent line -->
-            <div style="height:2px;background:linear-gradient(to right,#c9a84c,#e8d08a,#c9a84c);"></div>
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr>
-                <td style="padding:22px 40px;text-align:center;">
-                  <a href="${siteUrl}" style="text-decoration:none;">
-                    <span style="font-size:22px;font-weight:700;letter-spacing:0.06em;color:#ffffff;font-family:Georgia,'Times New Roman',serif;">BingBing Jade</span>
-                  </a>
-                </td>
-              </tr>
-            </table>
-            <div style="height:1px;background:rgba(201,168,76,0.25);margin:0 40px;"></div>
+          <td style="padding:0;margin:0;">
+            <!--[if mso]>
+            <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:1200px;height:560px;">
+              <v:fill type="frame" src="${BANNER_IMAGE}" color="#1a3d35"/>
+              <v:textbox inset="0,0,0,0">
+            <![endif]-->
+            <div style="background-image:url('${BANNER_IMAGE}');background-size:cover;background-position:center;background-color:#1a3d35;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="min-height:560px;">
+                <tr>
+                  <td height="560" style="background:linear-gradient(to bottom,rgba(6,20,14,0.72) 0%,rgba(6,20,14,0.52) 60%,rgba(6,20,14,0.68) 100%);padding:100px 80px 96px;text-align:center;vertical-align:middle;">
+
+                    <!-- Eyebrow / brand -->
+                    <p class="banner-eyebrow" style="margin:0 0 16px;font-size:14px;font-weight:700;letter-spacing:0.24em;text-transform:uppercase;color:#6ee7b7!important;-webkit-text-fill-color:#6ee7b7!important;">
+                      <font color="#6ee7b7">BingBing Jade</font>
+                    </p>
+
+                    <!-- Headline -->
+                    <h1 class="banner-heading" style="margin:0 0 28px;font-size:48px;font-weight:700;color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;letter-spacing:-0.02em;line-height:1.15;font-family:Georgia,'Times New Roman',serif;">
+                      <font color="#ffffff">${headline}</font>
+                    </h1>
+
+                    <!-- Intro -->
+                    <p class="banner-body" style="margin:0 auto 32px;max-width:640px;font-size:17px;color:rgba(255,255,255,0.88)!important;-webkit-text-fill-color:rgba(255,255,255,0.88)!important;line-height:1.75;">
+                      <font color="#e5e7eb">${intro}</font>
+                    </p>
+
+                    ${
+                      urgencyLine
+                        ? `<!-- Urgency line -->
+                    <p class="banner-urgency" style="margin:0 auto 28px;font-size:12px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#fde68a!important;-webkit-text-fill-color:#fde68a!important;">
+                      <font color="#fde68a">${urgencyLine}</font>
+                    </p>`
+                        : ""
+                    }
+
+                    <!-- CTA button -->
+                    <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
+                      <tr>
+                        <td style="background:#ffffff;border-radius:999px;">
+                          <a href="${ctaHref}" style="display:inline-block;padding:16px 52px;font-size:16px;font-weight:600;color:#1a3d35;text-decoration:none;letter-spacing:0.03em;white-space:nowrap;">
+                            ${ctaText} &rarr;
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+
+                  </td>
+                </tr>
+              </table>
+            </div>
+            <!--[if mso]>
+              </v:textbox>
+            </v:rect>
+            <![endif]-->
           </td>
         </tr>
 
-        <!-- ═══ HERO ═══ -->
+        ${discountBlock ? `
+        <!-- ═══ DISCOUNT CODE ═══ -->
         <tr>
-          <td class="campaign-padding" style="padding:52px 40px 36px;text-align:center;">
-            <h1 class="campaign-headline" style="margin:0 0 20px;font-size:34px;font-weight:700;color:#111827;letter-spacing:-0.02em;line-height:1.2;font-family:Georgia,'Times New Roman',serif;">
-              ${headline}
-            </h1>
-            <!-- Divider -->
-            <table cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
-              <tr>
-                <td style="width:24px;height:1px;background:#c9a84c;"></td>
-                <td style="width:6px;"></td>
-                <td style="width:6px;height:6px;background:#c9a84c;border-radius:50%;"></td>
-                <td style="width:6px;"></td>
-                <td style="width:24px;height:1px;background:#c9a84c;"></td>
-              </tr>
-            </table>
-            <p class="campaign-intro" style="margin:0 auto;max-width:480px;font-size:16px;color:#4b5563;line-height:1.75;">
-              ${intro}
-            </p>
-            ${
-              urgencyLine
-                ? `<p style="margin:20px 0 0;font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#b45309;font-style:italic;">${urgencyLine}</p>`
-                : ""
-            }
+          <td style="padding:48px 48px 0;">
+            ${discountBlock}
           </td>
-        </tr>
-
-        ${discountBlock}
-
-        <!-- ═══ MAIN CTA ═══ -->
-        <tr>
-          <td style="padding:4px 40px ${hasProducts ? "44px" : "52px"};text-align:center;">
-            <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
-              <tr>
-                <td style="background:#1a3d35;border-radius:999px;">
-                  <a href="${ctaHref}" style="display:inline-block;padding:15px 44px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.04em;white-space:nowrap;">
-                    ${ctaText} &rarr;
-                  </a>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
+        </tr>` : ""}
 
         ${
           hasProducts
             ? `
-        <!-- ═══ PRODUCTS ═══ -->
+        <!-- ═══ PRODUCTS HEADER ═══ -->
         <tr>
-          <td style="padding:0 40px 8px;">
-            <div style="height:1px;background:#f3f4f6;"></div>
+          <td style="padding:52px 48px 12px;text-align:center;">
+            <p style="margin:0 0 6px;font-size:13px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#6b7280;">Featured Pieces</p>
+            <h2 style="margin:0;font-size:28px;font-weight:700;color:#111827;">Selected for This Campaign</h2>
           </td>
         </tr>
+
+        <!-- ═══ PRODUCTS GRID ═══ -->
         <tr>
-          <td style="padding:36px 40px 0;">
-            <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#6b7280;text-align:center;">Featured Pieces</p>
-            <h2 style="margin:0 0 24px;font-size:22px;font-weight:700;color:#111827;text-align:center;">Selected for This Campaign</h2>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:0 32px 12px;">
+          <td style="padding:28px 32px 12px;">
             <table width="100%" cellpadding="0" cellspacing="0">
               ${productRowsHtml}
             </table>
@@ -241,28 +263,27 @@ export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
 
         <!-- ═══ DIVIDER ═══ -->
         <tr>
-          <td style="padding:0 40px;">
+          <td style="padding:${hasProducts || discountCode ? "8px" : "48px"} 32px 0;">
             <div style="height:1px;background:#f3f4f6;"></div>
           </td>
         </tr>
 
         <!-- ═══ FOOTER ═══ -->
         <tr>
-          <td style="background:#0a1f19;padding:28px 40px;text-align:center;border-radius:0 0 16px 16px;">
-            <p style="margin:0 0 4px;font-size:13px;font-weight:600;color:#ffffff;letter-spacing:0.05em;font-family:Georgia,'Times New Roman',serif;">BingBing Jade</p>
-            <p style="margin:0 0 10px;font-size:11px;color:rgba(255,255,255,0.45);">
+          <td style="padding:24px 40px 32px;text-align:center;">
+            <p style="margin:0 0 4px;font-size:13px;font-weight:600;color:#1a3d35;font-family:Georgia,'Times New Roman',serif;">BingBing Jade</p>
+            <p style="margin:0;font-size:11px;color:#9ca3af;">
               &copy; ${new Date().getFullYear()} &middot;
-              <a href="${siteUrl}" style="color:rgba(255,255,255,0.45);text-decoration:none;">bingbingjade.com</a>
+              <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
             </p>
-            <p style="margin:0 0 4px;font-size:10px;color:rgba(255,255,255,0.3);">
-              <a href="${unsubscribeUrl}" style="color:rgba(255,255,255,0.3);text-decoration:none;">Unsubscribe</a>
+            <p style="margin:10px 0 0;font-size:10px;color:#d1d5db;">
+              <a href="${unsubscribeUrl}" style="color:#d1d5db;text-decoration:none;">Unsubscribe</a>
             </p>
-            <p style="margin:0;font-size:10px;color:rgba(255,255,255,0.25);">This is a no-reply address. For inquiries, contact <a href="mailto:contact@bingbingjade.com" style="color:rgba(255,255,255,0.25);text-decoration:none;">contact@bingbingjade.com</a>.</p>
+            <p style="margin:6px 0 0;font-size:10px;color:#9ca3af;">This is a no-reply address. For inquiries, contact <a href="mailto:contact@bingbingjade.com" style="color:#9ca3af;text-decoration:none;">contact@bingbingjade.com</a>.</p>
           </td>
         </tr>
 
       </table>
-
     </td></tr>
   </table>
 

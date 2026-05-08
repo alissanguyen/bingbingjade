@@ -100,15 +100,15 @@ export function CampaignClient({
   const [error, setError] = useState<string | null>(null);
 
   function selectPreset(id: string) {
-    const preset = CAMPAIGN_PRESETS.find((p) => p.id === id);
+    const preset = CAMPAIGN_PRESETS[id as keyof typeof CAMPAIGN_PRESETS];
     if (!preset) return;
     setSelectedPreset(id);
     setForm({
       subject:     preset.subject,
       headline:    preset.headline,
       intro:       preset.intro,
-      urgencyLine: preset.urgencyLine ?? "",
-      ctaText:     preset.ctaText,
+      urgencyLine: preset.urgency ?? "",
+      ctaText:     preset.cta,
       ctaLink:     preset.ctaLink,
       discountCode: "",
       expiryDate:  "",
@@ -250,14 +250,14 @@ export function CampaignClient({
             <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Campaign Type</h2>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {CAMPAIGN_PRESETS.map((preset) => {
+            {(Object.entries(CAMPAIGN_PRESETS) as [keyof typeof CAMPAIGN_PRESETS, typeof CAMPAIGN_PRESETS[keyof typeof CAMPAIGN_PRESETS]][]).map(([key, preset]) => {
               const c = getColor(preset.color);
-              const isActive = selectedPreset === preset.id;
+              const isActive = selectedPreset === key;
               return (
                 <button
-                  key={preset.id}
+                  key={key}
                   type="button"
-                  onClick={() => selectPreset(preset.id)}
+                  onClick={() => selectPreset(key)}
                   className={`text-left px-3 py-2.5 rounded-xl border text-xs transition-all ${
                     isActive
                       ? `${c.active} dark:border-opacity-60`

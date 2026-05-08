@@ -1,7 +1,6 @@
 // Campaign email presets — add new campaigns here.
 
 export interface CampaignPreset {
-  id: string;
   label: string;
   emoji: string;
   /** Tailwind color name used in admin UI only */
@@ -9,162 +8,169 @@ export interface CampaignPreset {
   subject: string;
   headline: string;
   intro: string;
-  urgencyLine?: string;
-  ctaText: string;
+  urgency?: string;
+  cta: string;
   ctaLink: string;
 }
 
-export const CAMPAIGN_PRESETS: CampaignPreset[] = [
-  {
-    id: "black_friday",
+export const CAMPAIGN_PRESETS = {
+  BLACK_FRIDAY: {
     label: "Black Friday",
-    emoji: "🛍",
+    emoji: "🖤",
     color: "gray",
-    subject: "Early Access: Black Friday Begins Now",
+    subject: "Private Access: Black Friday Begins",
     headline: "Black Friday, Refined.",
     intro:
-      "We rarely discount. When we do, it means something. A curated selection of natural jadeite — each piece handpicked, each one a genuine rarity. This is not a sale. This is an opportunity.",
-    urgencyLine: "Ends Sunday · Limited pieces available",
-    ctaText: "Shop the Selection",
+      "A small selection of jadeite pieces is now available at a special value. No chaos, no rush — just thoughtfully chosen pieces, offered quietly.",
+    urgency: "Limited release · While pieces remain",
+    cta: "Enter Private Access",
     ctaLink: "/products",
   },
-  {
-    id: "cyber_monday",
+
+  CYBER_MONDAY: {
     label: "Cyber Monday",
     emoji: "💻",
     color: "blue",
     subject: "Cyber Monday — Rare Finds, Quietly Available",
-    headline: "Rare Finds. No Rush.",
+    headline: "Rare Finds, No Rush.",
     intro:
       "A select few pieces are available at a special value today. No countdown timers. No pressure. Simply beautiful jadeite, yours if you'd like.",
-    urgencyLine: "Today only · While pieces remain",
-    ctaText: "View Available Pieces",
+    urgency: "Today only · While pieces remain",
+    cta: "View Available Pieces",
     ctaLink: "/products",
   },
-  {
-    id: "valentines",
+
+  VALENTINES: {
     label: "Valentine's Day",
-    emoji: "💝",
+    emoji: "🌹",
     color: "rose",
-    subject: "A Gift She'll Treasure for a Lifetime",
-    headline: "For the One Who Deserves Something Real.",
+    subject: "For You, or Someone You Love",
+    headline: "A Gift She'll Treasure for a Lifetime.",
     intro:
-      "Natural jadeite carries meaning that goes beyond beauty — centuries of culture, a stone that endures. This Valentine's Day, give something that will still matter in twenty years.",
-    ctaText: "Find the Right Piece",
+      "Jade is more than jewelry — it's something carried, remembered, and passed on. This Valentine's, choose something that lasts longer than the moment.",
+    urgency: "Arrives in time for Valentine's Day",
+    cta: "Explore Gifts",
     ctaLink: "/products",
   },
-  {
-    id: "mothers_day",
+
+  MOTHERS_DAY: {
     label: "Mother's Day",
-    emoji: "💐",
-    color: "violet",
-    subject: "For the Woman Who Gave You Everything",
-    headline: "A Gift as Enduring as She Is.",
-    intro:
-      "Natural jadeite has been passed between generations for thousands of years. Give your mother something that carries that weight — beautiful, meaningful, and entirely hers.",
-    ctaText: "Shop Mother's Day Gifts",
-    ctaLink: "/products",
-  },
-  {
-    id: "womens_day",
-    label: "International Women's Day",
     emoji: "🌸",
     color: "pink",
-    subject: "Celebrating Her — March 8",
-    headline: "Strong. Beautiful. Enduring.",
+    subject: "For the Woman Who Gave You Everything",
+    headline: "A Gift Worth Giving Back.",
     intro:
-      "Like the women we celebrate, natural jadeite is formed under pressure, refined over time, and more valuable with age. This International Women's Day, honor her with something that reflects exactly that.",
-    ctaText: "Browse the Collection",
+      "Some things can't be repaid — but they can be honored. Jadeite is a symbol of protection, strength, and love. A meaningful piece, for someone who means everything.",
+    urgency: "Mother's Day is approaching",
+    cta: "Find Her Piece",
     ctaLink: "/products",
   },
-  {
-    id: "bingbing_birthday",
-    label: "BingBing Birthday",
+
+  WOMENS_DAY: {
+    label: "Women's Day",
+    emoji: "💜",
+    color: "violet",
+    subject: "Celebrating Her — March 8",
+    headline: "Strength, Grace, and Everything In Between.",
+    intro:
+      "Today is a quiet celebration of women — their resilience, their beauty, their presence. Jadeite has long symbolized these qualities, in the most timeless way.",
+    urgency: "International Women's Day · March 8",
+    cta: "Celebrate With Jade",
+    ctaLink: "/products",
+  },
+
+  BINGBING_BDAY: {
+    label: "Our Birthday",
     emoji: "🎂",
     color: "amber",
-    subject: "It's Our Birthday — A Gift for You",
-    headline: "We're Celebrating. So Are You.",
+    subject: "Our Birthday — A Gift for You",
+    headline: "Another Year of Jade, With You.",
     intro:
-      "On April 17th, BingBing Jade turns another year older. To thank you for being part of this journey, we're sharing something special. From our family to yours.",
-    ctaText: "Claim Your Offer",
+      "BingBing Jade began with a simple idea: to make authentic jadeite more transparent and accessible. Today, we celebrate with a small offering — for those who've supported us.",
+    urgency: "Anniversary release · Limited pieces",
+    cta: "Celebrate With Us",
     ctaLink: "/products",
   },
-  {
-    id: "lunar_new_year",
+
+  LUNAR_NEW_YEAR: {
     label: "Lunar New Year",
     emoji: "🧧",
     color: "red",
-    subject: "Wishing You Jade Fortune This New Year",
-    headline: "New Year. New Beginnings. New Jade.",
+    subject: "A New Year, A New Beginning",
+    headline: "Wishing You Jade Fortune.",
     intro:
-      "In Chinese culture, jade is the stone of luck, protection, and prosperity. As the new year begins, we invite you to carry a piece of that tradition — beautifully, and entirely your own.",
-    ctaText: "Shop Lunar New Year",
+      "The Lunar New Year marks renewal, luck, and intention. Jadeite has long symbolized protection and prosperity — a meaningful piece to begin the year ahead.",
+    urgency: "New Year release · Limited availability",
+    cta: "Start the Year Well",
     ctaLink: "/products",
   },
-  {
-    id: "christmas",
+
+  CHRISTMAS: {
     label: "Christmas",
     emoji: "🎄",
     color: "emerald",
-    subject: "A Christmas Gift Worth Unwrapping",
-    headline: "The Gift of Something Real.",
+    subject: "A Gift Worth Unwrapping",
+    headline: "Something They'll Keep Forever.",
     intro:
-      "Beneath the wrapping paper, some gifts are forgotten by February. Natural jadeite is not one of them. This Christmas, give something with lasting beauty and quiet significance.",
-    ctaText: "Shop Holiday Gifts",
+      "Some gifts are opened once. Others are kept for a lifetime. This season, choose something lasting — a piece of jadeite to be worn, remembered, and passed on.",
+    urgency: "Arrives in time for Christmas",
+    cta: "Shop Holiday Pieces",
     ctaLink: "/products",
   },
-  {
-    id: "anniversary_sale",
-    label: "Anniversary Sale",
-    emoji: "✦",
+
+  ANNIVERSARY: {
+    label: "Anniversary",
+    emoji: "✨",
     color: "teal",
-    subject: "Our Anniversary. Your Reward.",
-    headline: "A Milestone Worth Sharing.",
+    subject: "Our Anniversary — Your Reward",
+    headline: "A Quiet Thank You.",
     intro:
-      "We've been honored to bring rare natural jadeite to collectors and enthusiasts around the world. To mark this anniversary, we're offering something to those who've made it possible — our customers.",
-    ctaText: "Explore the Anniversary Edit",
+      "Another year, and we're still here because of you. To celebrate, we've released a small selection of pieces at special value — nothing loud, just meaningful.",
+    urgency: "Anniversary release · While available",
+    cta: "View Anniversary Pieces",
     ctaLink: "/products",
   },
-  {
-    id: "flash_sale",
+
+  FLASH_SALE: {
     label: "Flash Sale",
     emoji: "⚡",
-    color: "amber",
-    subject: "48 Hours. Select Pieces. Rare Opportunity.",
-    headline: "A Quiet Window of Availability.",
-    intro:
-      "A small selection of natural jadeite is available at a special value for the next 48 hours. These are genuine pieces — not clearance, not compromises. Simply a rare moment of accessibility.",
-    urgencyLine: "Closes in 48 hours · No extensions",
-    ctaText: "View Available Pieces",
-    ctaLink: "/products",
-  },
-  {
-    id: "vip_exclusive",
-    label: "VIP Exclusive",
-    emoji: "◆",
-    color: "indigo",
-    subject: "Exclusively for You — Before Anyone Else",
-    headline: "First Access. Yours Alone.",
-    intro:
-      "Before these pieces reach anyone else, we're sharing them with you. This is not a public announcement. Consider it a quiet invitation — for collectors who appreciate something truly rare.",
-    ctaText: "View Your Exclusive Selection",
-    ctaLink: "/products",
-  },
-  {
-    id: "clearance",
-    label: "Last Chance",
-    emoji: "⏳",
     color: "orange",
-    subject: "Last Chance — These Pieces Won't Return",
-    headline: "Once Gone, Gone Forever.",
+    subject: "A Rare Opportunity",
+    headline: "Briefly Available.",
     intro:
-      "A handful of pieces are being retired from our collection. Each is genuine, each is beautiful, and none will be restocked. If one has caught your eye, now is the time.",
-    urgencyLine: "Final availability · No restock",
-    ctaText: "See What Remains",
+      "A limited number of pieces have been released at a special value. Once they're gone, they won't return — and we won't be repeating this anytime soon.",
+    urgency: "Short window · While pieces remain",
+    cta: "View Pieces",
     ctaLink: "/products",
   },
-];
+
+  VIP: {
+    label: "VIP Access",
+    emoji: "👑",
+    color: "indigo",
+    subject: "Reserved for You",
+    headline: "Before Anyone Else.",
+    intro:
+      "This release is not public. These pieces are shared first with a small group — those who have supported BingBing Jade from early on.",
+    urgency: "Private access · Limited circulation",
+    cta: "Enter Private Access",
+    ctaLink: "/products",
+  },
+
+  LAST_CHANCE: {
+    label: "Last Chance",
+    emoji: "⏰",
+    color: "red",
+    subject: "Last Chance — These Won't Return",
+    headline: "Final Opportunity.",
+    intro:
+      "These pieces are being retired from our collection. Once sold, they will not be restocked. If something caught your eye before, this is the moment.",
+    urgency: "Final release · No restocks",
+    cta: "View Final Pieces",
+    ctaLink: "/products",
+  },
+} satisfies Record<string, CampaignPreset>;
 
 export function getCampaignPreset(id: string): CampaignPreset | undefined {
-  return CAMPAIGN_PRESETS.find((p) => p.id === id);
+  return CAMPAIGN_PRESETS[id as keyof typeof CAMPAIGN_PRESETS];
 }
