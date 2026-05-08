@@ -344,7 +344,7 @@ export function buildCustomerCouponHtml(params: {
     ? "A little gift,<br>just for you"
     : "It&rsquo;s been a while &mdash;<br>here&rsquo;s something special";
   const bodyText = isThankYou
-    ? `Thank you so much for your order &mdash; it means the world to us. As a small token of our appreciation, we&rsquo;ve put together a personal discount, just for you. We hope to see you again soon!`
+    ? `We&rsquo;d love to offer you something special &mdash; a personal discount, just for you. We hope you enjoy it, and we look forward to welcoming you at BingBing Jade.`
     : `We noticed it&rsquo;s been a while since your last visit, and we&rsquo;ve been thinking of you. Here&rsquo;s a personal discount code to welcome you back &mdash; we&rsquo;d love to have you shop with us again.`;
   const expiryStr = expiresAt
     ? expiresAt.toLocaleDateString("en-US", {
