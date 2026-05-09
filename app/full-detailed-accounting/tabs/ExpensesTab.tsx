@@ -37,6 +37,7 @@ export function ExpensesTab() {
   const [expenses, setExpenses]         = useState<Expense[]>([]);
   const [total, setTotal]               = useState(0);
   const [shippingExpenses, setShippingExpenses] = useState(0);
+  const [labelCosts, setLabelCosts]             = useState(0);
   const [shippingRevenue, setShippingRevenue]   = useState(0);
   const [loading, setLoading]     = useState(true);
   const [page, setPage]           = useState(1);
@@ -62,6 +63,7 @@ export function ExpensesTab() {
       setExpenses(json.expenses ?? []);
       setTotal(json.total ?? 0);
       setShippingExpenses(json.shippingExpenses ?? 0);
+      setLabelCosts(json.labelCosts ?? 0);
       setShippingRevenue(json.shippingRevenue ?? 0);
       setPage(p);
     } finally {
@@ -194,13 +196,15 @@ export function ExpensesTab() {
           </div>
           <div>
             <p className="text-[11px] text-gray-400 uppercase tracking-wide">Spent on shipping</p>
-            <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-0.5">${shippingExpenses.toFixed(2)}</p>
-            <p className="text-[11px] text-gray-400">from expenses (category: shipping)</p>
+            <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-0.5">${(shippingExpenses + labelCosts).toFixed(2)}</p>
+            <p className="text-[11px] text-gray-400">
+              labels: ${labelCosts.toFixed(2)} · expenses: ${shippingExpenses.toFixed(2)}
+            </p>
           </div>
           <div>
             <p className="text-[11px] text-gray-400 uppercase tracking-wide">Delta</p>
             {(() => {
-              const delta = shippingRevenue - shippingExpenses;
+              const delta = shippingRevenue - (shippingExpenses + labelCosts);
               return (
                 <>
                   <p className={`text-lg font-semibold mt-0.5 ${delta >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>

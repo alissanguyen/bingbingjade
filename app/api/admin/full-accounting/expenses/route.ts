@@ -30,25 +30,46 @@ export async function GET(req: NextRequest) {
   const { data, count, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Shipping delta: total shipping expenses vs shipping collected from customers
+  // Shipping delta: total shipping cost vs shipping collected from customers.
+  // Shipping cost = business_expenses (category: shipping) + label_cost_usd from order fulfillment.
   let shippingExpQuery = supabaseAdmin
     .from("business_expenses")
     .select("amount_usd")
     .eq("category", "shipping");
   if (from) shippingExpQuery = shippingExpQuery.gte("expense_date", from);
   if (to)   shippingExpQuery = shippingExpQuery.lte("expense_date", to);
-  const { data: shippingExpRows } = await shippingExpQuery;
-  const shippingExpenses = (shippingExpRows ?? []).reduce((s, r) => s + Number(r.amount_usd), 0);
+
+  // Label costs: per-order shipping label costs entered in the fulfillment tab,
+  // filtered by order creation date to match the same period.
+  let ordersQuery = supabaseAdmin
+    .from("orders")
+    .select("id, created_at, order_fulfillment_costs(label_cost_usd)")
+    .neq("order_status", "order_cancelled");
+  if (from) ordersQuery = ordersQuery.gte("created_at", from);
+  if (to)   ordersQuery = ordersQuery.lte("created_at", to + "T23:59:59Z");
 
   let shippingRevQuery = supabaseAdmin
     .from("stripe_accounting_snapshots")
     .select("amount_shipping_cents");
   if (from) shippingRevQuery = shippingRevQuery.gte("stripe_created_at", from);
   if (to)   shippingRevQuery = shippingRevQuery.lte("stripe_created_at", to + "T23:59:59Z");
-  const { data: shippingRevRows } = await shippingRevQuery;
+
+  const [{ data: shippingExpRows }, { data: ordersWithFulfillment }, { data: shippingRevRows }] = await Promise.all([
+    shippingExpQuery,
+    ordersQuery,
+    shippingRevQuery,
+  ]);
+
+  const shippingExpenses = (shippingExpRows ?? []).reduce((s, r) => s + Number(r.amount_usd), 0);
+
+  const labelCosts = (ordersWithFulfillment ?? []).reduce((s, o) => {
+    const fc = (o.order_fulfillment_costs as { label_cost_usd: number }[] | null)?.[0];
+    return s + (fc ? Number(fc.label_cost_usd) : 0);
+  }, 0);
+
   const shippingRevenue = (shippingRevRows ?? []).reduce((s, r) => s + Number(r.amount_shipping_cents ?? 0), 0) / 100;
 
-  return NextResponse.json({ expenses: data ?? [], total: count ?? 0, page, limit, shippingExpenses, shippingRevenue });
+  return NextResponse.json({ expenses: data ?? [], total: count ?? 0, page, limit, shippingExpenses, labelCosts, shippingRevenue });
 }
 
 export async function POST(req: NextRequest) {
