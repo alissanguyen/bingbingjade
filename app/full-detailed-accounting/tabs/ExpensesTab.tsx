@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 
 interface Expense {
   id: string;
@@ -48,7 +48,9 @@ export function ExpensesTab() {
   const [form, setForm]           = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving]       = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [msg, setMsg]             = useState<string | null>(null);
+  const fileInputRef              = useRef<HTMLInputElement>(null);
   const LIMIT = 100;
 
   const load = useCallback(async (p = 1) => {
@@ -135,6 +137,23 @@ export function ExpensesTab() {
     if (!confirm("Delete this expense?")) return;
     await fetch(`/api/admin/full-accounting/expenses/${id}`, { method: "DELETE" });
     load(1);
+  }
+
+  async function handleFileUpload(file: File) {
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/admin/full-accounting/expenses/upload", { method: "POST", body: fd });
+      const json = await res.json();
+      if (res.ok) {
+        setForm((p) => ({ ...p, receipt_url: json.url }));
+      } else {
+        setMsg(`Upload error: ${json.error}`);
+      }
+    } finally {
+      setUploading(false);
+    }
   }
 
   const totalPages = Math.ceil(total / LIMIT);
@@ -256,9 +275,35 @@ export function ExpensesTab() {
                 className="w-full text-sm border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Receipt URL</label>
-              <input type="url" value={form.receipt_url} onChange={(e) => setForm((p) => ({ ...p, receipt_url: e.target.value }))}
-                className="w-full text-sm border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Invoice / Receipt</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.heic,.heif,.png,.jpg,.jpeg,application/pdf,image/heic,image/heif,image/png,image/jpeg"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); e.target.value = ""; }}
+              />
+              {form.receipt_url ? (
+                <div className="flex items-center gap-2 text-sm">
+                  <a href={form.receipt_url} target="_blank" rel="noopener noreferrer"
+                    className="text-emerald-600 dark:text-emerald-400 underline truncate max-w-[120px]">
+                    View file
+                  </a>
+                  <button type="button" onClick={() => fileInputRef.current?.click()}
+                    className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 shrink-0">
+                    Replace
+                  </button>
+                  <button type="button" onClick={() => setForm((p) => ({ ...p, receipt_url: "" }))}
+                    className="text-xs text-red-400 hover:text-red-600 shrink-0">
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading}
+                  className="w-full text-sm border border-dashed border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500 transition-colors disabled:opacity-50 text-left">
+                  {uploading ? "Uploading…" : "Upload PDF, HEIC, PNG, JPG"}
+                </button>
+              )}
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Notes</label>
@@ -303,6 +348,7 @@ export function ExpensesTab() {
                   <th className="px-3 py-3 text-right">Deductible</th>
                   <th className="px-3 py-3 text-left">Method</th>
                   <th className="px-3 py-3 text-left">Notes</th>
+                  <th className="px-3 py-3 text-left">Invoice</th>
                   <th className="pr-4 pl-3 py-3"></th>
                 </tr>
               </thead>
@@ -321,6 +367,14 @@ export function ExpensesTab() {
                     <td className="px-3 py-2.5 text-right tabular-nums text-emerald-700 dark:text-emerald-400 font-medium">${Number(e.deductible_amount_usd).toFixed(2)}</td>
                     <td className="px-3 py-2.5 text-gray-500">{e.payment_method ?? "—"}</td>
                     <td className="px-3 py-2.5 text-gray-400 text-xs max-w-[160px] truncate">{e.notes ?? "—"}</td>
+                    <td className="px-3 py-2.5">
+                      {e.receipt_url ? (
+                        <a href={e.receipt_url} target="_blank" rel="noopener noreferrer"
+                          className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline whitespace-nowrap">
+                          View ↗
+                        </a>
+                      ) : <span className="text-gray-300 dark:text-gray-700">—</span>}
+                    </td>
                     <td className="pr-4 pl-3 py-2.5">
                       <div className="flex gap-2">
                         <button onClick={() => startEdit(e)}
