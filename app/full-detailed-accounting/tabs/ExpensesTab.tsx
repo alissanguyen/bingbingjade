@@ -51,6 +51,7 @@ export function ExpensesTab() {
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg]             = useState<string | null>(null);
   const fileInputRef              = useRef<HTMLInputElement>(null);
+  const formRef                   = useRef<HTMLDivElement>(null);
   const LIMIT = 100;
 
   const load = useCallback(async (p = 1) => {
@@ -75,11 +76,17 @@ export function ExpensesTab() {
 
   useEffect(() => { load(1); }, [load]);
 
+  function openForm() {
+    // Slight delay so the form is in the DOM before scrolling
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  }
+
   function startAdd() {
     setEditingId(null);
     setForm(EMPTY_FORM);
     setShowForm(true);
     setMsg(null);
+    openForm();
   }
 
   function startEdit(e: Expense) {
@@ -96,6 +103,7 @@ export function ExpensesTab() {
     });
     setShowForm(true);
     setMsg(null);
+    openForm();
   }
 
   async function save() {
@@ -239,7 +247,7 @@ export function ExpensesTab() {
 
       {/* Add/Edit form */}
       {showForm && (
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 space-y-3">
+        <div ref={formRef} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 space-y-3">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{editingId ? "Edit Expense" : "New Expense"}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
