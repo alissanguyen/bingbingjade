@@ -39,11 +39,11 @@ export async function GET(req: NextRequest) {
   if (from) shippingExpQuery = shippingExpQuery.gte("expense_date", from);
   if (to)   shippingExpQuery = shippingExpQuery.lte("expense_date", to);
 
-  // Label costs: per-order shipping label costs entered in the fulfillment tab,
-  // filtered by order creation date to match the same period.
+  // Fulfillment shipping costs: label + insurance + dropoff (excludes supplies and other).
+  // Filtered by order creation date to match the same period.
   let ordersQuery = supabaseAdmin
     .from("orders")
-    .select("id, created_at, order_fulfillment_costs(label_cost_usd)")
+    .select("id, created_at, order_fulfillment_costs(label_cost_usd, business_shipping_insurance_cost_usd, dropoff_transport_cost_usd)")
     .neq("order_status", "order_cancelled");
   if (from) ordersQuery = ordersQuery.gte("created_at", from);
   if (to)   ordersQuery = ordersQuery.lte("created_at", to + "T23:59:59Z");
@@ -63,8 +63,9 @@ export async function GET(req: NextRequest) {
   const shippingExpenses = (shippingExpRows ?? []).reduce((s, r) => s + Number(r.amount_usd), 0);
 
   const labelCosts = (ordersWithFulfillment ?? []).reduce((s, o) => {
-    const fc = (o.order_fulfillment_costs as { label_cost_usd: number }[] | null)?.[0];
-    return s + (fc ? Number(fc.label_cost_usd) : 0);
+    const fc = (o.order_fulfillment_costs as { label_cost_usd: number; business_shipping_insurance_cost_usd: number; dropoff_transport_cost_usd: number }[] | null)?.[0];
+    if (!fc) return s;
+    return s + Number(fc.label_cost_usd) + Number(fc.business_shipping_insurance_cost_usd) + Number(fc.dropoff_transport_cost_usd);
   }, 0);
 
   const shippingRevenue = (shippingRevRows ?? []).reduce((s, r) => s + Number(r.amount_shipping_cents ?? 0), 0) / 100;

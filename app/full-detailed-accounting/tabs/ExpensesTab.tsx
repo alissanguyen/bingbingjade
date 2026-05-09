@@ -198,7 +198,7 @@ export function ExpensesTab() {
             <p className="text-[11px] text-gray-400 uppercase tracking-wide">Spent on shipping</p>
             <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-0.5">${(shippingExpenses + labelCosts).toFixed(2)}</p>
             <p className="text-[11px] text-gray-400">
-              labels: ${labelCosts.toFixed(2)} · expenses: ${shippingExpenses.toFixed(2)}
+              fulfillment: ${labelCosts.toFixed(2)} · expenses: ${shippingExpenses.toFixed(2)}
             </p>
           </div>
           <div>
