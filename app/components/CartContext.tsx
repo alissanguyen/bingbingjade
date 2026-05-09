@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import type { CartItem } from "@/types/cart";
 import {
   getCart,
+  saveCart,
   addToCart as addItem,
   removeFromCart as removeItem,
   clearCart as clearAll,
@@ -17,6 +18,7 @@ interface CartContextValue {
   closeDrawer: () => void;
   addToCart: (item: CartItem) => void;
   removeFromCart: (productId: string, optionId: string | null) => void;
+  replaceItems: (newItems: CartItem[]) => void;
   clearCart: () => void;
 }
 
@@ -41,6 +43,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems(updated);
   }, []);
 
+  const replaceItems = useCallback((newItems: CartItem[]) => {
+    saveCart(newItems);
+    setItems(newItems);
+  }, []);
+
   const clearCart = useCallback(() => {
     clearAll();
     setItems([]);
@@ -56,6 +63,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         closeDrawer: () => setDrawerOpen(false),
         addToCart,
         removeFromCart,
+        replaceItems,
         clearCart,
       }}
     >

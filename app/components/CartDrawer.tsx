@@ -12,7 +12,7 @@ function fmtPrice(price: number): string {
 }
 
 export function CartDrawer() {
-  const { items, drawerOpen, closeDrawer, removeFromCart, clearCart } = useCart();
+  const { items, drawerOpen, closeDrawer, removeFromCart, replaceItems, clearCart } = useCart();
   const [headerHeight, setHeaderHeight] = useState(0);
   const [soldKeys, setSoldKeys] = useState<Set<string>>(new Set());
   const [staleKeys, setStaleKeys] = useState<Set<string>>(new Set());
@@ -28,39 +28,97 @@ export function CartDrawer() {
       const optionIds = items.map((i) => i.optionId).filter((id): id is string => id !== null);
 
       const [{ data: products }, { data: options }] = await Promise.all([
-        supabase.from("products").select("id, status, quick_ship").in("id", productIds),
+        supabase
+          .from("products")
+          .select("id, status, quick_ship, name, price_display_usd, sale_price_usd")
+          .in("id", productIds),
         optionIds.length > 0
-          ? supabase.from("product_options").select("id, status").in("id", optionIds)
+          ? supabase.from("product_options").select("id, status, price_usd, label").in("id", optionIds)
           : Promise.resolve({ data: [] }),
       ]);
 
-      const productStatus = new Map(products?.map((p: { id: string; status: string; quick_ship: boolean }) => [p.id, p.status]) ?? []);
-      const quickShip = new Set(products?.filter((p: { id: string; status: string; quick_ship: boolean }) => p.quick_ship).map((p: { id: string; status: string; quick_ship: boolean }) => p.id) ?? []);
+      type ProductRow = { id: string; status: string; quick_ship: boolean; name: string; price_display_usd: number | null; sale_price_usd: number | null };
+      type OptionRow = { id: string; status: string; price_usd: number | null; label: string | null };
+
+      const productMap = new Map<string, ProductRow>(products?.map((p: ProductRow) => [p.id, p]) ?? []);
+      const optionMap = new Map<string, OptionRow>((options ?? []).map((o: OptionRow) => [o.id, o]));
+      const quickShip = new Set(products?.filter((p: ProductRow) => p.quick_ship).map((p: ProductRow) => p.id) ?? []);
       setQuickShipIds(quickShip);
-      const optionStatus = new Map((options ?? []).map((o: { id: string; status: string }) => [o.id, o.status]));
 
       const sold = new Set<string>();
       const stale = new Set<string>();
+      let updatedItems = items.map((i) => ({ ...i }));
+      let changed = false;
+
+      const silentRemoveKeys = new Set<string>();
+
       for (const item of items) {
         const key = `${item.productId}-${item.optionId}`;
+        const product = productMap.get(item.productId);
+
+        // Product deleted or set to draft → silently remove from cart, no notification
+        if (!product || product.status === "draft") {
+          silentRemoveKeys.add(key);
+          changed = true;
+          continue;
+        }
+
         if (item.optionId !== null) {
-          if (optionStatus.get(item.optionId) === "sold") {
-            sold.add(key);
-          } else if (!optionStatus.has(item.optionId)) {
-            // Option no longer exists — product was re-edited (options recreated with new UUIDs)
-            // If the product itself is sold, treat as sold; otherwise just stale
-            if (productStatus.get(item.productId) === "sold") {
+          const option = optionMap.get(item.optionId);
+          if (!option) {
+            // Option no longer exists (product was re-edited with new option UUIDs)
+            if (product.status === "sold") {
               sold.add(key);
             } else {
               stale.add(key);
             }
+          } else if (option.status === "sold") {
+            sold.add(key);
+          } else {
+            // Update option price/label if changed
+            const freshPrice = option.price_usd != null ? Number(option.price_usd) : item.price;
+            const freshLabel = option.label ?? item.optionLabel;
+            if (freshPrice !== item.price || freshLabel !== item.optionLabel) {
+              updatedItems = updatedItems.map((i) =>
+                i.productId === item.productId && i.optionId === item.optionId
+                  ? { ...i, price: freshPrice, optionLabel: freshLabel }
+                  : i
+              );
+              changed = true;
+            }
           }
         } else {
-          if (productStatus.get(item.productId) === "sold") {
+          if (product.status === "sold") {
             sold.add(key);
+          } else {
+            // Update product name/price if changed
+            const freshPrice = product.sale_price_usd != null
+              ? Number(product.sale_price_usd)
+              : Number(product.price_display_usd ?? item.price);
+            const freshOriginalPrice = product.sale_price_usd != null
+              ? Number(product.price_display_usd)
+              : null;
+            const freshName = product.name ?? item.productName;
+            if (
+              freshPrice !== item.price ||
+              freshOriginalPrice !== item.originalPrice ||
+              freshName !== item.productName
+            ) {
+              updatedItems = updatedItems.map((i) =>
+                i.productId === item.productId && i.optionId === null
+                  ? { ...i, price: freshPrice, originalPrice: freshOriginalPrice, productName: freshName }
+                  : i
+              );
+              changed = true;
+            }
           }
         }
       }
+
+      if (changed) {
+        replaceItems(updatedItems.filter((i) => !silentRemoveKeys.has(`${i.productId}-${i.optionId}`)));
+      }
+
       setSoldKeys(sold);
       setStaleKeys(stale);
     }
