@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 
 export async function bulkUpdateStatus(
   ids: string[],
-  status: "available" | "on_sale" | "sold"
+  status: "available" | "on_sale" | "sold" | "archived"
 ): Promise<{ error?: string; count?: number }> {
   if (ids.length === 0) return { count: 0 };
 

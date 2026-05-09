@@ -181,6 +181,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     .eq("is_published", true)
     .neq("id", product.id)
     .neq("status", "sold")
+    .neq("status", "archived")
     .limit(12);
 
   const relatedResolved: RelatedProduct[] = await Promise.all(

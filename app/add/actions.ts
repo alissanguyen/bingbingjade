@@ -67,6 +67,8 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
       images: imageUrls,
       videos: videoUrls,
       sku: (formData.get("sku") as string) || null,
+      // Track when first published for auto-archive
+      published_at: adminUser && formData.get("is_published") === "true" ? new Date().toISOString() : null,
     })
     .select("id")
     .single();

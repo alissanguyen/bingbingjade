@@ -181,10 +181,20 @@ export async function updateProduct(
       status: productStatus,
       images: imageUrls,
       videos: videoUrls,
+      // published_at is set only on first publish; handled below via a separate conditional update
     })
     .eq("id", id);
 
   if (error) return { error: error.message };
+
+  // Set published_at the first time a product is published (skip if already set)
+  if (adminUser && formData.get("is_published") === "true") {
+    await supabaseAdmin
+      .from("products")
+      .update({ published_at: new Date().toISOString() })
+      .eq("id", id)
+      .is("published_at", null);
+  }
 
   const optionsJson = formData.get("options_json") as string | null;
   if (optionsJson) {

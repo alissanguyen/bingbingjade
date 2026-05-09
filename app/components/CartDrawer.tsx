@@ -56,8 +56,8 @@ export function CartDrawer() {
         const key = `${item.productId}-${item.optionId}`;
         const product = productMap.get(item.productId);
 
-        // Product deleted or set to draft → silently remove from cart, no notification
-        if (!product || product.status === "draft") {
+        // Product deleted, drafted, or archived → silently remove from cart, no notification
+        if (!product || product.status === "draft" || product.status === "archived") {
           silentRemoveKeys.add(key);
           changed = true;
           continue;

@@ -18,6 +18,7 @@ const STATUS_META: Record<string, { label: string; badge: string }> = {
   available: { label: "Available",  badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" },
   on_sale:   { label: "On Sale",    badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400" },
   sold:      { label: "Sold",       badge: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400" },
+  archived:  { label: "Archived",   badge: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400" },
 };
 
 const CAT_LABEL: Record<string, string> = {
@@ -118,7 +119,7 @@ export function ProductsAdminClient({
 
   const selectedIds = [...selected];
 
-  function handleBulkStatus(status: "available" | "on_sale" | "sold") {
+  function handleBulkStatus(status: "available" | "on_sale" | "sold" | "archived") {
     if (!selectedIds.length) return;
     startTransition(async () => {
       const res = await bulkUpdateStatus(selectedIds, status);
@@ -342,6 +343,14 @@ export function ProductsAdminClient({
               className="rounded-full px-3 py-1 text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60 disabled:opacity-50 transition-colors"
             >
               Set Sold
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkStatus("archived")}
+              disabled={isPending}
+              className="rounded-full px-3 py-1 text-xs font-medium bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+            >
+              Archive
             </button>
 
             <div className="w-px bg-gray-200 dark:bg-gray-700 self-stretch" />
