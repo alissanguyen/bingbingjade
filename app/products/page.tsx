@@ -456,7 +456,7 @@ export default async function Products({
                         if (ev != null && !requiresInquiry(ev)) {
                           return (
                             <span className="flex items-center gap-2">
-                              <span className="text-[17px] font-semibold text-emerald-600 dark:text-emerald-400">{fmtCardPrice(ev)}</span>
+                              <span className="text-[17px] font-semibold text-amber-600 dark:text-amber-400">{fmtCardPrice(ev)}</span>
                               <span className="text-[15px] text-gray-300 dark:text-gray-600 line-through">
                                 {rangeLabel ?? (dp != null ? fmtCardPrice(dp) : null)}
                               </span>
@@ -525,7 +525,7 @@ export default async function Products({
                         if (ev != null && !requiresInquiry(ev)) {
                           return (
                             <span className="flex items-center gap-1.5">
-                              <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">{fmtCardPrice(ev)}</span>
+                              <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">{fmtCardPrice(ev)}</span>
                               <span className="text-[8px] text-gray-300 dark:text-gray-600 line-through">
                                 {rangeLabel ?? (dp != null ? fmtCardPrice(dp) : null)}
                               </span>
