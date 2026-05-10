@@ -22,7 +22,7 @@ export async function GET() {
         status
       )
     `)
-    .eq("is_published", true)
+    .neq("status", "archived")
     .order("name")
     .limit(5000);
 
