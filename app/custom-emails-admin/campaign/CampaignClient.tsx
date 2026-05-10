@@ -331,12 +331,11 @@ export function CampaignClient({
       expiryDate,
       eventPricingApplied: eventPricingApplied || undefined,
       allowCouponStack:    eventPricingApplied ? allowCouponStack : undefined,
-      // If campaign is linked and products came from campaign: pass campaignEventId for server-side resolution
-      ...(linkedCampaignId && campaignProducts.length > 0
-        ? { campaignEventId: linkedCampaignId }
-        : selectedProducts.size > 0
-          ? { productIds: [...selectedProducts] }
-          : {}),
+      // Always send selected productIds so the exact user selection is honoured.
+      // Also pass campaignEventId when a campaign is linked so the server can
+      // resolve event pricing for those specific products.
+      ...(selectedProducts.size > 0 ? { productIds: [...selectedProducts] } : {}),
+      ...(linkedCampaignId ? { campaignEventId: linkedCampaignId } : {}),
       targetEmails:  includeTargetEmails && targetMode === "selected" ? [...selectedEmails] : null,
       bannerImage:   bannerImage || undefined,
     };

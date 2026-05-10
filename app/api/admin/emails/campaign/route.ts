@@ -57,34 +57,82 @@ export async function POST(req: NextRequest) {
   // ── Resolve products ──────────────────────────────────────────────────────────
   let products: CampaignEmailEventProduct[] = [];
 
+  type ProductRow = {
+    id: string; name: string; category: string; slug: string; public_id: string;
+    show_price: boolean; price_display_usd: number | null; sale_price_usd: number | null;
+    status: string; images: string[];
+  };
+
   if (body.productIds && body.productIds.length > 0) {
-    // Manual selection: resolve products by ID (no event pricing from this path)
+    // Explicit product selection. If a campaignEventId is also provided, resolve
+    // event pricing for those specific products from that campaign's discount config.
     const { data: raw } = await supabaseAdmin
       .from("products")
       .select("id, name, category, slug, public_id, show_price, price_display_usd, sale_price_usd, status, images")
       .in("id", body.productIds);
 
     if (raw && raw.length > 0) {
+      // Preserve the order the user selected
       const ordered = body.productIds
         .map((id) => raw.find((p) => p.id === id))
         .filter(Boolean) as typeof raw;
 
+      // If a campaign is linked, fetch per-product event_price_usd overrides
+      let eventPriceOverrides = new Map<string, number | null>();
+      let campaign: { discount_type: string | null; discount_value: number | null } | null = null;
+
+      if (body.campaignEventId) {
+        const [campaignRes, overrideRes] = await Promise.all([
+          supabaseAdmin
+            .from("campaign_events")
+            .select("discount_type, discount_value")
+            .eq("id", body.campaignEventId)
+            .maybeSingle(),
+          supabaseAdmin
+            .from("campaign_event_products")
+            .select("product_id, event_price_usd")
+            .eq("campaign_id", body.campaignEventId)
+            .in("product_id", body.productIds),
+        ]);
+        campaign = campaignRes.data ?? null;
+        for (const row of overrideRes.data ?? []) {
+          eventPriceOverrides.set(
+            row.product_id as string,
+            row.event_price_usd != null ? Number(row.event_price_usd) : null
+          );
+        }
+      }
+
       products = await Promise.all(
-        ordered.map(async (p): Promise<CampaignEmailEventProduct> => ({
-          id: p.id,
-          name: p.name,
-          category: p.category,
-          slug: productSlug(p),
-          show_price: p.show_price ?? false,
-          price_display_usd: p.price_display_usd,
-          sale_price_usd: p.sale_price_usd,
-          status: p.status,
-          imageUrl: await resolveFirstImageUrl(p.images ?? []),
-        }))
+        ordered.map(async (p): Promise<CampaignEmailEventProduct> => {
+          let eventPrice: number | null = null;
+          if (campaign) {
+            const override = eventPriceOverrides.get(p.id);
+            if (override != null) {
+              eventPrice = override;
+            } else if (campaign.discount_type === "percent" && campaign.discount_value != null && p.price_display_usd != null) {
+              eventPrice = p.price_display_usd * (1 - campaign.discount_value / 100);
+            } else if (campaign.discount_type === "fixed" && campaign.discount_value != null && p.price_display_usd != null) {
+              eventPrice = Math.max(0, p.price_display_usd - campaign.discount_value);
+            }
+          }
+          return {
+            id: p.id,
+            name: p.name,
+            category: p.category,
+            slug: productSlug(p),
+            show_price: p.show_price ?? false,
+            price_display_usd: p.price_display_usd,
+            sale_price_usd: p.sale_price_usd,
+            event_price_usd: eventPrice,
+            status: p.status,
+            imageUrl: await resolveFirstImageUrl(p.images ?? []),
+          };
+        })
       );
     }
   } else if (body.campaignEventId) {
-    // Auto-resolve featured campaign products with event pricing
+    // No explicit product selection — fall back to all campaign products with event pricing
     const { data: campaign } = await supabaseAdmin
       .from("campaign_events")
       .select("id, discount_type, discount_value")
@@ -100,16 +148,9 @@ export async function POST(req: NextRequest) {
         `)
         .eq("campaign_id", campaign.id)
         .order("is_featured_for_email", { ascending: false })
-        .order("sort_order")
-        .limit(6);
+        .order("sort_order");
 
       if (rows && rows.length > 0) {
-        type ProductRow = {
-          id: string; name: string; category: string; slug: string; public_id: string;
-          show_price: boolean; price_display_usd: number | null; sale_price_usd: number | null;
-          status: string; images: string[];
-        };
-
         products = await Promise.all(
           rows.map(async (row): Promise<CampaignEmailEventProduct> => {
             const p = row.products as unknown as ProductRow;

@@ -5,8 +5,8 @@ import { resolveFirstImageUrl } from "@/lib/storage";
 import { productSlug } from "@/lib/slug";
 
 // GET /api/admin/campaigns/[id]/email-products
-// Returns featured products for a campaign with event pricing resolved.
-// Uses is_featured_for_email=true first; falls back to first 6 by sort_order.
+// Returns all products for a campaign with event pricing resolved.
+// Sorted by is_featured_for_email DESC, sort_order ASC.
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -32,8 +32,7 @@ export async function GET(
     `)
     .eq("campaign_id", id)
     .order("is_featured_for_email", { ascending: false })
-    .order("sort_order")
-    .limit(6);
+    .order("sort_order");
 
   if (!rows || rows.length === 0) return NextResponse.json({ products: [] });
 
