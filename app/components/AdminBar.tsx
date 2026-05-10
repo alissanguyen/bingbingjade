@@ -92,8 +92,10 @@ export function AdminBar({
       { href: "/coupons-admin", label: "Coupons" },
       { href: "/subscribers-admin", label: "Subscribers" },
       { href: "/custom-emails-admin", label: "Custom Emails" },
+      { href: "/campaigns-admin", label: "Campaigns" },
+      { href: "/admin", label: "Admin Profile" },
     ] : []),
-    ...(profileHref ? [{ href: profileHref, label: "Profile" }] : []),
+    ...(!showUsersLink && profileHref ? [{ href: profileHref, label: "Profile" }] : []),
   ];
 
   const linkCls = "hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors whitespace-nowrap";
@@ -142,7 +144,8 @@ export function AdminBar({
                     { href: "/coupons-admin", label: "Coupons" },
                     { href: "/subscribers-admin", label: "Subscribers" },
                     { href: "/custom-emails-admin", label: "Custom Emails" },
-                    ...(profileHref ? [{ href: profileHref, label: "Profile" }] : []),
+                    { href: "/campaigns-admin", label: "Campaigns" },
+                    { href: "/admin", label: "Admin Profile" },
                   ]}
                 />
               </>
