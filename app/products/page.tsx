@@ -367,18 +367,31 @@ export default async function Products({
                         Sold
                       </div>
                     )}
-                    {product.status === "on_sale" && (
-                      <div className="ProductCard_Badge_OnSale absolute top-2 left-2 sm:top-3 sm:left-3 z-10 flex items-center gap-1.5">
-                        <div className="bg-red-500/90 backdrop-blur-sm text-white text-[10px] sm:text-[14px] font-semibold tracking-wide px-2.5 py-1">
-                          Sale
-                        </div>
-                        {product.show_price && product.price_display_usd != null && product.sale_price_usd != null && (
-                          <div className="bg-amber-500/90 backdrop-blur-sm text-white text-[10px] sm:text-[14px] font-semibold tracking-wide px-2.5 py-1 rounded-full">
-                            −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
+                    {(() => {
+                      const eventEntry = eventPrices.get(product.id);
+                      if (eventEntry && product.status !== "sold") {
+                        return (
+                          <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 bg-emerald-600/90 backdrop-blur-sm text-white text-[10px] sm:text-[14px] font-semibold uppercase tracking-widest px-2.5 py-1">
+                            {eventEntry.campaignName}
                           </div>
-                        )}
-                      </div>
-                    )}
+                        );
+                      }
+                      if (product.status === "on_sale") {
+                        return (
+                          <div className="ProductCard_Badge_OnSale absolute top-2 left-2 sm:top-3 sm:left-3 z-10 flex items-center gap-1.5">
+                            <div className="bg-red-500/90 backdrop-blur-sm text-white text-[10px] sm:text-[14px] font-semibold tracking-wide px-2.5 py-1">
+                              Sale
+                            </div>
+                            {product.show_price && product.price_display_usd != null && product.sale_price_usd != null && (
+                              <div className="bg-amber-500/90 backdrop-blur-sm text-white text-[10px] sm:text-[14px] font-semibold tracking-wide px-2.5 py-1 rounded-full">
+                                −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                     {product.quick_ship && product.status !== "sold" && (
                       <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 z-10">
                         <div

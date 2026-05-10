@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export interface EventPriceEntry {
   campaignEventId: string;
+  campaignName: string;
   explicitPrice: number | null;
   discountType: string | null;
   discountValue: number | null;
@@ -22,7 +23,7 @@ export async function getActiveEventPrices(
   // Step 1: fetch currently active campaigns (status + date range filtered in SQL)
   const { data: activeCampaigns, error: campaignError } = await supabaseAdmin
     .from("campaign_events")
-    .select("id, discount_type, discount_value")
+    .select("id, name, discount_type, discount_value")
     .eq("status", "active")
     .or(`starts_at.is.null,starts_at.lte.${nowIso}`)
     .or(`ends_at.is.null,ends_at.gte.${nowIso}`);
@@ -77,6 +78,7 @@ export async function getActiveEventPrices(
     if (!existing || computedBasePrice < existing.computedBasePrice) {
       result.set(productId, {
         campaignEventId: ce.id,
+        campaignName: ce.name,
         explicitPrice,
         discountType: ce.discount_type,
         discountValue: ce.discount_value,
