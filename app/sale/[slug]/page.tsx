@@ -114,12 +114,12 @@ export default async function SalePage({ params }: { params: Promise<{ slug: str
     .order("sort_order")
     .order("created_at");
 
-  // Resolve images and filter to published, non-sold products
+  // Resolve images and filter to published products (sold included, archived excluded)
   const resolvedProducts = (
     await Promise.all(
       (rawProducts ?? []).map(async (cp) => {
         const p = cp.products as unknown as CampaignProduct["product"];
-        if (!p.is_published || p.status === "sold" || p.status === "archived") return null;
+        if (!p.is_published || p.status === "archived") return null;
 
         const cardImages = await resolveImageUrls((p.images ?? []).slice(0, 2));
         const eventPrice = computeEventPrice(
@@ -233,35 +233,46 @@ export default async function SalePage({ params }: { params: Promise<{ slug: str
               const showOriginal = cp.resolvedEventPrice != null && p.show_price && p.price_display_usd != null;
               const displayPrice = cp.resolvedEventPrice ?? (p.show_price ? (p.sale_price_usd ?? p.price_display_usd) : null);
 
+              const isSold = p.status === "sold";
               return (
                 <ProductCardLink
                   key={cp.id}
                   href={href}
-                  className="group flex flex-col rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-md transition-all"
+                  className={`group flex flex-col rounded-2xl overflow-hidden border bg-white dark:bg-gray-900 transition-all ${
+                    isSold
+                      ? "border-gray-200 dark:border-gray-800 opacity-70"
+                      : "border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-md"
+                  }`}
                 >
                   <ProductCardImage images={cp.cardImages} name={p.name} priority={i < 4}>
-                    {/* Status badges */}
-                    {p.status === "on_sale" && !cp.resolvedEventPrice && (
+                    {isSold && (
+                      <div className="absolute inset-0 bg-black/40 z-10 pointer-events-none" />
+                    )}
+                    {isSold && (
+                      <div className="absolute top-2 left-2 z-20 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-gray-500 dark:text-gray-400 text-[9px] sm:text-[12px] font-medium tracking-widest uppercase px-2.5 py-1 rounded-full">Sold</div>
+                    )}
+                    {/* Status badges (only for available products) */}
+                    {!isSold && p.status === "on_sale" && !cp.resolvedEventPrice && (
                       <div className="absolute top-2 left-2 z-10 bg-rose-500 text-white text-[9px] sm:text-[12px] font-semibold uppercase tracking-widest px-2 py-0.5">Sale</div>
                     )}
-                    {cp.resolvedEventPrice != null && (
+                    {!isSold && cp.resolvedEventPrice != null && (
                       <div className="absolute top-2 left-2 z-10 bg-emerald-600 text-white text-[9px] sm:text-[12px] font-semibold uppercase tracking-widest px-2 py-0.5">
                         {campaign.name}
                       </div>
                     )}
-                    {p.quick_ship && (
+                    {!isSold && p.quick_ship && (
                       <div className="absolute top-2 right-2 z-10 rounded-full bg-sky-500 text-white text-[9px] sm:text-[12px] font-semibold uppercase tracking-widest px-2 py-0.5">Ship Now</div>
                     )}
                   </ProductCardImage>
 
-                  <div className="p-3 flex-1 flex flex-col">
+                  <div className={`p-3 flex-1 flex flex-col ${isSold ? "opacity-60" : ""}`}>
                     <p className="text-[10px] font-semibold uppercase tracking-widest text-emerald-700 dark:text-emerald-400 mb-0.5">
                       {p.category}
                     </p>
                     <p className="text-sm font-semibold text-gray-900 dark:text-white leading-snug line-clamp-2 flex-1">{p.name}</p>
 
                     {/* Price display */}
-                    {displayPrice != null && (
+                    {!isSold && displayPrice != null && (
                       <div className="mt-2 flex items-baseline gap-2">
                         <span className="text-sm font-bold text-gray-900 dark:text-white">
                           ${displayPrice.toFixed(0)}
@@ -273,8 +284,13 @@ export default async function SalePage({ params }: { params: Promise<{ slug: str
                         )}
                       </div>
                     )}
-                    {displayPrice == null && !p.show_price && (
+                    {!isSold && displayPrice == null && !p.show_price && (
                       <p className="mt-2 text-xs text-gray-400 italic">Inquire for pricing</p>
+                    )}
+                    {isSold && displayPrice != null && (
+                      <div className="mt-2">
+                        <span className="text-sm text-gray-400 line-through">${displayPrice.toFixed(0)}</span>
+                      </div>
                     )}
                   </div>
                 </ProductCardLink>
