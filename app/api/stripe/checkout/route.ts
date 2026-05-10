@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
       let bestEventPrice: number | null = null;
 
       for (const row of (campaignRows ?? [])) {
-        const ce = row.campaign_events as {
+        const ce = row.campaign_events as unknown as {
           id: string; name: string; status: string;
           discount_type: string | null; discount_value: number | null;
           allow_coupon_stack: boolean; starts_at: string | null; ends_at: string | null;
