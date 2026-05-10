@@ -118,7 +118,7 @@ export default async function SalePage({ params }: { params: Promise<{ slug: str
   const products: CampaignProduct[] = (
     await Promise.all(
       (rawProducts ?? []).map(async (cp) => {
-        const p = cp.products as CampaignProduct["product"];
+        const p = cp.products as unknown as CampaignProduct["product"];
         if (!p.is_published || p.status === "sold" || p.status === "archived") return null;
 
         const cardImages = await resolveImageUrls((p.images ?? []).slice(0, 2));
