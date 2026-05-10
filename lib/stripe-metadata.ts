@@ -21,12 +21,13 @@ export interface MetaItem {
 
 // Discount fields stored alongside item chunks in Stripe session metadata.
 export interface DiscountMeta {
-  source: string;           // 'welcome' | 'referral' | 'campaign' | 'store_credit'
+  source: string;           // 'welcome' | 'referral' | 'campaign' | 'campaign_event' | 'store_credit'
   amountCents: number;
   subtotalBeforeCents: number;
   code?: string;            // referral or campaign code used
   referrerCustomerId?: string;
   campaignId?: string;
+  campaignEventId?: string; // campaign_events.id when source = 'campaign_event'
 }
 
 export function encodeDiscountMeta(d: DiscountMeta): Record<string, string> {

@@ -72,6 +72,18 @@ export async function POST(req: NextRequest) {
   }[] = [];
   const validatedItems: CartItem[] = [];
 
+  // Campaign event tracking (populated during the per-item loop)
+  const itemCampaignEvents: Array<{
+    productId: string;
+    campaignEventId: string | null;
+    campaignEventName: string | null;
+    originalPrice: number | null;
+    finalPrice: number;
+  }> = [];
+  const appliedCampaignEventIds = new Set<string>();
+  let anyCampaignEventApplied = false;
+  let allAppliedAllowStack = true; // flipped false if any applied campaign has allow_coupon_stack=false
+
   for (const item of items) {
     if (!item.productId) {
       return NextResponse.json({ error: "Invalid cart item." }, { status: 400 });
@@ -92,6 +104,10 @@ export async function POST(req: NextRequest) {
     }
 
     let serverPrice: number | null = null;
+    // Raw option price preserved separately for campaign percent/fixed calculations.
+    // When an option exists, campaign discounts should be based on the option's own price
+    // rather than the product-level price_display_usd.
+    let optionBasePrice: number | null = null;
     let displayLabel = product.name;
 
     if (item.optionId) {
@@ -115,6 +131,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (option.label) displayLabel = `${product.name} — ${option.label}`;
+      optionBasePrice = option.price_usd ?? null;
       serverPrice = option.price_usd ?? product.price_display_usd;
     } else {
       serverPrice = product.sale_price_usd ?? product.price_display_usd;
@@ -123,6 +140,92 @@ export async function POST(req: NextRequest) {
     if (product.status === "on_sale" && product.sale_price_usd != null) {
       serverPrice = product.sale_price_usd;
     }
+
+    // ── Campaign event price resolution ──────────────────────────────────────
+    // Runs after all normal pricing is settled. For percent/fixed campaign discounts,
+    // base the calculation on the option price (if any) or the product list price —
+    // not on sale_price_usd — so the discount is off the real price, not a sale price.
+    const campaignCalcBase = optionBasePrice ?? product.price_display_usd;
+    const originalServerPrice = serverPrice;
+    let appliedCampaignEventId: string | null = null;
+    let appliedCampaignEventName: string | null = null;
+    let appliedAllowStack = true;
+
+    {
+      const nowIso = new Date().toISOString();
+      const { data: campaignRows } = await supabase
+        .from("campaign_event_products")
+        .select(`
+          event_price_usd,
+          campaign_events (
+            id, name, status, discount_type, discount_value,
+            allow_coupon_stack, starts_at, ends_at
+          )
+        `)
+        .eq("product_id", item.productId);
+
+      let bestEventPrice: number | null = null;
+
+      for (const row of (campaignRows ?? [])) {
+        const ce = row.campaign_events as {
+          id: string; name: string; status: string;
+          discount_type: string | null; discount_value: number | null;
+          allow_coupon_stack: boolean; starts_at: string | null; ends_at: string | null;
+        } | null;
+        if (!ce || ce.status !== "active") continue;
+        if (ce.starts_at && ce.starts_at > nowIso) continue;
+        if (ce.ends_at && ce.ends_at < nowIso) continue;
+
+        let eventPrice: number | null = null;
+        if (row.event_price_usd != null) {
+          // Explicit per-product event price — no further calculation needed
+          eventPrice = Number(row.event_price_usd);
+        } else if (ce.discount_type === "percent" && ce.discount_value != null && campaignCalcBase != null) {
+          eventPrice = campaignCalcBase * (1 - (ce.discount_value as number) / 100);
+        } else if (ce.discount_type === "fixed" && ce.discount_value != null && campaignCalcBase != null) {
+          eventPrice = campaignCalcBase - (ce.discount_value as number);
+        }
+
+        if (eventPrice == null || eventPrice <= 0) continue;
+
+        // Among all active campaigns that include this product, use the lowest price
+        if (bestEventPrice === null || eventPrice < bestEventPrice) {
+          bestEventPrice = eventPrice;
+          appliedCampaignEventId = ce.id;
+          appliedCampaignEventName = ce.name;
+          appliedAllowStack = ce.allow_coupon_stack;
+        }
+      }
+
+      // Apply only when the campaign price strictly beats the current server price
+      if (
+        bestEventPrice !== null &&
+        originalServerPrice !== null &&
+        bestEventPrice < originalServerPrice
+      ) {
+        serverPrice = bestEventPrice;
+      } else {
+        // No improvement — discard campaign attribution
+        appliedCampaignEventId = null;
+        appliedCampaignEventName = null;
+        appliedAllowStack = true;
+      }
+    }
+
+    if (appliedCampaignEventId) {
+      appliedCampaignEventIds.add(appliedCampaignEventId);
+      anyCampaignEventApplied = true;
+      if (!appliedAllowStack) allAppliedAllowStack = false;
+    }
+
+    itemCampaignEvents.push({
+      productId: item.productId,
+      campaignEventId: appliedCampaignEventId,
+      campaignEventName: appliedCampaignEventName,
+      originalPrice: originalServerPrice,
+      finalPrice: serverPrice ?? 0,
+    });
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (serverPrice == null || serverPrice <= 0) {
       return NextResponse.json(
@@ -149,6 +252,42 @@ export async function POST(req: NextRequest) {
     validatedItems.push({ ...item, price: serverPrice, fulfillmentType });
   }
 
+  // ── Campaign event: coupon eligibility + stacking checks ─────────────────────
+  if (body.discountCode) {
+    const upperCode = body.discountCode.trim().toUpperCase();
+
+    // Determine whether this code belongs to a campaign_event
+    const { data: ceForCode } = await supabase
+      .from("campaign_events")
+      .select("id")
+      .eq("coupon_code", upperCode)
+      .maybeSingle();
+
+    if (ceForCode) {
+      // Campaign event code — verify at least one cart product is in that campaign
+      const cartProductIds = validatedItems.map((i) => i.productId);
+      const { data: eligibleRows } = await supabase
+        .from("campaign_event_products")
+        .select("product_id")
+        .eq("campaign_id", ceForCode.id)
+        .in("product_id", cartProductIds);
+
+      if (!eligibleRows || eligibleRows.length === 0) {
+        return NextResponse.json(
+          { error: "This code only applies to selected event items." },
+          { status: 400 }
+        );
+      }
+    } else if (anyCampaignEventApplied && !allAppliedAllowStack) {
+      // A non-campaign-event discount code was entered while a non-stackable campaign
+      // markdown is already priced into the items — reject the code
+      return NextResponse.json(
+        { error: "Event pricing cannot be combined with this discount code." },
+        { status: 400 }
+      );
+    }
+  }
+
   // ── Server-side discount validation ──────────────────────────────────────────
   const itemsSubtotalCents = Math.round(
     validatedItems.reduce((sum, i) => sum + (i.price ?? 0), 0) * 100
@@ -173,13 +312,14 @@ export async function POST(req: NextRequest) {
         subtotalBeforeCents: itemsSubtotalCents,
         ...(discountResult.referralCode ? { code: discountResult.referralCode } : {}),
         ...(discountResult.subscriberCouponCode ? { code: discountResult.subscriberCouponCode } : {}),
-        ...(body.discountCode && discountResult.source === "campaign"
+        ...(body.discountCode && (discountResult.source === "campaign" || discountResult.source === "campaign_event")
           ? { code: body.discountCode.trim().toUpperCase() }
           : {}),
         ...(discountResult.referrerCustomerId
           ? { referrerCustomerId: discountResult.referrerCustomerId }
           : {}),
         ...(discountResult.campaignId ? { campaignId: discountResult.campaignId } : {}),
+        ...(discountResult.campaignEventId ? { campaignEventId: discountResult.campaignEventId } : {}),
       });
     }
     // Discount validation failure is non-fatal — checkout proceeds without it
@@ -362,6 +502,15 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Build metadata ────────────────────────────────────────────────────────────
+  // Campaign event session metadata — compact, stays well within Stripe's 500-char limit
+  const campaignEventMetadata: Record<string, string> = {};
+  if (anyCampaignEventApplied) {
+    campaignEventMetadata.ce_applied = "1";
+    // Encode up to 5 campaign event IDs (UUIDs are 36 chars; 5 × 37 = 185 chars)
+    campaignEventMetadata.ce_ids = [...appliedCampaignEventIds].slice(0, 5).join(",");
+    campaignEventMetadata.ce_allow_stack = allAppliedAllowStack ? "1" : "0";
+  }
+
   const itemMetadata = encodeCheckoutItems(
     validatedItems.map((i) => ({
       productId: i.productId,
@@ -426,6 +575,7 @@ export async function POST(req: NextRequest) {
         ...sourcingMetadata,
         ...addrMetadata,
         ...taxMeta,
+        ...campaignEventMetadata,
         payment_method: paymentMethod,
       },
     });
