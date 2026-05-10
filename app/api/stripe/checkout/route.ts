@@ -135,10 +135,11 @@ export async function POST(req: NextRequest) {
       serverPrice = option.price_usd ?? product.price_display_usd;
     } else {
       serverPrice = product.sale_price_usd ?? product.price_display_usd;
-    }
-
-    if (product.status === "on_sale" && product.sale_price_usd != null) {
-      serverPrice = product.sale_price_usd;
+      // Only apply the on_sale override for non-option items; option prices are
+      // self-contained and must not be clobbered by the parent product's sale price.
+      if (product.status === "on_sale" && product.sale_price_usd != null) {
+        serverPrice = product.sale_price_usd;
+      }
     }
 
     // ── Campaign event price resolution ──────────────────────────────────────
@@ -259,7 +260,7 @@ export async function POST(req: NextRequest) {
     // Determine whether this code belongs to a campaign_event
     const { data: ceForCode } = await supabase
       .from("campaign_events")
-      .select("id")
+      .select("id, allow_coupon_stack")
       .eq("coupon_code", upperCode)
       .maybeSingle();
 
@@ -275,6 +276,16 @@ export async function POST(req: NextRequest) {
       if (!eligibleRows || eligibleRows.length === 0) {
         return NextResponse.json(
           { error: "This code only applies to selected event items." },
+          { status: 400 }
+        );
+      }
+
+      // Default: no stacking. If event pricing is already baked into item prices
+      // for this campaign (or any other), reject the additional coupon discount
+      // unless this campaign explicitly allows it.
+      if (anyCampaignEventApplied && !ceForCode.allow_coupon_stack) {
+        return NextResponse.json(
+          { error: "Event pricing cannot be combined with this discount code." },
           { status: 400 }
         );
       }
