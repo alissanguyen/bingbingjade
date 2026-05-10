@@ -274,7 +274,7 @@ export default async function SalePage({ params }: { params: Promise<{ slug: str
                     {/* Price display */}
                     {!isSold && displayPrice != null && (
                       <div className="mt-2 flex items-baseline gap-2">
-                        <span className="text-sm font-bold text-gray-900 dark:text-white">
+                        <span className={`text-sm font-bold ${cp.resolvedEventPrice != null ? "text-amber-600 dark:text-amber-400" : "text-gray-900 dark:text-white"}`}>
                           ${displayPrice.toFixed(0)}
                         </span>
                         {showOriginal && p.price_display_usd !== displayPrice && (

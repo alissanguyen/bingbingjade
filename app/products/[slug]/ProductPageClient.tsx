@@ -276,7 +276,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
         <div className="IndividualProduct_PriceRow mt-3 flex items-baseline gap-3 flex-wrap">
           {eventPrice != null && !requiresInquiry(eventPrice) ? (
             <>
-              <span className={`text-xl sm:text-2xl font-semibold ${isProductSold ? "text-gray-400 dark:text-gray-600" : "text-emerald-600 dark:text-emerald-400"}`}>
+              <span className={`text-xl sm:text-2xl font-semibold ${isProductSold ? "text-gray-400 dark:text-gray-600" : "text-amber-600 dark:text-amber-400"}`}>
                 {`$${Number(eventPrice).toFixed(2)}`}
               </span>
               {effectiveDisplayPrice != null && !requiresInquiry(effectiveDisplayPrice) && (
@@ -284,7 +284,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                   <span className="text-lg text-gray-400 line-through">
                     {`$${Number(effectiveDisplayPrice).toFixed(2)}`}
                   </span>
-                  <span className="rounded-full px-2.5 py-0.5 text-xs sm:text-sm font-semibold text-white shadow-sm bg-emerald-600/80">
+                  <span className="rounded-full px-2.5 py-0.5 text-xs sm:text-sm font-semibold text-white shadow-sm bg-amber-600/80">
                     −{Math.round((1 - eventPrice / effectiveDisplayPrice) * 100)}%
                   </span>
                 </>
