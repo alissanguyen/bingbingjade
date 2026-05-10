@@ -222,7 +222,7 @@ export default async function SalePage({ params }: { params: Promise<{ slug: str
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6">
             {products.map((cp, i) => {
               const p = cp.product;
-              const href = `/products/${productSlug(p)}`;
+              const href = `/products/${productSlug(p)}?event=${campaign.id}`;
               const showOriginal = cp.resolvedEventPrice != null && p.show_price && p.price_display_usd != null;
               const displayPrice = cp.resolvedEventPrice ?? (p.show_price ? (p.sale_price_usd ?? p.price_display_usd) : null);
 

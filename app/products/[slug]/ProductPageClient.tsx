@@ -90,9 +90,10 @@ interface Props {
   productImages: string[];
   productVideos: string[];
   options: ProductOptionClient[];
+  eventPrice?: number | null;
 }
 
-export function ProductPageClient({ product, productImages, productVideos, options }: Props) {
+export function ProductPageClient({ product, productImages, productVideos, options, eventPrice }: Props) {
   const { addToCart, items: cartItems } = useCart();
   const [addedToCart, setAddedToCart] = useState(false);
 
@@ -135,8 +136,9 @@ export function ProductPageClient({ product, productImages, productVideos, optio
     product.status === "on_sale" ||
     options.some((o) => o.sale_price_usd != null && o.status !== "sold");
 
-  // Effective checkout price for the currently selected option
-  const checkoutPrice = activeSalePrice ?? effectiveDisplayPrice;
+  // Campaign event price beats any sale/regular price when present.
+  // eventPrice is pre-validated server-side to be strictly cheaper than the current best.
+  const checkoutPrice = eventPrice ?? activeSalePrice ?? effectiveDisplayPrice;
 
   // High-value items ($20k+) show an obfuscated price and skip direct checkout
   const needsInquiry = requiresInquiry(checkoutPrice);
@@ -162,7 +164,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
       originalPrice:
         effectiveDisplayPrice != null && effectiveDisplayPrice !== checkoutPrice
           ? effectiveDisplayPrice
-          : null,
+          : (activeSalePrice != null && activeSalePrice !== checkoutPrice ? activeSalePrice : null),
       thumbnail,
       quickShip: product.quick_ship,
       fulfillmentType: product.quick_ship ? "available_now" : "sourced_for_you",
@@ -270,7 +272,23 @@ export function ProductPageClient({ product, productImages, productVideos, optio
 
         {/* Price */}
         <div className="IndividualProduct_PriceRow mt-3 flex items-baseline gap-3 flex-wrap">
-          {isOnSale && activeSalePrice != null && !requiresInquiry(activeSalePrice) ? (
+          {eventPrice != null && !requiresInquiry(eventPrice) ? (
+            <>
+              <span className={`text-xl sm:text-2xl font-semibold ${isProductSold ? "text-gray-400 dark:text-gray-600" : "text-emerald-600 dark:text-emerald-400"}`}>
+                {`$${Number(eventPrice).toFixed(2)}`}
+              </span>
+              {effectiveDisplayPrice != null && !requiresInquiry(effectiveDisplayPrice) && (
+                <>
+                  <span className="text-lg text-gray-400 line-through">
+                    {`$${Number(effectiveDisplayPrice).toFixed(2)}`}
+                  </span>
+                  <span className="rounded-full px-2.5 py-0.5 text-xs sm:text-sm font-semibold text-white shadow-sm bg-emerald-600/80">
+                    −{Math.round((1 - eventPrice / effectiveDisplayPrice) * 100)}%
+                  </span>
+                </>
+              )}
+            </>
+          ) : isOnSale && activeSalePrice != null && !requiresInquiry(activeSalePrice) ? (
             <>
               <span className={`text-xl sm:text-2xl font-semibold ${isProductSold ? "text-gray-400 dark:text-gray-600" : "text-amber-600 dark:text-amber-400"}`}>
                 {`$${Number(activeSalePrice).toFixed(2)}`}
