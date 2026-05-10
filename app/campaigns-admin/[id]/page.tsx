@@ -33,7 +33,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
   // Resolve first image URL for campaign products
   const campaignProducts = await Promise.all(
     (campaignProductsRes.data ?? []).map(async (cp) => {
-      const p = cp.products as { id: string; name: string; slug: string; public_id: string; category: string; price_display_usd: number | null; sale_price_usd: number | null; status: string; images: string[] };
+      const p = cp.products as unknown as { id: string; name: string; slug: string; public_id: string; category: string; price_display_usd: number | null; sale_price_usd: number | null; status: string; images: string[] };
       return {
         id: cp.id,
         product_id: cp.product_id as string,
