@@ -102,6 +102,11 @@ const sections = [
     body: "We accept payment via Stripe through our website or manual Stripe invoice, as well as Zelle and wire transfer when approved. Payments may be subject to transaction or processing fees where applicable. Sales tax, if applicable, will be charged based on the delivery destination and in accordance with applicable law.",
   },
   {
+    id: "right-to-refuse-service",
+    title: "Right to Refuse Service",
+    body: "BingBing Jade is committed to providing a thoughtful, transparent, and respectful purchasing experience. To protect our clients, our team, and the integrity of our sourcing and fulfillment process, we reserve the right to decline, limit, cancel, or refund any order, sourcing request, custom request, inquiry, or transaction at our discretion. This may include situations involving incomplete or unverifiable information, repeated expectation mismatch, policy misuse, inappropriate or abusive communication, payment or fraud concerns, inventory limitations, sourcing limitations, or requests that fall outside the scope of what we can reasonably and confidently accommodate. If we are unable to accept or continue with an order or request, we may cancel the transaction and issue a refund where applicable.",
+  },
+  {
     id: "buyer-acknowledgment",
     title: "Buyer Acknowledgment",
     body: "By completing payment, you acknowledge that you have reviewed the item details, order type, estimated timeline, and shop terms. You understand that jade is a natural gemstone with natural variation, and you agree to contact us promptly within the stated timeframe if there is an issue with your order.",

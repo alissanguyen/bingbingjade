@@ -242,15 +242,15 @@ export default async function SalePage({ params }: { params: Promise<{ slug: str
                   <ProductCardImage images={cp.cardImages} name={p.name} priority={i < 4}>
                     {/* Status badges */}
                     {p.status === "on_sale" && !cp.resolvedEventPrice && (
-                      <div className="absolute top-2 left-2 z-10 rounded-full bg-rose-500 text-white text-[9px] font-semibold uppercase tracking-widest px-2 py-0.5">Sale</div>
+                      <div className="absolute top-2 left-2 z-10 bg-rose-500 text-white text-[9px] sm:text-[12px] font-semibold uppercase tracking-widest px-2 py-0.5">Sale</div>
                     )}
                     {cp.resolvedEventPrice != null && (
-                      <div className="absolute top-2 left-2 z-10 rounded-full bg-emerald-600 text-white text-[9px] font-semibold uppercase tracking-widest px-2 py-0.5">
+                      <div className="absolute top-2 left-2 z-10 bg-emerald-600 text-white text-[9px] sm:text-[12px] font-semibold uppercase tracking-widest px-2 py-0.5">
                         {campaign.name}
                       </div>
                     )}
                     {p.quick_ship && (
-                      <div className="absolute top-2 right-2 z-10 rounded-full bg-sky-500 text-white text-[9px] font-semibold uppercase tracking-widest px-2 py-0.5">Ship Now</div>
+                      <div className="absolute top-2 right-2 z-10 rounded-full bg-sky-500 text-white text-[9px] sm:text-[12px] font-semibold uppercase tracking-widest px-2 py-0.5">Ship Now</div>
                     )}
                   </ProductCardImage>
 

@@ -79,7 +79,19 @@
       "Bash(do echo:*)",
       "Read(//Users/nouveau/Documents/workspaces/jade-shop/**)",
       "Bash(done)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(created\" on success or \"already existed, existing settings kept\" if the:*)",
+      "Bash(file:*)",
+      "Bash(gs --version)",
+      "Bash(sips --version)",
+      "Bash(qlmanage -t -s 1200 -o /tmp/campaign_test/ /Users/nouveau/Documents/workspaces/jade-shop/public/campaign_banners/christmas.pdf)",
+      "Read(//tmp/**)",
+      "Bash(git revert:*)",
+      "Bash(find /Users/nouveau/Documents/workspaces/jade-shop -path *components* -name *Card*)",
+      "Bash(find /Users/nouveau/Documents/workspaces/jade-shop/supabase -name *.sql)",
+      "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/api/admin/campaigns/[id]/products/[productId]\")",
+      "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/campaigns-admin/[id]\")",
+      "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/sale/[slug]\")"
     ]
   }
 }
