@@ -12,4 +12,5 @@ export interface CartItem {
   thumbnail: string | null;
   quickShip?: boolean;
   fulfillmentType?: FulfillmentType;
+  campaignEventId?: string | null;
 }

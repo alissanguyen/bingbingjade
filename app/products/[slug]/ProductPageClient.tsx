@@ -91,9 +91,10 @@ interface Props {
   productVideos: string[];
   options: ProductOptionClient[];
   eventPrice?: number | null;
+  campaignEventId?: string | null;
 }
 
-export function ProductPageClient({ product, productImages, productVideos, options, eventPrice }: Props) {
+export function ProductPageClient({ product, productImages, productVideos, options, eventPrice, campaignEventId }: Props) {
   const { addToCart, items: cartItems } = useCart();
   const [addedToCart, setAddedToCart] = useState(false);
 
@@ -168,6 +169,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
       thumbnail,
       quickShip: product.quick_ship,
       fulfillmentType: product.quick_ship ? "available_now" : "sourced_for_you",
+      campaignEventId: campaignEventId ?? null,
     };
     addToCart(cartItem);
     setAddedToCart(true);

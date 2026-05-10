@@ -291,6 +291,7 @@ export default async function ProductPage({
         productVideos={productVideos}
         options={clientOptions}
         eventPrice={eventPrice}
+        campaignEventId={eventPrice != null ? (campaignEventId ?? null) : null}
       />
 
       {/* Quality assurance strip */}

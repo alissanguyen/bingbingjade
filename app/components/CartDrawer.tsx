@@ -90,8 +90,9 @@ export function CartDrawer() {
         } else {
           if (product.status === "sold") {
             sold.add(key);
-          } else {
-            // Update product name/price if changed
+          } else if (!item.campaignEventId) {
+            // Only refresh price from DB for non-event items.
+            // Campaign event prices are set at add-to-cart time and validated server-side at checkout.
             const freshPrice = product.sale_price_usd != null
               ? Number(product.sale_price_usd)
               : Number(product.price_display_usd ?? item.price);
