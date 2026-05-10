@@ -115,7 +115,7 @@ export default async function SalePage({ params }: { params: Promise<{ slug: str
     .order("created_at");
 
   // Resolve images and filter to published, non-sold products
-  const products: CampaignProduct[] = (
+  const resolvedProducts = (
     await Promise.all(
       (rawProducts ?? []).map(async (cp) => {
         const p = cp.products as unknown as CampaignProduct["product"];
@@ -142,6 +142,13 @@ export default async function SalePage({ params }: { params: Promise<{ slug: str
       })
     )
   ).filter(Boolean) as CampaignProduct[];
+
+  // Fisher-Yates shuffle — new random order on every page load
+  const products = [...resolvedProducts];
+  for (let i = products.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [products[i], products[j]] = [products[j], products[i]];
+  }
 
   const hasDiscount = campaign.discount_type && campaign.discount_value != null;
   const discountLabel = hasDiscount
