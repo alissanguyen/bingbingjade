@@ -27,7 +27,15 @@ export function CartDrawer() {
       const productIds = [...new Set(items.map((i) => i.productId))];
       const optionIds = items.map((i) => i.optionId).filter((id): id is string => id !== null);
 
-      const [{ data: products }, { data: options }] = await Promise.all([
+      type EventEntry = {
+        campaignEventId: string;
+        explicitPrice: number | null;
+        discountType: string | null;
+        discountValue: number | null;
+        computedBasePrice: number;
+      } | null;
+
+      const [{ data: products }, { data: options }, eventPriceData] = await Promise.all([
         supabase
           .from("products")
           .select("id, status, quick_ship, name, price_display_usd, sale_price_usd")
@@ -35,7 +43,12 @@ export function CartDrawer() {
         optionIds.length > 0
           ? supabase.from("product_options").select("id, status, price_usd, label").in("id", optionIds)
           : Promise.resolve({ data: [] }),
+        fetch(`/api/event-prices?productIds=${productIds.join(",")}`).then((r) =>
+          r.ok ? (r.json() as Promise<Record<string, EventEntry>>) : ({} as Record<string, EventEntry>)
+        ),
       ]);
+
+      const eventPrices: Record<string, EventEntry> = eventPriceData ?? {};
 
       type ProductRow = { id: string; status: string; quick_ship: boolean; name: string; price_display_usd: number | null; sale_price_usd: number | null };
       type OptionRow = { id: string; status: string; price_usd: number | null; label: string | null };
@@ -90,24 +103,37 @@ export function CartDrawer() {
         } else {
           if (product.status === "sold") {
             sold.add(key);
-          } else if (!item.campaignEventId) {
-            // Only refresh price from DB for non-event items.
-            // Campaign event prices are set at add-to-cart time and validated server-side at checkout.
-            const freshPrice = product.sale_price_usd != null
-              ? Number(product.sale_price_usd)
-              : Number(product.price_display_usd ?? item.price);
-            const freshOriginalPrice = product.sale_price_usd != null
-              ? Number(product.price_display_usd)
-              : null;
+          } else {
+            const eventEntry = eventPrices[item.productId];
+            let freshPrice: number;
+            let freshOriginalPrice: number | null;
+            let freshCampaignEventId: string | null = null;
+
+            if (eventEntry) {
+              // Active campaign event: apply event pricing
+              freshPrice = eventEntry.computedBasePrice;
+              freshOriginalPrice = Number(product.price_display_usd ?? item.price);
+              freshCampaignEventId = eventEntry.campaignEventId;
+            } else {
+              // No active event: use regular DB price
+              freshPrice = product.sale_price_usd != null
+                ? Number(product.sale_price_usd)
+                : Number(product.price_display_usd ?? item.price);
+              freshOriginalPrice = product.sale_price_usd != null
+                ? Number(product.price_display_usd)
+                : null;
+            }
+
             const freshName = product.name ?? item.productName;
             if (
               freshPrice !== item.price ||
               freshOriginalPrice !== item.originalPrice ||
-              freshName !== item.productName
+              freshName !== item.productName ||
+              freshCampaignEventId !== (item.campaignEventId ?? null)
             ) {
               updatedItems = updatedItems.map((i) =>
                 i.productId === item.productId && i.optionId === null
-                  ? { ...i, price: freshPrice, originalPrice: freshOriginalPrice, productName: freshName }
+                  ? { ...i, price: freshPrice, originalPrice: freshOriginalPrice, productName: freshName, campaignEventId: freshCampaignEventId }
                   : i
               );
               changed = true;

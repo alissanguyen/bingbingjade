@@ -4,6 +4,7 @@ import { productSlug } from "@/lib/slug";
 import { supabase } from "@/lib/supabase";
 import { resolveImageUrls, isStoragePath } from "@/lib/storage";
 import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
+import { getActiveEventPrices } from "@/lib/active-event-prices";
 import { FilterSidebar } from "./FilterSidebar";
 import { SortSelect } from "./SortSelect";
 import { Pagination } from "./Pagination";
@@ -68,7 +69,7 @@ const COLOR_SWATCHES: Record<string, string> = {
 import { getCategoryLabel } from "./categories";
 import { ProductCardLink } from "./ProductCardLink";
 
-export const revalidate = 21600;
+export const dynamic = "force-dynamic";
 
 export default async function Products({
   searchParams,
@@ -109,6 +110,10 @@ export default async function Products({
     optionsQuery,
   ]);
 
+  // Fetch active campaign event prices for all products in one query.
+  const allProductIds = ((allProducts as ProductCard[] | null) ?? []).map((p) => p.id);
+  const eventPrices = await getActiveEventPrices(allProductIds);
+
   if (error) {
     console.error("Failed to load products:", error.message);
   }
@@ -132,8 +137,10 @@ export default async function Products({
       .filter((v): v is number => v != null);
   }
 
-  // Effective sort price: for on_sale products use sale price; otherwise use min variant / display price
+  // Effective sort price: event price → sale price → min variant → display price
   function effectiveSortPrice(p: ProductCard): number {
+    const ep = eventPrices.get(p.id)?.computedBasePrice ?? null;
+    if (ep != null) return ep;
     if (p.status === "on_sale" && p.sale_price_usd != null) return p.sale_price_usd;
     const vp = getVariantPrices(p);
     return vp.length > 0 ? Math.min(...vp) : (p.price_display_usd ?? Infinity);
@@ -415,6 +422,7 @@ export default async function Products({
                         const vp = product.show_price ? getVariantPrices(product) : [];
                         const dp = product.show_price ? product.price_display_usd : null;
                         const sp = product.show_price ? product.sale_price_usd : null;
+                        const ev = product.show_price ? (eventPrices.get(product.id)?.computedBasePrice ?? null) : null;
                         const vMin = vp.length > 0 ? Math.min(...vp) : null;
                         const vMax = vp.length > 0 ? Math.max(...vp) : null;
                         const hasRange = vMin != null && vMax != null && vMin !== vMax;
@@ -429,6 +437,16 @@ export default async function Products({
                               {sp != null && dp != null && (
                                 <span className="text-[15px] text-gray-300 dark:text-gray-600 line-through">{fmtCardPrice(dp)}</span>
                               )}
+                            </span>
+                          );
+                        }
+                        if (ev != null && !requiresInquiry(ev)) {
+                          return (
+                            <span className="flex items-center gap-2">
+                              <span className="text-[17px] font-semibold text-emerald-600 dark:text-emerald-400">{fmtCardPrice(ev)}</span>
+                              <span className="text-[15px] text-gray-300 dark:text-gray-600 line-through">
+                                {rangeLabel ?? (dp != null ? fmtCardPrice(dp) : null)}
+                              </span>
                             </span>
                           );
                         }
@@ -478,6 +496,7 @@ export default async function Products({
                         const vp = product.show_price ? getVariantPrices(product) : [];
                         const dp = product.show_price ? product.price_display_usd : null;
                         const sp = product.show_price ? product.sale_price_usd : null;
+                        const ev = product.show_price ? (eventPrices.get(product.id)?.computedBasePrice ?? null) : null;
                         const vMin = vp.length > 0 ? Math.min(...vp) : null;
                         const vMax = vp.length > 0 ? Math.max(...vp) : null;
                         const hasRange = vMin != null && vMax != null && vMin !== vMax;
@@ -487,6 +506,16 @@ export default async function Products({
                           return (
                             <span className="text-[10px] text-gray-400 dark:text-gray-500">
                               {base != null ? fmtCardPrice(base) : rangeLabel ?? "—"}
+                            </span>
+                          );
+                        }
+                        if (ev != null && !requiresInquiry(ev)) {
+                          return (
+                            <span className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">{fmtCardPrice(ev)}</span>
+                              <span className="text-[8px] text-gray-300 dark:text-gray-600 line-through">
+                                {rangeLabel ?? (dp != null ? fmtCardPrice(dp) : null)}
+                              </span>
                             </span>
                           );
                         }

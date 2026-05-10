@@ -1,8 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase";
-import { supabaseAdmin } from "@/lib/supabase-admin";
 import { publicIdFromSlug, productSlug } from "@/lib/slug";
+import { getActiveEventPrices } from "@/lib/active-event-prices";
 import { resolveImageUrls, resolveVideoUrls, resolveFirstImageUrl } from "@/lib/storage";
 import { ProductPageClient } from "./ProductPageClient";
 import { BackToProductsLink } from "./BackToProductsLink";
@@ -140,13 +140,10 @@ export async function generateMetadata(
 
 export default async function ProductPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ event?: string }>;
 }) {
   const { slug } = await params;
-  const campaignEventId = (await searchParams)?.event ?? null;
 
   const publicId = publicIdFromSlug(slug);
   if (!publicId) notFound();
@@ -239,46 +236,17 @@ export default async function ProductPage({
     sale_price_usd: product.show_price ? opt.sale_price_usd : null,
   }));
 
-  // Resolve campaign event price when product is accessed from a sale event page.
-  let eventPrice: number | null = null;
-  if (campaignEventId && clientProduct.price_display_usd != null) {
-    const nowIso = new Date().toISOString();
-    const { data: campaign } = await supabaseAdmin
-      .from("campaign_events")
-      .select("id, status, discount_type, discount_value, starts_at, ends_at")
-      .eq("id", campaignEventId)
-      .eq("status", "active")
-      .maybeSingle();
-
-    if (
-      campaign &&
-      !(campaign.starts_at && campaign.starts_at > nowIso) &&
-      !(campaign.ends_at && campaign.ends_at < nowIso)
-    ) {
-      const { data: row } = await supabaseAdmin
-        .from("campaign_event_products")
-        .select("event_price_usd")
-        .eq("campaign_id", campaignEventId)
-        .eq("product_id", product.id)
-        .maybeSingle();
-
-      if (row) {
-        const base = clientProduct.price_display_usd!;
-        if (row.event_price_usd != null) {
-          eventPrice = Number(row.event_price_usd);
-        } else if (campaign.discount_type === "percent" && campaign.discount_value != null) {
-          eventPrice = base * (1 - campaign.discount_value / 100);
-        } else if (campaign.discount_type === "fixed" && campaign.discount_value != null) {
-          eventPrice = Math.max(0, base - campaign.discount_value);
-        }
-        // Only apply if strictly cheaper than the current best price
-        const currentBest = clientProduct.sale_price_usd ?? clientProduct.price_display_usd;
-        if (eventPrice !== null && currentBest !== null && eventPrice >= currentBest) {
-          eventPrice = null;
-        }
-      }
-    }
-  }
+  // Always resolve campaign event price — applies regardless of how the page was reached.
+  const eventPriceMap = await getActiveEventPrices([product.id]);
+  const eventEntry = eventPriceMap.get(product.id) ?? null;
+  const currentBest = clientProduct.sale_price_usd ?? clientProduct.price_display_usd;
+  const rawEventPrice = eventEntry?.computedBasePrice ?? null;
+  // Only apply when strictly cheaper than the current best price
+  const eventPrice =
+    rawEventPrice !== null && currentBest !== null && rawEventPrice < currentBest
+      ? rawEventPrice
+      : null;
+  const resolvedCampaignEventId = eventPrice !== null ? (eventEntry?.campaignEventId ?? null) : null;
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
@@ -291,7 +259,7 @@ export default async function ProductPage({
         productVideos={productVideos}
         options={clientOptions}
         eventPrice={eventPrice}
-        campaignEventId={eventPrice != null ? (campaignEventId ?? null) : null}
+        campaignEventId={resolvedCampaignEventId}
       />
 
       {/* Quality assurance strip */}
