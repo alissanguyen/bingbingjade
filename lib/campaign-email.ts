@@ -6,6 +6,11 @@
 
 import type { EmailProduct } from "@/lib/product-email";
 
+/** EmailProduct extended with an optional resolved event price for campaign emails. */
+export interface CampaignEmailEventProduct extends EmailProduct {
+  event_price_usd?: number | null;
+}
+
 export interface CampaignEmailParams {
   subject: string;
   headline: string;
@@ -17,7 +22,13 @@ export interface CampaignEmailParams {
   discountValue?: number;
   discountCode?: string;
   expiryDate?: string;
-  products?: EmailProduct[];
+  /** True when any cart item already has campaign event pricing baked in. */
+  eventPricingApplied?: boolean;
+  /** From campaign_events.allow_coupon_stack — controls coupon block wording. */
+  allowCouponStack?: boolean;
+  /** Human-readable date range, e.g. "May 1 – May 15, 2026". Shown below urgency line. */
+  eventDateRange?: string;
+  products?: CampaignEmailEventProduct[];
   unsubscribeUrl: string;
   siteUrl: string;
   bannerImage?: string;
@@ -43,20 +54,36 @@ function fmtPrice(price: number): string {
   return `$${price.toFixed(2)}`;
 }
 
-function campaignProductCard(product: EmailProduct, siteUrl: string): string {
+function campaignProductCard(product: CampaignEmailEventProduct, siteUrl: string): string {
   const href = `${siteUrl}/products/${product.slug}`;
-  const isOnSale = product.status === "on_sale";
-  const displayPrice = product.sale_price_usd ?? product.price_display_usd;
   const catLabel = CATEGORY_LABELS[product.category] ?? product.category;
 
-  const priceHtml =
-    product.show_price && displayPrice != null
-      ? `<span style="font-size:18px;font-weight:700;color:${isOnSale ? "#b45309" : "#065f46"};">${fmtPrice(displayPrice)}</span>${
-          isOnSale && product.price_display_usd != null
-            ? ` <span style="font-size:14px;color:#9ca3af;text-decoration:line-through;">${fmtPrice(product.price_display_usd)}</span>`
-            : ""
-        }`
-      : `<span style="font-size:13px;color:#6b7280;font-style:italic;">Contact for price</span>`;
+  // Event price wins when it's lower than list price — show strikethrough list price.
+  const hasEventDiscount =
+    product.event_price_usd != null &&
+    product.price_display_usd != null &&
+    product.event_price_usd < product.price_display_usd;
+
+  let priceHtml: string;
+  if (!product.show_price) {
+    priceHtml = `<span style="font-size:13px;color:#6b7280;font-style:italic;">Contact for price</span>`;
+  } else if (hasEventDiscount) {
+    priceHtml =
+      `<span style="font-size:18px;font-weight:700;color:#b45309;">${fmtPrice(product.event_price_usd!)}</span>` +
+      ` <span style="font-size:14px;color:#9ca3af;text-decoration:line-through;">${fmtPrice(product.price_display_usd!)}</span>`;
+  } else {
+    const isOnSale = product.status === "on_sale" && product.sale_price_usd != null;
+    const displayPrice = product.sale_price_usd ?? product.price_display_usd;
+    if (displayPrice == null) {
+      priceHtml = `<span style="font-size:13px;color:#6b7280;font-style:italic;">Contact for price</span>`;
+    } else {
+      priceHtml =
+        `<span style="font-size:18px;font-weight:700;color:${isOnSale ? "#b45309" : "#065f46"};">${fmtPrice(displayPrice)}</span>` +
+        (isOnSale && product.price_display_usd != null
+          ? ` <span style="font-size:14px;color:#9ca3af;text-decoration:line-through;">${fmtPrice(product.price_display_usd)}</span>`
+          : "");
+    }
+  }
 
   const imageHtml = product.imageUrl
     ? `<img src="${product.imageUrl}" alt="${product.name.replace(/"/g, "&quot;")}" width="100%" style="display:block;width:100%;aspect-ratio:1/1;object-fit:cover;" />`
@@ -88,6 +115,101 @@ function campaignProductCard(product: EmailProduct, siteUrl: string): string {
     </td>`;
 }
 
+// ── Coupon / event-pricing notice block ──────────────────────────────────────
+// Four render modes, chosen by the caller's combination of flags:
+//   "event_only"     — event pricing baked in, no coupon code
+//   "event_code"     — event pricing baked in + coupon code (stacking off)
+//   "full_coupon"    — standard coupon block (amount badge + optional code)
+//   "none"           — nothing to show
+type NoticeMode = "event_only" | "event_code" | "full_coupon" | "none";
+
+function resolveNoticeMode(
+  discountType: string | undefined,
+  discountValue: number | undefined,
+  discountCode: string | undefined,
+  eventPricingApplied: boolean,
+  allowCouponStack: boolean,
+): NoticeMode {
+  const hasAmount = (discountType === "fixed" || discountType === "percentage") && discountValue != null && discountValue > 0;
+  const hasCode   = !!discountCode;
+
+  if (eventPricingApplied && !hasCode) return "event_only";
+  if (eventPricingApplied && hasCode && !allowCouponStack) return "event_code";
+  if (hasAmount || hasCode) return "full_coupon";
+  return "none";
+}
+
+function buildNoticeBlock(
+  mode: NoticeMode,
+  discountType: string | undefined,
+  discountValue: number | undefined,
+  discountCode: string | undefined,
+  expiryDate: string | undefined,
+): string {
+  if (mode === "none") return "";
+
+  const goldRule = `<div style="height:1px;background:linear-gradient(to right,transparent,#c9a84c,transparent);margin-bottom:0;"></div>`;
+  const boxWrap  = (inner: string) => `
+    <tr>
+      <td style="padding:0 48px;">
+        ${goldRule}
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#fdfbf5;border-left:1px solid rgba(201,168,76,0.35);border-right:1px solid rgba(201,168,76,0.35);border-bottom:1px solid rgba(201,168,76,0.35);border-radius:0 0 12px 12px;">
+          <tr><td style="padding:28px 32px 24px;text-align:center;">${inner}</td></tr>
+        </table>
+      </td>
+    </tr>
+    <tr><td style="height:40px;"></td></tr>`;
+
+  if (mode === "event_only") {
+    return boxWrap(`
+      <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#92754a;">Event Pricing</p>
+      <p style="margin:0;font-size:15px;color:#0d2e22;line-height:1.6;">Prices shown already reflect event savings —<br>no code needed at checkout.</p>`);
+  }
+
+  if (mode === "event_code") {
+    return boxWrap(`
+      <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#92754a;">Event Savings</p>
+      <table cellpadding="0" cellspacing="0" style="margin:0 auto 8px;">
+        <tr>
+          <td style="background:#ffffff;border:1.5px dashed #c9a84c;border-radius:8px;padding:10px 28px;">
+            <span style="font-size:20px;font-weight:700;letter-spacing:0.18em;color:#0d2e22;font-family:ui-monospace,'Courier New',monospace;">${discountCode}</span>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:0 0 0;font-size:11px;color:#a8a29e;letter-spacing:0.04em;">Use code above for eligible event savings</p>
+      ${expiryDate ? `<p style="margin:10px 0 0;font-size:11px;color:#a8a29e;font-style:italic;">Valid through ${expiryDate}</p>` : ""}`);
+  }
+
+  // full_coupon
+  const discountLabel = discountType === "percentage"
+    ? `${discountValue}% Off`
+    : discountValue != null ? `$${discountValue} Off` : "";
+  const discountSubtitle = discountType === "percentage"
+    ? "Applied automatically at checkout"
+    : "Deducted at checkout";
+  const codeBox = discountCode
+    ? `
+      <table cellpadding="0" cellspacing="0" style="margin:0 auto 8px;">
+        <tr>
+          <td style="background:#ffffff;border:1.5px dashed #c9a84c;border-radius:8px;padding:10px 28px;">
+            <span style="font-size:20px;font-weight:700;letter-spacing:0.18em;color:#0d2e22;font-family:ui-monospace,'Courier New',monospace;">${discountCode}</span>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:0 0 0;font-size:11px;color:#a8a29e;letter-spacing:0.04em;">Enter this code at checkout</p>`
+    : "";
+  const expiry = expiryDate
+    ? `<p style="margin:${discountCode ? "10px" : "0"} 0 0;font-size:11px;color:#a8a29e;font-style:italic;">Valid through ${expiryDate}</p>`
+    : "";
+
+  return boxWrap(`
+    <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#92754a;">Exclusive Offer</p>
+    ${discountLabel ? `<p style="margin:0 0 4px;font-size:38px;font-weight:700;color:#0d2e22;letter-spacing:-0.02em;font-family:Georgia,'Times New Roman',serif;">${discountLabel}</p>` : ""}
+    <p style="margin:0 0 ${discountCode ? "20px" : "4px"};font-size:13px;color:#78716c;">${discountSubtitle}</p>
+    ${codeBox}
+    ${expiry}`);
+}
+
 export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
   const {
     subject,
@@ -100,6 +222,8 @@ export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
     discountValue,
     discountCode,
     expiryDate,
+    eventPricingApplied = false,
+    allowCouponStack = true,
     products,
     unsubscribeUrl,
     siteUrl,
@@ -109,7 +233,6 @@ export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
   const ctaHref = resolveCtaHref(ctaLink, siteUrl);
   const hasProducts = Array.isArray(products) && products.length > 0;
 
-  // Resolve banner image to absolute URL — email clients require full URLs, not relative paths
   const resolvedBannerImage = bannerImage
     ? bannerImage.startsWith("/")
       ? `${siteUrl}${bannerImage}`
@@ -119,7 +242,7 @@ export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
   // Product grid — pairs of 2 per row
   let productRowsHtml = "";
   if (hasProducts) {
-    const rows: EmailProduct[][] = [];
+    const rows: CampaignEmailEventProduct[][] = [];
     for (let i = 0; i < products!.length; i += 2)
       rows.push(products!.slice(i, i + 2));
     productRowsHtml = rows
@@ -133,54 +256,27 @@ export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
       .join("\n");
   }
 
-  // Build discount block
-  const showDiscount =
-    (discountType === "fixed" || discountType === "percentage") &&
-    discountValue != null &&
-    discountValue > 0;
-  const discountLabel = showDiscount
-    ? discountType === "percentage"
-      ? `${discountValue}% Off`
-      : `$${discountValue} Off`
-    : "";
-  const discountSubtitle =
-    discountType === "percentage"
-      ? "Applied automatically at checkout"
-      : "Deducted at checkout";
+  // Notice block
+  const noticeMode = resolveNoticeMode(discountType, discountValue, discountCode, eventPricingApplied, allowCouponStack);
+  const noticeBlock = buildNoticeBlock(noticeMode, discountType, discountValue, discountCode, expiryDate);
+  const showNotice  = noticeMode !== "none";
 
-  const discountBlock = showDiscount
+  // Secondary "View All Event Pieces" CTA — shown below product grid when event pricing is active
+  const secondaryCtaBlock = hasProducts && eventPricingApplied
     ? `
-        <!-- ═══ DISCOUNT OFFER ═══ -->
         <tr>
-          <td style="padding:0 48px;">
-            <!-- Gold top rule -->
-            <div style="height:1px;background:linear-gradient(to right,transparent,#c9a84c,transparent);margin-bottom:0;"></div>
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fdfbf5;border-left:1px solid rgba(201,168,76,0.35);border-right:1px solid rgba(201,168,76,0.35);border-bottom:1px solid rgba(201,168,76,0.35);border-radius:0 0 12px 12px;">
+          <td style="padding:4px 48px 40px;text-align:center;">
+            <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
               <tr>
-                <td style="padding:28px 32px 24px;text-align:center;">
-                  <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#92754a;">Exclusive Offer</p>
-                  <p style="margin:0 0 4px;font-size:38px;font-weight:700;color:#0d2e22;letter-spacing:-0.02em;font-family:Georgia,'Times New Roman',serif;">${discountLabel}</p>
-                  <p style="margin:0 0 ${discountCode ? "20px" : "4px"};font-size:13px;color:#78716c;">${discountSubtitle}</p>
-                  ${
-                    discountCode
-                      ? `
-                  <table cellpadding="0" cellspacing="0" style="margin:0 auto 8px;">
-                    <tr>
-                      <td style="background:#ffffff;border:1.5px dashed #c9a84c;border-radius:8px;padding:10px 28px;">
-                        <span style="font-size:20px;font-weight:700;letter-spacing:0.18em;color:#0d2e22;font-family:ui-monospace,'Courier New',monospace;">${discountCode}</span>
-                      </td>
-                    </tr>
-                  </table>
-                  <p style="margin:0 0 0;font-size:11px;color:#a8a29e;letter-spacing:0.04em;">Enter this code at checkout</p>`
-                      : ""
-                  }
-                  ${expiryDate ? `<p style="margin:${discountCode ? "10px" : "0"} 0 0;font-size:11px;color:#a8a29e;font-style:italic;">Valid through ${expiryDate}</p>` : ""}
+                <td style="border:1.5px solid #1a3d35;border-radius:999px;">
+                  <a href="${ctaHref}" style="display:inline-block;padding:12px 36px;font-size:13px;font-weight:600;color:#1a3d35;text-decoration:none;letter-spacing:0.03em;white-space:nowrap;">
+                    View All Event Pieces &rarr;
+                  </a>
                 </td>
               </tr>
             </table>
           </td>
-        </tr>
-        <tr><td style="height:40px;"></td></tr>`
+        </tr>`
     : "";
 
   return `<!DOCTYPE html>
@@ -192,26 +288,15 @@ export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
   <meta name="supported-color-schemes" content="light">
   <title>${subject}</title>
   <style>
-    /* Force light-only rendering */
     :root { color-scheme: light only; }
-
-    /* Hero text always white regardless of dark mode */
     .banner-eyebrow { color: #6ee7b7 !important; -webkit-text-fill-color: #6ee7b7 !important; }
     .banner-heading { color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; }
     .banner-body    { color: rgba(255,255,255,0.88) !important; -webkit-text-fill-color: rgba(255,255,255,0.88) !important; }
     .banner-urgency { color: #fde68a !important; -webkit-text-fill-color: #fde68a !important; }
-
-    /* Gmail dark mode overrides */
-    [data-ogsc] .banner-eyebrow,
-    [data-ogsb] .banner-eyebrow { color: #6ee7b7 !important; -webkit-text-fill-color: #6ee7b7 !important; }
-    [data-ogsc] .banner-heading,
-    [data-ogsb] .banner-heading { color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; }
-    [data-ogsc] .banner-body,
-    [data-ogsb] .banner-body    { color: rgba(255,255,255,0.88) !important; -webkit-text-fill-color: rgba(255,255,255,0.88) !important; }
-    [data-ogsc] .banner-urgency,
-    [data-ogsb] .banner-urgency { color: #fde68a !important; -webkit-text-fill-color: #fde68a !important; }
-
-    /* Mobile */
+    [data-ogsc] .banner-eyebrow, [data-ogsb] .banner-eyebrow { color: #6ee7b7 !important; -webkit-text-fill-color: #6ee7b7 !important; }
+    [data-ogsc] .banner-heading, [data-ogsb] .banner-heading { color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; }
+    [data-ogsc] .banner-body,    [data-ogsb] .banner-body    { color: rgba(255,255,255,0.88) !important; -webkit-text-fill-color: rgba(255,255,255,0.88) !important; }
+    [data-ogsc] .banner-urgency, [data-ogsb] .banner-urgency { color: #fde68a !important; -webkit-text-fill-color: #fde68a !important; }
     @media only screen and (max-width: 480px) {
       .banner-heading { font-size: 30px !important; }
       .banner-body    { font-size: 15px !important; }
@@ -239,31 +324,24 @@ export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
                 <tr>
                   <td height="560" style="background:linear-gradient(to bottom,rgba(6,20,14,0.72) 0%,rgba(6,20,14,0.52) 60%,rgba(6,20,14,0.68) 100%);padding:100px 80px 96px;text-align:center;vertical-align:middle;">
 
-                    <!-- Eyebrow / brand -->
                     <p class="banner-eyebrow" style="margin:0 0 16px;font-size:14px;font-weight:700;letter-spacing:0.24em;text-transform:uppercase;color:#6ee7b7!important;-webkit-text-fill-color:#6ee7b7!important;">
                       <font color="#6ee7b7">BingBing Jade</font>
                     </p>
 
-                    <!-- Headline -->
                     <h1 class="banner-heading" style="margin:0;font-size:52px;font-weight:700;color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;letter-spacing:-0.02em;line-height:1.2;">
                       <font color="#ffffff">${headline}</font>
                     </h1>
 
-                    <!-- Intro -->
                     <p class="banner-body" style="margin:0 auto 32px;max-width:640px;font-size:17px;color:rgba(255,255,255,0.88)!important;-webkit-text-fill-color:rgba(255,255,255,0.88)!important;line-height:1.75;">
                       <font color="#e5e7eb">${intro}</font>
                     </p>
 
-                    ${
-                      urgencyLine
-                        ? `<!-- Urgency line -->
-                    <p class="banner-urgency" style="margin:0 auto 28px;font-size:12px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#fde68a!important;-webkit-text-fill-color:#fde68a!important;">
+                    ${urgencyLine
+                      ? `<p class="banner-urgency" style="margin:0 auto 28px;font-size:12px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#fde68a!important;-webkit-text-fill-color:#fde68a!important;">
                       <font color="#fde68a">${urgencyLine}</font>
                     </p>`
-                        : ""
-                    }
+                      : ""}
 
-                    <!-- CTA button -->
                     <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
                       <tr>
                         <td style="background:#ffffff;border-radius:999px;">
@@ -285,16 +363,15 @@ export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
           </td>
         </tr>
 
-        ${discountBlock}
+        ${noticeBlock}
 
-        ${
-          hasProducts
-            ? `
+        ${hasProducts
+          ? `
         <!-- ═══ PRODUCTS HEADER ═══ -->
         <tr>
           <td style="padding:52px 48px 12px;text-align:center;">
             <p style="margin:0 0 6px;font-size:13px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#6b7280;">Featured Pieces</p>
-            <h2 style="margin:0;font-size:28px;font-weight:700;color:#111827;">Selected for This Campaign</h2>
+            <h2 style="margin:0;font-size:28px;font-weight:700;color:#111827;">Selected for This ${eventPricingApplied ? "Event" : "Campaign"}</h2>
           </td>
         </tr>
 
@@ -306,12 +383,13 @@ export function buildCampaignEmailHtml(params: CampaignEmailParams): string {
             </table>
           </td>
         </tr>`
-            : ""
-        }
+          : ""}
+
+        ${secondaryCtaBlock}
 
         <!-- ═══ DIVIDER ═══ -->
         <tr>
-          <td style="padding:${hasProducts || showDiscount ? "8px" : "48px"} 32px 0;">
+          <td style="padding:${hasProducts || showNotice ? "8px" : "48px"} 32px 0;">
             <div style="height:1px;background:#f3f4f6;"></div>
           </td>
         </tr>

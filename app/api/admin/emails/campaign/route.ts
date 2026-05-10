@@ -5,6 +5,7 @@ import { resolveFirstImageUrl } from "@/lib/storage";
 import { productSlug } from "@/lib/slug";
 import { sendBulkSubscriberEmail } from "@/lib/discount-emails";
 import { buildCampaignEmailHtml } from "@/lib/campaign-email";
+import type { CampaignEmailEventProduct } from "@/lib/campaign-email";
 import type { EmailProduct } from "@/lib/product-email";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
@@ -26,7 +27,12 @@ export async function POST(req: NextRequest) {
     discountValue?: number;
     discountCode?: string;
     expiryDate?: string;
+    eventPricingApplied?: boolean;
+    allowCouponStack?: boolean;
+    eventDateRange?: string;
+    // Provide either productIds (manual selection) or campaignEventId (auto-resolve)
     productIds?: string[];
+    campaignEventId?: string;
     targetEmails?: string[] | null;
     bannerImage?: string;
   };
@@ -35,22 +41,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const subject = body.subject?.trim();
-  const headline = body.headline?.trim();
-  const intro = body.intro?.trim();
-  const ctaText = body.ctaText?.trim();
-  const ctaLink = body.ctaLink?.trim();
+  const subject    = body.subject?.trim();
+  const headline   = body.headline?.trim();
+  const intro      = body.intro?.trim();
+  const ctaText    = body.ctaText?.trim();
+  const ctaLink    = body.ctaLink?.trim();
   const bannerImage = body.bannerImage;
 
-  if (!subject)   return NextResponse.json({ error: "Subject is required." }, { status: 400 });
-  if (!headline)  return NextResponse.json({ error: "Headline is required." }, { status: 400 });
-  if (!intro)     return NextResponse.json({ error: "Intro is required." }, { status: 400 });
-  if (!ctaText)   return NextResponse.json({ error: "CTA text is required." }, { status: 400 });
-  if (!ctaLink)   return NextResponse.json({ error: "CTA link is required." }, { status: 400 });
+  if (!subject)  return NextResponse.json({ error: "Subject is required." },   { status: 400 });
+  if (!headline) return NextResponse.json({ error: "Headline is required." },  { status: 400 });
+  if (!intro)    return NextResponse.json({ error: "Intro is required." },     { status: 400 });
+  if (!ctaText)  return NextResponse.json({ error: "CTA text is required." }, { status: 400 });
+  if (!ctaLink)  return NextResponse.json({ error: "CTA link is required." }, { status: 400 });
 
-  // Resolve products (optional)
-  let products: EmailProduct[] = [];
+  // ── Resolve products ──────────────────────────────────────────────────────────
+  let products: CampaignEmailEventProduct[] = [];
+
   if (body.productIds && body.productIds.length > 0) {
+    // Manual selection: resolve products by ID (no event pricing from this path)
     const { data: raw } = await supabaseAdmin
       .from("products")
       .select("id, name, category, slug, public_id, show_price, price_display_usd, sale_price_usd, status, images")
@@ -62,7 +70,7 @@ export async function POST(req: NextRequest) {
         .filter(Boolean) as typeof raw;
 
       products = await Promise.all(
-        ordered.map(async (p) => ({
+        ordered.map(async (p): Promise<CampaignEmailEventProduct> => ({
           id: p.id,
           name: p.name,
           category: p.category,
@@ -74,6 +82,60 @@ export async function POST(req: NextRequest) {
           imageUrl: await resolveFirstImageUrl(p.images ?? []),
         }))
       );
+    }
+  } else if (body.campaignEventId) {
+    // Auto-resolve featured campaign products with event pricing
+    const { data: campaign } = await supabaseAdmin
+      .from("campaign_events")
+      .select("id, discount_type, discount_value")
+      .eq("id", body.campaignEventId)
+      .maybeSingle();
+
+    if (campaign) {
+      const { data: rows } = await supabaseAdmin
+        .from("campaign_event_products")
+        .select(`
+          event_price_usd, sort_order, is_featured_for_email,
+          products!inner (id, name, category, slug, public_id, show_price, price_display_usd, sale_price_usd, status, images)
+        `)
+        .eq("campaign_id", campaign.id)
+        .order("is_featured_for_email", { ascending: false })
+        .order("sort_order")
+        .limit(6);
+
+      if (rows && rows.length > 0) {
+        type ProductRow = {
+          id: string; name: string; category: string; slug: string; public_id: string;
+          show_price: boolean; price_display_usd: number | null; sale_price_usd: number | null;
+          status: string; images: string[];
+        };
+
+        products = await Promise.all(
+          rows.map(async (row): Promise<CampaignEmailEventProduct> => {
+            const p = row.products as unknown as ProductRow;
+            let eventPrice: number | null = null;
+            if (row.event_price_usd != null) {
+              eventPrice = Number(row.event_price_usd);
+            } else if (campaign.discount_type === "percent" && campaign.discount_value != null && p.price_display_usd != null) {
+              eventPrice = p.price_display_usd * (1 - campaign.discount_value / 100);
+            } else if (campaign.discount_type === "fixed" && campaign.discount_value != null && p.price_display_usd != null) {
+              eventPrice = Math.max(0, p.price_display_usd - campaign.discount_value);
+            }
+            return {
+              id: p.id,
+              name: p.name,
+              category: p.category,
+              slug: productSlug(p),
+              show_price: p.show_price ?? false,
+              price_display_usd: p.price_display_usd,
+              sale_price_usd: p.sale_price_usd,
+              event_price_usd: eventPrice,
+              status: p.status,
+              imageUrl: await resolveFirstImageUrl(p.images ?? []),
+            };
+          })
+        );
+      }
     }
   }
 
@@ -89,10 +151,13 @@ export async function POST(req: NextRequest) {
       discountValue: body.discountValue,
       discountCode: body.discountCode?.trim() || undefined,
       expiryDate: body.expiryDate?.trim() || undefined,
+      eventPricingApplied: body.eventPricingApplied ?? false,
+      allowCouponStack: body.allowCouponStack ?? true,
+      eventDateRange: body.eventDateRange?.trim() || undefined,
       products: products.length > 0 ? products : undefined,
       unsubscribeUrl,
       siteUrl: SITE_URL,
-      bannerImage: bannerImage,
+      bannerImage,
     });
 
   if (preview) {
@@ -120,11 +185,11 @@ export async function POST(req: NextRequest) {
     siteUrl: SITE_URL,
   });
 
-  // Auto-create coupon if a discount code was included.
-  // Uses ignoreDuplicates so an existing coupon with the same code is never overwritten.
+  // Auto-create coupon in coupon_campaigns if a code + amount were included.
+  // Skipped for campaign_event codes — those already exist in campaign_events.
   let couponCreated = false;
   const couponCode = body.discountCode?.trim().toUpperCase();
-  if (couponCode && body.discountType && body.discountValue && body.discountValue > 0) {
+  if (couponCode && body.discountType && body.discountValue && body.discountValue > 0 && !body.campaignEventId) {
     const dbDiscountType = body.discountType === "percentage" ? "percent" : "fixed";
 
     let endsAt: string | null = null;

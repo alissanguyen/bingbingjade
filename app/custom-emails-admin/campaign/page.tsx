@@ -23,7 +23,7 @@ export default async function CampaignEmailPage() {
       .is("unsubscribed_at", null),
     supabaseAdmin
       .from("campaign_events")
-      .select("id, name, slug, category, status, coupon_code, discount_type, discount_value")
+      .select("id, name, slug, category, status, coupon_code, discount_type, discount_value, allow_coupon_stack, starts_at, ends_at")
       .in("status", ["draft", "active"])
       .order("created_at", { ascending: false }),
   ]);
