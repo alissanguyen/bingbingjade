@@ -9,6 +9,17 @@ import { SubscriberPicker } from "../SubscriberPicker";
 
 export type { PickerSubscriber } from "../SubscriberPicker";
 
+export interface CampaignEventSummary {
+  id: string;
+  name: string;
+  slug: string;
+  category: string;
+  status: string;
+  coupon_code: string | null;
+  discount_type: "fixed" | "percent" | null;
+  discount_value: number | null;
+}
+
 export interface CampaignProduct {
   id: string;
   name: string;
@@ -81,12 +92,15 @@ export function CampaignClient({
   products,
   subscribers,
   subscriberCount,
+  campaignEvents = [],
 }: {
   products: CampaignProduct[];
   subscribers: import("../SubscriberPicker").PickerSubscriber[];
   subscriberCount: number;
+  campaignEvents?: CampaignEventSummary[];
 }) {
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
+  const [linkedCampaignId, setLinkedCampaignId] = useState<string>("");
   const [bannerImage, setBannerImage] = useState<string>("");
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
 
@@ -103,6 +117,27 @@ export function CampaignClient({
   const [previewing, setPreviewing] = useState(false);
   const [result, setResult] = useState<{ sent: number; failed: number; total: number; couponCreated: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  function linkCampaignEvent(campaignId: string) {
+    setLinkedCampaignId(campaignId);
+    if (!campaignId) return;
+    const ce = campaignEvents.find((c) => c.id === campaignId);
+    if (!ce) return;
+    // Auto-fill CTA link to the sale page
+    const ctaLink = `/sale/${ce.slug}`;
+    setForm((f) => ({
+      ...f,
+      ctaLink,
+      // Pre-fill coupon code if campaign has one and no code set yet
+      discountCode: ce.coupon_code ?? f.discountCode,
+      discountType: ce.coupon_code && ce.discount_type
+        ? (ce.discount_type === "percent" ? "percentage" : "fixed")
+        : f.discountType,
+      discountValue: ce.coupon_code && ce.discount_value != null
+        ? String(ce.discount_value)
+        : f.discountValue,
+    }));
+  }
 
   function selectPreset(id: string) {
     const preset = CAMPAIGN_PRESETS[id as keyof typeof CAMPAIGN_PRESETS];
@@ -254,6 +289,54 @@ export function CampaignClient({
       </p>
 
       <div className="space-y-6">
+
+        {/* ── Campaign Event Link (optional) ── */}
+        {campaignEvents.length > 0 && (
+          <section className="rounded-2xl border border-violet-200 dark:border-violet-800 bg-white dark:bg-gray-900 p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-base">🗓️</span>
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-violet-500 dark:text-violet-400">Link Campaign Event</h2>
+              <span className="text-[10px] text-gray-400 font-normal">(optional)</span>
+            </div>
+            <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-3 leading-snug">
+              Select an existing campaign event to auto-fill the CTA link, coupon code, and discount.
+              The email will direct subscribers to the campaign&rsquo;s dedicated sale page.
+            </p>
+            <select
+              value={linkedCampaignId}
+              onChange={(e) => linkCampaignEvent(e.target.value)}
+              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+            >
+              <option value="">— No campaign event linked —</option>
+              {campaignEvents.map((ce) => (
+                <option key={ce.id} value={ce.id}>
+                  {ce.name} {ce.status === "draft" ? "(Draft)" : ""}
+                </option>
+              ))}
+            </select>
+            {linkedCampaignId && (() => {
+              const ce = campaignEvents.find((c) => c.id === linkedCampaignId);
+              if (!ce) return null;
+              return (
+                <div className="mt-2 text-[11px] text-violet-600 dark:text-violet-400 flex flex-wrap gap-3">
+                  <span>CTA → /sale/{ce.slug}</span>
+                  {ce.coupon_code && <span>Code: <strong className="font-mono">{ce.coupon_code}</strong></span>}
+                  {ce.discount_type && ce.discount_value != null && (
+                    <span>{ce.discount_type === "percent" ? `${ce.discount_value}% off` : `$${ce.discount_value} off`}</span>
+                  )}
+                  <a
+                    href={`/campaigns-admin/${ce.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-violet-800 dark:hover:text-violet-300"
+                  >
+                    Manage campaign ↗
+                  </a>
+                </div>
+              );
+            })()}
+          </section>
+        )}
 
         {/* ── STEP 1: Campaign Type ── */}
         <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">

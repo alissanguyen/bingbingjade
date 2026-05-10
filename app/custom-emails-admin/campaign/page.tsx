@@ -1,10 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { productSlug } from "@/lib/slug";
 import { resolveFirstImageUrl } from "@/lib/storage";
-import { CampaignClient, type CampaignProduct, type PickerSubscriber } from "./CampaignClient";
+import { CampaignClient, type CampaignProduct, type PickerSubscriber, type CampaignEventSummary } from "./CampaignClient";
 
 export default async function CampaignEmailPage() {
-  const [{ data: raw }, { data: subs }, { count }] = await Promise.all([
+  const [{ data: raw }, { data: subs }, { count }, { data: campaignEvents }] = await Promise.all([
     supabaseAdmin
       .from("products")
       .select("id, name, category, slug, public_id, price_display_usd, sale_price_usd, status, images, created_at")
@@ -21,6 +21,11 @@ export default async function CampaignEmailPage() {
       .from("email_subscribers")
       .select("id", { count: "exact", head: true })
       .is("unsubscribed_at", null),
+    supabaseAdmin
+      .from("campaign_events")
+      .select("id, name, slug, category, status, coupon_code, discount_type, discount_value")
+      .in("status", ["draft", "active"])
+      .order("created_at", { ascending: false }),
   ]);
 
   const products: CampaignProduct[] = await Promise.all(
@@ -42,6 +47,7 @@ export default async function CampaignEmailPage() {
       products={products}
       subscribers={(subs ?? []) as PickerSubscriber[]}
       subscriberCount={count ?? 0}
+      campaignEvents={(campaignEvents ?? []) as CampaignEventSummary[]}
     />
   );
 }

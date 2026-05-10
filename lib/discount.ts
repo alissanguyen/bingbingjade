@@ -33,7 +33,7 @@ export function computeTieredDiscountCents(subtotalCents: number): number {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type DiscountSource = "welcome" | "referral" | "campaign" | "store_credit";
+export type DiscountSource = "welcome" | "referral" | "campaign" | "campaign_event" | "store_credit";
 
 export interface DiscountResult {
   valid: true;
@@ -43,6 +43,7 @@ export interface DiscountResult {
   displayMessage: string;
   // For webhook to commit the discount:
   campaignId?: string;
+  campaignEventId?: string; // for campaign_event source — no redemption tracking needed
   referrerCustomerId?: string;
   referralCode?: string;
   subscriberCouponCode?: string; // welcome coupon code used
@@ -291,6 +292,53 @@ async function validateSubscriberCoupon(
   };
 }
 
+// ── Campaign event coupon discount ────────────────────────────────────────────
+
+async function validateCampaignEventDiscount(
+  code: string,
+  subtotalCents: number
+): Promise<DiscountValidation> {
+  const upperCode = code.trim().toUpperCase();
+  const now = new Date().toISOString();
+
+  const { data: campaign } = await supabaseAdmin
+    .from("campaign_events")
+    .select("id, name, slug, status, discount_type, discount_value, starts_at, ends_at")
+    .eq("coupon_code", upperCode)
+    .maybeSingle();
+
+  if (!campaign) return { valid: false, error: "Invalid discount code." };
+  if (campaign.status !== "active") {
+    return { valid: false, error: "This campaign event is not currently active." };
+  }
+  if (campaign.starts_at && new Date(campaign.starts_at) > new Date(now)) {
+    return { valid: false, error: "This campaign event has not started yet." };
+  }
+  if (campaign.ends_at && new Date(campaign.ends_at) < new Date(now)) {
+    return { valid: false, error: "This campaign event has ended." };
+  }
+  if (!campaign.discount_type || campaign.discount_value == null) {
+    return { valid: false, error: "This campaign code does not include a discount." };
+  }
+
+  let discountAmountCents: number;
+  if (campaign.discount_type === "percent") {
+    discountAmountCents = Math.round(subtotalCents * (campaign.discount_value / 100));
+  } else {
+    discountAmountCents = Math.round(campaign.discount_value * 100);
+  }
+  discountAmountCents = Math.min(discountAmountCents, subtotalCents);
+
+  return {
+    valid: true,
+    source: "campaign_event",
+    discountAmountCents,
+    subtotalBeforeDiscountCents: subtotalCents,
+    displayMessage: `${campaign.name} — $${(discountAmountCents / 100).toFixed(2)} off`,
+    campaignEventId: campaign.id,
+  };
+}
+
 // ── Campaign coupon discount ──────────────────────────────────────────────────
 
 async function validateCampaignDiscount(
@@ -462,7 +510,11 @@ export async function validateDiscount(params: {
     const subscriberResult = await validateSubscriberCoupon(code, email, subtotalCents);
     if (subscriberResult.valid) return subscriberResult;
 
-    // 3. Try campaign coupon
+    // 3. Try campaign event coupon (holiday/event sale codes)
+    const campaignEventResult = await validateCampaignEventDiscount(code, subtotalCents);
+    if (campaignEventResult.valid) return campaignEventResult;
+
+    // 4. Try campaign coupon (coupon_campaigns table)
     const campaignResult = await validateCampaignDiscount(code, email, subtotalCents);
     if (campaignResult.valid) return campaignResult;
 
@@ -545,6 +597,12 @@ export async function commitDiscount(params: {
         .is("welcome_discount_redeemed_at", null);
     }
     return { potentialAbuse };
+  }
+
+  if (params.source === "campaign_event") {
+    // Campaign events don't track per-redemption — no DB commit needed.
+    // The event pricing is enforced at the sale page and checkout display level.
+    return {};
   }
 
   if (params.source === "campaign" && params.campaignId) {
