@@ -502,6 +502,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
           {product.blemishes && (
             <Accordion label="Blemishes">
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">{product.blemishes}</p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap mt-1 italic">Because every jade piece is unique, please confirm with us before checkout so we can personally review the latest photos/videos, sizing, availability, and piece-specific details for your selected piece.</p>
             </Accordion>
           )}
           {product.sku && (
