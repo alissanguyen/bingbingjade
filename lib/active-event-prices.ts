@@ -64,11 +64,11 @@ export async function getActiveEventPrices(
 
     let computedBasePrice: number | null = null;
     if (explicitPrice != null) {
-      computedBasePrice = explicitPrice;
+      computedBasePrice = Math.round(explicitPrice);
     } else if (ce.discount_type === "percent" && ce.discount_value != null && base != null) {
-      computedBasePrice = Math.max(0, base * (1 - ce.discount_value / 100));
+      computedBasePrice = Math.round(Math.max(0, base * (1 - ce.discount_value / 100)));
     } else if (ce.discount_type === "fixed" && ce.discount_value != null && base != null) {
-      computedBasePrice = Math.max(0, base - ce.discount_value);
+      computedBasePrice = Math.round(Math.max(0, base - ce.discount_value));
     }
 
     if (computedBasePrice == null || computedBasePrice <= 0) continue;

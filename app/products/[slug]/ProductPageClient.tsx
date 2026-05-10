@@ -277,12 +277,12 @@ export function ProductPageClient({ product, productImages, productVideos, optio
           {eventPrice != null && !requiresInquiry(eventPrice) ? (
             <>
               <span className={`text-xl sm:text-2xl font-semibold ${isProductSold ? "text-gray-400 dark:text-gray-600" : "text-amber-600 dark:text-amber-400"}`}>
-                {`$${Number(eventPrice).toFixed(2)}`}
+                {`$${Math.round(Number(eventPrice)).toLocaleString()}`}
               </span>
               {effectiveDisplayPrice != null && !requiresInquiry(effectiveDisplayPrice) && (
                 <>
                   <span className="text-lg text-gray-400 line-through">
-                    {`$${Number(effectiveDisplayPrice).toFixed(2)}`}
+                    {`$${Math.round(Number(effectiveDisplayPrice)).toLocaleString()}`}
                   </span>
                   <span className="rounded-full px-2.5 py-0.5 text-xs sm:text-sm font-semibold text-white shadow-sm bg-amber-600/80">
                     −{Math.round((1 - eventPrice / effectiveDisplayPrice) * 100)}%
