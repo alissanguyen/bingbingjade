@@ -115,6 +115,7 @@ interface ProductOption {
   id: string;
   label: string | null;
   price_usd: number | null;
+  sale_price_usd: number | null;
   status: string;
 }
 
@@ -123,6 +124,7 @@ interface ProductChoice {
   name: string;
   status: string;
   price_display_usd: number | null;
+  sale_price_usd: number | null;
   images: string[] | null;
   product_options: ProductOption[];
 }
@@ -873,7 +875,10 @@ export function OrdersAdminClient() {
                                     type="button"
                                     onMouseDown={(e) => e.preventDefault()}
                                     onClick={() => {
-                                      const firstPrice = p.product_options[0]?.price_usd ?? p.price_display_usd;
+                                      const firstOpt = p.product_options[0];
+                                      const firstPrice = firstOpt
+                                        ? (firstOpt.sale_price_usd ?? firstOpt.price_usd)
+                                        : (p.sale_price_usd ?? p.price_display_usd);
                                       setItems((prev) => prev.map((it, idx) => {
                                         if (idx !== i) return it;
                                         return {
@@ -919,7 +924,7 @@ export function OrdersAdminClient() {
                               value={item.optionId}
                               onChange={(e) => {
                                 const opt = availableOptions.find((o) => o.id === e.target.value);
-                                const resolvedPrice = opt?.price_usd ?? selectedProduct?.price_display_usd;
+                                const resolvedPrice = (opt?.sale_price_usd ?? opt?.price_usd) ?? (selectedProduct?.sale_price_usd ?? selectedProduct?.price_display_usd);
                                 setItems((prev) => prev.map((it, idx) => {
                                   if (idx !== i) return it;
                                   return {
@@ -935,7 +940,7 @@ export function OrdersAdminClient() {
                               <option value="">— select option —</option>
                               {availableOptions.map((o) => (
                                 <option key={o.id} value={o.id}>
-                                  {o.label ?? "Untitled"}{o.price_usd != null ? ` — $${o.price_usd}` : ""}
+                                  {o.label ?? "Untitled"}{o.sale_price_usd != null ? ` — $${o.sale_price_usd} (sale)` : o.price_usd != null ? ` — $${o.price_usd}` : ""}
                                 </option>
                               ))}
                             </select>

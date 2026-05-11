@@ -14,11 +14,13 @@ export async function GET() {
       name,
       status,
       price_display_usd,
+      sale_price_usd,
       images,
       product_options (
         id,
         label,
         price_usd,
+        sale_price_usd,
         status
       )
     `)
