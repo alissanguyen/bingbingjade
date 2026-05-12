@@ -65,8 +65,12 @@ export function AnnouncementBanner() {
     try { if (sessionStorage.getItem(DISMISS_KEY) === "1") { setDismissed(true); return; } } catch { }
     fetch("/api/banner")
       .then((r) => r.json())
-      .then((data) => { if (data?.is_active) setConfig(data as BannerConfig); })
-      .catch(() => { });
+      .then((data) => {
+        if (data?.is_active) setConfig(data as BannerConfig);
+      })
+      .catch((err) => {
+        console.error("[AnnouncementBanner] fetch failed:", err);
+      });
   }, []);
 
   const messages = Array.isArray(config?.messages) ? config!.messages.filter(Boolean) : [];
