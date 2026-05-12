@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const MAINTENANCE_ENABLED = process.env.MAINTENANCE_MODE === "true";
+const RETRY_AFTER_SECONDS = "1800";
+
 const PROTECTED = [
   "/add",
   "/addvendor",
@@ -13,10 +16,38 @@ const PROTECTED = [
   "/sourcing-admin"
 ];
 
+const MAINTENANCE_ALLOWED = [
+  "/maintenance",
+  "/_next",
+  "/images",
+  "/fonts",
+  "/favicon.ico",
+  "/robots.txt",
+  "/sitemap.xml",
+  "/admin",
+  "/admin-login",
+  "/approved-login",
+  "/orders-admin",
+  "/products-admin",
+  "/customers-admin",
+  "/approved-users",
+  "/sourcing-admin",
+  "/api",
+  "/add",
+  "/addvendor",
+  "/edit",
+  "/editvendor",
+  "/vendors"
+];
+
 function isLocalhost(hostname: string) {
   return (
     hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1"
   );
+}
+
+function matchesPrefix(pathname: string, prefixes: string[]) {
+  return prefixes.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
 
 export function middleware(request: NextRequest) {
@@ -33,9 +64,16 @@ export function middleware(request: NextRequest) {
     return res;
   }
 
-  const isProtected = PROTECTED.some(
-    (p) => pathname === p || pathname.startsWith(p + "/")
-  );
+  if (MAINTENANCE_ENABLED && !matchesPrefix(pathname, MAINTENANCE_ALLOWED)) {
+    const maintenanceUrl = new URL("/maintenance", request.url);
+    const res = NextResponse.redirect(maintenanceUrl, 307);
+    res.headers.set("Retry-After", RETRY_AFTER_SECONDS);
+    res.headers.set("Cache-Control", "no-store");
+    res.headers.set("x-pathname", pathname);
+    return res;
+  }
+
+  const isProtected = matchesPrefix(pathname, PROTECTED);
 
   if (!isProtected) {
     const res = NextResponse.next();
@@ -72,5 +110,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"]
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"]
 };
