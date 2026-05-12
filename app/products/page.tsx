@@ -39,6 +39,25 @@ interface ProductCard {
   public_id: string;
 }
 
+interface ProductListRow {
+  id: string;
+  name: string;
+  category: string;
+  origin: string;
+  color: string[] | null;
+  tier: string[];
+  size: number;
+  price_display_usd: number | null;
+  sale_price_usd: number | null;
+  show_price: boolean;
+  is_featured: boolean;
+  is_published: boolean;
+  quick_ship: boolean;
+  status: string;
+  slug: string;
+  public_id: string;
+}
+
 interface OptionPriceRow {
   product_id: string;
   price_usd: number | null;
@@ -69,6 +88,11 @@ import { ProductCardLink } from "./ProductCardLink";
 
 export const revalidate = 120;
 
+const PRODUCT_LIST_SELECT = "id, name, category, origin, color, tier, size, price_display_usd, sale_price_usd, show_price, is_featured, status, slug, public_id, is_published, quick_ship";
+const PRODUCT_CARD_SELECT = `${PRODUCT_LIST_SELECT}, images, description`;
+const PAGE_SIZE = 18;
+const PAGE_WINDOW_SIZE = PAGE_SIZE * 3;
+
 export default async function Products({
   searchParams,
 }: {
@@ -86,31 +110,30 @@ export default async function Products({
   const minPrice = params.minPrice ? Number(params.minPrice) : null;
   const maxPrice = params.maxPrice ? Number(params.maxPrice) : null;
   const sort = params.sort ?? "";
-  const PAGE_SIZE = 18;
   const currentPage = Math.max(1, Number(params.page ?? "1"));
 
   const isDev = process.env.NODE_ENV === "development";
 
   const productsQuery = supabase
     .from("products")
-    .select("id, name, category, origin, images, color, tier, size, price_display_usd, sale_price_usd, show_price, description, is_featured, status, slug, public_id, is_published, quick_ship")
+    .select(PRODUCT_LIST_SELECT)
     .order("created_at", { ascending: false });
 
   if (!isDev) productsQuery.eq("is_published", true);
 
-  const optionsQuery = supabase
-    .from("product_options")
-    .select("product_id, price_usd, sale_price_usd, status")
-    .returns<OptionPriceRow[]>();
+  const { data: allProducts, error } = await productsQuery.returns<ProductListRow[]>();
+  const allProductsList = allProducts ?? [];
 
-  const [{ data: allProducts, error }, { data: allOptions }] = await Promise.all([
-    productsQuery,
-    optionsQuery,
-  ]);
+  const priceSensitive = sort === "price_asc" || sort === "price_desc" || minPrice !== null || maxPrice !== null;
+  const allOptions = priceSensitive
+    ? (await supabase
+        .from("product_options")
+        .select("product_id, price_usd, sale_price_usd, status")
+        .returns<OptionPriceRow[]>()).data ?? []
+    : [];
 
-  // Fetch active campaign event prices for all products in one query.
-  const allProductIds = ((allProducts as ProductCard[] | null) ?? []).map((p) => p.id);
-  const eventPrices = await getActiveEventPrices(allProductIds);
+  const allProductIds = allProductsList.map((p) => p.id);
+  const allEventPrices = priceSensitive ? await getActiveEventPrices(allProductIds) : new Map();
 
   if (error) {
     console.error("Failed to load products:", error.message);
@@ -118,7 +141,7 @@ export default async function Products({
 
   // Build option map: productId → options[]
   const optionMap = new Map<string, OptionPriceRow[]>();
-  for (const opt of allOptions ?? []) {
+  for (const opt of allOptions) {
     const arr = optionMap.get(opt.product_id) ?? [];
     arr.push(opt);
     optionMap.set(opt.product_id, arr);
@@ -137,14 +160,18 @@ export default async function Products({
 
   // Effective sort price: event price → sale price → min variant → display price
   function effectiveSortPrice(p: ProductCard): number {
-    const ep = eventPrices.get(p.id)?.computedBasePrice ?? null;
+    const ep = allEventPrices.get(p.id)?.computedBasePrice ?? null;
     if (ep != null) return ep;
     if (p.status === "on_sale" && p.sale_price_usd != null) return p.sale_price_usd;
     const vp = getVariantPrices(p);
     return vp.length > 0 ? Math.min(...vp) : (p.price_display_usd ?? Infinity);
   }
 
-  const products = (allProducts as ProductCard[] | null)?.filter((p) => {
+  const products = allProductsList.map((p): ProductCard => ({
+    ...p,
+    images: [],
+    description: null,
+  })).filter((p) => {
     // Search filter
     if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     // Category filter
@@ -191,7 +218,7 @@ export default async function Products({
       }
     }
     return true;
-  }) ?? [];
+  });
 
   // Sort / arrange into the final display order
   let sorted: ProductCard[];
@@ -244,8 +271,8 @@ export default async function Products({
     }
   }
 
-  // Compute counts scoped to the selected category (or all if none selected)
-  const allProductsList = (allProducts as ProductCard[] | null) ?? [];
+  // Compute counts from the lightweight product list scoped to the selected category.
+  // The image-bearing card rows are loaded later only for a 3-page window.
   const countBase = selectedCategory
     ? allProductsList.filter((p) => p.category === selectedCategory)
     : allProductsList;
@@ -266,7 +293,42 @@ export default async function Products({
   const totalCount = sorted.length;
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
   const safePage = Math.min(currentPage, Math.max(1, totalPages));
-  const paginated = sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const pageWindowStart = Math.floor((safePage - 1) / 3) * PAGE_WINDOW_SIZE;
+  const pageWindowEnd = Math.min(pageWindowStart + PAGE_WINDOW_SIZE, totalCount);
+  const windowProducts = sorted.slice(pageWindowStart, pageWindowEnd);
+  const windowIds = windowProducts.map((p) => p.id);
+
+  const [{ data: cardRows }, { data: visibleOptions }, visibleEventPrices] = windowIds.length > 0
+    ? await Promise.all([
+        supabase
+          .from("products")
+          .select(PRODUCT_CARD_SELECT)
+          .in("id", windowIds)
+          .returns<ProductCard[]>(),
+        priceSensitive
+          ? Promise.resolve({ data: allOptions.filter((o) => windowIds.includes(o.product_id)) })
+          : supabase
+              .from("product_options")
+              .select("product_id, price_usd, sale_price_usd, status")
+              .in("product_id", windowIds)
+              .returns<OptionPriceRow[]>(),
+        getActiveEventPrices(windowIds),
+      ])
+    : [{ data: [] as ProductCard[] }, { data: [] as OptionPriceRow[] }, new Map()];
+
+  if (!priceSensitive) {
+    for (const opt of visibleOptions ?? []) {
+      const arr = optionMap.get(opt.product_id) ?? [];
+      arr.push(opt);
+      optionMap.set(opt.product_id, arr);
+    }
+  }
+
+  const cardRowMap = new Map((cardRows ?? []).map((p) => [p.id, p]));
+  const windowProductsWithCards = windowProducts.map((p) => cardRowMap.get(p.id) ?? p);
+  const pageOffsetInWindow = (safePage - 1) * PAGE_SIZE - pageWindowStart;
+  const paginated = windowProductsWithCards.slice(pageOffsetInWindow, pageOffsetInWindow + PAGE_SIZE);
+  const eventPrices = priceSensitive ? allEventPrices : visibleEventPrices;
 
   // Resolve public URLs for the first two images of each paginated product
   // (ProductCardImage uses images[0] and images[1] for the hover slide effect).
