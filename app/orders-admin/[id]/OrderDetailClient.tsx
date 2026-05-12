@@ -789,7 +789,7 @@ export function OrderDetailClient({
                   optionLabel: item.option_label ?? "",
                   price: String(item.price_usd ?? ""),
                   quantity: String(item.quantity),
-                }))).map((draft, idx) => {
+                })) as DraftItem[]).map((draft, idx) => {
                   const item = order.order_items.find((i) => i.id === draft.id);
                   const imgSrc = item?.product_id ? productImages[item.product_id] : "";
                   const cogs = item?.product_id ? productCogs[item.product_id] : undefined;
