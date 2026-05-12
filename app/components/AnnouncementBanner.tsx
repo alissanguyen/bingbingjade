@@ -176,8 +176,8 @@ export function AnnouncementBanner() {
   const duration = Math.max(14, estimatedPx / 75);
 
   // One complete pass of all messages with separators
-  const TickerPass = ({ ariaHidden }: { ariaHidden?: boolean }) => (
-    <div className="inline-flex items-center shrink-0" aria-hidden={ariaHidden}>
+  const tickerPassContent = (
+    <div className="inline-flex items-center shrink-0">
       {messages.map((m, i) => (
         <span key={i} className="inline-flex items-center">
           <span
@@ -221,8 +221,8 @@ export function AnnouncementBanner() {
             className="banner-ticker-track inline-flex items-center h-full"
             style={{ animationDuration: `${duration}s` }}
           >
-            <TickerPass />
-            <TickerPass ariaHidden />
+            {tickerPassContent}
+            <div aria-hidden className="inline-flex items-center shrink-0">{tickerPassContent}</div>
           </div>
           {/* Right-edge fade so text doesn't hard-cut at the dismiss button */}
           <div
