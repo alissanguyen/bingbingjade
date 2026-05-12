@@ -112,7 +112,7 @@ export function AnnouncementBanner() {
           <span className="text-[10px] tracking-widest hidden sm:block" style={{ color: `${style.accentColor}90` }}>·</span>
           <div className="flex flex-row gap-2 sm:gap-3 items-center">
             <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: style.accentColor }}>
-              {config.countdown_label ?? config.countdown_label}
+              {config.countdown_label ?? "Starting in"}
             </span>
             <div className="flex items-center gap-1.5">
               {countdown.d > 0 && (
@@ -129,7 +129,7 @@ export function AnnouncementBanner() {
             </div>
           </div>
         </div>
-        <div className="absolute right-3 top-1/2 -translate-y-1/2"><DismissBtn /></div>
+        <div className="absolute right-3 top-1/2 -translate-y-1/2">{dismissBtn}</div>
       </div>
     );
   }
@@ -150,7 +150,7 @@ export function AnnouncementBanner() {
             </Link>
           )}
         </div>
-        <div className="absolute right-3 top-1/2 -translate-y-1/2"><DismissBtn /></div>
+        <div className="absolute right-3 top-1/2 -translate-y-1/2">{dismissBtn}</div>
       </div>
     );
   }
@@ -226,7 +226,7 @@ export function AnnouncementBanner() {
 
         {/* Dismiss — outside the overflow container so it's always visible */}
         <div className="shrink-0 px-3 flex items-center h-10" style={{ backgroundColor: style.backgroundColor }}>
-          <DismissBtn />
+          {dismissBtn}
         </div>
       </div>
     </div>
