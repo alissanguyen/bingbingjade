@@ -14,6 +14,7 @@ import { AnnouncementBanner } from "./components/AnnouncementBanner";
 import { WhatsAppFloatingButton } from "./components/WhatsAppFloatingButton";
 import { RefCapture } from "./components/RefCapture";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Suspense } from "react";
 import "./globals.css";
 
@@ -215,6 +216,7 @@ export default async function RootLayout({
         `}</Script>
         <AnalyticsPageView />
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

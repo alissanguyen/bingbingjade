@@ -23,6 +23,7 @@
     "@stripe/stripe-js": "^8.11.0",
     "@supabase/supabase-js": "^2.99.1",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
     "nanoid": "^5.1.7",
     "next": "16.1.6",
     "next-sanity": "^12.2.2",
