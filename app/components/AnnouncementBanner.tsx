@@ -22,8 +22,8 @@ function useCountdown(startDate: string | null): TimeLeft | null {
 // ── Countdown flip digits ─────────────────────────────────────────────────────
 
 function SlideDigit({ digit, accentColor }: { digit: string; accentColor: string }) {
-  const [cur, setCur]        = useState(digit);
-  const [next, setNext]      = useState(digit);
+  const [cur, setCur] = useState(digit);
+  const [next, setNext] = useState(digit);
   const [animating, setAnim] = useState(false);
   useEffect(() => {
     if (digit === cur) return;
@@ -31,7 +31,7 @@ function SlideDigit({ digit, accentColor }: { digit: string; accentColor: string
     setAnim(true);
     const t = setTimeout(() => { setCur(digit); setAnim(false); }, 280);
     return () => clearTimeout(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [digit]);
   return (
     <div className="fc-card" style={{ background: "rgba(0,0,0,0.22)" }}>
@@ -61,16 +61,19 @@ export function AnnouncementBanner() {
 
   useEffect(() => {
     setMounted(true);
-    try { setReducedMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch {}
-    try { if (sessionStorage.getItem(DISMISS_KEY) === "1") { setDismissed(true); return; } } catch {}
+    try { setReducedMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch { }
+    try { if (sessionStorage.getItem(DISMISS_KEY) === "1") { setDismissed(true); return; } } catch { }
     fetch("/api/banner")
       .then((r) => r.json())
       .then((data) => { if (data?.is_active) setConfig(data as BannerConfig); })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const messages = Array.isArray(config?.messages) ? config!.messages.filter(Boolean) : [];
-  const countdown = useCountdown(config?.start_date ?? null);
+  const countdownDate = config?.countdown_label === "Ends in"
+    ? (config?.end_date ?? null)
+    : (config?.start_date ?? null);
+  const countdown = useCountdown(countdownDate);
   const isCountdown = !!countdown;
 
   if (!mounted || !config || dismissed || messages.length === 0) return null;
@@ -80,7 +83,7 @@ export function AnnouncementBanner() {
   const hasCta = !!(config.cta_text && config.cta_link);
 
   const dismiss = () => {
-    try { sessionStorage.setItem(DISMISS_KEY, "1"); } catch {}
+    try { sessionStorage.setItem(DISMISS_KEY, "1"); } catch { }
     setDismissed(true);
   };
 
@@ -105,26 +108,28 @@ export function AnnouncementBanner() {
   if (isCountdown) {
     return (
       <div className="relative w-full select-none" style={bannerStyle}>
-        <div className="flex items-center justify-center gap-2 sm:gap-3 px-10 py-2.5 min-h-[2.5rem]">
+        <div className="flex items-center justify-center flex-col sm:flex-row gap-2 sm:gap-3 px-10 py-2.5 min-h-10">
           <span className="text-xs sm:text-[13px] font-medium tracking-[0.04em]" style={{ color: style.textColor }}>
             {messages[0]}
           </span>
-          <span className="text-[10px] tracking-widest" style={{ color: `${style.accentColor}90` }}>·</span>
-          <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: style.accentColor }}>
-            {config.countdown_label ?? "Starting in"}
-          </span>
-          <div className="flex items-center gap-1.5">
-            {countdown.d > 0 && (
-              <><SlideUnit value={countdown.d} accentColor={style.accentColor} /><span className="text-[10px] font-medium" style={{ color: `${style.textColor}60` }}>d</span></>
-            )}
-            {(countdown.d > 0 || countdown.h > 0) && (
-              <><SlideUnit value={countdown.h} accentColor={style.accentColor} /><span className="text-[10px] font-medium" style={{ color: `${style.textColor}60` }}>h</span></>
-            )}
-            <SlideUnit value={countdown.m} accentColor={style.accentColor} />
-            <span className="text-[10px] font-medium" style={{ color: `${style.textColor}60` }}>m</span>
-            {countdown.d === 0 && (
-              <><SlideUnit value={countdown.s} accentColor={style.accentColor} /><span className="text-[10px] font-medium" style={{ color: `${style.textColor}60` }}>s</span></>
-            )}
+          <span className="text-[10px] tracking-widest hidden sm:block" style={{ color: `${style.accentColor}90` }}>·</span>
+          <div className="flex flex-row gap-2 sm:gap-3 items-center">
+            <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: style.accentColor }}>
+              {config.countdown_label ?? "Starting in"}
+            </span>
+            <div className="flex items-center gap-1.5">
+              {countdown.d > 0 && (
+                <><SlideUnit value={countdown.d} accentColor={style.accentColor} /><span className="text-[10px] font-medium" style={{ color: `${style.textColor}60` }}>d</span></>
+              )}
+              {(countdown.d > 0 || countdown.h > 0) && (
+                <><SlideUnit value={countdown.h} accentColor={style.accentColor} /><span className="text-[10px] font-medium" style={{ color: `${style.textColor}60` }}>h</span></>
+              )}
+              <SlideUnit value={countdown.m} accentColor={style.accentColor} />
+              <span className="text-[10px] font-medium" style={{ color: `${style.textColor}60` }}>m</span>
+              {countdown.d === 0 && (
+                <><SlideUnit value={countdown.s} accentColor={style.accentColor} /><span className="text-[10px] font-medium" style={{ color: `${style.textColor}60` }}>s</span></>
+              )}
+            </div>
           </div>
         </div>
         <div className="absolute right-3 top-1/2 -translate-y-1/2"><DismissBtn /></div>
@@ -186,7 +191,7 @@ export function AnnouncementBanner() {
               style={{ color: style.accentColor, borderColor: `${style.accentColor}50` }}
             >
               {config.cta_text}
-              <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </Link>
           ) : (
             <span

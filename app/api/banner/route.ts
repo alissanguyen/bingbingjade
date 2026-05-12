@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const { data } = await supabaseAdmin
       .from("site_banners")
-      .select("is_active, preset, messages, start_date, end_date, cta_text, cta_link, style")
+      .select("is_active, preset, messages, start_date, end_date, countdown_label, cta_text, cta_link, style")
       .eq("id", "main")
       .maybeSingle();
 
