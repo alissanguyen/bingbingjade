@@ -128,6 +128,13 @@ export function AnnouncementBanner() {
               )}
             </div>
           </div>
+          {hasCta && (
+            <Link href={config.cta_link!}
+              className="hidden sm:inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-wider border-b pb-px hover:opacity-70 transition-opacity"
+              style={{ color: style.accentColor, borderColor: `${style.accentColor}50` }}>
+              {config.cta_text}
+            </Link>
+          )}
         </div>
         <div className="absolute right-3 top-1/2 -translate-y-1/2">{dismissBtn}</div>
       </div>

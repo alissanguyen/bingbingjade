@@ -211,7 +211,7 @@ export function BannerManager() {
         {/* 3. CTA */}
         <div>
           <label className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500 mb-2">
-            Call to Action <span className="normal-case font-normal">(optional — hidden during countdown)</span>
+            Call to Action <span className="normal-case font-normal">(optional)</span>
           </label>
           <div className="flex gap-2">
             <input
