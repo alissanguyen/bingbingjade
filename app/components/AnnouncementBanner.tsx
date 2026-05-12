@@ -70,10 +70,7 @@ export function AnnouncementBanner() {
   }, []);
 
   const messages = Array.isArray(config?.messages) ? config!.messages.filter(Boolean) : [];
-  const countdownDate = config?.countdown_label === "Ends in"
-    ? (config?.end_date ?? null)
-    : (config?.start_date ?? null);
-  const countdown = useCountdown(countdownDate);
+  const countdown = useCountdown(config?.start_date ?? null);
   const isCountdown = !!countdown;
 
   if (!mounted || !config || dismissed || messages.length === 0) return null;
