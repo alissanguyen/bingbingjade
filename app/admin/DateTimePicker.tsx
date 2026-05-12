@@ -125,8 +125,8 @@ export function DateTimePicker({ value, onChange }: Props) {
               onChange={(e) => handleMinute(Number(e.target.value))}
               className="px-2 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             >
-              {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((m) => (
-                <option key={m} value={m}>{pad(m)}</option>
+              {Array.from({ length: 60 }, (_, i) => (
+                <option key={i} value={i}>{pad(i)}</option>
               ))}
             </select>
 

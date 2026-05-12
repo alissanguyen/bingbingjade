@@ -11,7 +11,7 @@ export async function GET() {
 
   const { data } = await supabaseAdmin
     .from("site_banners")
-    .select("id, is_active, preset, messages, start_date, end_date, cta_text, cta_link, style")
+    .select("id, is_active, preset, messages, start_date, end_date, countdown_label, cta_text, cta_link, style")
     .eq("id", "main")
     .maybeSingle();
 
@@ -53,7 +53,8 @@ export async function POST(req: NextRequest) {
         preset:     typeof body.preset === "string" ? body.preset : "custom",
         messages,
         start_date: typeof body.start_date === "string" && body.start_date ? body.start_date : null,
-        end_date:   typeof body.end_date   === "string" && body.end_date   ? body.end_date   : null,
+        end_date:        typeof body.end_date        === "string" && body.end_date        ? body.end_date        : null,
+        countdown_label: body.countdown_label === "Starting in" || body.countdown_label === "Ends in" ? body.countdown_label : null,
         cta_text:   typeof body.cta_text   === "string" && body.cta_text   ? body.cta_text.trim()  : null,
         cta_link:   typeof body.cta_link   === "string" && body.cta_link   ? body.cta_link.trim()  : null,
         style,
