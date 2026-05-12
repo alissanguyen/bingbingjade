@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { resolveImageUrls, resolveVideoUrls, isStoragePath } from "@/lib/storage";

@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { VendorList } from "./VendorList";
 import { AdminBarServer } from "@/app/components/AdminBarServer";

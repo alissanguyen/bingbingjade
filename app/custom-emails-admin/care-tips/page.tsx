@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { CareTipsClient, type DeliveredOrder } from "./CareTipsClient";
 

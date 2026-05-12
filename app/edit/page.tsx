@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { resolveImageUrls, isStoragePath } from "@/lib/storage";
 import { ProductSearch } from "./ProductSearch";

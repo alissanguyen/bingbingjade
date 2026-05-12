@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { redirect } from "next/navigation";
 import { getSessionUser, isApproved } from "@/lib/approved-auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";

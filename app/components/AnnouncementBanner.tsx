@@ -145,7 +145,7 @@ export function AnnouncementBanner() {
   if (reducedMotion) {
     return (
       <div className="relative w-full select-none" style={bannerStyle}>
-        <div className="flex items-center justify-center gap-3 sm:gap-5 px-10 py-2.5 min-h-[2.5rem]">
+        <div className="flex items-center justify-center gap-3 sm:gap-5 px-10 py-2.5 min-h-10">
           <span className="text-xs sm:text-[13px] font-medium tracking-[0.04em] text-center" style={{ color: style.textColor }}>
             {messages[0]}
           </span>

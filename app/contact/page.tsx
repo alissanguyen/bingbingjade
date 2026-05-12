@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import Image from "next/image";
 import { ContactForm } from "./ContactForm";
 import { supabase } from "@/lib/supabase";
