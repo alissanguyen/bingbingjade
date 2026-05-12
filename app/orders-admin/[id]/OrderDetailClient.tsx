@@ -206,6 +206,10 @@ export function OrderDetailClient({
   const [deletedItemIds, setDeletedItemIds] = useState<string[]>([]);
   const [savingItems, setSavingItems] = useState(false);
 
+  // Modal item editing state (shared with Edit Order Info modal)
+  const [editModalItems, setEditModalItems] = useState<DraftItem[]>([]);
+  const [editModalDeletedIds, setEditModalDeletedIds] = useState<string[]>([]);
+
   // Shipments state
   const [shipments, setShipments] = useState<Shipment[]>((initialOrder.shipments ?? []) as Shipment[]);
   const [shipmentDrafts, setShipmentDrafts] = useState<Record<string, { carrier: string; tracking_number: string; tracking_url: string; estimated_delivery_start: string; estimated_delivery_end: string }>>({});
@@ -376,6 +380,20 @@ export function OrderDetailClient({
         if (editFeeOtherLabel.trim()) fees.otherLabel = editFeeOtherLabel.trim();
       }
 
+      const existingModalItems = editModalItems.filter((d) => !d.isNew).map((d) => ({
+        id: d.id,
+        product_name: d.productName.trim(),
+        option_label: d.optionLabel.trim() || null,
+        price_usd: parseFloat(d.price) || 0,
+        quantity: parseInt(d.quantity) || 1,
+      }));
+      const newModalItems = editModalItems.filter((d) => d.isNew).map((d) => ({
+        product_name: d.productName.trim(),
+        option_label: d.optionLabel.trim() || null,
+        price_usd: parseFloat(d.price) || 0,
+        quantity: parseInt(d.quantity) || 1,
+      }));
+
       const body: Record<string, unknown> = {
         customerName: editName,
         customerEmail: editEmail,
@@ -383,6 +401,9 @@ export function OrderDetailClient({
         orderNumber: editOrderNum,
         createdAt: editCreatedAt || null,
         feeBreakdown: Object.keys(fees).length > 0 ? fees : null,
+        orderItems: existingModalItems,
+        ...(newModalItems.length > 0 ? { newItems: newModalItems } : {}),
+        ...(editModalDeletedIds.length > 0 ? { deleteItemIds: editModalDeletedIds } : {}),
       };
       if (editShip.line1.trim()) {
         body.shippingAddress = {
@@ -412,6 +433,7 @@ export function OrderDetailClient({
         created_at: editCreatedAt ? `${editCreatedAt}T00:00:00.000Z` : prev.created_at,
         fee_breakdown: newFees,
         ...(data.order?.amount_total !== undefined ? { amount_total: data.order.amount_total } : {}),
+        ...(data.order?.order_items ? { order_items: data.order.order_items } : {}),
         shipping_address: editShip.line1.trim() ? {
           recipient_name: editShip.recipientName || null,
           address_line1: editShip.line1,
@@ -710,6 +732,14 @@ export function OrderDetailClient({
                     postal: effectiveAddress?.postal_code ?? "",
                     country: effectiveAddress?.country ?? "US",
                   });
+                  setEditModalItems(order.order_items.map((i) => ({
+                    id: i.id,
+                    productName: i.product_name,
+                    optionLabel: i.option_label ?? "",
+                    price: String(i.price_usd ?? ""),
+                    quantity: String(i.quantity),
+                  })));
+                  setEditModalDeletedIds([]);
                   setShowEditInfo(true);
                 }}
                 className="w-full rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 py-2.5 text-sm font-medium transition-colors"
@@ -1248,6 +1278,51 @@ export function OrderDetailClient({
           </div>
 
           <div className="overflow-y-auto px-5 py-5 space-y-4 flex-1">
+            {/* Items */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Items</p>
+                <button type="button"
+                  onClick={() => setEditModalItems((prev) => [...prev, { id: `new-${Date.now()}`, productName: "", optionLabel: "", price: "", quantity: "1", isNew: true }])}
+                  className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline">+ Add item</button>
+              </div>
+              {editModalItems.map((item, idx) => (
+                <div key={item.id} className="grid grid-cols-[1fr_auto_auto_auto] gap-1.5 items-center">
+                  <input
+                    value={item.productName}
+                    onChange={(e) => setEditModalItems((prev) => prev.map((d, i) => i === idx ? { ...d, productName: e.target.value } : d))}
+                    placeholder="Product name"
+                    className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <div className="relative w-24">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                    <input type="number" inputMode="decimal" min="0" step="0.01"
+                      value={item.price}
+                      onChange={(e) => setEditModalItems((prev) => prev.map((d, i) => i === idx ? { ...d, price: e.target.value } : d))}
+                      placeholder="0.00"
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm pl-6 pr-2 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <input type="number" inputMode="numeric" min="1"
+                    value={item.quantity}
+                    onChange={(e) => setEditModalItems((prev) => prev.map((d, i) => i === idx ? { ...d, quantity: e.target.value } : d))}
+                    className="w-12 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-2 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-center"
+                  />
+                  <button type="button"
+                    onClick={() => {
+                      if (!item.isNew) setEditModalDeletedIds((prev) => [...prev, item.id]);
+                      setEditModalItems((prev) => prev.filter((_, i) => i !== idx));
+                    }}
+                    className="text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors px-1"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <hr className="border-gray-100 dark:border-gray-800" />
+
             {/* Order number + date */}
             <div className="grid grid-cols-2 gap-3">
               <div>
