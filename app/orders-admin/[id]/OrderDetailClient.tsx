@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -16,6 +17,34 @@ interface OrderItem {
   price_usd: number | null;
   quantity: number;
   line_total: number | null;
+}
+
+interface InventoryProductOption {
+  id: string;
+  label: string;
+  price_usd: number | null;
+  sale_price_usd: number | null;
+  status: string | null;
+}
+
+interface InventoryProduct {
+  id: string;
+  name: string;
+  status: string | null;
+  price_display_usd: number | null;
+  sale_price_usd: number | null;
+  images: string[] | null;
+  product_options?: InventoryProductOption[] | null;
+}
+
+interface DraftItem {
+  id: string;
+  productId: string | null;
+  productName: string;
+  optionLabel: string;
+  price: string;
+  quantity: string;
+  isNew?: boolean;
 }
 
 interface ShipmentEvent {
@@ -150,6 +179,102 @@ function buildTrackingUrl(carrier: string | null, trackingNumber: string | null,
   return null;
 }
 
+function productThumb(images: string[] | null | undefined): string {
+  const first = images?.[0];
+  if (!first) return "";
+  if (first.startsWith("http://") || first.startsWith("https://")) return first;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) return "";
+  return `${supabaseUrl}/storage/v1/object/public/jade-images/${first.replace(/^\/+/, "")}`;
+}
+
+function inventoryPrice(product: InventoryProduct): number | null {
+  const availableOption = product.product_options?.find((option) => option.status !== "sold");
+  const option = availableOption ?? product.product_options?.[0];
+  return option?.sale_price_usd ?? option?.price_usd ?? product.sale_price_usd ?? product.price_display_usd ?? null;
+}
+
+function shouldFillInventoryPrice(currentPrice: string, nextPrice: number | null): boolean {
+  if (nextPrice == null) return false;
+  const parsed = parseFloat(currentPrice);
+  return !Number.isFinite(parsed) || parsed <= 0;
+}
+
+function InventoryProductPicker({
+  value,
+  products,
+  loading,
+  active,
+  onFocus,
+  onBlur,
+  onChange,
+  onSelect,
+  inputClassName,
+}: {
+  value: string;
+  products: InventoryProduct[];
+  loading: boolean;
+  active: boolean;
+  onFocus: () => void;
+  onBlur: () => void;
+  onChange: (value: string) => void;
+  onSelect: (product: InventoryProduct) => void;
+  inputClassName: string;
+}) {
+  const query = value.trim().toLowerCase();
+  const matches = products
+    .filter((product) => product.status !== "draft" && product.status !== "archived")
+    .filter((product) => !query || product.name.toLowerCase().includes(query))
+    .slice(0, 20);
+
+  return (
+    <div className="relative">
+      <input
+        value={value}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Search inventory"
+        className={inputClassName}
+      />
+      {active && (
+        <div className="absolute left-0 right-0 top-full z-40 mt-1 max-h-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900">
+          {loading ? (
+            <div className="px-3 py-2 text-xs text-gray-400">Loading inventory…</div>
+          ) : matches.length > 0 ? (
+            matches.map((product) => {
+              const thumb = productThumb(product.images);
+              return (
+                <button
+                  key={product.id}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => onSelect(product)}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  <div className="h-9 w-9 shrink-0 overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800">
+                    {thumb ? (
+                      <Image src={thumb} alt="" width={36} height={36} className="h-full w-full object-cover" unoptimized />
+                    ) : (
+                      <div className="h-full w-full" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium text-gray-900 dark:text-gray-100">{product.name}</p>
+                    <p className="text-[11px] capitalize text-gray-400">{product.status ?? "inventory"}</p>
+                  </div>
+                </button>
+              );
+            })
+          ) : (
+            <div className="px-3 py-2 text-xs text-gray-400">No matching inventory items</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function OrderDetailClient({
@@ -163,6 +288,7 @@ export function OrderDetailClient({
 }) {
   const router = useRouter();
   const [order, setOrder] = useState(initialOrder);
+  const [itemImages, setItemImages] = useState(productImages);
 
   const [editStatus, setEditStatus] = useState<OrderStatus>(order.order_status);
   const [editDelivery, setEditDelivery] = useState(order.estimated_delivery_date ?? "");
@@ -201,14 +327,17 @@ export function OrderDetailClient({
 
   // Inline item editing state
   const [editingItems, setEditingItems] = useState(false);
-  interface DraftItem { id: string; productName: string; optionLabel: string; price: string; quantity: string; isNew?: boolean; }
   const [draftItems, setDraftItems] = useState<DraftItem[]>([]);
   const [deletedItemIds, setDeletedItemIds] = useState<string[]>([]);
   const [savingItems, setSavingItems] = useState(false);
+  const [activeInlinePicker, setActiveInlinePicker] = useState<number | null>(null);
 
   // Modal item editing state (shared with Edit Order Info modal)
   const [editModalItems, setEditModalItems] = useState<DraftItem[]>([]);
   const [editModalDeletedIds, setEditModalDeletedIds] = useState<string[]>([]);
+  const [activeModalPicker, setActiveModalPicker] = useState<number | null>(null);
+  const [inventoryProducts, setInventoryProducts] = useState<InventoryProduct[]>([]);
+  const [inventoryLoading, setInventoryLoading] = useState(false);
 
   // Shipments state
   const [shipments, setShipments] = useState<Shipment[]>((initialOrder.shipments ?? []) as Shipment[]);
@@ -335,6 +464,44 @@ export function OrderDetailClient({
     setTimeout(() => setToast(null), 4000);
   }
 
+  async function ensureInventoryProducts() {
+    if (inventoryLoading || inventoryProducts.length > 0) return;
+    setInventoryLoading(true);
+    try {
+      const res = await fetch("/api/admin/products?excludeDrafts=1");
+      const data = await res.json();
+      if (!res.ok) {
+        showToast("err", data.error ?? "Inventory failed to load");
+        return;
+      }
+      setInventoryProducts((data.products ?? []) as InventoryProduct[]);
+    } finally {
+      setInventoryLoading(false);
+    }
+  }
+
+  function applyInventorySelection(
+    product: InventoryProduct,
+    idx: number,
+    setItems: Dispatch<SetStateAction<DraftItem[]>>
+  ) {
+    const price = inventoryPrice(product);
+    const thumb = productThumb(product.images);
+    if (thumb) {
+      setItemImages((prev) => ({ ...prev, [product.id]: thumb }));
+    }
+    setItems((prev) => prev.map((item, itemIdx) => {
+      if (itemIdx !== idx) return item;
+      return {
+        ...item,
+        productId: product.id,
+        productName: product.name,
+        optionLabel: "",
+        price: shouldFillInventoryPrice(item.price, price) && price != null ? String(price) : item.price,
+      };
+    }));
+  }
+
   async function handleSave() {
     // If status is being changed to cancelled, require a reason via the modal
     if (editStatus === "order_cancelled" && order.order_status !== "order_cancelled") {
@@ -382,12 +549,14 @@ export function OrderDetailClient({
 
       const existingModalItems = editModalItems.filter((d) => !d.isNew).map((d) => ({
         id: d.id,
+        product_id: d.productId,
         product_name: d.productName.trim(),
         option_label: d.optionLabel.trim() || null,
         price_usd: parseFloat(d.price) || 0,
         quantity: parseInt(d.quantity) || 1,
       }));
       const newModalItems = editModalItems.filter((d) => d.isNew).map((d) => ({
+        product_id: d.productId,
         product_name: d.productName.trim(),
         option_label: d.optionLabel.trim() || null,
         price_usd: parseFloat(d.price) || 0,
@@ -467,6 +636,7 @@ export function OrderDetailClient({
         .filter((d) => !d.isNew)
         .map((d) => ({
           id: d.id,
+          product_id: d.productId,
           product_name: d.productName.trim(),
           option_label: d.optionLabel.trim() || null,
           price_usd: parseFloat(d.price) || 0,
@@ -475,6 +645,7 @@ export function OrderDetailClient({
       const newItems = draftItems
         .filter((d) => d.isNew)
         .map((d) => ({
+          product_id: d.productId,
           product_name: d.productName.trim(),
           option_label: d.optionLabel.trim() || null,
           price_usd: parseFloat(d.price) || 0,
@@ -734,12 +905,14 @@ export function OrderDetailClient({
                   });
                   setEditModalItems(order.order_items.map((i) => ({
                     id: i.id,
+                    productId: i.product_id,
                     productName: i.product_name,
                     optionLabel: i.option_label ?? "",
                     price: String(i.price_usd ?? ""),
                     quantity: String(i.quantity),
                   })));
                   setEditModalDeletedIds([]);
+                  void ensureInventoryProducts();
                   setShowEditInfo(true);
                 }}
                 className="w-full rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 py-2.5 text-sm font-medium transition-colors"
@@ -791,12 +964,14 @@ export function OrderDetailClient({
                     onClick={() => {
                       setDraftItems(order.order_items.map((i) => ({
                         id: i.id,
+                        productId: i.product_id,
                         productName: i.product_name,
                         optionLabel: i.option_label ?? "",
                         price: String(i.price_usd ?? ""),
                         quantity: String(i.quantity),
                       })));
                       setDeletedItemIds([]);
+                      void ensureInventoryProducts();
                       setEditingItems(true);
                     }}
                     className="text-xs text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
@@ -815,14 +990,16 @@ export function OrderDetailClient({
               <div className="divide-y divide-gray-50 dark:divide-gray-800">
                 {(editingItems ? draftItems : order.order_items.map((item) => ({
                   id: item.id,
+                  productId: item.product_id,
                   productName: item.product_name,
                   optionLabel: item.option_label ?? "",
                   price: String(item.price_usd ?? ""),
                   quantity: String(item.quantity),
                 })) as DraftItem[]).map((draft, idx) => {
                   const item = order.order_items.find((i) => i.id === draft.id);
-                  const imgSrc = item?.product_id ? productImages[item.product_id] : "";
-                  const cogs = item?.product_id ? productCogs[item.product_id] : undefined;
+                  const productId = draft.productId ?? item?.product_id ?? null;
+                  const imgSrc = productId ? itemImages[productId] : "";
+                  const cogs = productId ? productCogs[productId] : undefined;
                   const lineTotal = ((parseFloat(draft.price) || 0) * (parseInt(draft.quantity) || 1)).toFixed(2);
                   return (
                     <div key={draft.id} className="flex gap-3 px-4 py-3 items-start">
@@ -842,11 +1019,22 @@ export function OrderDetailClient({
                       <div className="flex-1 min-w-0">
                         {editingItems ? (
                           <div className="space-y-1.5">
-                            <input
+                            <InventoryProductPicker
                               value={draft.productName}
-                              onChange={(e) => setDraftItems((prev) => prev.map((d, i) => i === idx ? { ...d, productName: e.target.value } : d))}
-                              placeholder="Product name"
-                              className="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs px-2 py-1 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                              products={inventoryProducts}
+                              loading={inventoryLoading}
+                              active={activeInlinePicker === idx}
+                              onFocus={() => {
+                                setActiveInlinePicker(idx);
+                                void ensureInventoryProducts();
+                              }}
+                              onBlur={() => setTimeout(() => setActiveInlinePicker(null), 120)}
+                              onChange={(value) => setDraftItems((prev) => prev.map((d, i) => i === idx ? { ...d, productName: value } : d))}
+                              onSelect={(product) => {
+                                applyInventorySelection(product, idx, setDraftItems);
+                                setActiveInlinePicker(null);
+                              }}
+                              inputClassName="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs px-2 py-1 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                             />
                             <input
                               value={draft.optionLabel}
@@ -903,7 +1091,10 @@ export function OrderDetailClient({
                   <div className="px-4 py-2">
                     <button
                       type="button"
-                      onClick={() => setDraftItems((prev) => [...prev, { id: `new-${Date.now()}`, productName: "", optionLabel: "", price: "", quantity: "1", isNew: true }])}
+                      onClick={() => {
+                        void ensureInventoryProducts();
+                        setDraftItems((prev) => [...prev, { id: `new-${Date.now()}`, productId: null, productName: "", optionLabel: "", price: "", quantity: "1", isNew: true }]);
+                      }}
                       className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline"
                     >
                       + Add item
@@ -1283,16 +1474,30 @@ export function OrderDetailClient({
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Items</p>
                 <button type="button"
-                  onClick={() => setEditModalItems((prev) => [...prev, { id: `new-${Date.now()}`, productName: "", optionLabel: "", price: "", quantity: "1", isNew: true }])}
+                  onClick={() => {
+                    void ensureInventoryProducts();
+                    setEditModalItems((prev) => [...prev, { id: `new-${Date.now()}`, productId: null, productName: "", optionLabel: "", price: "", quantity: "1", isNew: true }]);
+                  }}
                   className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline">+ Add item</button>
               </div>
               {editModalItems.map((item, idx) => (
-                <div key={item.id} className="grid grid-cols-[1fr_auto_auto_auto] gap-1.5 items-center">
-                  <input
+                <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-1.5 items-center">
+                  <InventoryProductPicker
                     value={item.productName}
-                    onChange={(e) => setEditModalItems((prev) => prev.map((d, i) => i === idx ? { ...d, productName: e.target.value } : d))}
-                    placeholder="Product name"
-                    className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    products={inventoryProducts}
+                    loading={inventoryLoading}
+                    active={activeModalPicker === idx}
+                    onFocus={() => {
+                      setActiveModalPicker(idx);
+                      void ensureInventoryProducts();
+                    }}
+                    onBlur={() => setTimeout(() => setActiveModalPicker(null), 120)}
+                    onChange={(value) => setEditModalItems((prev) => prev.map((d, i) => i === idx ? { ...d, productName: value } : d))}
+                    onSelect={(product) => {
+                      applyInventorySelection(product, idx, setEditModalItems);
+                      setActiveModalPicker(null);
+                    }}
+                    inputClassName="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                   <div className="relative w-24">
                     <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>

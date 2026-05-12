@@ -95,8 +95,8 @@ export async function PATCH(
       country?: string;
     };
     feeBreakdown?: { shipping?: number; tax?: number; paypal?: number; insurance?: number; discount?: number; other?: number; otherLabel?: string } | null;
-    orderItems?: { id: string; product_name?: string; option_label?: string | null; price_usd: number; quantity: number }[];
-    newItems?: { product_name: string; option_label?: string | null; price_usd: number; quantity: number }[];
+    orderItems?: { id: string; product_id?: string | null; product_name?: string; option_label?: string | null; price_usd: number; quantity: number }[];
+    newItems?: { product_id?: string | null; product_name: string; option_label?: string | null; price_usd: number; quantity: number }[];
     deleteItemIds?: string[];
   };
 
@@ -109,11 +109,12 @@ export async function PATCH(
     await supabaseAdmin.from("order_items").delete().in("id", deleteItemIds).eq("order_id", id);
   }
 
-  // Update existing order items (price, qty, name, label)
+  // Update existing order items (inventory link, price, qty, name, label)
   if (orderItems && orderItems.length > 0) {
     for (const item of orderItems) {
       const lineTotal = parseFloat((item.price_usd * item.quantity).toFixed(2));
       const update: Record<string, unknown> = { price_usd: item.price_usd, quantity: item.quantity, line_total: lineTotal };
+      if (item.product_id !== undefined) update.product_id = item.product_id;
       if (item.product_name !== undefined) update.product_name = item.product_name;
       if (item.option_label !== undefined) update.option_label = item.option_label;
       await supabaseAdmin
@@ -129,6 +130,7 @@ export async function PATCH(
     await supabaseAdmin.from("order_items").insert(
       newItems.filter((i) => i.product_name.trim()).map((i) => ({
         order_id: id,
+        product_id: i.product_id ?? null,
         product_name: i.product_name.trim(),
         option_label: i.option_label?.trim() || null,
         price_usd: i.price_usd,

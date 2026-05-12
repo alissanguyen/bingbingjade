@@ -16,8 +16,6 @@
  * isStoragePath() detects which is which.
  */
 
-import { supabaseAdmin } from "./supabase-admin";
-
 export const IMAGE_BUCKET = "jade-images";
 export const VIDEO_BUCKET = "jade-videos";
 
@@ -54,8 +52,9 @@ export function toStoragePath(urlOrPath: string): string {
  * Requires the jade-images bucket to have public read enabled (migration_017).
  */
 function publicImageUrl(path: string): string {
-  const { data } = supabaseAdmin.storage.from(IMAGE_BUCKET).getPublicUrl(path);
-  return data.publicUrl;
+  const storageBase = supabaseStorageBase();
+  if (!storageBase) return path;
+  return `${storageBase}/object/public/${IMAGE_BUCKET}/${path.replace(/^\/+/, "")}`;
 }
 
 // ── Image helpers — permanent public URLs, no async needed ───────────────────
@@ -78,10 +77,86 @@ export async function resolveFirstImageUrl(images: string[]): Promise<string | n
   return resolveImageUrl(images[0]);
 }
 
+// ── Supabase Image Transform ──────────────────────────────────────────────────
+//
+// Supabase Storage has a built-in image transformation API served at
+// /storage/v1/render/image/public/<bucket>/<path>?width=X&quality=Y&format=webp
+// Transformed images are cached at Supabase's CDN edge — no Vercel quota used.
+//
+// Reference: https://supabase.com/docs/guides/storage/serving/image-transformations
+
+function supabaseStorageBase(): string {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  return supabaseUrl ? `${supabaseUrl.replace(/\/$/, "")}/storage/v1` : "";
+}
+
+export interface ImageTransformOptions {
+  width?: number;
+  height?: number;
+  quality?: number;
+  format?: "webp" | "avif" | "origin";
+  resize?: "cover" | "contain" | "fill";
+}
+
+/**
+ * Convert any product image URL or storage path into a Supabase Transform URL.
+ * Returns non-Supabase URLs (Unsplash, static /public paths) unchanged.
+ */
+export function supabaseImageUrl(
+  srcOrPath: string,
+  opts: ImageTransformOptions = {}
+): string {
+  if (!srcOrPath || srcOrPath.startsWith("/") || srcOrPath.startsWith("blob:")) return srcOrPath;
+
+  const { width = 800, height, quality = 78, format = "webp", resize = "cover" } = opts;
+  const storageBase = supabaseStorageBase();
+  if (!storageBase) return srcOrPath;
+
+  const objectPrefix = `${storageBase}/object/public/${IMAGE_BUCKET}/`;
+  const renderPrefix = `${storageBase}/render/image/public/${IMAGE_BUCKET}/`;
+
+  let filePath: string;
+  if (srcOrPath.startsWith(renderPrefix)) {
+    filePath = srcOrPath.slice(renderPrefix.length).split("?")[0];
+  } else if (srcOrPath.startsWith(objectPrefix)) {
+    filePath = srcOrPath.slice(objectPrefix.length);
+  } else if (!srcOrPath.startsWith("http")) {
+    filePath = srcOrPath; // bare storage path e.g. "wm/abc.jpg"
+  } else {
+    return srcOrPath; // external URL (Unsplash, legacy bucket, etc.)
+  }
+
+  const params = new URLSearchParams({
+    width: String(width),
+    quality: String(quality),
+    format,
+    resize,
+  });
+  if (height) params.set("height", String(height));
+  return `${renderPrefix}${filePath}?${params.toString()}`;
+}
+
+/** 600 px wide WebP — product card grids and carousels */
+export const productThumbUrl = (src: string) =>
+  supabaseImageUrl(src, { width: 600, height: 600, quality: 75, format: "webp" });
+
+/** 1200 px wide WebP — main product gallery image. */
+export const productGalleryUrl = (src: string) =>
+  supabaseImageUrl(src, { width: 1200, quality: 78, format: "webp" });
+
+/** 1800 px wide WebP — product lightbox/zoom image. */
+export const productZoomUrl = (src: string) =>
+  supabaseImageUrl(src, { width: 1800, quality: 82, format: "webp", resize: "contain" });
+
+/** 128 px wide WebP — cart thumbnails, navbar search, small admin chips */
+export const productMicroUrl = (src: string) =>
+  supabaseImageUrl(src, { width: 128, height: 128, quality: 80, format: "webp" });
+
 // ── Video helpers — signed URLs (private bucket) ──────────────────────────────
 
 export async function resolveVideoUrl(pathOrUrl: string): Promise<string> {
   if (!isStoragePath(pathOrUrl)) return pathOrUrl;
+  const { supabaseAdmin } = await import("./supabase-admin");
   const { data } = await supabaseAdmin.storage
     .from(VIDEO_BUCKET)
     .createSignedUrl(pathOrUrl, VIDEO_TTL);
@@ -94,6 +169,7 @@ export async function resolveVideoUrls(pathsOrUrls: string[]): Promise<string[]>
   const paths = pathsOrUrls.filter(isStoragePath);
   if (paths.length === 0) return pathsOrUrls;
 
+  const { supabaseAdmin } = await import("./supabase-admin");
   const { data } = await supabaseAdmin.storage
     .from(VIDEO_BUCKET)
     .createSignedUrls(paths, VIDEO_TTL);
