@@ -2,19 +2,89 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { BannerConfig, TimeLeft } from "@/lib/banner-config";
+import type { BannerConfig, BannerStyle, TimeLeft } from "@/lib/banner-config";
 import { resolveStyle, getTimeLeft } from "@/lib/banner-config";
 
 const DISMISS_KEY = "bbj_banner_dismissed_v2";
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isValidDateString(value: string | null | undefined): value is string {
+  if (!value) return false;
+  return Number.isFinite(new Date(value).getTime());
+}
+
+function isFutureDateString(value: string | null | undefined): value is string {
+  return isValidDateString(value) && new Date(value).getTime() > Date.now();
+}
+
+function normalizeBannerStyle(raw: unknown): BannerStyle | null {
+  if (!isPlainObject(raw)) return null;
+  const style: BannerStyle = {
+    theme: raw.theme === "light" || raw.theme === "auto" || raw.theme === "dark" ? raw.theme : "dark",
+  };
+
+  if (typeof raw.backgroundColor === "string") style.backgroundColor = raw.backgroundColor;
+  if (typeof raw.textColor === "string") style.textColor = raw.textColor;
+  if (typeof raw.accentColor === "string") style.accentColor = raw.accentColor;
+  if (typeof raw.borderColor === "string") style.borderColor = raw.borderColor;
+
+  return style;
+}
+
+function normalizeBannerConfig(raw: unknown): BannerConfig | null {
+  if (!isPlainObject(raw) || raw.is_active !== true) return null;
+
+  const messages = Array.isArray(raw.messages)
+    ? raw.messages
+        .filter((m): m is string => typeof m === "string")
+        .map((m) => m.trim())
+        .filter(Boolean)
+        .slice(0, 10)
+    : [];
+
+  if (messages.length === 0) return null;
+  if (typeof raw.end_date === "string" && isValidDateString(raw.end_date) && new Date(raw.end_date).getTime() < Date.now()) {
+    return null;
+  }
+
+  const countdownLabel =
+    raw.countdown_label === "Starting in" || raw.countdown_label === "Ends in"
+      ? raw.countdown_label
+      : null;
+
+  return {
+    is_active: true,
+    preset: typeof raw.preset === "string" ? raw.preset : null,
+    messages,
+    start_date: typeof raw.start_date === "string" && isValidDateString(raw.start_date) ? raw.start_date : null,
+    end_date: typeof raw.end_date === "string" && isValidDateString(raw.end_date) ? raw.end_date : null,
+    countdown_label: countdownLabel,
+    cta_text: typeof raw.cta_text === "string" && raw.cta_text.trim() ? raw.cta_text.trim() : null,
+    cta_link: typeof raw.cta_link === "string" && raw.cta_link.trim() ? raw.cta_link.trim() : null,
+    style: normalizeBannerStyle(raw.style),
+  };
+}
 
 // ── Countdown hook ────────────────────────────────────────────────────────────
 
 function useCountdown(startDate: string | null): TimeLeft | null {
   const [timeLeft, setTimeLeft] = useState<TimeLeft | null>(null);
   useEffect(() => {
-    setTimeLeft(getTimeLeft(startDate));
-    const id = setInterval(() => setTimeLeft(getTimeLeft(startDate)), 1000);
-    return () => clearInterval(id);
+    if (!isFutureDateString(startDate)) {
+      const resetId = window.setTimeout(() => setTimeLeft(null), 0);
+      return () => clearTimeout(resetId);
+    }
+
+    const tick = () => setTimeLeft(getTimeLeft(startDate));
+    const initialId = window.setTimeout(tick, 0);
+    const intervalId = window.setInterval(tick, 1000);
+    return () => {
+      clearTimeout(initialId);
+      clearInterval(intervalId);
+    };
   }, [startDate]);
   return timeLeft;
 }
@@ -60,25 +130,37 @@ export function AnnouncementBanner() {
   const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    try { setReducedMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch { }
-    try { if (sessionStorage.getItem(DISMISS_KEY) === "1") { setDismissed(true); return; } } catch { }
-    fetch("/api/banner")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data?.is_active) setConfig(data as BannerConfig);
-      })
-      .catch((err) => {
-        console.error("[AnnouncementBanner] fetch failed:", err);
-      });
+    let alive = true;
+    const initId = window.setTimeout(() => {
+      if (!alive) return;
+      setMounted(true);
+      try { setReducedMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch { }
+      try {
+        if (sessionStorage.getItem(DISMISS_KEY) === "1") {
+          setDismissed(true);
+          return;
+        }
+      } catch { }
+      fetch("/api/banner")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (alive) setConfig(normalizeBannerConfig(data));
+        })
+        .catch((err) => {
+          console.error("[AnnouncementBanner] fetch failed:", err);
+        });
+    }, 0);
+    return () => {
+      alive = false;
+      clearTimeout(initId);
+    };
   }, []);
 
-  const messages = Array.isArray(config?.messages) ? config!.messages.filter(Boolean) : [];
+  const messages = config?.messages ?? [];
   const countdown = useCountdown(config?.start_date ?? null);
   const isCountdown = !!countdown;
 
   if (!mounted || !config || dismissed || messages.length === 0) return null;
-  if (config.end_date && new Date(config.end_date) < new Date()) return null;
 
   const style = resolveStyle(config.style);
   const hasCta = !!(config.cta_text && config.cta_link);

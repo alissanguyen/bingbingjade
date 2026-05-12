@@ -1,15 +1,13 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
-import { Suspense } from "react";
 import { productSlug } from "@/lib/slug";
 import { supabase } from "@/lib/supabase";
-import { resolveImageUrls, isStoragePath } from "@/lib/storage";
-import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
+import { resolveImageUrls } from "@/lib/storage";
+import { requiresInquiry } from "@/lib/price";
 import { getActiveEventPrices } from "@/lib/active-event-prices";
 import { FilterSidebar } from "./FilterSidebar";
 import { SortSelect } from "./SortSelect";
 import { Pagination } from "./Pagination";
 import { ProductCardImage } from "./ProductCardImage";
-import { PaymentMessaging } from "@/app/components/PaymentMessaging";
 
 /** Format a card price; $25k+ items show "Inquire for Pricing". */
 function fmtCardPrice(price: number): string {
@@ -69,7 +67,7 @@ const COLOR_SWATCHES: Record<string, string> = {
 import { getCategoryLabel } from "./categories";
 import { ProductCardLink } from "./ProductCardLink";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 120;
 
 export default async function Products({
   searchParams,

@@ -63,7 +63,7 @@ interface ProductOptionRaw {
   sort_order: number;
 }
 
-export const dynamic = "force-dynamic";
+export const revalidate = 120;
 
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> }
