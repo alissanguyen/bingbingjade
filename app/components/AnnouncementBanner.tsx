@@ -89,7 +89,7 @@ export function AnnouncementBanner() {
     borderBottom: `1px solid ${style.borderColor}`,
   };
 
-  const DismissBtn = () => (
+  const dismissBtn = (
     <button
       type="button"
       onClick={dismiss}
@@ -112,7 +112,7 @@ export function AnnouncementBanner() {
           <span className="text-[10px] tracking-widest hidden sm:block" style={{ color: `${style.accentColor}90` }}>·</span>
           <div className="flex flex-row gap-2 sm:gap-3 items-center">
             <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: style.accentColor }}>
-              {config.countdown_label ?? "Starting in"}
+              {config.countdown_label ?? config.countdown_label}
             </span>
             <div className="flex items-center gap-1.5">
               {countdown.d > 0 && (

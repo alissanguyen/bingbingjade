@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
         .filter(Boolean) as typeof raw;
 
       // If a campaign is linked, fetch per-product event_price_usd overrides
-      let eventPriceOverrides = new Map<string, number | null>();
+      const eventPriceOverrides = new Map<string, number | null>();
       let campaign: { discount_type: string | null; discount_value: number | null } | null = null;
 
       if (body.campaignEventId) {
