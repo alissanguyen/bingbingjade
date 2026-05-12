@@ -11,6 +11,7 @@ const DEFAULT_CONFIG: BannerConfig = {
   messages: [],
   start_date: null,
   end_date: null,
+  countdown_label: "Starting in",
   cta_text: null,
   cta_link: null,
   style: null,
@@ -28,14 +29,15 @@ export function BannerManager() {
       .then((r) => r.json())
       .then((data) => {
         setConfig({
-          is_active:  Boolean(data.is_active),
-          preset:     data.preset ?? "custom",
-          messages:   Array.isArray(data.messages) ? data.messages : [],
-          start_date: data.start_date ?? null,
-          end_date:   data.end_date   ?? null,
-          cta_text:   data.cta_text   ?? null,
-          cta_link:   data.cta_link   ?? null,
-          style:      data.style      ?? null,
+          is_active:       Boolean(data.is_active),
+          preset:          data.preset ?? "custom",
+          messages:        Array.isArray(data.messages) ? data.messages : [],
+          start_date:      data.start_date      ?? null,
+          end_date:        data.end_date         ?? null,
+          countdown_label: data.countdown_label  ?? "Starting in",
+          cta_text:        data.cta_text         ?? null,
+          cta_link:        data.cta_link         ?? null,
+          style:           data.style            ?? null,
         });
       })
       .catch(() => {})
@@ -242,7 +244,25 @@ export function BannerManager() {
               )}
             </div>
             {config.start_date ? (
-              <DateTimePicker value={config.start_date} onChange={(iso) => setConfig((c) => ({ ...c, start_date: iso }))} />
+              <>
+                <DateTimePicker value={config.start_date} onChange={(iso) => setConfig((c) => ({ ...c, start_date: iso }))} />
+                <div className="flex gap-2 mt-2">
+                  {(["Starting in", "Ends in"] as const).map((label) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setConfig((c) => ({ ...c, countdown_label: label }))}
+                      className={`px-3 py-1 rounded-lg border text-xs font-medium transition-colors ${
+                        (config.countdown_label ?? "Starting in") === label
+                          ? "border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300"
+                          : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </>
             ) : (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-400 dark:text-gray-500 italic">No countdown</span>

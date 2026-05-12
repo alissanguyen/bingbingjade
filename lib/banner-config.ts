@@ -22,8 +22,9 @@ export interface BannerConfig {
   is_active: boolean;
   preset: string | null;
   messages: string[];
-  start_date: string | null;  // future → countdown "Starting in …"; past → show normally
-  end_date: string | null;    // passed → auto-hide
+  start_date: string | null;
+  end_date: string | null;
+  countdown_label: "Starting in" | "Ends in" | null;
   cta_text: string | null;
   cta_link: string | null;
   style: BannerStyle | null;

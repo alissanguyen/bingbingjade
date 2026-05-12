@@ -111,7 +111,7 @@ export function AnnouncementBanner() {
           </span>
           <span className="text-[10px] tracking-widest" style={{ color: `${style.accentColor}90` }}>·</span>
           <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: style.accentColor }}>
-            Starting in
+            {config.countdown_label ?? "Starting in"}
           </span>
           <div className="flex items-center gap-1.5">
             {countdown.d > 0 && (
