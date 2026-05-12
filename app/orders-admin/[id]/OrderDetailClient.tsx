@@ -201,8 +201,9 @@ export function OrderDetailClient({
 
   // Inline item editing state
   const [editingItems, setEditingItems] = useState(false);
-  interface DraftItem { id: string; price: string; quantity: string; }
+  interface DraftItem { id: string; productName: string; optionLabel: string; price: string; quantity: string; isNew?: boolean; }
   const [draftItems, setDraftItems] = useState<DraftItem[]>([]);
+  const [deletedItemIds, setDeletedItemIds] = useState<string[]>([]);
   const [savingItems, setSavingItems] = useState(false);
 
   // Shipments state
@@ -440,30 +441,42 @@ export function OrderDetailClient({
   async function handleSaveItems() {
     setSavingItems(true);
     try {
-      const parsedItems = draftItems.map((d) => ({
-        id: d.id,
-        price_usd: parseFloat(d.price) || 0,
-        quantity: parseInt(d.quantity) || 1,
-      }));
+      const existingItems = draftItems
+        .filter((d) => !d.isNew)
+        .map((d) => ({
+          id: d.id,
+          product_name: d.productName.trim(),
+          option_label: d.optionLabel.trim() || null,
+          price_usd: parseFloat(d.price) || 0,
+          quantity: parseInt(d.quantity) || 1,
+        }));
+      const newItems = draftItems
+        .filter((d) => d.isNew)
+        .map((d) => ({
+          product_name: d.productName.trim(),
+          option_label: d.optionLabel.trim() || null,
+          price_usd: parseFloat(d.price) || 0,
+          quantity: parseInt(d.quantity) || 1,
+        }));
       const res = await fetch(`/api/admin/orders/${order.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderItems: parsedItems }),
+        body: JSON.stringify({
+          orderItems: existingItems,
+          newItems: newItems.length > 0 ? newItems : undefined,
+          deleteItemIds: deletedItemIds.length > 0 ? deletedItemIds : undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) { showToast("err", data.error ?? "Save failed"); return; }
+      // Re-fetch updated items from the response
       setOrder((prev) => ({
         ...prev,
         amount_total: data.order?.amount_total ?? prev.amount_total,
-        order_items: prev.order_items.map((item) => {
-          const draft = draftItems.find((d) => d.id === item.id);
-          if (!draft) return item;
-          const price = parseFloat(draft.price) || 0;
-          const qty = parseInt(draft.quantity) || 1;
-          return { ...item, price_usd: price, quantity: qty, line_total: parseFloat((price * qty).toFixed(2)) };
-        }),
+        order_items: data.order?.order_items ?? prev.order_items,
       }));
       setEditingItems(false);
+      setDeletedItemIds([]);
       showToast("ok", "Items updated");
     } finally {
       setSavingItems(false);
@@ -748,18 +761,21 @@ export function OrderDetailClient({
                     onClick={() => {
                       setDraftItems(order.order_items.map((i) => ({
                         id: i.id,
+                        productName: i.product_name,
+                        optionLabel: i.option_label ?? "",
                         price: String(i.price_usd ?? ""),
                         quantity: String(i.quantity),
                       })));
+                      setDeletedItemIds([]);
                       setEditingItems(true);
                     }}
                     className="text-xs text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                   >
-                    Edit prices
+                    Edit items
                   </button>
                 ) : (
                   <div className="flex gap-3">
-                    <button onClick={() => setEditingItems(false)} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">Cancel</button>
+                    <button onClick={() => { setEditingItems(false); setDeletedItemIds([]); }} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">Cancel</button>
                     <button onClick={handleSaveItems} disabled={savingItems} className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline disabled:opacity-50 transition-colors">
                       {savingItems ? "Saving…" : "Save"}
                     </button>
@@ -767,50 +783,57 @@ export function OrderDetailClient({
                 )}
               </div>
               <div className="divide-y divide-gray-50 dark:divide-gray-800">
-                {order.order_items.map((item, idx) => {
-                  const imgSrc = item.product_id ? productImages[item.product_id] : "";
-                  const draft = draftItems[idx];
-                  const lineTotal = (item.line_total ?? (item.price_usd ?? 0) * item.quantity).toFixed(2);
-                  const cogs = item.product_id ? productCogs[item.product_id] : undefined;
+                {(editingItems ? draftItems : order.order_items.map((item) => ({
+                  id: item.id,
+                  productName: item.product_name,
+                  optionLabel: item.option_label ?? "",
+                  price: String(item.price_usd ?? ""),
+                  quantity: String(item.quantity),
+                }))).map((draft, idx) => {
+                  const item = order.order_items.find((i) => i.id === draft.id);
+                  const imgSrc = item?.product_id ? productImages[item.product_id] : "";
+                  const cogs = item?.product_id ? productCogs[item.product_id] : undefined;
+                  const lineTotal = ((parseFloat(draft.price) || 0) * (parseInt(draft.quantity) || 1)).toFixed(2);
                   return (
-                    <div key={item.id} className="flex gap-3 px-4 py-3 items-center">
-                      <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
-                        {imgSrc ? (
-                          <Image
-                            src={imgSrc}
-                            alt={item.product_name}
-                            width={56}
-                            height={56}
-                            className="w-full h-full object-cover"
-                            unoptimized
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                              <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
-                            </svg>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-snug line-clamp-2">{item.product_name}</p>
-                        {item.option_label && <p className="text-xs text-gray-400 mt-0.5">{item.option_label}</p>}
-                        {cogs != null && (
-                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">COGS ${cogs.toFixed(2)}</p>
-                        )}
-                        {!editingItems && item.quantity > 1 && <p className="text-xs text-gray-400">×{item.quantity}</p>}
-                        {editingItems && draft && (
-                          <div className="flex gap-2 mt-1.5">
-                            <div className="relative w-24">
-                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
-                              <input
-                                type="number" inputMode="decimal" min="0" step="0.01"
-                                value={draft.price}
-                                onChange={(e) => setDraftItems((prev) => prev.map((d, i) => i === idx ? { ...d, price: e.target.value } : d))}
-                                className="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs pl-5 pr-2 py-1 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                              />
+                    <div key={draft.id} className="flex gap-3 px-4 py-3 items-start">
+                      {!editingItems && (
+                        <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0 mt-0.5">
+                          {imgSrc ? (
+                            <Image src={imgSrc} alt={draft.productName} width={56} height={56} className="w-full h-full object-cover" unoptimized />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+                              </svg>
                             </div>
-                            <div className="flex items-center gap-1">
+                          )}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        {editingItems ? (
+                          <div className="space-y-1.5">
+                            <input
+                              value={draft.productName}
+                              onChange={(e) => setDraftItems((prev) => prev.map((d, i) => i === idx ? { ...d, productName: e.target.value } : d))}
+                              placeholder="Product name"
+                              className="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs px-2 py-1 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                            <input
+                              value={draft.optionLabel}
+                              onChange={(e) => setDraftItems((prev) => prev.map((d, i) => i === idx ? { ...d, optionLabel: e.target.value } : d))}
+                              placeholder="Option / variant (optional)"
+                              className="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs px-2 py-1 text-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                            <div className="flex gap-2 items-center">
+                              <div className="relative w-24">
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                                <input
+                                  type="number" inputMode="decimal" min="0" step="0.01"
+                                  value={draft.price}
+                                  onChange={(e) => setDraftItems((prev) => prev.map((d, i) => i === idx ? { ...d, price: e.target.value } : d))}
+                                  className="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs pl-5 pr-2 py-1 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                              </div>
                               <span className="text-xs text-gray-400">×</span>
                               <input
                                 type="number" inputMode="numeric" min="1"
@@ -818,19 +841,45 @@ export function OrderDetailClient({
                                 onChange={(e) => setDraftItems((prev) => prev.map((d, i) => i === idx ? { ...d, quantity: e.target.value } : d))}
                                 className="w-12 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs px-2 py-1 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                               />
+                              <span className="text-xs text-gray-600 dark:text-gray-400 ml-1">${lineTotal}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!draft.isNew) setDeletedItemIds((prev) => [...prev, draft.id]);
+                                  setDraftItems((prev) => prev.filter((_, i) => i !== idx));
+                                }}
+                                className="ml-auto text-xs text-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                              >
+                                Remove
+                              </button>
                             </div>
                           </div>
+                        ) : (
+                          <>
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-snug line-clamp-2">{draft.productName}</p>
+                            {draft.optionLabel && <p className="text-xs text-gray-400 mt-0.5">{draft.optionLabel}</p>}
+                            {cogs != null && <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">COGS ${cogs.toFixed(2)}</p>}
+                            {parseInt(draft.quantity) > 1 && <p className="text-xs text-gray-400">×{draft.quantity}</p>}
+                          </>
                         )}
                       </div>
-                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 shrink-0 ml-2">
-                        {editingItems && draft
-                          ? `$${((parseFloat(draft.price) || 0) * (parseInt(draft.quantity) || 1)).toFixed(2)}`
-                          : `$${lineTotal}`
-                        }
-                      </p>
+                      {!editingItems && (
+                        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 shrink-0 ml-2">${lineTotal}</p>
+                      )}
                     </div>
                   );
                 })}
+                {editingItems && (
+                  <div className="px-4 py-2">
+                    <button
+                      type="button"
+                      onClick={() => setDraftItems((prev) => [...prev, { id: `new-${Date.now()}`, productName: "", optionLabel: "", price: "", quantity: "1", isNew: true }])}
+                      className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline"
+                    >
+                      + Add item
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/60 px-4 py-3 space-y-1.5">
                 <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">

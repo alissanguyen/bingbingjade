@@ -73,7 +73,7 @@ export async function PATCH(
   const {
     orderStatus, estimatedDeliveryDate, notes, sendEmail, orderType,
     customerName, customerEmail, customerPhone, orderNumber, createdAt,
-    shippingAddress, feeBreakdown, orderItems,
+    shippingAddress, feeBreakdown, orderItems, newItems, deleteItemIds,
   } = body as {
     orderStatus?: string;
     estimatedDeliveryDate?: string | null;
@@ -95,23 +95,47 @@ export async function PATCH(
       country?: string;
     };
     feeBreakdown?: { shipping?: number; tax?: number; paypal?: number; insurance?: number; discount?: number; other?: number; otherLabel?: string } | null;
-    orderItems?: { id: string; price_usd: number; quantity: number }[];
+    orderItems?: { id: string; product_name?: string; option_label?: string | null; price_usd: number; quantity: number }[];
+    newItems?: { product_name: string; option_label?: string | null; price_usd: number; quantity: number }[];
+    deleteItemIds?: string[];
   };
 
   if (orderStatus && !VALID_STATUSES.includes(orderStatus as OrderStatus)) {
     return NextResponse.json({ error: "Invalid order status" }, { status: 400 });
   }
 
-  // Update individual order items first (before recalculating total)
+  // Delete removed items
+  if (deleteItemIds && deleteItemIds.length > 0) {
+    await supabaseAdmin.from("order_items").delete().in("id", deleteItemIds).eq("order_id", id);
+  }
+
+  // Update existing order items (price, qty, name, label)
   if (orderItems && orderItems.length > 0) {
     for (const item of orderItems) {
       const lineTotal = parseFloat((item.price_usd * item.quantity).toFixed(2));
+      const update: Record<string, unknown> = { price_usd: item.price_usd, quantity: item.quantity, line_total: lineTotal };
+      if (item.product_name !== undefined) update.product_name = item.product_name;
+      if (item.option_label !== undefined) update.option_label = item.option_label;
       await supabaseAdmin
         .from("order_items")
-        .update({ price_usd: item.price_usd, quantity: item.quantity, line_total: lineTotal })
+        .update(update)
         .eq("id", item.id)
         .eq("order_id", id);
     }
+  }
+
+  // Insert new items
+  if (newItems && newItems.length > 0) {
+    await supabaseAdmin.from("order_items").insert(
+      newItems.filter((i) => i.product_name.trim()).map((i) => ({
+        order_id: id,
+        product_name: i.product_name.trim(),
+        option_label: i.option_label?.trim() || null,
+        price_usd: i.price_usd,
+        quantity: i.quantity,
+        line_total: parseFloat((i.price_usd * i.quantity).toFixed(2)),
+      }))
+    );
   }
 
   const updates: Record<string, unknown> = {};
@@ -127,7 +151,7 @@ export async function PATCH(
   if (feeBreakdown !== undefined) updates.fee_breakdown = feeBreakdown;
 
   // Recalculate amount_total whenever items or fees change
-  if (orderItems || feeBreakdown !== undefined) {
+  if (orderItems || newItems || deleteItemIds || feeBreakdown !== undefined) {
     const { data: currentItems } = await supabaseAdmin
       .from("order_items")
       .select("price_usd, quantity, line_total")
@@ -165,7 +189,7 @@ export async function PATCH(
     .from("orders")
     .update(updates)
     .eq("id", id)
-    .select("*")
+    .select("*, order_items(*)")
     .single();
 
   if (error || !order) {
