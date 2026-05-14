@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { resolveImageUrl } from "@/lib/storage";
 import { CollectionScene } from "@/app/components/collection/CollectionScene";
 import { ProductCardLink } from "@/app/products/ProductCardLink";
@@ -14,11 +15,10 @@ type Params = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
-  const { data } = await supabase
+  const { data } = await supabaseAdmin
     .from("collections")
-    .select("name, subtitle")
+    .select("name, subtitle, status")
     .eq("slug", slug)
-    .eq("status", "published")
     .single();
   if (!data) return { title: "Collection — BingBing Jade" };
   return {
@@ -30,6 +30,87 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 export default async function CollectionPage({ params }: Params) {
   const { slug } = await params;
 
+  // Check existence and status first (admin client bypasses RLS so drafts are visible)
+  const { data: meta } = await supabaseAdmin
+    .from("collections")
+    .select("id, name, subtitle, hero_image, status")
+    .eq("slug", slug)
+    .single();
+
+  if (!meta) notFound();
+
+  // ── Draft: rich branded coming-soon page ──────────────────────────────────
+  if (meta.status !== "published") {
+    const heroUrl = meta.hero_image ? await resolveImageUrl(meta.hero_image) : null;
+
+    return (
+      <main className="min-h-screen bg-gray-950">
+        {/* Full-bleed hero */}
+        <section className="relative w-full min-h-screen flex flex-col items-center justify-center overflow-hidden">
+          {heroUrl ? (
+            <Image
+              src={heroUrl}
+              alt={meta.name}
+              fill
+              className="object-cover opacity-30"
+              priority
+              unoptimized
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-950 via-gray-950 to-gray-900" />
+          )}
+
+          {/* Vignette */}
+          <div className="absolute inset-0 bg-gradient-to-t from-gray-950/80 via-transparent to-gray-950/40" />
+
+          {/* Content */}
+          <div className="relative z-10 text-center px-6 max-w-2xl mx-auto">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-emerald-400 mb-6">
+              Coming Soon
+            </p>
+
+            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight mb-5 tracking-tight">
+              {meta.name}
+            </h1>
+
+            {meta.subtitle && (
+              <p className="text-base sm:text-lg text-white/60 leading-relaxed mb-10 max-w-lg mx-auto">
+                {meta.subtitle}
+              </p>
+            )}
+
+            {/* Divider */}
+            <div className="flex items-center gap-4 mb-10 justify-center">
+              <div className="w-12 h-px bg-emerald-700/60" />
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/70" />
+              <div className="w-12 h-px bg-emerald-700/60" />
+            </div>
+
+            <p className="text-sm text-white/40 mb-10 tracking-wide">
+              This collection is being curated. Check back soon.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                href="/products"
+                className="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium transition-colors"
+              >
+                Shop All Pieces
+              </Link>
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 px-7 py-3 rounded-full border border-white/20 hover:border-white/40 text-white/70 hover:text-white text-sm font-medium transition-colors"
+              >
+                ← Back to Home
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  // ── Published: full collection page ──────────────────────────────────────
   const { data: collection } = await supabase
     .from("collections")
     .select(`
@@ -54,7 +135,6 @@ export default async function CollectionPage({ params }: Params) {
 
   if (!collection) notFound();
 
-  // Resolve image URLs
   const heroUrl = collection.hero_image
     ? await resolveImageUrl(collection.hero_image)
     : null;
@@ -127,7 +207,6 @@ export default async function CollectionPage({ params }: Params) {
       {/* ── Editorial Masonry ─────────────────────────────────────────────── */}
       {scenes.length > 0 && (
         <section className="px-3 sm:px-6 pb-16 max-w-screen-xl mx-auto">
-          {/* First scene was used as hero if hero_image is null, skip it in masonry */}
           {(() => {
             const masonryScenes = heroUrl ? scenes : restScenes;
             if (masonryScenes.length === 0) return null;
