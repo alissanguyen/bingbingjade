@@ -12,16 +12,14 @@ const nextConfig: NextConfig = {
   },
 
   images: {
-    // Supabase signed URLs change every ISR cycle, so Vercel can't cache them
-    // and would burn through the free optimization quota. Product images carry
-    // `unoptimized` individually. This global flag is intentionally removed so
-    // that stable URLs (hero images from Unsplash) still get Vercel-optimized.
+    // Product images are served via Supabase's Transform API (resize + WebP at CDN)
+    // and carry unoptimized={true} individually — no Vercel quota used for them.
+    // Static/local files (gallery, homepage sections) use Next.js optimization normally.
+    formats: ["image/avif", "image/webp"],
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
-      // Existing public Supabase bucket (legacy products)
       { protocol: "https", hostname: "cszryoixzqtzikvgeksh.supabase.co" },
     ],
-    unoptimized: true,
   },
 };
 

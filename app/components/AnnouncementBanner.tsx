@@ -6,8 +6,8 @@ import type { BannerConfig, BannerStyle, TimeLeft } from "@/lib/banner-config";
 import { resolveStyle, getTimeLeft } from "@/lib/banner-config";
 
 const DISMISS_KEY = "bbj_banner_dismissed_v2";
-const ROTATION_MS = 5000;
-const FADE_MS = 320;
+const ROTATION_MS = 3000;
+const SLIDE_MS = 420;
 
 // ── Validation helpers ────────────────────────────────────────────────────────
 
@@ -147,7 +147,9 @@ export function AnnouncementBanner() {
   const [mounted, setMounted] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [idx, setIdx] = useState(0);
-  const [visible, setVisible] = useState(true);
+  const [outgoing, setOutgoing] = useState<{ idx: number; key: number; rev: boolean } | null>(null);
+  const [slideKey, setSlideKey] = useState(0); // increments every rotation to force element recreation
+  const [slideRev, setSlideRev] = useState(false);
 
   // Fetch config on mount
   useEffect(() => {
@@ -178,17 +180,21 @@ export function AnnouncementBanner() {
   // Rotate messages — only when there are multiple and motion is allowed
   useEffect(() => {
     if (messages.length <= 1 || reducedMotion) return;
-    let fadeTimeout: ReturnType<typeof setTimeout> | null = null;
+    let clearId: ReturnType<typeof setTimeout> | null = null;
     const interval = setInterval(() => {
-      setVisible(false);
-      fadeTimeout = setTimeout(() => {
-        setIdx((i) => (i + 1) % messages.length);
-        setVisible(true);
-      }, FADE_MS);
+      const tick = Date.now();
+      setIdx((cur) => {
+        const wrapping = cur === messages.length - 1;
+        setOutgoing({ idx: cur, key: tick, rev: wrapping });
+        setSlideRev(wrapping);
+        return (cur + 1) % messages.length;
+      });
+      setSlideKey((k) => k + 1);
+      clearId = setTimeout(() => setOutgoing(null), SLIDE_MS + 50);
     }, ROTATION_MS);
     return () => {
       clearInterval(interval);
-      if (fadeTimeout) clearTimeout(fadeTimeout);
+      if (clearId) clearTimeout(clearId);
     };
   }, [messages.length, reducedMotion]);
 
@@ -271,31 +277,37 @@ export function AnnouncementBanner() {
   }
 
   // ── Rotating single-message layout ───────────────────────────────────────
-  // reducedMotion: always show first message, no transition
-  const show = reducedMotion ? true : visible;
-  const transition = reducedMotion
-    ? "none"
-    : `opacity ${FADE_MS}ms ease, transform ${FADE_MS}ms ease`;
-
   return (
     <div className="relative w-full select-none" style={bannerStyle}>
-      <div className="flex items-center justify-center px-10 min-h-10 py-2">
-        <div
-          className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 sm:gap-x-3.5"
-          style={{
-            opacity: show ? 1 : 0,
-            transform: show ? "translateY(0)" : "translateY(-5px)",
-            transition,
-          }}
-        >
-          <span
-            className="text-xs sm:text-[13px] font-medium tracking-[0.04em] text-center"
-            style={{ color: style.textColor }}
-          >
-            {messages[idx]}
-          </span>
-          {ctaPill}
-        </div>
+      <div className="relative flex items-center justify-center min-h-10 py-2 overflow-hidden">
+        {reducedMotion ? (
+          <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 sm:gap-x-3.5 px-10">
+            <span
+              className="text-xs sm:text-[13px] font-medium tracking-[0.04em] text-center"
+              style={{ color: style.textColor }}
+            >
+              {messages[0]}
+            </span>
+            {ctaPill}
+          </div>
+        ) : (
+          <>
+            {outgoing && (
+              <div key={outgoing.key} className={`absolute inset-0 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 sm:gap-x-3.5 px-10 ${outgoing.rev ? "banner-slide-out-rev" : "banner-slide-out"}`}>
+                <span className="text-xs sm:text-[13px] font-medium tracking-[0.04em] text-center" style={{ color: style.textColor }}>
+                  {messages[outgoing.idx]}
+                </span>
+                {ctaPill}
+              </div>
+            )}
+            <div key={slideKey} className={`absolute inset-0 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 sm:gap-x-3.5 px-10${slideKey > 0 ? (slideRev ? " banner-slide-in-rev" : " banner-slide-in") : ""}`}>
+              <span className="text-xs sm:text-[13px] font-medium tracking-[0.04em] text-center" style={{ color: style.textColor }}>
+                {messages[idx]}
+              </span>
+              {ctaPill}
+            </div>
+          </>
+        )}
       </div>
       {dismissBtn}
     </div>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { productThumbUrl } from "@/lib/storage";
 
 function JadePlaceholder() {
   return (
@@ -30,8 +31,8 @@ export function ProductCardImage({
   const [img0Error, setImg0Error] = useState(false);
   const [img1Error, setImg1Error] = useState(false);
 
-  const src0 = images[0] && !img0Error ? images[0] : null;
-  const src1 = images[1] && !img1Error ? images[1] : null;
+  const src0 = images[0] && !img0Error ? productThumbUrl(images[0]) : null;
+  const src1 = images[1] && !img1Error ? productThumbUrl(images[1]) : null;
   const hasTwo = src0 != null && src1 != null;
 
   return (
@@ -55,7 +56,7 @@ export function ProductCardImage({
               fill
               unoptimized
               className="object-cover"
-              sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
+              sizes="(max-width: 640px) 50vw, (max-width: 1280px) 50vw, 33vw"
               priority={priority}
               loading={priority ? undefined : "lazy"}
               onError={() => setImg0Error(true)}
@@ -69,7 +70,7 @@ export function ProductCardImage({
                 fill
                 unoptimized
                 className="object-cover"
-                sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                sizes="(max-width: 640px) 50vw, (max-width: 1280px) 50vw, 33vw"
                 loading="lazy"
                 aria-hidden
                 onError={() => setImg1Error(true)}

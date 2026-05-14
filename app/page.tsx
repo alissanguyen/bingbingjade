@@ -1,10 +1,10 @@
 export const revalidate = 120;
 
 import type { Metadata } from "next";
+import { unstable_cache } from "next/cache";
 import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
-import { resolveImageUrls } from "@/lib/storage";
 import { FeaturedCarousel } from "@/app/components/FeaturedCarousel";
 import { ReviewsCarousel } from "@/app/components/ReviewsCarousel";
 import { SubscribePopup } from "@/app/components/SubscribePopup";
@@ -41,27 +41,27 @@ export const metadata: Metadata = {
 const HERO_IMG = "https://images.unsplash.com/photo-1705931396849-93822983c1dc?q=80&w=1624&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
 const JADE_IMG = "https://images.unsplash.com/photo-1767040276964-d2a39a86b1d4?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
 
-export default async function Home() {
-  const { data: rawFeatured } = await supabase
-    .from("products")
-    .select("id, name, category, images, tier, price_display_usd, sale_price_usd, status, slug, public_id, size, origin")
-    .eq("is_featured", true)
-    .order("created_at", { ascending: false });
+const getCachedFeaturedProducts = unstable_cache(
+  async () => {
+    const { data } = await supabase
+      .from("products")
+      .select("id, name, category, images, tier, price_display_usd, sale_price_usd, status, slug, public_id, size, origin")
+      .eq("is_featured", true)
+      .order("created_at", { ascending: false });
 
-  // Resolve signed URLs for the first two images of each product (carousel uses [0] and [1])
-  const raw = rawFeatured ?? [];
-  const firstTwo = raw.flatMap((p) => [p.images?.[0] ?? "", p.images?.[1] ?? ""]);
-  const resolvedFirstTwo = await resolveImageUrls(firstTwo);
-  const featuredProducts = raw.map((p, i) => {
-    const r0 = resolvedFirstTwo[i * 2];
-    const r1 = resolvedFirstTwo[i * 2 + 1];
-    const rest = p.images?.slice(2) ?? [];
-    return {
-      ...p,
-      images: [r0 || "", r1 || "", ...rest].filter(Boolean),
-    };
-  });
-  console.log("Featured products:", featuredProducts);
+    return data ?? [];
+  },
+  ["home-featured-products-v1"],
+  { revalidate: 120 }
+);
+
+export default async function Home() {
+  const rawFeatured = await getCachedFeaturedProducts();
+  const featuredProducts = rawFeatured.map((p) => ({
+    ...p,
+    images: (p.images ?? []).slice(0, 2).filter(Boolean),
+  }));
+
   return (
     <div className="bg-white dark:bg-gray-950">
       <SubscribePopup />
@@ -74,6 +74,7 @@ export default async function Home() {
           alt="Natural jadeite collection"
           fill
           className="object-cover object-center"
+          sizes="100vw"
           priority
         />
         {/* Gradient overlay */}
@@ -94,19 +95,23 @@ export default async function Home() {
             From luminous bangles to delicate pendants, we focus on quality you can trust and pricing that reflects true value.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
+
             <Link
-              href="/products"
+              href="/products?shipping=ship_now"
               className="rounded-full bg-emerald-700 hover:bg-emerald-600 px-7 py-3 text-sm font-semibold text-white transition-colors shadow-lg"
             >
-              Browse Collection
+              Shop US Inventory
+
             </Link>
+
             <Link
-              href="/contact"
+              href="/products"
               className="rounded-full border border-white/60 hover:border-white bg-white/10 hover:bg-white/20 backdrop-blur-sm px-7 py-3 text-sm font-semibold text-white transition-colors"
             >
-              Talk to Us
+              Explore All Pieces
             </Link>
           </div>
+          <span className="font-medium italic text-[14px] mt-3 text-green-300">Ready-to-ship US inventory alongside curated sourced pieces.</span>
         </div>
       </div>
       {/* ── Why BingBing Jade ── */}
@@ -119,7 +124,8 @@ export default async function Home() {
               alt="Jade pieces up close"
               fill
               className="object-cover object-center"
-              unoptimized
+              sizes="(max-width: 1024px) 100vw, 50vw"
+              loading="lazy"
             />
             <div className="absolute inset-0 bg-linear-to-t from-black/30 to-transparent" />
           </div>
@@ -206,6 +212,8 @@ export default async function Home() {
               alt="Jade pieces up close"
               fill
               className="object-cover object-center"
+              sizes="(max-width: 1024px) 100vw, 50vw"
+              loading="lazy"
             />
             <div className="absolute inset-0 bg-linear-to-t from-black/30 to-transparent" />
           </div>

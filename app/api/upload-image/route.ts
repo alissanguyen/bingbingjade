@@ -13,7 +13,7 @@
  * Body: multipart/form-data with:
  *   file — the image file
  *
- * Response: { path: string }  — watermarked storage path, e.g. "wm/1234-abc.jpg"
+ * Response: { path: string }  — optimized watermarked storage path, e.g. "wm/1234-abc.webp"
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -60,12 +60,16 @@ export async function POST(req: NextRequest) {
       .from(IMAGE_BUCKET)
       .upload(originalPath, input, { contentType: file.type, upsert: false });
 
-    // Generate watermarked version and upload
+    // Generate optimized watermarked WebP for customer-facing product media.
     const watermarked = await applyWatermark(input, category);
-    const wmPath = `wm/${id}.jpg`;
+    const wmPath = `wm/${id}.webp`;
     const { error: uploadErr } = await supabaseAdmin.storage
       .from(IMAGE_BUCKET)
-      .upload(wmPath, watermarked, { contentType: "image/jpeg", upsert: false });
+      .upload(wmPath, watermarked, {
+        contentType: "image/webp",
+        cacheControl: "31536000",
+        upsert: false,
+      });
 
     if (uploadErr) {
       return NextResponse.json({ error: uploadErr.message }, { status: 500 });

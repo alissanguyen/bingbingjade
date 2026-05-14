@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
+import { productGalleryUrl, productMicroUrl, productZoomUrl } from "@/lib/storage";
 
 function PlayIcon() {
   return (
@@ -68,14 +69,9 @@ export function ProductGallery({ images, videos, category = "", activeIndex }: {
   const wmStyle: React.CSSProperties = CENTER_CATEGORIES.has(category)
     ? { width: "44%", right: "30%", top: "50%", transform: "translateY(-50%)" }
     : { width: "44%", left: "10%", bottom: "10%" };
-  const [current, setCurrent] = useState(0);
+  const initialIndex = activeIndex != null && activeIndex >= 0 && activeIndex < images.length ? activeIndex : 0;
+  const [current, setCurrent] = useState(initialIndex);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-
-  useEffect(() => {
-    if (activeIndex != null && activeIndex >= 0 && activeIndex < images.length) {
-      setCurrent(activeIndex);
-    }
-  }, [activeIndex, images.length]);
 
   const all: MediaItem[] = [
     ...images.map((src) => ({ type: "image" as const, src })),
@@ -131,14 +127,15 @@ export function ProductGallery({ images, videos, category = "", activeIndex }: {
           )}
           {active.type === "image" ? (
             <Image
-              src={active.src}
+              src={productGalleryUrl(active.src)}
               alt="Product"
               fill
               unoptimized
               className="object-cover pointer-events-none"
               draggable={false}
               sizes="(max-width: 1024px) 100vw, 50vw"
-              priority
+              priority={current === 0}
+              loading={current === 0 ? undefined : "lazy"}
               onDragStart={blockDrag}
             />
           ) : (
@@ -226,7 +223,7 @@ export function ProductGallery({ images, videos, category = "", activeIndex }: {
                 }`}
               >
                 {item.type === "image" ? (
-                  <Image src={item.src} alt="" fill unoptimized className="object-cover" sizes="64px" loading="lazy" />
+                  <Image src={productMicroUrl(item.src)} alt="" fill unoptimized className="object-cover" sizes="64px" loading="lazy" />
                 ) : (
                   <div className="w-full h-full bg-gray-800 flex items-center justify-center text-white">
                     <PlayIcon />
@@ -270,10 +267,10 @@ export function ProductGallery({ images, videos, category = "", activeIndex }: {
                 {/* Transparent overlay blocks right-click save in lightbox */}
                 <div className="absolute inset-0 z-1" onContextMenu={blockContextMenu} />
                 <Image
-                  src={active.src}
+                  src={productZoomUrl(active.src)}
                   alt="Product"
-                  width={0}
-                  height={0}
+                  width={1800}
+                  height={1800}
                   unoptimized
                   sizes="90vw"
                   draggable={false}

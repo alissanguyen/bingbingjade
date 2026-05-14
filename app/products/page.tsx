@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
+import { unstable_cache } from "next/cache";
 import { productSlug } from "@/lib/slug";
 import { supabase } from "@/lib/supabase";
-import { resolveImageUrls } from "@/lib/storage";
 import { requiresInquiry } from "@/lib/price";
 import { getActiveEventPrices } from "@/lib/active-event-prices";
 import { FilterSidebar } from "./FilterSidebar";
@@ -93,6 +93,51 @@ const PRODUCT_CARD_SELECT = `${PRODUCT_LIST_SELECT}, images, description`;
 const PAGE_SIZE = 18;
 const PAGE_WINDOW_SIZE = PAGE_SIZE * 3;
 
+const getCachedProductList = unstable_cache(
+  async (includeDrafts: boolean) => {
+    const query = supabase
+      .from("products")
+      .select(PRODUCT_LIST_SELECT)
+      .order("created_at", { ascending: false });
+
+    if (!includeDrafts) query.eq("is_published", true);
+
+    const { data, error } = await query.returns<ProductListRow[]>();
+    return { products: data ?? [], errorMessage: error?.message ?? null };
+  },
+  ["public-products-list-v1"],
+  { revalidate: 120 }
+);
+
+const getCachedProductOptions = unstable_cache(
+  async (productIds: string[] | "all") => {
+    const query = supabase
+      .from("product_options")
+      .select("product_id, price_usd, sale_price_usd, status");
+
+    if (Array.isArray(productIds)) query.in("product_id", productIds);
+
+    const { data } = await query.returns<OptionPriceRow[]>();
+    return data ?? [];
+  },
+  ["public-product-options-v1"],
+  { revalidate: 120 }
+);
+
+const getCachedProductCards = unstable_cache(
+  async (productIds: string[]) => {
+    if (productIds.length === 0) return [] as ProductCard[];
+    const { data } = await supabase
+      .from("products")
+      .select(PRODUCT_CARD_SELECT)
+      .in("id", productIds)
+      .returns<ProductCard[]>();
+    return data ?? [];
+  },
+  ["public-product-card-window-v1"],
+  { revalidate: 120 }
+);
+
 export default async function Products({
   searchParams,
 }: {
@@ -114,29 +159,16 @@ export default async function Products({
 
   const isDev = process.env.NODE_ENV === "development";
 
-  const productsQuery = supabase
-    .from("products")
-    .select(PRODUCT_LIST_SELECT)
-    .order("created_at", { ascending: false });
-
-  if (!isDev) productsQuery.eq("is_published", true);
-
-  const { data: allProducts, error } = await productsQuery.returns<ProductListRow[]>();
-  const allProductsList = allProducts ?? [];
+  const { products: allProductsList, errorMessage } = await getCachedProductList(isDev);
 
   const priceSensitive = sort === "price_asc" || sort === "price_desc" || minPrice !== null || maxPrice !== null;
-  const allOptions = priceSensitive
-    ? (await supabase
-        .from("product_options")
-        .select("product_id, price_usd, sale_price_usd, status")
-        .returns<OptionPriceRow[]>()).data ?? []
-    : [];
+  const allOptions = priceSensitive ? await getCachedProductOptions("all") : [];
 
   const allProductIds = allProductsList.map((p) => p.id);
   const allEventPrices = priceSensitive ? await getActiveEventPrices(allProductIds) : new Map();
 
-  if (error) {
-    console.error("Failed to load products:", error.message);
+  if (errorMessage) {
+    console.error("Failed to load products:", errorMessage);
   }
 
   // Build option map: productId → options[]
@@ -298,55 +330,34 @@ export default async function Products({
   const windowProducts = sorted.slice(pageWindowStart, pageWindowEnd);
   const windowIds = windowProducts.map((p) => p.id);
 
-  const [{ data: cardRows }, { data: visibleOptions }, visibleEventPrices] = windowIds.length > 0
+  const [cardRows, visibleOptions, visibleEventPrices] = windowIds.length > 0
     ? await Promise.all([
-        supabase
-          .from("products")
-          .select(PRODUCT_CARD_SELECT)
-          .in("id", windowIds)
-          .returns<ProductCard[]>(),
+        getCachedProductCards(windowIds),
         priceSensitive
-          ? Promise.resolve({ data: allOptions.filter((o) => windowIds.includes(o.product_id)) })
-          : supabase
-              .from("product_options")
-              .select("product_id, price_usd, sale_price_usd, status")
-              .in("product_id", windowIds)
-              .returns<OptionPriceRow[]>(),
+          ? Promise.resolve(allOptions.filter((o) => windowIds.includes(o.product_id)))
+          : getCachedProductOptions(windowIds),
         getActiveEventPrices(windowIds),
       ])
-    : [{ data: [] as ProductCard[] }, { data: [] as OptionPriceRow[] }, new Map()];
+    : [[] as ProductCard[], [] as OptionPriceRow[], new Map()];
 
   if (!priceSensitive) {
-    for (const opt of visibleOptions ?? []) {
+    for (const opt of visibleOptions) {
       const arr = optionMap.get(opt.product_id) ?? [];
       arr.push(opt);
       optionMap.set(opt.product_id, arr);
     }
   }
 
-  const cardRowMap = new Map((cardRows ?? []).map((p) => [p.id, p]));
+  const cardRowMap = new Map(cardRows.map((p) => [p.id, p]));
   const windowProductsWithCards = windowProducts.map((p) => cardRowMap.get(p.id) ?? p);
   const pageOffsetInWindow = (safePage - 1) * PAGE_SIZE - pageWindowStart;
   const paginated = windowProductsWithCards.slice(pageOffsetInWindow, pageOffsetInWindow + PAGE_SIZE);
   const eventPrices = priceSensitive ? allEventPrices : visibleEventPrices;
 
-  // Resolve public URLs for the first two images of each paginated product
-  // (ProductCardImage uses images[0] and images[1] for the hover slide effect).
-  // Only include non-empty paths so that single-image products don't get a
-  // malformed URL injected as images[1], which would falsely enable peek animation.
-  const firstTwoPaths = paginated.flatMap((p) => [p.images?.[0] ?? "", p.images?.[1] ?? ""]);
-  const resolvedFirstTwo = await resolveImageUrls(firstTwoPaths);
-  const paginatedWithImages = paginated.map((p, i) => {
-    const raw0 = firstTwoPaths[i * 2];
-    const raw1 = firstTwoPaths[i * 2 + 1];
-    const r0 = raw0 ? resolvedFirstTwo[i * 2] : "";
-    const r1 = raw1 ? resolvedFirstTwo[i * 2 + 1] : "";
-    const rest = p.images?.slice(2) ?? [];
-    return {
-      ...p,
-      images: [r0, r1, ...rest].filter(Boolean),
-    };
-  });
+  const paginatedWithImages = paginated.map((p) => ({
+    ...p,
+    images: (p.images ?? []).slice(0, 2).filter(Boolean),
+  }));
 
   return (
     <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 py-16">
@@ -413,7 +424,7 @@ export default async function Products({
                     }`}
                 >
                   {/* Image strip */}
-                  <ProductCardImage images={product.images ?? []} name={product.name} priority={i === 0}>
+                  <ProductCardImage images={product.images ?? []} name={product.name} priority={i < 2}>
                     {product.status === "sold" && (
                       <div className="absolute inset-0 bg-black/45 z-10 pointer-events-none" />
                     )}

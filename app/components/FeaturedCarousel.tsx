@@ -4,7 +4,8 @@ import { useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { productSlug } from "@/lib/slug";
-import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
+import { productThumbUrl } from "@/lib/storage";
+import { requiresInquiry } from "@/lib/price";
 import { getCategoryLabel } from "../products/categories";
 
 function fmtPrice(price: number): string {
@@ -145,7 +146,7 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
             msOverflowStyle: "none",
           }}
         >
-          {products.map((product) => {
+          {products.map((product, productIdx) => {
             const isSold = product.status === "sold";
             const isOnSale = product.status === "on_sale";
             const colors = (product.color ?? []).filter((c) => c && c.trim());
@@ -196,25 +197,26 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
                     >
                       <div className="relative h-full">
                         <Image
-                          src={product.images[0]}
+                          src={productThumbUrl(product.images[0])}
                           alt={product.name}
                           fill
                           unoptimized
                           className="object-cover"
-                          sizes="320px"
-                          loading="lazy"
+                          sizes="(max-width: 640px) 80vw, (max-width: 1024px) 50vw, 25vw"
+                          priority={productIdx < 2}
+                          loading={productIdx < 2 ? undefined : "lazy"}
                         />
                       </div>
 
                       {product.images[1] && (
                         <div className="relative h-full">
                           <Image
-                            src={product.images[1]}
+                            src={productThumbUrl(product.images[1])}
                             alt=""
                             fill
                             unoptimized
                             className="object-cover"
-                            sizes="320px"
+                            sizes="(max-width: 640px) 80vw, (max-width: 1024px) 50vw, 25vw"
                             loading="lazy"
                             aria-hidden="true"
                           />

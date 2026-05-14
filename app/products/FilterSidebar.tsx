@@ -80,7 +80,7 @@ function FilterSidebarSync({
 
 const SHIPPING_OPTIONS = [
   { value: "ship_now",  label: "Ship Now" },
-  { value: "standard",  label: "Standard Shipping" },
+  { value: "standard",  label: "Sourced for You" },
 ];
 
 export function FilterSidebar({

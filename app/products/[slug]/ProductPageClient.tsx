@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ProductGallery } from "./ProductGallery";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { useCart } from "@/app/components/CartContext";
-import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
+import { requiresInquiry } from "@/lib/price";
 import type { CartItem } from "@/types/cart";
 import { getCategoryLabel } from "../categories";
 import { BangleSizeGuide } from "@/app/components/BangleSizeGuide";
@@ -111,7 +111,6 @@ export function ProductPageClient({ product, productImages, productVideos, optio
   const effectiveDisplayPrice = selectedOption?.price_usd ?? product.price_display_usd;
 
   const isOptionSold = selectedOption?.status === "sold";
-  const isOptionOnSale = selectedOption?.status === "on_sale";
   const isProductSold = product.status === "sold";
   const isEffectivelySold = isProductSold || isOptionSold;
 
@@ -180,7 +179,13 @@ export function ProductPageClient({ product, productImages, productVideos, optio
     <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
       {/* Gallery */}
       <div className="relative">
-        <ProductGallery images={productImages} videos={productVideos} category={getCategoryLabel(product.category)} activeIndex={activeImageIndex} />
+        <ProductGallery
+          key={activeImageIndex ?? 0}
+          images={productImages}
+          videos={productVideos}
+          category={getCategoryLabel(product.category)}
+          activeIndex={activeImageIndex}
+        />
         {showImageSaleBadge && (
           <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 pointer-events-none">
             <div className="bg-red-500/90 text-white text-xs font-semibold px-2.5 py-1.5 shadow">

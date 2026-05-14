@@ -1,21 +1,73 @@
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { unstable_cache } from "next/cache";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { resolveImageUrls, resolveFirstImageUrl } from "@/lib/storage";
 import { productSlug } from "@/lib/slug";
 import { getSessionUser, isAdmin } from "@/lib/approved-auth";
 import { categoryLabel, categoryEmoji } from "@/lib/campaign-categories";
 import { ProductCardImage } from "@/app/products/ProductCardImage";
 import { ProductCardLink } from "@/app/products/ProductCardLink";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 120;
+
+const getCachedSaleMetadata = unstable_cache(
+  async (slug: string) => {
+    const { data } = await supabase
+      .from("campaign_events")
+      .select("name, description, category")
+      .eq("slug", slug)
+      .eq("status", "active")
+      .single();
+
+    return data;
+  },
+  ["sale-page-metadata-v1"],
+  { revalidate: 120 }
+);
+
+const getCachedCampaign = unstable_cache(
+  async (slug: string, includeDrafts: boolean) => {
+    const query = supabaseAdmin
+      .from("campaign_events")
+      .select("*")
+      .eq("slug", slug);
+
+    if (!includeDrafts) query.eq("status", "active");
+
+    const { data } = await query.single();
+    return data;
+  },
+  ["sale-page-campaign-v1"],
+  { revalidate: 120 }
+);
+
+const getCachedCampaignProducts = unstable_cache(
+  async (campaignId: string) => {
+    const { data } = await supabaseAdmin
+      .from("campaign_event_products")
+      .select(`
+        id, event_price_usd, sort_order, is_featured_for_email, product_id,
+        products!inner (
+          id, name, slug, public_id, category, origin, color, size,
+          images, price_display_usd, sale_price_usd, show_price,
+          status, quick_ship, is_published
+        )
+      `)
+      .eq("campaign_id", campaignId)
+      .order("sort_order")
+      .order("created_at");
+
+    return data ?? [];
+  },
+  ["sale-page-campaign-products-v1"],
+  { revalidate: 120 }
+);
 
 function fisherYatesShuffle<T>(arr: T[]): T[] {
   const result = [...arr];
   for (let i = result.length - 1; i > 0; i--) {
-    // eslint-disable-next-line react-hooks/purity
     const j = Math.floor(Math.random() * (i + 1));
     [result[i], result[j]] = [result[j], result[i]];
   }
@@ -65,12 +117,7 @@ function computeEventPrice(
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const { data: campaign } = await supabase
-    .from("campaign_events")
-    .select("name, description, category")
-    .eq("slug", slug)
-    .eq("status", "active")
-    .single();
+  const campaign = await getCachedSaleMetadata(slug);
 
   if (!campaign) return {};
 
@@ -88,16 +135,7 @@ export default async function SalePage({ params }: { params: Promise<{ slug: str
   const admin = isAdmin(session);
 
   // Fetch campaign (admin can see draft, public can only see active)
-  const query = supabaseAdmin
-    .from("campaign_events")
-    .select("*")
-    .eq("slug", slug);
-
-  if (!admin) {
-    query.eq("status", "active");
-  }
-
-  const { data: campaign } = await query.single();
+  const campaign = await getCachedCampaign(slug, admin);
 
   if (!campaign) {
     if (admin) notFound(); // admin viewing invalid slug → 404
@@ -109,20 +147,8 @@ export default async function SalePage({ params }: { params: Promise<{ slug: str
   const isEnded = campaign.status === "ended";
   const isDraft = campaign.status === "draft";
 
-  // Fetch campaign products with full product data
-  const { data: rawProducts } = await supabaseAdmin
-    .from("campaign_event_products")
-    .select(`
-      id, event_price_usd, sort_order, is_featured_for_email, product_id,
-      products!inner (
-        id, name, slug, public_id, category, origin, color, size,
-        images, price_display_usd, sale_price_usd, show_price,
-        status, quick_ship, is_published
-      )
-    `)
-    .eq("campaign_id", campaign.id)
-    .order("sort_order")
-    .order("created_at");
+  // Fetch campaign products with card-level image paths only.
+  const rawProducts = await getCachedCampaignProducts(campaign.id);
 
   // Resolve images and filter to published products (sold included, archived excluded)
   const resolvedProducts = (
@@ -131,7 +157,6 @@ export default async function SalePage({ params }: { params: Promise<{ slug: str
         const p = cp.products as unknown as CampaignProduct["product"];
         if (!p.is_published || p.status === "archived") return null;
 
-        const cardImages = await resolveImageUrls((p.images ?? []).slice(0, 2));
         const eventPrice = computeEventPrice(
           p.price_display_usd,
           cp.event_price_usd as number | null,
@@ -146,7 +171,7 @@ export default async function SalePage({ params }: { params: Promise<{ slug: str
           sort_order: cp.sort_order as number,
           is_featured_for_email: cp.is_featured_for_email as boolean,
           product: { ...p, slug: p.slug, public_id: p.public_id },
-          cardImages,
+          cardImages: (p.images ?? []).slice(0, 2).filter(Boolean),
           resolvedEventPrice: eventPrice,
         } as CampaignProduct;
       })

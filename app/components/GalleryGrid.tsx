@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 
 const IMAGES = [
   "/gallery/IMG_4028.jpg",
@@ -65,11 +66,14 @@ export function GalleryGrid() {
               onClick={() => setActive(src)}
               className="mb-3 break-inside-avoid overflow-hidden rounded-xl group block w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={src}
                 alt="BingBing Jade natural jadeite piece"
-                className="w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                width={600}
+                height={600}
+                className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105"
+                sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                loading="lazy"
               />
             </button>
           ))}
@@ -113,11 +117,14 @@ export function GalleryGrid() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Image */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={active}
               alt="BingBing Jade"
-              className="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl select-none pointer-events-none"
+              width={1200}
+              height={1200}
+              className="max-w-full max-h-[85vh] w-auto h-auto rounded-2xl object-contain shadow-2xl select-none pointer-events-none"
+              sizes="90vw"
+              loading="eager"
               draggable={false}
             />
 

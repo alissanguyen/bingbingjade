@@ -1,9 +1,11 @@
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
+import Image from "next/image";
+import { unstable_cache } from "next/cache";
 import { supabase } from "@/lib/supabase";
 import { publicIdFromSlug, productSlug } from "@/lib/slug";
 import { getActiveEventPrices } from "@/lib/active-event-prices";
-import { resolveImageUrls, resolveVideoUrls, resolveFirstImageUrl } from "@/lib/storage";
+import { resolveFirstImageUrlFailSoft, resolveImageUrlsFailSoft, resolveVideoUrlsFailSoft } from "@/lib/storage";
 import { ProductPageClient } from "./ProductPageClient";
 import { BackToProductsLink } from "./BackToProductsLink";
 import { RelatedProductsCarousel } from "../RelatedProductsCarousel";
@@ -48,7 +50,7 @@ interface RelatedProduct {
   sale_price_usd: number | null;
   status: string;
   quick_ship: boolean;
-  cardImages: string[]; // first 2 resolved URLs for card hover effect
+  cardImages: string[];
   colorOverlap: number;
 }
 
@@ -65,6 +67,72 @@ interface ProductOptionRaw {
 
 export const revalidate = 120;
 
+const getCachedProductByPublicId = unstable_cache(
+  async (publicId: string) => {
+    const { data } = await supabase
+      .from("products")
+      .select("id, name, category, origin, images, videos, color, tier, size, size_detailed, price_display_usd, sale_price_usd, show_price, description, blemishes, is_featured, is_published, quick_ship, status, slug, public_id, sku")
+      .eq("public_id", publicId)
+      .single<Product>();
+
+    return data;
+  },
+  ["product-detail-by-public-id-v1"],
+  { revalidate: 120 }
+);
+
+const getCachedProductMetadata = unstable_cache(
+  async (publicId: string) => {
+    const { data } = await supabase
+      .from("products")
+      .select("name, category, origin, description, color, tier, price_display_usd, show_price, images")
+      .eq("public_id", publicId)
+      .single<{ name: string; category: string; origin: string | null; description: string | null; color: string[] | null; tier: string[] | null; price_display_usd: number | null; show_price: boolean; images: string[] }>();
+
+    return data;
+  },
+  ["product-detail-metadata-v1"],
+  { revalidate: 120 }
+);
+
+const getCachedProductOptions = unstable_cache(
+  async (productId: string) => {
+    const { data } = await supabase
+      .from("product_options")
+      .select("id, label, size, price_usd, sale_price_usd, image_index, status, sort_order")
+      .eq("product_id", productId)
+      .order("sort_order") as { data: ProductOptionRaw[] | null };
+
+    return data ?? [];
+  },
+  ["product-detail-options-v1"],
+  { revalidate: 120 }
+);
+
+const getCachedRelatedProducts = unstable_cache(
+  async (category: string, productId: string) => {
+    const { data } = await supabase
+      .from("products")
+      .select("id, name, slug, public_id, category, origin, color, tier, size, price_display_usd, sale_price_usd, show_price, status, quick_ship, images")
+      .eq("category", category)
+      .eq("is_published", true)
+      .neq("id", productId)
+      .neq("status", "sold")
+      .neq("status", "archived")
+      .limit(12);
+
+    return data ?? [];
+  },
+  ["product-detail-related-v1"],
+  { revalidate: 120 }
+);
+
+const getCachedProductVideos = unstable_cache(
+  async (videos: string[]) => resolveVideoUrlsFailSoft(videos),
+  ["product-detail-signed-video-urls-v1"],
+  { revalidate: 120 }
+);
+
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> }
 ): Promise<Metadata> {
@@ -72,15 +140,11 @@ export async function generateMetadata(
   const publicId = publicIdFromSlug(slug);
   if (!publicId) return {};
 
-  const { data: product } = await supabase
-    .from("products")
-    .select("name, category, origin, description, color, tier, price_display_usd, show_price, images")
-    .eq("public_id", publicId)
-    .single<{ name: string; category: string; origin: string | null; description: string | null; color: string[] | null; tier: string[] | null; price_display_usd: number | null; show_price: boolean; images: string[] }>();
+  const product = await getCachedProductMetadata(publicId);
 
   if (!product) return {};
 
-  const ogImage = await resolveFirstImageUrl(product.images ?? []);
+  const ogImage = await resolveFirstImageUrlFailSoft(product.images ?? []);
 
   const descParts: string[] = [];
   if (product.category) descParts.push(product.category.charAt(0).toUpperCase() + product.category.slice(1));
@@ -148,11 +212,7 @@ export default async function ProductPage({
   const publicId = publicIdFromSlug(slug);
   if (!publicId) notFound();
 
-  const { data: product } = await supabase
-    .from("products")
-    .select("id, name, category, origin, images, videos, color, tier, size, size_detailed, price_display_usd, sale_price_usd, show_price, description, blemishes, is_featured, is_published, quick_ship, status, slug, public_id, sku")
-    .eq("public_id", publicId)
-    .single<Product>();
+  const product = await getCachedProductByPublicId(publicId);
 
   if (!product) notFound();
 
@@ -165,38 +225,22 @@ export default async function ProductPage({
 
   // Resolve storage paths → signed URLs (no-op for legacy public URLs)
   const [productImages, productVideos] = await Promise.all([
-    resolveImageUrls(product.images ?? []),
-    resolveVideoUrls(product.videos ?? []),
+    resolveImageUrlsFailSoft(product.images ?? []),
+    getCachedProductVideos(product.videos ?? []),
   ]);
 
   // Fetch product options
-  const { data: rawOptions } = await supabase
-    .from("product_options")
-    .select("id, label, size, price_usd, sale_price_usd, image_index, status, sort_order")
-    .eq("product_id", product.id)
-    .order("sort_order") as { data: ProductOptionRaw[] | null };
-  const optionsWithResolvedImages = (rawOptions ?? []);
+  const optionsWithResolvedImages = await getCachedProductOptions(product.id);
 
   // Fetch related products: same category, exclude current, published only
   const currentColors = product.color ?? [];
-  const { data: relatedRaw } = await supabase
-    .from("products")
-    .select("id, name, slug, public_id, category, origin, color, tier, size, price_display_usd, sale_price_usd, show_price, status, quick_ship, images")
-    .eq("category", product.category)
-    .eq("is_published", true)
-    .neq("id", product.id)
-    .neq("status", "sold")
-    .neq("status", "archived")
-    .limit(12);
+  const relatedRaw = await getCachedRelatedProducts(product.category, product.id);
 
   const relatedResolved: RelatedProduct[] = await Promise.all(
     (relatedRaw ?? []).map(async (p) => {
       const imgs = (p.images as string[]) ?? [];
       const pColors = (p.color as string[] | null) ?? [];
       const overlap = pColors.filter((c) => currentColors.includes(c)).length;
-      // Resolve up to 2 images for the card hover slide effect
-      const firstTwo = imgs.slice(0, 2);
-      const resolvedTwo = await resolveImageUrls(firstTwo);
       return {
         id: p.id as string,
         name: p.name as string,
@@ -211,7 +255,7 @@ export default async function ProductPage({
         sale_price_usd:    (p.show_price as boolean) ? (p.sale_price_usd as number | null)    : null,
         status: p.status as string,
         quick_ship: (p.quick_ship as boolean) ?? false,
-        cardImages: resolvedTwo,
+        cardImages: imgs.slice(0, 2).filter(Boolean),
         colorOverlap: overlap,
       };
     })
@@ -265,12 +309,14 @@ export default async function ProductPage({
       {/* Quality assurance strip */}
       <div className="my-16 border-t border-gray-100 dark:border-gray-800 pt-14 grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
         {/* Image */}
-        <div className="overflow-hidden rounded-2xl aspect-4/5 bg-gray-100 dark:bg-gray-900">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+        <div className="relative overflow-hidden rounded-2xl aspect-4/5 bg-gray-100 dark:bg-gray-900">
+          <Image
             src="/gallery/IMG_5466.jpg"
             alt="Natural jadeite sourcing and quality inspection"
-            className="w-full h-full object-cover"
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 50vw"
+            loading="lazy"
           />
         </div>
         {/* Text */}

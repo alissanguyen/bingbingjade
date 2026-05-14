@@ -21,6 +21,7 @@ export const VIDEO_BUCKET = "jade-videos";
 
 /** Signed URL TTL for videos (seconds). 7 days. */
 const VIDEO_TTL = 60 * 60 * 24 * 7;
+const MEDIA_RESOLVE_TIMEOUT_MS = 1500;
 
 /** Returns true if the value is a storage path rather than a full URL. */
 export function isStoragePath(value: string): boolean {
@@ -75,6 +76,31 @@ export async function resolveImageUrls(pathsOrUrls: string[]): Promise<string[]>
 export async function resolveFirstImageUrl(images: string[]): Promise<string | null> {
   if (!images?.length) return null;
   return resolveImageUrl(images[0]);
+}
+
+async function withMediaTimeout<T>(promise: Promise<T>, fallback: T): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((resolve) => {
+        timeoutId = setTimeout(() => resolve(fallback), MEDIA_RESOLVE_TIMEOUT_MS);
+      }),
+    ]);
+  } catch (err) {
+    console.warn("[storage] media URL resolution failed; using fallback paths", err);
+    return fallback;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+export async function resolveImageUrlsFailSoft(pathsOrUrls: string[]): Promise<string[]> {
+  return withMediaTimeout(resolveImageUrls(pathsOrUrls), pathsOrUrls);
+}
+
+export async function resolveFirstImageUrlFailSoft(images: string[]): Promise<string | null> {
+  return withMediaTimeout(resolveFirstImageUrl(images), images[0] ?? null);
 }
 
 // ── Supabase Image Transform ──────────────────────────────────────────────────
@@ -176,4 +202,8 @@ export async function resolveVideoUrls(pathsOrUrls: string[]): Promise<string[]>
 
   const signed = new Map(data?.map((d) => [d.path, d.signedUrl]) ?? []);
   return pathsOrUrls.map((p) => (isStoragePath(p) ? (signed.get(p) ?? p) : p));
+}
+
+export async function resolveVideoUrlsFailSoft(pathsOrUrls: string[]): Promise<string[]> {
+  return withMediaTimeout(resolveVideoUrls(pathsOrUrls), pathsOrUrls);
 }

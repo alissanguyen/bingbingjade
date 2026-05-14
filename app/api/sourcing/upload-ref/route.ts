@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import sharp from "sharp";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { nanoid } from "nanoid";
 
@@ -55,14 +56,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unrecognised file extension." }, { status: 400 });
   }
 
-  const path = `${PREFIX}/${nanoid()}.${ext}`;
+  const isPdf = file.type === "application/pdf";
+  const storageExt = isPdf ? ext : "webp";
+  const path = `${PREFIX}/${nanoid()}.${storageExt}`;
   const arrayBuffer = await file.arrayBuffer();
+  const input = Buffer.from(arrayBuffer);
+  const body = isPdf
+    ? arrayBuffer
+    : await sharp(input)
+        .rotate()
+        .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
+        .webp({ quality: 84 })
+        .toBuffer();
 
   const { error: uploadErr } = await supabaseAdmin.storage
     .from(BUCKET)
-    .upload(path, arrayBuffer, {
-      contentType: file.type,
-      cacheControl: "3600",
+    .upload(path, body, {
+      contentType: isPdf ? file.type : "image/webp",
+      cacheControl: "31536000",
       upsert: false,
     });
 
@@ -77,7 +88,7 @@ export async function POST(req: NextRequest) {
     path,
     url: urlData.publicUrl,
     originalName,
-    ext,
+    ext: storageExt,
   });
 }
 

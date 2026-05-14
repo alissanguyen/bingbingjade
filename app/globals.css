@@ -245,3 +245,13 @@ body {
   80%       { transform: translateX(1px)  rotate(1deg); }
 }
 .wa-vibrate { animation: wa-vibrate 0.6s ease-in-out; }
+
+/* AnnouncementBanner — directional slide pagination */
+@keyframes banner-slide-in      { from { transform: translateX(100%);  } to { transform: translateX(0); } }
+@keyframes banner-slide-out     { from { transform: translateX(0);     } to { transform: translateX(-100%); } }
+@keyframes banner-slide-in-rev  { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+@keyframes banner-slide-out-rev { from { transform: translateX(0);     } to { transform: translateX(100%); } }
+.banner-slide-in      { animation: banner-slide-in      0.42s ease-out forwards; }
+.banner-slide-out     { animation: banner-slide-out     0.42s ease-in  forwards; }
+.banner-slide-in-rev  { animation: banner-slide-in-rev  0.42s ease-out forwards; }
+.banner-slide-out-rev { animation: banner-slide-out-rev 0.42s ease-in  forwards; }

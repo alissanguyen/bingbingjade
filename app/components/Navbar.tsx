@@ -7,6 +7,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { useCart } from "./CartContext";
 import { getCategoryLabel } from "@/app/products/categories";
 import Image from "next/image";
+import { productMicroUrl } from "@/lib/storage";
 
 interface SearchResult {
   id: string;
@@ -485,7 +486,7 @@ export function Navbar() {
                 >
                   <div className="w-10 h-10 overflow-hidden bg-emerald-50 dark:bg-emerald-950 shrink-0 relative">
                     {r.image ? (
-                      <Image src={r.image} alt="" className={`w-full h-full object-cover ${r.sold ? "grayscale" : ""}`} width={50} height={50}/>
+                      <Image src={productMicroUrl(r.image)} alt="" unoptimized className={`w-full h-full object-cover ${r.sold ? "grayscale" : ""}`} width={50} height={50} />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-lg">🪨</div>
                     )}

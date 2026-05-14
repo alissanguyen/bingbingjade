@@ -25,7 +25,7 @@ export const WATERMARK = {
   /** Vertical position as a fraction of image height (0 = top, 1 = bottom).
    *  0.5 = vertically centered. */
   verticalPositionPercent: 0.50,
-  /** Quality for the output JPEG (0–100). */
+  /** Quality for the customer-facing WebP output (0–100). */
   outputQuality: 90,
 };
 // ─────────────────────────────────────────────────────────────────────────────
@@ -106,11 +106,11 @@ export async function applyWatermark(input: Buffer, category = ""): Promise<Buff
     top = Math.max(0, height - wmarkH - Math.round(height * 0.10));
   }
 
-  // Single pipeline: rotate → resize → composite → JPEG. No intermediate encoding.
+  // Single pipeline: rotate → resize → composite → WebP. No intermediate encoding.
   return sharp(input)
     .rotate()
     .resize(2000, 2000, { fit: "inside", withoutEnlargement: true })
     .composite([{ input: wmarkPng, left, top, blend: "over" }])
-    .jpeg({ quality: WATERMARK.outputQuality })
+    .webp({ quality: WATERMARK.outputQuality })
     .toBuffer();
 }

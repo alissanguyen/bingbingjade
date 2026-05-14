@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useCart } from "./CartContext";
 import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
 import { supabase } from "@/lib/supabase";
+import { productMicroUrl } from "@/lib/storage";
 
 function fmtPrice(price: number): string {
   return requiresInquiry(price) ? obfuscatedPrice(price) : `$${price.toFixed(2)}`;
@@ -253,7 +254,7 @@ export function CartDrawer() {
                       <div className="h-16 w-16 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
                         {item.thumbnail ? (
                           <Image
-                            src={item.thumbnail}
+                            src={productMicroUrl(item.thumbnail)}
                             alt={item.productName}
                             width={64}
                             height={64}
@@ -330,7 +331,7 @@ export function CartDrawer() {
                   <div className="w-14 h-14 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
                     {item.thumbnail ? (
                       <Image
-                        src={item.thumbnail}
+                        src={productMicroUrl(item.thumbnail)}
                         alt={item.productName}
                         width={56}
                         height={56}
@@ -371,7 +372,7 @@ export function CartDrawer() {
                     <div className="w-14 h-14 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
                       {item.thumbnail ? (
                         <Image
-                          src={item.thumbnail}
+                          src={productMicroUrl(item.thumbnail)}
                           alt={item.productName}
                           width={56}
                           height={56}
