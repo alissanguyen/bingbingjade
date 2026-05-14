@@ -65,14 +65,20 @@ export default async function CollectionPage({ params }: Params) {
       imageUrl: await resolveImageUrl(s.image),
       mobileImageUrl: s.mobile_image ? await resolveImageUrl(s.mobile_image) : null,
       caption: s.caption,
-      tags: (s.collection_scene_tags ?? []) as {
-        id: string; x: number; y: number;
-        products: { id: string; name: string; slug: string; images: string[]; price_display_usd: number | null; sale_price_usd: number | null; show_price: boolean; status: string };
-      }[],
+      tags: (s.collection_scene_tags ?? []).map((tag) => {
+        const p = Array.isArray(tag.products) ? tag.products[0] : tag.products;
+        return { id: tag.id as string, x: tag.x as number, y: tag.y as number, products: p as { id: string; name: string; slug: string; images: string[]; price_display_usd: number | null; sale_price_usd: number | null; show_price: boolean; status: string } };
+      }).filter((t) => t.products),
     }))
   );
 
-  const products = (collection.collection_products ?? []).map((cp) => cp.products).filter(Boolean);
+  const products = (collection.collection_products ?? [])
+    .map((cp) => (Array.isArray(cp.products) ? cp.products[0] : cp.products) as {
+      id: string; name: string; slug: string; public_id: string | null;
+      category: string | null; images: string[]; price_display_usd: number | null;
+      sale_price_usd: number | null; show_price: boolean; status: string; quick_ship: boolean | null;
+    } | null)
+    .filter(Boolean);
 
   const [heroScene, ...restScenes] = scenes;
 

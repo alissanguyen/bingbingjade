@@ -39,7 +39,7 @@ export default async function CollectionAdminDetailPage({ params }: Params) {
 
   // Resolve scene image URLs for display in admin
   const scenesWithUrls = await Promise.all(
-    (collection.collection_scenes ?? []).map(async (s) => ({
+    (collection.collection_scenes ?? []).map(async (s: { id: string; image: string; mobile_image: string | null; caption: string | null; sort_order: number; collection_scene_tags: unknown[] }) => ({
       ...s,
       imageUrl: await resolveImageUrl(s.image),
       mobileImageUrl: s.mobile_image ? await resolveImageUrl(s.mobile_image) : null,
