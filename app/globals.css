@@ -232,18 +232,6 @@ body {
 .fc-digit-out { animation: fc-slide-out 0.28s ease-in  forwards; }
 .fc-digit-in  { animation: fc-slide-in  0.28s ease-out forwards; }
 
-/* Banner ticker — continuous right-to-left flow */
-@keyframes banner-ticker {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
-}
-.banner-ticker-track {
-  animation: banner-ticker linear infinite;
-  will-change: transform;
-}
-@media (prefers-reduced-motion: reduce) {
-  .banner-ticker-track { animation: none; }
-}
 
 @keyframes wa-vibrate {
   0%, 100% { transform: translateX(0) rotate(0deg); }
