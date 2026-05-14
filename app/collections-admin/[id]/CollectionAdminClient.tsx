@@ -12,7 +12,11 @@ interface TagProduct {
   images: string[]; price_display_usd: number | null;
   sale_price_usd: number | null; show_price: boolean; status: string;
 }
-interface SceneTag { id: string; x: number; y: number; products: TagProduct; }
+interface SceneTag {
+  id: string; x: number; y: number;
+  mobile_x: number | null; mobile_y: number | null;
+  products: TagProduct;
+}
 interface Scene {
   id: string; image: string; imageUrl: string;
   mobile_image: string | null; mobileImageUrl: string | null;
@@ -78,14 +82,91 @@ function SceneTagEditor({
   onTagRemoved: (sceneId: string, tagId: string) => void;
 }) {
   const [tags, setTags] = useState<SceneTag[]>(scene.collection_scene_tags);
+  const [view, setView] = useState<"desktop" | "mobile">("desktop");
   const [pending, setPending] = useState<{ x: number; y: number } | null>(null);
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<TagProduct[]>([]);
   const [searching, setSearching] = useState(false);
+  const [dragPos, setDragPos] = useState<{ tagId: string; x: number; y: number } | null>(null);
+
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const imgRef = useRef<HTMLDivElement>(null);
+  const dragStateRef = useRef<{ tagId: string; hasMoved: boolean } | null>(null);
+  const suppressNextClick = useRef(false);
 
-  const handleImageClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  // ── Coordinate helpers ──────────────────────────────────────────────
+
+  function getTagDisplayX(tag: SceneTag): number {
+    if (dragPos?.tagId === tag.id) return dragPos.x;
+    return view === "mobile" ? (tag.mobile_x ?? tag.x) : tag.x;
+  }
+
+  function getTagDisplayY(tag: SceneTag): number {
+    if (dragPos?.tagId === tag.id) return dragPos.y;
+    return view === "mobile" ? (tag.mobile_y ?? tag.y) : tag.y;
+  }
+
+  function clampedCoords(e: React.PointerEvent): { x: number; y: number } {
+    if (!imgRef.current) return { x: 0, y: 0 };
+    const rect = imgRef.current.getBoundingClientRect();
+    return {
+      x: Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100)),
+      y: Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100)),
+    };
+  }
+
+  // ── Drag handlers ───────────────────────────────────────────────────
+
+  function handleTagPointerDown(e: React.PointerEvent, tagId: string) {
+    e.stopPropagation();
+    if (!imgRef.current) return;
+    imgRef.current.setPointerCapture(e.pointerId);
+    const tag = tags.find((t) => t.id === tagId);
+    if (!tag) return;
+    dragStateRef.current = { tagId, hasMoved: false };
+    setDragPos({ tagId, x: getTagDisplayX(tag), y: getTagDisplayY(tag) });
+  }
+
+  function handlePointerMove(e: React.PointerEvent) {
+    if (!dragStateRef.current) return;
+    const { x, y } = clampedCoords(e);
+    dragStateRef.current.hasMoved = true;
+    setDragPos({ tagId: dragStateRef.current.tagId, x, y });
+  }
+
+  async function handlePointerUp(e: React.PointerEvent) {
+    if (!dragStateRef.current) return;
+    const { tagId, hasMoved } = dragStateRef.current;
+    dragStateRef.current = null;
+    const pos = dragPos;
+    setDragPos(null);
+
+    if (!hasMoved || !pos) return;
+    suppressNextClick.current = true;
+
+    const isMobileView = view === "mobile";
+    setTags((prev) => prev.map((t) => {
+      if (t.id !== tagId) return t;
+      return isMobileView
+        ? { ...t, mobile_x: pos.x, mobile_y: pos.y }
+        : { ...t, x: pos.x, y: pos.y };
+    }));
+
+    const body = isMobileView
+      ? { tagId, mobile_x: pos.x, mobile_y: pos.y }
+      : { tagId, x: pos.x, y: pos.y };
+
+    await fetch(
+      `/api/admin/collections/${collectionId}/scenes/${scene.id}/tags`,
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
+    );
+  }
+
+  // ── Click-to-place (desktop only) ───────────────────────────────────
+
+  function handleImageClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (suppressNextClick.current) { suppressNextClick.current = false; return; }
+    if (view === "mobile") return;
     if (!imgRef.current) return;
     const rect = imgRef.current.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -93,7 +174,9 @@ function SceneTagEditor({
     setPending({ x, y });
     setSearch("");
     setResults([]);
-  }, []);
+  }
+
+  // ── Product search ──────────────────────────────────────────────────
 
   const runSearch = useCallback((q: string) => {
     if (debounce.current) clearTimeout(debounce.current);
@@ -119,9 +202,16 @@ function SceneTagEditor({
       }
     );
     if (!res.ok) return;
-    const tag: SceneTag = await res.json();
-    const updated = [...tags, tag];
-    setTags(updated);
+    const raw = await res.json();
+    const tag: SceneTag = {
+      id: raw.id,
+      x: raw.x,
+      y: raw.y,
+      mobile_x: raw.mobile_x ?? null,
+      mobile_y: raw.mobile_y ?? null,
+      products: Array.isArray(raw.products) ? raw.products[0] : raw.products,
+    };
+    setTags((prev) => [...prev, tag]);
     onTagAdded(scene.id, tag);
     setPending(null);
     setSearch("");
@@ -131,49 +221,106 @@ function SceneTagEditor({
   async function removeTag(tagId: string) {
     const res = await fetch(
       `/api/admin/collections/${collectionId}/scenes/${scene.id}/tags`,
-      {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tagId }),
-      }
+      { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tagId }) }
     );
     if (!res.ok) return;
     setTags((prev) => prev.filter((t) => t.id !== tagId));
     onTagRemoved(scene.id, tagId);
   }
 
+  async function clearMobileOverride(tagId: string) {
+    setTags((prev) => prev.map((t) => t.id !== tagId ? t : { ...t, mobile_x: null, mobile_y: null }));
+    await fetch(
+      `/api/admin/collections/${collectionId}/scenes/${scene.id}/tags`,
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tagId, mobile_x: null, mobile_y: null }) }
+    );
+  }
+
+  // ── Image to display based on view ─────────────────────────────────
+
+  const imageUrl = view === "mobile" && scene.mobileImageUrl ? scene.mobileImageUrl : scene.imageUrl;
+
   return (
     <div className="space-y-3">
-      <p className="text-xs text-gray-400 dark:text-gray-500">
-        Click anywhere on the image to place a product tag.
-      </p>
-      <div
-        ref={imgRef}
-        className="relative w-full cursor-crosshair rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700"
-        onClick={handleImageClick}
-      >
-        <Image src={scene.imageUrl} alt="" width={1400} height={900} className="w-full h-auto" unoptimized />
-        {tags.map((tag, i) => (
-          <div
-            key={tag.id}
-            className="absolute flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 border-2 border-white text-white text-[10px] font-bold shadow cursor-default"
-            style={{ left: `${tag.x}%`, top: `${tag.y}%`, transform: "translate(-50%, -50%)" }}
-            onClick={(e) => e.stopPropagation()}
-            title={tag.products.name}
-          >
-            {i + 1}
-          </div>
-        ))}
-        {pending && (
-          <div
-            className="absolute w-5 h-5 rounded-full border-2 border-emerald-400 bg-white/80 animate-pulse"
-            style={{ left: `${pending.x}%`, top: `${pending.y}%`, transform: "translate(-50%, -50%)" }}
-          />
-        )}
+
+      {/* View toggle */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={() => { setView("desktop"); setPending(null); }}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${view === "desktop" ? "bg-emerald-600 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"}`}
+        >
+          Desktop
+        </button>
+        <button
+          type="button"
+          onClick={() => { setView("mobile"); setPending(null); }}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${view === "mobile" ? "bg-emerald-600 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"}`}
+        >
+          Mobile
+        </button>
+        <p className="text-xs text-gray-400 dark:text-gray-500 ml-1">
+          {view === "desktop"
+            ? "Click image to place tag. Drag dots to reposition."
+            : "Drag dots to set mobile position overrides."}
+        </p>
       </div>
 
-      {/* Product search for pending tag */}
-      {pending && (
+      {/* Canvas wrapper — narrowed for mobile preview */}
+      <div className={view === "mobile" ? "max-w-[320px] mx-auto" : "w-full"}>
+        {view === "mobile" && (
+          <div className="mb-1 flex items-center justify-center gap-1.5 text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wider">
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+              <line x1="12" y1="18" x2="12.01" y2="18" />
+            </svg>
+            Mobile preview
+          </div>
+        )}
+        <div
+          ref={imgRef}
+          className={`relative cursor-crosshair overflow-hidden border border-gray-200 dark:border-gray-700 select-none ${view === "mobile" ? "rounded-2xl shadow-xl ring-4 ring-gray-200 dark:ring-gray-600" : "rounded-lg"}`}
+          onClick={handleImageClick}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+        >
+          <Image src={imageUrl} alt="" width={1400} height={900} className="w-full h-auto" unoptimized />
+
+          {/* Tag dots */}
+          {tags.map((tag, i) => (
+            <div
+              key={tag.id}
+              className={`absolute flex items-center justify-center w-7 h-7 rounded-full border-2 border-white text-white text-[10px] font-bold shadow-lg touch-none ${
+                dragPos?.tagId === tag.id
+                  ? "cursor-grabbing bg-emerald-400 scale-110"
+                  : "cursor-grab bg-emerald-500 hover:bg-emerald-400"
+              } transition-colors`}
+              style={{
+                left: `${getTagDisplayX(tag)}%`,
+                top: `${getTagDisplayY(tag)}%`,
+                transform: "translate(-50%, -50%)",
+                zIndex: dragPos?.tagId === tag.id ? 10 : 1,
+              }}
+              onPointerDown={(e) => handleTagPointerDown(e, tag.id)}
+              onClick={(e) => e.stopPropagation()}
+              title={tag.products.name}
+            >
+              {i + 1}
+            </div>
+          ))}
+
+          {/* Pending placement indicator */}
+          {pending && view === "desktop" && (
+            <div
+              className="absolute w-5 h-5 rounded-full border-2 border-emerald-400 bg-white/80 animate-pulse pointer-events-none"
+              style={{ left: `${pending.x}%`, top: `${pending.y}%`, transform: "translate(-50%, -50%)" }}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Product search (desktop view, pending placement) */}
+      {pending && view === "desktop" && (
         <div className="border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 bg-emerald-50 dark:bg-emerald-950/20 space-y-2">
           <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
             Tag at ({pending.x.toFixed(0)}%, {pending.y.toFixed(0)}%) — search for a product:
@@ -213,21 +360,53 @@ function SceneTagEditor({
         </div>
       )}
 
-      {/* Existing tags list */}
+      {/* Tags list */}
       {tags.length > 0 && (
         <div className="space-y-1">
-          {tags.map((tag, i) => (
-            <div key={tag.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800">
-              <span className="w-5 h-5 rounded-full bg-emerald-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
-              {tag.products.images?.[0] && (
-                <Image src={productThumbUrl(tag.products.images[0])} alt="" width={28} height={28} className="rounded object-cover shrink-0" unoptimized />
-              )}
-              <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 truncate">{tag.products.name}</span>
-              <span className="text-xs text-gray-400">({tag.x.toFixed(0)}%, {tag.y.toFixed(0)}%)</span>
-              <button type="button" onClick={() => removeTag(tag.id)} className="text-xs text-red-400 hover:text-red-600 transition-colors shrink-0">Remove</button>
-            </div>
-          ))}
+          {tags.map((tag, i) => {
+            const hasMobileOverride = tag.mobile_x != null || tag.mobile_y != null;
+            return (
+              <div key={tag.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800">
+                <span className="w-5 h-5 rounded-full bg-emerald-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                {tag.products.images?.[0] && (
+                  <Image src={productThumbUrl(tag.products.images[0])} alt="" width={28} height={28} className="rounded object-cover shrink-0" unoptimized />
+                )}
+                <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 truncate">{tag.products.name}</span>
+                <span className="text-[11px] font-mono text-gray-400 shrink-0">
+                  {tag.x.toFixed(0)}%,{tag.y.toFixed(0)}%
+                  {hasMobileOverride && (
+                    <span className="text-blue-400 ml-1">
+                      → {(tag.mobile_x ?? tag.x).toFixed(0)}%,{(tag.mobile_y ?? tag.y).toFixed(0)}%
+                    </span>
+                  )}
+                </span>
+                {hasMobileOverride && (
+                  <button
+                    type="button"
+                    onClick={() => clearMobileOverride(tag.id)}
+                    className="text-[11px] text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors shrink-0"
+                    title="Clear mobile position override"
+                  >
+                    Reset mobile
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => removeTag(tag.id)}
+                  className="text-[11px] text-red-400 hover:text-red-600 transition-colors shrink-0"
+                >
+                  Remove
+                </button>
+              </div>
+            );
+          })}
         </div>
+      )}
+
+      {tags.length === 0 && (
+        <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-2">
+          No tags yet — click on the image above to place one.
+        </p>
       )}
     </div>
   );
@@ -309,7 +488,6 @@ export function CollectionAdminClient({ collection: initial }: { collection: Col
         ...c,
         collection_scenes: [...c.collection_scenes, { ...data, imageUrl: "", mobileImageUrl: null, collection_scene_tags: [] }],
       }));
-      // Reload to get resolved URL
       window.location.reload();
     } finally {
       setUploadingScene(false);
@@ -415,7 +593,7 @@ export function CollectionAdminClient({ collection: initial }: { collection: Col
             {infoError && <p className="text-sm text-red-500">{infoError}</p>}
             <div className="grid sm:grid-cols-2 gap-4">
               <Input label="Name" value={infoForm.name} onChange={(e) => setInfoForm((f) => ({ ...f, name: e.target.value }))} required />
-              <Input label="Slug" value={infoForm.slug} onChange={(e) => setInfoForm((f) => ({ ...f, slug: e.target.value }))} className="font-mono" required />
+              <Input label="Slug" value={infoForm.slug} onChange={(e) => setInfoForm((f) => ({ ...f, slug: e.target.value }))} required />
             </div>
             <Input label="Subtitle" value={infoForm.subtitle} onChange={(e) => setInfoForm((f) => ({ ...f, subtitle: e.target.value }))} placeholder="One-line tagline shown on the collection page" />
             <Textarea label="Description" value={infoForm.description} onChange={(e) => setInfoForm((f) => ({ ...f, description: e.target.value }))} placeholder="Shown between hero and masonry grid" />
@@ -446,7 +624,6 @@ export function CollectionAdminClient({ collection: initial }: { collection: Col
         <SectionCard title="Collection Scenes">
           {sceneError && <p className="text-sm text-red-500 mb-3">{sceneError}</p>}
 
-          {/* Upload button */}
           <label className={`block w-full py-3 rounded-xl border-2 border-dashed text-sm font-medium text-center cursor-pointer transition-colors mb-5 ${
             uploadingScene
               ? "border-emerald-300 text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20"
@@ -456,11 +633,9 @@ export function CollectionAdminClient({ collection: initial }: { collection: Col
             <input type="file" accept="image/*" className="hidden" onChange={handleSceneUpload} disabled={uploadingScene} />
           </label>
 
-          {/* Scene list */}
           <div className="space-y-6">
             {collection.collection_scenes.map((scene, i) => (
               <div key={scene.id} className="border border-gray-100 dark:border-gray-800 rounded-xl overflow-hidden">
-                {/* Scene header */}
                 <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/50">
                   <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 w-6 text-center">{i + 1}</span>
                   <input
@@ -485,14 +660,12 @@ export function CollectionAdminClient({ collection: initial }: { collection: Col
                   </button>
                 </div>
 
-                {/* Scene image preview */}
-                {scene.imageUrl && (
+                {scene.imageUrl && expandedTagger !== scene.id && (
                   <div className="relative bg-gray-100 dark:bg-gray-800 max-h-64 overflow-hidden">
                     <Image src={scene.imageUrl} alt="" width={800} height={500} className="w-full h-full object-cover" unoptimized />
                   </div>
                 )}
 
-                {/* Tag editor */}
                 {expandedTagger === scene.id && (
                   <div className="px-4 py-4 border-t border-gray-100 dark:border-gray-800">
                     <SceneTagEditor
@@ -528,7 +701,6 @@ export function CollectionAdminClient({ collection: initial }: { collection: Col
 
         {/* ── Shop the Collection Products ──── */}
         <SectionCard title="Shop the Collection">
-          {/* Product search */}
           <div className="mb-4 space-y-2">
             <input
               value={productSearch}
@@ -566,7 +738,6 @@ export function CollectionAdminClient({ collection: initial }: { collection: Col
             )}
           </div>
 
-          {/* Assigned products */}
           {collection.collection_products.length === 0 ? (
             <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-6">No products assigned. Search above to add.</p>
           ) : (

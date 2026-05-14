@@ -57,11 +57,11 @@ export default async function CollectionPage({ params }: Params) {
               unoptimized
             />
           ) : (
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-950 via-gray-950 to-gray-900" />
+            <div className="absolute inset-0 bg-linear-to-br from-emerald-950 via-gray-950 to-gray-900" />
           )}
 
           {/* Vignette */}
-          <div className="absolute inset-0 bg-gradient-to-t from-gray-950/80 via-transparent to-gray-950/40" />
+          <div className="absolute inset-0 bg-linear-to-t from-gray-950/80 via-transparent to-gray-950/40" />
 
           {/* Content */}
           <div className="relative z-10 text-center px-6 max-w-2xl mx-auto">
@@ -118,7 +118,7 @@ export default async function CollectionPage({ params }: Params) {
       collection_scenes (
         id, image, mobile_image, caption, sort_order,
         collection_scene_tags (
-          id, x, y,
+          id, x, y, mobile_x, mobile_y,
           products ( id, name, slug, images, price_display_usd, sale_price_usd, show_price, status )
         )
       ),
@@ -147,7 +147,12 @@ export default async function CollectionPage({ params }: Params) {
       caption: s.caption,
       tags: (s.collection_scene_tags ?? []).map((tag) => {
         const p = Array.isArray(tag.products) ? tag.products[0] : tag.products;
-        return { id: tag.id as string, x: tag.x as number, y: tag.y as number, products: p as { id: string; name: string; slug: string; images: string[]; price_display_usd: number | null; sale_price_usd: number | null; show_price: boolean; status: string } };
+        return {
+          id: tag.id as string, x: tag.x as number, y: tag.y as number,
+          mobile_x: (tag.mobile_x ?? null) as number | null,
+          mobile_y: (tag.mobile_y ?? null) as number | null,
+          products: p as { id: string; name: string; slug: string; images: string[]; price_display_usd: number | null; sale_price_usd: number | null; show_price: boolean; status: string },
+        };
       }).filter((t) => t.products),
     }))
   );
@@ -177,9 +182,9 @@ export default async function CollectionPage({ params }: Params) {
             unoptimized
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-950 to-gray-950" />
+          <div className="absolute inset-0 bg-linear-to-br from-emerald-950 to-gray-950" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
         <div className="relative z-10 px-6 pb-12 sm:px-12 sm:pb-16 max-w-3xl">
           <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-emerald-300 mb-3">
             Collection
@@ -206,7 +211,7 @@ export default async function CollectionPage({ params }: Params) {
 
       {/* ── Editorial Masonry ─────────────────────────────────────────────── */}
       {scenes.length > 0 && (
-        <section className="px-3 sm:px-6 pb-16 max-w-screen-xl mx-auto">
+        <section className="px-3 sm:px-6 pb-16 max-w-7xl mx-auto">
           {(() => {
             const masonryScenes = heroUrl ? scenes : restScenes;
             if (masonryScenes.length === 0) return null;
@@ -225,7 +230,7 @@ export default async function CollectionPage({ params }: Params) {
 
       {/* ── Shop the Collection ───────────────────────────────────────────── */}
       {products.length > 0 && (
-        <section className="max-w-screen-xl mx-auto px-4 sm:px-6 pb-20">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 pb-20">
           <div className="flex items-center gap-6 mb-8">
             <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
             <h2 className="text-xs font-semibold uppercase tracking-[0.25em] text-gray-400 dark:text-gray-500 shrink-0">

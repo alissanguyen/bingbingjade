@@ -21,7 +21,7 @@ export default async function CollectionAdminDetailPage({ params }: Params) {
       collection_scenes (
         id, image, mobile_image, caption, sort_order,
         collection_scene_tags (
-          id, x, y,
+          id, x, y, mobile_x, mobile_y,
           products ( id, name, slug, images, price_display_usd, sale_price_usd, show_price, status )
         )
       ),
@@ -39,7 +39,7 @@ export default async function CollectionAdminDetailPage({ params }: Params) {
 
   // Resolve scene image URLs for display in admin
   const scenesWithUrls = await Promise.all(
-    (collection.collection_scenes ?? []).map(async (s: { id: string; image: string; mobile_image: string | null; caption: string | null; sort_order: number; collection_scene_tags: unknown[] }) => ({
+    (collection.collection_scenes ?? []).map(async (s: { id: string; image: string; mobile_image: string | null; caption: string | null; sort_order: number; collection_scene_tags: { id: string; x: number; y: number; mobile_x: number | null; mobile_y: number | null; products: unknown }[] }) => ({
       ...s,
       imageUrl: await resolveImageUrl(s.image),
       mobileImageUrl: s.mobile_image ? await resolveImageUrl(s.mobile_image) : null,

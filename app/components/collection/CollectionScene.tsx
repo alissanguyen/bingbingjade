@@ -20,6 +20,8 @@ interface SceneTag {
   id: string;
   x: number;
   y: number;
+  mobile_x?: number | null;
+  mobile_y?: number | null;
   products: TagProduct;
 }
 
@@ -50,6 +52,10 @@ function TagDot({ tag, isMobile }: { tag: SceneTag; isMobile: boolean }) {
   const price = formatPrice(product);
   const isSold = product.status === "sold";
 
+  // Use mobile overrides when on touch device and overrides are set
+  const posX = isMobile && tag.mobile_x != null ? tag.mobile_x : tag.x;
+  const posY = isMobile && tag.mobile_y != null ? tag.mobile_y : tag.y;
+
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     if (isMobile) {
@@ -65,13 +71,13 @@ function TagDot({ tag, isMobile }: { tag: SceneTag; isMobile: boolean }) {
     }
   }, [isMobile, product.slug, isSold]);
 
-  const popupLeft = tag.x > 60;
-  const popupTop = tag.y > 65;
+  const popupLeft = posX > 60;
+  const popupTop = posY > 65;
 
   return (
     <div
       className="absolute"
-      style={{ left: `${tag.x}%`, top: `${tag.y}%`, transform: "translate(-50%, -50%)" }}
+      style={{ left: `${posX}%`, top: `${posY}%`, transform: "translate(-50%, -50%)" }}
     >
       <button
         onClick={handleClick}
@@ -142,7 +148,6 @@ export function CollectionScene({ scene }: Props) {
         ref={containerRef}
         className="relative w-full overflow-hidden"
       >
-        {/* Responsive: prefer mobile image on small screens if available */}
         <picture>
           {scene.mobileImageUrl && (
             <source media="(max-width: 639px)" srcSet={scene.mobileImageUrl} />
@@ -157,12 +162,10 @@ export function CollectionScene({ scene }: Props) {
           />
         </picture>
 
-        {/* Tag dots */}
         {hasTags && scene.tags.map((tag) => (
           <TagDot key={tag.id} tag={tag} isMobile={isMobile} />
         ))}
 
-        {/* Tag indicator (shows there are tags, on hover) */}
         {hasTags && (
           <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
             <div className="flex items-center gap-1 bg-black/50 backdrop-blur-sm rounded-full px-2 py-1">
