@@ -430,16 +430,14 @@ export function CartDrawer() {
                 You save {fmtPrice(totalSavings)} with current sale prices.
               </p>
             )}
-            <div className="flex items-center gap-1.5 text-[11px] sm:text-[13px] font-medium text-emerald-700 dark:text-emerald-400">
+            <div className="flex items-center gap-1.5 text-[11px] sm:text-[13px] font-medium text-cyan-800 dark:text-emerald-400">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14M12 5l7 7-7 7"/>
               </svg>
-              Free shipping to the United States
+              Free standard U.S. shipping. International shipping, discounts & fees calculated at checkout.
             </div>
-            <p className="text-[12px] sm:text-[16px] italic text-gray-400 dark:text-gray-500">
-              Shipping, discounts & fees calculated at checkout.
-            </p>
-            <p className="p-2 sm:p-3 bg-amber-500/15 border-2 rounded-xl italic border-amber-500/50 text-[11px] sm:text-[15px] text-amber-700 dark:text-amber-400/80">
+
+            <p className="p-2 sm:p-3 bg-amber-500/15 border-2 rounded-xl italic border-amber-500/50 text-[11px] sm:text-[14px] text-amber-700 dark:text-amber-400/80">
               Items might sell while in cart. Availability confirmed at time of purchase.
             </p>
             {/* CTA → /checkout */}
