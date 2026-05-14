@@ -21,8 +21,8 @@ interface SearchResult {
 }
 
 const NAV_COLLECTIONS = [
-  { label: "Emerald Seafoam Collection", href: "/sale/emerald-seafoam" },
-  { label: "Ocean Mist Collection", href: "/sale/ocean-mist" },
+  { label: "Emerald Seafoam Collection", href: "/collections/emerald-seafoam" },
+  { label: "Ocean Mist Collection", href: "/collections/ocean-mist" },
 ];
 
 const NAV_ALL_PIECES = [
