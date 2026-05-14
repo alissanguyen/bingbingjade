@@ -80,6 +80,7 @@ export function AdminBar({
   // Flat list for mobile dropdown
   const allLinks = [
     { href: "/products-admin", label: "Products" },
+    { href: "/collections-admin", label: "Collections" },
     { href: "/vendors", label: "Vendors" },
     { href: "/orders-admin", label: "Orders" },
     { href: "/customers-admin", label: "Customers" },
@@ -112,6 +113,7 @@ export function AdminBar({
 
             {/* Group 1 — Catalog */}
             <a href="/products-admin" className={linkCls}>Products</a>
+            <a href="/collections-admin" className={linkCls}>Collections</a>
             <a href="/vendors" className={linkCls}>Vendors</a>
 
             <span className="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0" />
