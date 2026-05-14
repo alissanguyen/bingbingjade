@@ -20,23 +20,31 @@ interface SearchResult {
   sold: boolean;
 }
 
-const NAV_CATEGORIES = [
-  { value: "", label: "All Products" },
-  { value: "bracelet", label: "Bracelets" },
-  { value: "bangle", label: "Bangles" },
-  { value: "ring", label: "Rings" },
-  { value: "pendant", label: "Pendants" },
-  { value: "necklace", label: "Necklaces" },
-  { value: "set", label: "Sets" },
-  { value: "earring", label: "Earrings" },
-  { value: "raw_material", label: "Raw Material" },
+const NAV_COLLECTIONS = [
+  { label: "Emerald Seafoam Collection", href: "/sale/emerald-seafoam" },
+  { label: "Ocean Mist Collection", href: "/sale/ocean-mist" },
 ];
 
-const NAV_COLLECTIONS = [
-  { label: "Under $700", href: "/products?maxPrice=699" },
+const NAV_ALL_PIECES = [
+  { href: "/products", label: "All Products" },
+  { href: "/products?category=bangle", label: "Bangles" },
+  { href: "/products?category=bracelet", label: "Bracelets" },
+  { href: "/products?category=ring", label: "Rings & Earrings" },
+  { href: "/products?category=pendant", label: "Pendants & Necklaces" },
+  { href: "/products?category=set", label: "Sets" },
+  { href: "/products?category=raw_material", label: "Raw Materials" },
+];
+
+const NAV_SELECTIONS = [
+  { label: "Everyday Jade", href: "/products?maxPrice=699" },
   { label: "Most Loved Pieces", href: "/products?minPrice=700&maxPrice=3999" },
-  { label: "Collector Picks", href: "/products?minPrice=4000&maxPrice=9999" },
+  { label: "Collector's Picks", href: "/products?minPrice=4000&maxPrice=9999" },
   { label: "Rare & Investment Jade", href: "/products?minPrice=10000" },
+];
+
+const NAV_SERVICES = [
+  { label: "Custom Sourcing", href: "/custom-sourcing" },
+  { label: "Restoration & Preservation", href: "/restoration" },
 ];
 
 export function Navbar() {
@@ -272,7 +280,7 @@ export function Navbar() {
             href="/products"
             className={`flex items-center gap-1 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors ${pathname.startsWith("/products") || pathname.startsWith("/custom-sourcing") ? "text-emerald-700 dark:text-emerald-400 font-semibold" : ""}`}
           >
-            Shop Now
+            Shop
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="13"
@@ -294,26 +302,19 @@ export function Navbar() {
             className={`absolute top-full left-0 pt-3 z-50 transition-all duration-150 ${productsOpen ? "opacity-100 pointer-events-auto translate-y-0" : "opacity-0 pointer-events-none -translate-y-1"
               }`}
           >
-            <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg overflow-hidden py-3 flex">
-              {/* Category column */}
-              <div className="px-2 min-w-[170px]">
-                <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Category</p>
-                {NAV_CATEGORIES.map(({ value, label }) => (
-                  <Link
-                    key={value}
-                    href={value ? `/products?category=${value}` : "/products"}
-                    onClick={() => setProductsOpen(false)}
-                    className="block px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
-                  >
-                    {label}
-                  </Link>
-                ))}
-              </div>
-              {/* Divider */}
-              <div className="w-px bg-gray-100 dark:bg-gray-800 mx-1 self-stretch" />
-              {/* Collection column */}
-              <div className="px-2 min-w-40">
-                <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Collection</p>
+            <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg overflow-hidden py-3 flex items-start">
+              {/* Left column — Featured */}
+              <div className="px-2 min-w-[210px]">
+                <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Featured</p>
+                <Link
+                  href="/products?shipping=ship_now"
+                  onClick={() => setProductsOpen(false)}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                  Ready to Ship
+                </Link>
+                <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">The BingBing Collections</p>
                 {NAV_COLLECTIONS.map(({ label, href }) => (
                   <Link
                     key={href}
@@ -324,15 +325,46 @@ export function Navbar() {
                     {label}
                   </Link>
                 ))}
+              </div>
+              {/* Divider */}
+              <div className="w-px bg-gray-100 dark:bg-gray-800 mx-1 self-stretch" />
+              {/* Right column — Shop All Pieces + Selections + Service */}
+              <div className="px-2 min-w-[210px]">
+                <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Shop All Pieces</p>
+                {NAV_ALL_PIECES.map(({ href, label }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setProductsOpen(false)}
+                    className="block px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
+                  >
+                    {label}
+                  </Link>
+                ))}
                 <div className="my-2 h-px bg-gray-100 dark:bg-gray-800 mx-3" />
-                <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Services</p>
-                <Link
-                  href="/custom-sourcing"
-                  onClick={() => setProductsOpen(false)}
-                  className="block px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
-                >
-                  Custom Sourcing
-                </Link>
+                <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Selections</p>
+                {NAV_SELECTIONS.map(({ label, href }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setProductsOpen(false)}
+                    className="block px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
+                  >
+                    {label}
+                  </Link>
+                ))}
+                <div className="my-2 h-px bg-gray-100 dark:bg-gray-800 mx-3" />
+                <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Service</p>
+                {NAV_SERVICES.map(({ label, href }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setProductsOpen(false)}
+                    className="block px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
+                  >
+                    {label}
+                  </Link>
+                ))}
               </div>
             </div>
           </div>
@@ -532,7 +564,7 @@ export function Navbar() {
                 onClick={() => setMobileProductsOpen((v) => !v)}
                 className={`w-full flex items-center justify-between py-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors ${pathname.startsWith("/products") || pathname.startsWith("/custom-sourcing") ? "text-emerald-700 dark:text-emerald-400 font-semibold" : ""}`}
               >
-                Shop Now
+                Shop
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="14"
@@ -551,45 +583,74 @@ export function Navbar() {
 
               {mobileProductsOpen && (
                 <div className="pl-4 pb-2 border-l-2 border-emerald-100 dark:border-emerald-900 ml-1">
-                  <p className="pt-1 pb-1 text-[10px] sm:text-[14px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Category</p>
-                  <ul className="space-y-0.5">
-                    {NAV_CATEGORIES.map(({ value, label }) => (
-                      <li key={value}>
-                        <Link
-                          href={value ? `/products?category=${value}` : "/products"}
-                          onClick={() => { setOpen(false); setMobileProductsOpen(false); }}
-                          className="ml-2 sm:ml-0 block py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
-                        >
-                          {label}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="pt-3 pb-1 text-[10px] sm:text-[14px] mt-2 sm:mt-0 font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Collection</p>
-                  <ul className="space-y-0.5">
+                  {/* Featured */}
+                  <p className="pt-1 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Featured</p>
+                  <Link
+                    href="/products?shipping=ship_now"
+                    onClick={() => { setOpen(false); setMobileProductsOpen(false); }}
+                    className="flex items-center gap-2 pl-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                    Ready to Ship
+                  </Link>
+                  <p className="pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">The BingBing Collections</p>
+                  <ul className="space-y-0.5 mb-2">
                     {NAV_COLLECTIONS.map(({ label, href }) => (
                       <li key={href}>
                         <Link
                           href={href}
                           onClick={() => { setOpen(false); setMobileProductsOpen(false); }}
-                          className="ml-2 sm:ml-0 block py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                          className="block pl-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
                         >
                           {label}
                         </Link>
                       </li>
                     ))}
                   </ul>
-                  <p className="pt-3 pb-1 text-[10px] mt-2 sm:mt-0 sm:text-[14px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Services</p>
+                  {/* Shop All Pieces */}
+                  <p className="pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Shop All Pieces</p>
+                  <ul className="space-y-0.5 mb-2">
+                    {NAV_ALL_PIECES.map(({ href, label }) => (
+                      <li key={href}>
+                        <Link
+                          href={href}
+                          onClick={() => { setOpen(false); setMobileProductsOpen(false); }}
+                          className="block pl-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                        >
+                          {label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                  {/* Selections */}
+                  <p className="pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Selections</p>
+                  <ul className="space-y-0.5 mb-2">
+                    {NAV_SELECTIONS.map(({ label, href }) => (
+                      <li key={href}>
+                        <Link
+                          href={href}
+                          onClick={() => { setOpen(false); setMobileProductsOpen(false); }}
+                          className="block pl-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                        >
+                          {label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                  {/* Service */}
+                  <p className="pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Service</p>
                   <ul className="space-y-0.5">
-                    <li>
-                      <Link
-                        href="/custom-sourcing"
-                        onClick={() => { setOpen(false); setMobileProductsOpen(false); }}
-                        className="ml-2 sm:ml-0 block py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
-                      >
-                        Custom Sourcing
-                      </Link>
-                    </li>
+                    {NAV_SERVICES.map(({ label, href }) => (
+                      <li key={href}>
+                        <Link
+                          href={href}
+                          onClick={() => { setOpen(false); setMobileProductsOpen(false); }}
+                          className="block pl-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                        >
+                          {label}
+                        </Link>
+                      </li>
+                    ))}
                   </ul>
                 </div>
               )}
