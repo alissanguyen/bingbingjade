@@ -79,12 +79,12 @@ const sections = [
   {
     id: "shipping-delivery",
     title: "Shipping & Delivery",
-    body: "Items labeled “Ship Now” are held in our U.S. inventory and typically ship within 2–5 business days. Pieces labeled “Sourced for You” are curated special-order pieces with an estimated delivery timeframe of 2–4 weeks. This allows time for sourcing coordination, review, certification when applicable, and fulfillment. Delivery estimates are not guaranteed and may vary due to customs, carrier delays, holidays, weather, supplier timelines, or other circumstances outside our control.",
+    body: "We offer free U.S. shipping on all orders. Items labeled “Ship Now” are held in our U.S. inventory and typically ship within 2–5 business days. Pieces labeled “Sourced for You” are curated special-order pieces with an estimated delivery timeframe of 2–4 weeks. This allows time for sourcing coordination, review, certification when applicable, and fulfillment. Delivery estimates are not guaranteed and may vary due to customs, carrier delays, holidays, weather, supplier timelines, or other circumstances outside our control.",
   },
   {
     id: "expedited-shipping",
     title: "Expedited Sourcing & Shipping",
-    body: "Expedited shipping is available for “Sourced for You” items for $100 (plus $10 per additional item). With this option, your piece is prioritized and dispatched without delay. This is recommended for time-sensitive orders, high-value pieces, or special occasions.",
+    body: "Free U.S. shipping applies to standard shipping only. Expedited shipping is available for “Sourced for You” items for $100 (plus $10 per additional item). With this option, your piece is prioritized and dispatched without delay. This is recommended for time-sensitive orders, high-value pieces, or special occasions.",
   },
   {
     id: "shipping-insurance",
