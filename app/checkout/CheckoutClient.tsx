@@ -751,7 +751,7 @@ export function CheckoutClient() {
                   <div className="flex items-center justify-between py-0.5">
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[12px] sm:text-sm text-stone-700 dark:text-gray-300">Priority Sourcing</span>
+                        <span className="text-[12px] sm:text-sm text-stone-700 dark:text-gray-300">Expedited Shipping</span>
                         <a
                           href="/faq#expedited-sourcing"
                           target="_blank"
@@ -761,19 +761,6 @@ export function CheckoutClient() {
                           learn more
                         </a>
                       </div>
-                      <p className="text-[10px] sm:text-[15px] text-stone-400 dark:text-gray-500 mt-0.5">
-                        {isPriority
-                          ? "$100 base + $10 per piece"
-                          : zone === "far"
-                          ? "$55 flat"
-                          : zone === "australia"
-                          ? "$30 flat"
-                          : zone === "europe"
-                          ? "$20 flat"
-                          : zone === "canada"
-                          ? "$15 flat"
-                          : "Free to US"}
-                      </p>
                     </div>
                     <button
                       type="button"
@@ -927,7 +914,7 @@ export function CheckoutClient() {
 
                   <div className="flex justify-between text-sm">
                     <span className="text-[12px] sm:text-sm text-stone-500 dark:text-gray-400">
-                      {isPriority ? "Priority Sourcing" : "Shipping"}
+                      {isPriority ? "Expedited Shipping" : "Shipping"}
                       {availableItems.length > 1 ? ` · ${availableItems.length} pieces` : ""}
                     </span>
                     <span className="text-[12px] sm:text-sm font-medium text-stone-900 dark:text-gray-100">
