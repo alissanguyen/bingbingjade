@@ -5,6 +5,7 @@ import Script from "next/script";
 import { FooterSubscribeForm } from "./components/FooterSubscribeForm";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { Navbar } from "./components/Navbar";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { headers } from "next/headers";
 import { CategoryBar } from "./components/CategoryBar";
 import { CartProvider } from "./components/CartContext";
@@ -72,6 +73,12 @@ export default async function RootLayout({
   const isAdmin = ADMIN_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
   const isStudio = headersList.get("x-is-studio") === "1";
 
+  const { data: navCollections } = await supabaseAdmin
+    .from("collections")
+    .select("id, name, slug, status")
+    .order("sort_order")
+    .order("created_at", { ascending: false });
+
   return (
     <html lang="en" suppressHydrationWarning style={{ scrollbarGutter: "stable" }}>
       <body className={`${montserrat.variable} antialiased min-h-screen flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100`}>
@@ -101,7 +108,7 @@ export default async function RootLayout({
                   </div>
                 )}
                 <div className="border-b border-gray-200 dark:border-gray-800">
-                  <Navbar />
+                  <Navbar collections={navCollections ?? []} />
                 </div>
                 {!isAdmin && <CategoryBar />}
               </header>

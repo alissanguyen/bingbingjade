@@ -20,11 +20,6 @@ interface SearchResult {
   sold: boolean;
 }
 
-const NAV_COLLECTIONS = [
-  { label: "Emerald Seafoam Collection", href: "/collections/emerald-seafoam" },
-  { label: "Ocean Mist Collection", href: "/collections/ocean-mist" },
-];
-
 const NAV_ALL_PIECES = [
   { href: "/products", label: "All Products" },
   { href: "/products?category=bangle", label: "Bangles" },
@@ -47,7 +42,9 @@ const NAV_SERVICES = [
   { label: "Restoration & Preservation", href: "/restoration" },
 ];
 
-export function Navbar() {
+interface NavCollection { id: string; name: string; slug: string; status: string; }
+
+export function Navbar({ collections = [] }: { collections?: NavCollection[] }) {
   const [open, setOpen] = useState(false);
   const [productsOpen, setProductsOpen] = useState(false);
   const [mobileProductsOpen, setMobileProductsOpen] = useState(false);
@@ -315,16 +312,19 @@ export function Navbar() {
                   Ready to Ship - US 
                 </Link>
                 <p className="px-3 pt-2 pb-1 text-[12px] font-semibold uppercase tracking-widest text-gray-400">The BingBing Collections</p>
-                {NAV_COLLECTIONS.map(({ label, href }) => (
+                {collections.map((c) => (
                   <Link
-                    key={href}
-                    href={href}
+                    key={c.id}
+                    href={`/collections/${c.slug}`}
                     onClick={() => setProductsOpen(false)}
-                    className="block ml-2 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-350 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
+                    className="block ml-2 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
                   >
-                    {label}
+                    {c.name}
                   </Link>
                 ))}
+                {collections.length === 0 && (
+                  <p className="px-3 py-1.5 text-xs text-gray-300 dark:text-gray-600 italic">Coming soon</p>
+                )}
               </div>
               <div className="w-px bg-gray-100 dark:bg-gray-800 mx-1 self-stretch" />
               {/* Col 2 — Shop All Pieces */}
@@ -597,17 +597,20 @@ export function Navbar() {
                   </Link>
                   <p className="pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">The BingBing Collections</p>
                   <ul className="space-y-0.5 mb-2">
-                    {NAV_COLLECTIONS.map(({ label, href }) => (
-                      <li key={href}>
+                    {collections.map((c) => (
+                      <li key={c.id}>
                         <Link
-                          href={href}
+                          href={`/collections/${c.slug}`}
                           onClick={() => { setOpen(false); setMobileProductsOpen(false); }}
                           className="block pl-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
                         >
-                          {label}
+                          {c.name}
                         </Link>
                       </li>
                     ))}
+                    {collections.length === 0 && (
+                      <li className="pl-3 py-1 text-xs text-gray-300 dark:text-gray-600 italic">Coming soon</li>
+                    )}
                   </ul>
                   {/* Shop All Pieces */}
                   <p className="pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Shop All Pieces</p>
