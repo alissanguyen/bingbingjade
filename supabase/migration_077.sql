@@ -55,6 +55,11 @@ ALTER TABLE public.collection_scenes       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.collection_scene_tags   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.collection_products     ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "anon_read_published_collections"        ON public.collections;
+DROP POLICY IF EXISTS "anon_read_published_scenes"             ON public.collection_scenes;
+DROP POLICY IF EXISTS "anon_read_published_scene_tags"         ON public.collection_scene_tags;
+DROP POLICY IF EXISTS "anon_read_published_collection_products" ON public.collection_products;
+
 CREATE POLICY "anon_read_published_collections"
   ON public.collections FOR SELECT TO anon
   USING (status = 'published');
