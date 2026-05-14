@@ -430,6 +430,12 @@ export function CartDrawer() {
                 You save {fmtPrice(totalSavings)} with current sale prices.
               </p>
             )}
+            <div className="flex items-center gap-1.5 text-[11px] sm:text-[13px] font-medium text-emerald-700 dark:text-emerald-400">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+              Free shipping to the United States
+            </div>
             <p className="text-[12px] sm:text-[16px] italic text-gray-400 dark:text-gray-500">
               Shipping, discounts & fees calculated at checkout.
             </p>

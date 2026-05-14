@@ -89,7 +89,7 @@ const faqs = [
     id: "standard-shipping",
     question: "How does shipping work?",
     answer:
-      "Shipping time depends on the type of piece you select. Ship Now pieces are held in our U.S. inventory and typically ship within 2–5 business days. Sourced for You pieces are curated special-order pieces and typically have an estimated delivery timeframe of 2–4 weeks. Delivery estimates may vary due to sourcing timelines, certification, customs, carrier delays, or other circumstances outside our control.",
+      "We offer free U.S. shipping on all orders. Items labeled “Ship Now” are held in our U.S. inventory and typically ship within 2–5 business days. Sourced for You pieces are curated special-order pieces and typically have an estimated delivery timeframe of 2–4 weeks. Delivery estimates may vary due to sourcing timelines, certification, customs, carrier delays, or other circumstances outside our control.",
   },
   {
     id: "expedited-sourcing",

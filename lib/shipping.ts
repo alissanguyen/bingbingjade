@@ -53,20 +53,19 @@ export function getShippingZone(country: string): ShippingZone {
 }
 
 /**
- * Shipping fee in whole dollars.
- * - Domestic (US):        $20 base + $10 per additional item
- * - Canada:               $35 base + $10 per additional item
- * - Europe (UK + EU):     $40 base + $10 per additional item
- * - Australia / NZ:       $50 base + $10 per additional item
- * - Far (Asia/Pacific):   $75 base + $20 per additional item
+ * Flat shipping fee in whole dollars, regardless of item count.
+ * - Domestic (US):        Free ($0)
+ * - Canada:               $15
+ * - Europe (UK + EU):     $20
+ * - Australia / NZ:       $30
+ * - Far (Asia/Pacific):   $55
  */
-export function calculateShipping(zone: ShippingZone, itemCount: number): number {
-  const n = Math.max(1, itemCount);
-  if (zone === "domestic")  return 20 + (n - 1) * 10;
-  if (zone === "canada")    return 35 + (n - 1) * 10;
-  if (zone === "europe")    return 40 + (n - 1) * 10;
-  if (zone === "australia") return 50 + (n - 1) * 10;
-  return 75 + (n - 1) * 20; // far
+export function calculateShipping(zone: ShippingZone, _itemCount: number): number {
+  if (zone === "domestic")  return 0;
+  if (zone === "canada")    return 15;
+  if (zone === "europe")    return 20;
+  if (zone === "australia") return 30;
+  return 55; // far
 }
 
 /**

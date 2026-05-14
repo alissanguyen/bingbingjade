@@ -678,6 +678,15 @@ export function CheckoutClient() {
                 <p className="text-[14px] sm:text-base uppercase tracking-[0.25em] font-semibold text-stone-400 dark:text-gray-500">
                   Order Summary
                 </p>
+                {/* Free US shipping callout */}
+                {(!zone || zone === "domestic") && (
+                  <div className="mt-3 mb-1 flex items-center gap-1.5 text-[11px] sm:text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                    Free shipping to the United States
+                  </div>
+                )}
               </div>
 
               <div className="p-4 sm:px-5 sm:py-4 space-y-4">
@@ -756,14 +765,14 @@ export function CheckoutClient() {
                         {isPriority
                           ? "$100 base + $10 per piece"
                           : zone === "far"
-                          ? "$75 base + $20 per additional"
+                          ? "$55 flat"
                           : zone === "australia"
-                          ? "$50 base + $10 per piece"
+                          ? "$30 flat"
                           : zone === "europe"
-                          ? "$40 base + $10 per piece"
+                          ? "$20 flat"
                           : zone === "canada"
-                          ? "$35 base + $10 per piece"
-                          : "$20 base + $10 per piece"}
+                          ? "$15 flat"
+                          : "Free to US"}
                       </p>
                     </div>
                     <button
@@ -922,7 +931,9 @@ export function CheckoutClient() {
                       {availableItems.length > 1 ? ` · ${availableItems.length} pieces` : ""}
                     </span>
                     <span className="text-[12px] sm:text-sm font-medium text-stone-900 dark:text-gray-100">
-                      {shipping != null ? fmtPrice(shipping) : "—"}
+                      {shipping === 0
+                        ? <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Free</span>
+                        : shipping != null ? fmtPrice(shipping) : "—"}
                     </span>
                   </div>
 
