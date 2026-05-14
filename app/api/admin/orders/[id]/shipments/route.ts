@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser, isAdmin } from "@/lib/approved-auth";
 
+const EVENTS_AVAILABLE_NOW = [
+  { event_key: "confirmed",  label: "Order Confirmed", description: "Order placed and payment received.",        sort_order: 0, is_current: true,  is_completed: false },
+  { event_key: "packing",    label: "Packing",         description: "Your piece is being carefully packaged.",   sort_order: 1, is_current: false, is_completed: false },
+  { event_key: "shipped",    label: "Shipped",          description: "Your order is on its way to you.",          sort_order: 2, is_current: false, is_completed: false },
+  { event_key: "delivered",  label: "Delivered",        description: "Your piece has arrived.",                  sort_order: 3, is_current: false, is_completed: false },
+];
+
+const EVENTS_SOURCED = [
+  { event_key: "confirmed",          label: "Order Confirmed",        description: "Order placed and payment received.",                             sort_order: 0, is_current: true,  is_completed: false },
+  { event_key: "quality_inspection", label: "Quality Inspection",     description: "Your piece is being carefully inspected to meet our standards.", sort_order: 1, is_current: false, is_completed: false },
+  { event_key: "certification",      label: "Certification",          description: "Your jade is undergoing authentication and certification.",      sort_order: 2, is_current: false, is_completed: false },
+  { event_key: "arriving_at_studio", label: "Arriving at Our Studio", description: "Your piece is on its way to our studio for final handling.",     sort_order: 3, is_current: false, is_completed: false },
+  { event_key: "shipped",            label: "Shipped",                description: "Your order has been carefully packaged and shipped.",            sort_order: 4, is_current: false, is_completed: false },
+  { event_key: "delivered",          label: "Delivered",              description: "Your piece has arrived. We hope it brings you lasting beauty.",  sort_order: 5, is_current: false, is_completed: false },
+];
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -12,6 +28,7 @@ export async function POST(
 
   const { id: orderId } = await params;
   const body = await req.json() as {
+    fulfillment_type?: "available_now" | "sourced_for_you";
     carrier?: string | null;
     tracking_number?: string | null;
     tracking_url?: string | null;
@@ -19,7 +36,6 @@ export async function POST(
     estimated_delivery_end?: string | null;
   };
 
-  // Fetch order to build shipment_number
   const { data: order } = await supabaseAdmin
     .from("orders")
     .select("id, order_number")
@@ -28,7 +44,6 @@ export async function POST(
 
   if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
-  // Count existing shipments to generate next suffix
   const { count } = await supabaseAdmin
     .from("shipments")
     .select("id", { count: "exact", head: true })
@@ -36,13 +51,14 @@ export async function POST(
 
   const suffix = `S${(count ?? 0) + 1}`;
   const shipmentNumber = order.order_number ? `${order.order_number}-${suffix}` : null;
+  const fulfillmentType = body.fulfillment_type ?? "sourced_for_you";
 
   const { data: shipment, error } = await supabaseAdmin
     .from("shipments")
     .insert({
       order_id: orderId,
       shipment_number: shipmentNumber,
-      fulfillment_type: "sourced_for_you",
+      fulfillment_type: fulfillmentType,
       status: "processing",
       carrier: body.carrier ?? null,
       tracking_number: body.tracking_number ?? null,
@@ -56,5 +72,11 @@ export async function POST(
   if (error || !shipment)
     return NextResponse.json({ error: error?.message ?? "Failed to create shipment" }, { status: 500 });
 
-  return NextResponse.json({ shipment });
+  const eventTemplate = fulfillmentType === "available_now" ? EVENTS_AVAILABLE_NOW : EVENTS_SOURCED;
+  const { data: events } = await supabaseAdmin
+    .from("shipment_events")
+    .insert(eventTemplate.map((e) => ({ ...e, shipment_id: shipment.id })))
+    .select("*");
+
+  return NextResponse.json({ shipment, events: events ?? [] });
 }
