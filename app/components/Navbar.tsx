@@ -303,64 +303,66 @@ export function Navbar() {
               }`}
           >
             <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg overflow-hidden py-3 flex items-start">
-              {/* Left column — Featured */}
-              <div className="px-2 min-w-[210px]">
-                <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Featured</p>
+              {/* Col 1 — Featured */}
+              <div className="px-2 min-w-52.5">
+                <p className="px-3 pb-2 text-[12px] font-semibold uppercase tracking-widest text-gray-400">Featured</p>
                 <Link
                   href="/products?shipping=ship_now"
                   onClick={() => setProductsOpen(false)}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                  Ready to Ship
+                  Ready to Ship - US 
                 </Link>
-                <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">The BingBing Collections</p>
+                <p className="px-3 pt-2 pb-1 text-[12px] font-semibold uppercase tracking-widest text-gray-400">The BingBing Collections</p>
                 {NAV_COLLECTIONS.map(({ label, href }) => (
                   <Link
                     key={href}
                     href={href}
                     onClick={() => setProductsOpen(false)}
-                    className="block px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
+                    className="block ml-2 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-350 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
                   >
                     {label}
                   </Link>
                 ))}
               </div>
-              {/* Divider */}
               <div className="w-px bg-gray-100 dark:bg-gray-800 mx-1 self-stretch" />
-              {/* Right column — Shop All Pieces + Selections + Service */}
-              <div className="px-2 min-w-[210px]">
-                <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Shop All Pieces</p>
+              {/* Col 2 — Shop All Pieces */}
+              <div className="px-2 min-w-50">
+                <p className="px-3 pb-2 text-[12px] font-semibold uppercase tracking-widest text-gray-400">Shop All Pieces</p>
                 {NAV_ALL_PIECES.map(({ href, label }) => (
                   <Link
                     key={href}
                     href={href}
                     onClick={() => setProductsOpen(false)}
-                    className="block px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
+                    className="block ml-2 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-350 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
                   >
                     {label}
                   </Link>
                 ))}
-                <div className="my-2 h-px bg-gray-100 dark:bg-gray-800 mx-3" />
-                <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Selections</p>
+              </div>
+              <div className="w-px bg-gray-100 dark:bg-gray-800 mx-1 self-stretch" />
+              {/* Col 3 — Selections + Service */}
+              <div className="px-2 min-w-50">
+                <p className="px-3 pb-2 text-[12px] font-semibold uppercase tracking-widest text-gray-400">Selections</p>
                 {NAV_SELECTIONS.map(({ label, href }) => (
                   <Link
                     key={href}
                     href={href}
                     onClick={() => setProductsOpen(false)}
-                    className="block px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
+                    className="block ml-2 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-350 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
                   >
                     {label}
                   </Link>
                 ))}
                 <div className="my-2 h-px bg-gray-100 dark:bg-gray-800 mx-3" />
-                <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Service</p>
+                <p className="px-3 pb-2 text-[12px] font-semibold uppercase tracking-widest text-gray-400">Service</p>
                 {NAV_SERVICES.map(({ label, href }) => (
                   <Link
                     key={href}
                     href={href}
                     onClick={() => setProductsOpen(false)}
-                    className="block px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
+                    className="block ml-2 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-250 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
                   >
                     {label}
                   </Link>
@@ -588,7 +590,7 @@ export function Navbar() {
                   <Link
                     href="/products?shipping=ship_now"
                     onClick={() => { setOpen(false); setMobileProductsOpen(false); }}
-                    className="flex items-center gap-2 pl-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                    className="flex items-center gap-2 pl-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                     Ready to Ship
@@ -600,7 +602,7 @@ export function Navbar() {
                         <Link
                           href={href}
                           onClick={() => { setOpen(false); setMobileProductsOpen(false); }}
-                          className="block pl-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                          className="block pl-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
                         >
                           {label}
                         </Link>
@@ -615,7 +617,7 @@ export function Navbar() {
                         <Link
                           href={href}
                           onClick={() => { setOpen(false); setMobileProductsOpen(false); }}
-                          className="block pl-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                          className="block pl-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
                         >
                           {label}
                         </Link>
@@ -630,7 +632,7 @@ export function Navbar() {
                         <Link
                           href={href}
                           onClick={() => { setOpen(false); setMobileProductsOpen(false); }}
-                          className="block pl-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                          className="block pl-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
                         >
                           {label}
                         </Link>
@@ -645,7 +647,7 @@ export function Navbar() {
                         <Link
                           href={href}
                           onClick={() => { setOpen(false); setMobileProductsOpen(false); }}
-                          className="block pl-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                          className="block pl-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
                         >
                           {label}
                         </Link>
