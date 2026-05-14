@@ -49,6 +49,7 @@ export function ProductsAdminClient({
   const [query, setQuery] = useState("");
   const [catFilter, setCatFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [shipFilter, setShipFilter] = useState<"standard" | "ship_now" | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -59,6 +60,8 @@ export function ProductsAdminClient({
     if (query && !p.name.toLowerCase().includes(query.toLowerCase())) return false;
     if (catFilter && p.category !== catFilter) return false;
     if (statusFilter && p.status !== statusFilter) return false;
+    if (shipFilter === "ship_now" && !p.quick_ship) return false;
+    if (shipFilter === "standard" && p.quick_ship) return false;
     return true;
   });
 
@@ -310,6 +313,26 @@ export function ProductsAdminClient({
               </button>
             ))}
           </div>
+
+          <div className="w-px bg-gray-200 dark:bg-gray-700 self-stretch mx-1" />
+
+          {/* Shipping pills */}
+          <div className="flex flex-wrap gap-1.5">
+            {(["ship_now", "standard"] as const).map((val) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() => setShipFilter(shipFilter === val ? null : val)}
+                className={`rounded-full px-3 py-1 text-xs font-medium border transition-all ${
+                  shipFilter === val
+                    ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+                    : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
+                }`}
+              >
+                {val === "ship_now" ? "Ship Now" : "Standard"}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Bulk action bar */}
@@ -415,7 +438,7 @@ export function ProductsAdminClient({
         <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           {filtered.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-12">
-              {query || catFilter || statusFilter ? "No products match your filters." : "No products yet."}
+              {query || catFilter || statusFilter || shipFilter ? "No products match your filters." : "No products yet."}
             </p>
           ) : (
             <>
