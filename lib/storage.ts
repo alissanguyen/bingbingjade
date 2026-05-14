@@ -166,9 +166,9 @@ export function supabaseImageUrl(
 export const productThumbUrl = (src: string) =>
   supabaseImageUrl(src, { width: 600, height: 600, quality: 75, format: "webp" });
 
-/** 1200 px wide WebP — main product gallery image. */
+/** 1200 px square WebP — main product gallery image. */
 export const productGalleryUrl = (src: string) =>
-  supabaseImageUrl(src, { width: 1200, quality: 78, format: "webp" });
+  supabaseImageUrl(src, { width: 1200, height: 1200, quality: 78, format: "webp" });
 
 /** 1800 px wide WebP — product lightbox/zoom image. */
 export const productZoomUrl = (src: string) =>
