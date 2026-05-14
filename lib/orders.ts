@@ -334,7 +334,7 @@ const STATUS_META: Record<
 export async function fetchEmailItems(orderId: string): Promise<EmailItem[]> {
   const { data: rows } = await supabaseAdmin
     .from("order_items")
-    .select("product_name, option_label, price_usd, quantity, product_id, fulfillment_type")
+    .select("product_name, option_label, price_usd, quantity, product_id, inventory_type")
     .eq("order_id", orderId);
 
   if (!rows?.length) return [];
@@ -373,7 +373,7 @@ export async function fetchEmailItems(orderId: string): Promise<EmailItem[]> {
     quantity: r.quantity ?? 1,
     imageUrl: r.product_id ? (imageMap[r.product_id] ?? null) : null,
     href: r.product_id ? (hrefMap[r.product_id] ?? null) : null,
-    fulfillmentType: (r.fulfillment_type as "available_now" | "sourced_for_you" | null) ?? "sourced_for_you",
+    fulfillmentType: (r.inventory_type as "available_now" | "sourced_for_you" | null) ?? "sourced_for_you",
   }));
 }
 

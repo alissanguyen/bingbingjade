@@ -16,6 +16,7 @@ import type Stripe from "stripe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 import type { MetaItem } from "@/lib/stripe-metadata";
 
@@ -697,14 +698,18 @@ export async function POST(req: NextRequest) {
 
   // ── Send branded confirmation email ───────────────────────────────────────────
   if (orderNumber && customerName && customerEmail) {
-    const emailItems = await fetchEmailItems(order.id);
-    await sendOrderConfirmationEmail({
-      orderNumber,
-      customerName,
-      customerEmail,
-      amountTotalCents: session.amount_total ?? 0,
-      items: emailItems,
-    });
+    try {
+      const emailItems = await fetchEmailItems(order.id);
+      await sendOrderConfirmationEmail({
+        orderNumber,
+        customerName,
+        customerEmail,
+        amountTotalCents: session.amount_total ?? 0,
+        items: emailItems,
+      });
+    } catch (err) {
+      console.error("[webhook] Confirmation email failed (non-fatal):", err);
+    }
   }
 
   // ── Trigger ISR revalidation ──────────────────────────────────────────────────
