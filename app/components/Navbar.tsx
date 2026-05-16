@@ -547,7 +547,7 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
 
       {/* Mobile dropdown */}
       {open && (
-        <div className="absolute top-full left-0 right-0 z-50 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 sm:hidden">
+        <div className="absolute top-full left-0 right-0 z-50 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 sm:hidden overflow-y-auto max-h-[calc(100dvh-5rem)]">
           <ul className="flex flex-col px-6 py-4 gap-1 text-sm font-medium text-gray-600 dark:text-gray-300">
             <li>
               <Link
