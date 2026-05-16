@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import emailjs from "@emailjs/browser";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -283,17 +284,34 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
     <div className="bg-white dark:bg-gray-950 min-h-screen">
 
       {/* ── Hero ───────────────────────────────────────────────────────────── */}
-      <div className="bg-stone-50 dark:bg-gray-900 border-b border-stone-200 dark:border-gray-800">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 sm:py-20 text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 mb-3">
+      <div className="relative overflow-hidden border-b border-gray-200 dark:border-gray-800">
+        <Image
+          src="/gallery/IMG_6282.jpg"
+          alt="Jade bangle preservation"
+          fill
+          priority
+          className="object-cover object-center"
+          sizes="100vw"
+        />
+        {/* Overlay — dark gradient so text stays legible */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/40 to-black/65" />
+        <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-20 sm:py-28 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300 mb-3">
             BingBing Jade
           </p>
-          <h1 className="text-3xl sm:text-4xl font-semibold text-stone-900 dark:text-gray-50 leading-tight">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-white leading-tight drop-shadow">
             Jade Bangle Preservation Services
           </h1>
-          <p className="mt-4 text-base sm:text-lg text-stone-500 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="mt-4 text-base sm:text-lg text-white/75 max-w-2xl mx-auto leading-relaxed">
             Thoughtful polishing and protective metal wrapping for jade pieces worth preserving.
           </p>
+          <a
+            href="#request"
+            className="mt-8 inline-flex items-center gap-2 rounded-full bg-white/15 hover:bg-white/25 border border-white/30 backdrop-blur-sm px-6 py-2.5 text-sm font-medium text-white transition-colors"
+          >
+            Start Service Request
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+          </a>
         </div>
       </div>
 
