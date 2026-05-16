@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
-import { ComingSoonPage } from "@/app/components/ComingSoonPage";
+import { RestorationClient } from "./RestorationClient";
 
 export const metadata: Metadata = {
-  title: "Restoration & Preservation — BingBing Jade",
+  title: "Jade Bangle Preservation Services — BingBing Jade",
+  description:
+    "Professional jade bangle polishing and protective silver or gold metal wrapping. Thoughtful preservation for pieces worth keeping.",
 };
 
-export default function RestorationPage() {
-  return (
-    <ComingSoonPage
-      title="Restoration & Preservation"
-      subtitle="Expert care and restoration services for your jade pieces. More details coming soon."
-    />
-  );
+export default async function RestorationPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ checkout?: string }>;
+}) {
+  const { checkout } = await searchParams;
+  return <RestorationClient checkoutSuccess={checkout === "success"} />;
 }
