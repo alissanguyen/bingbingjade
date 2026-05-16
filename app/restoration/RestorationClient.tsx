@@ -286,7 +286,7 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
       {/* ── Hero ───────────────────────────────────────────────────────────── */}
       <div className="relative overflow-hidden border-b border-gray-200 dark:border-gray-800">
         <Image
-          src="/gallery/IMG_6282.jpg"
+          src="/gallery/IMG_4331.jpg"
           alt="Jade bangle preservation"
           fill
           priority

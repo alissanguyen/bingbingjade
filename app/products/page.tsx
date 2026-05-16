@@ -441,7 +441,7 @@ export default async function Products({
                     {(() => {
                       if (product.status === "clearance") {
                         return (
-                          <div className="ProductCard_Badge_Clearance absolute top-2 left-2 sm:top-3 sm:left-3 z-10 bg-amber-800/85 backdrop-blur-sm text-amber-100 text-[10px] sm:text-[13px] font-semibold uppercase tracking-widest px-2.5 py-1 rounded-sm">
+                          <div className="ProductCard_Badge_Clearance absolute top-2 left-2 sm:top-3 sm:left-3 z-10 bg-amber-800/85 backdrop-blur-sm text-amber-100 text-[10px] sm:text-[13px] font-semibold uppercase tracking-widest px-2.5 py-1">
                             Clearance
                           </div>
                         );
