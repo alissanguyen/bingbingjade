@@ -32,6 +32,7 @@ interface ProductCard {
   show_price: boolean;
   description: string | null;
   is_featured: boolean;
+  is_clearance: boolean;
   is_published: boolean;
   quick_ship: boolean;
   status: string;
@@ -51,6 +52,7 @@ interface ProductListRow {
   sale_price_usd: number | null;
   show_price: boolean;
   is_featured: boolean;
+  is_clearance: boolean;
   is_published: boolean;
   quick_ship: boolean;
   status: string;
@@ -88,7 +90,7 @@ import { ProductCardLink } from "./ProductCardLink";
 
 export const revalidate = 120;
 
-const PRODUCT_LIST_SELECT = "id, name, category, origin, color, tier, size, price_display_usd, sale_price_usd, show_price, is_featured, status, slug, public_id, is_published, quick_ship";
+const PRODUCT_LIST_SELECT = "id, name, category, origin, color, tier, size, price_display_usd, sale_price_usd, show_price, is_featured, is_clearance, status, slug, public_id, is_published, quick_ship";
 const PRODUCT_CARD_SELECT = `${PRODUCT_LIST_SELECT}, images, description`;
 const PAGE_SIZE = 18;
 const PAGE_WINDOW_SIZE = PAGE_SIZE * 3;
@@ -141,13 +143,14 @@ const getCachedProductCards = unstable_cache(
 export default async function Products({
   searchParams,
 }: {
-  searchParams: Promise<{ colors?: string; status?: string; category?: string; origins?: string; minSize?: string; maxSize?: string; minPrice?: string; maxPrice?: string; sort?: string; page?: string; shipping?: string; search?: string }>;
+  searchParams: Promise<{ colors?: string; status?: string; category?: string; origins?: string; minSize?: string; maxSize?: string; minPrice?: string; maxPrice?: string; sort?: string; page?: string; shipping?: string; search?: string; clearance?: string }>;
 }) {
   const params = await searchParams;
   const selectedColors = params.colors?.split(",").filter(Boolean) ?? [];
   const selectedStatuses = params.status?.split(",").filter(Boolean) ?? [];
   const selectedOrigins = params.origins?.split(",").filter(Boolean) ?? [];
   const selectedShipping = params.shipping?.split(",").filter(Boolean) ?? [];
+  const filterClearance = params.clearance === "1";
   const selectedCategory = params.category ?? "";
   const searchQuery = params.search?.trim() ?? "";
   const minSize = params.minSize ? Number(params.minSize) : null;
@@ -194,7 +197,7 @@ export default async function Products({
   function effectiveSortPrice(p: ProductCard): number {
     const ep = allEventPrices.get(p.id)?.computedBasePrice ?? null;
     if (ep != null) return ep;
-    if ((p.status === "on_sale" || p.status === "clearance") && p.sale_price_usd != null) return p.sale_price_usd;
+    if ((p.status === "on_sale" || p.is_clearance) && p.sale_price_usd != null) return p.sale_price_usd;
     const vp = getVariantPrices(p);
     return vp.length > 0 ? Math.min(...vp) : (p.price_display_usd ?? Infinity);
   }
@@ -214,7 +217,9 @@ export default async function Products({
       const matchesStandard = selectedShipping.includes("standard") && !p.quick_ship;
       if (!matchesShipNow && !matchesStandard) return false;
     }
-    // Status filter — "available" also matches "on_sale" products; clearance is its own bucket
+    // Clearance filter — independent of status
+    if (filterClearance && !p.is_clearance) return false;
+    // Status filter — "available" also matches "on_sale" products
     if (selectedStatuses.length > 0) {
       const effectiveStatus = selectedStatuses.includes("available") && p.status === "on_sale"
         ? "available"
@@ -234,7 +239,7 @@ export default async function Products({
     // Price filter — match if any available variant price overlaps the filter range
     if (minPrice !== null || maxPrice !== null) {
       const effectivePrice =
-        (p.status === "on_sale" || p.status === "clearance") && p.sale_price_usd != null ? p.sale_price_usd : null;
+        (p.status === "on_sale" || p.is_clearance) && p.sale_price_usd != null ? p.sale_price_usd : null;
       const vPrices = getVariantPrices(p);
       if (vPrices.length > 0) {
         const vMin = Math.min(...vPrices);
@@ -244,7 +249,7 @@ export default async function Products({
         if (minPrice !== null && checkMax < minPrice) return false;
         if (maxPrice !== null && checkMin > maxPrice) return false;
       } else {
-        const ep = (p.status === "on_sale" || p.status === "clearance") && p.sale_price_usd != null ? p.sale_price_usd : p.price_display_usd;
+        const ep = (p.status === "on_sale" || p.is_clearance) && p.sale_price_usd != null ? p.sale_price_usd : p.price_display_usd;
         if (minPrice !== null && (ep == null || ep < minPrice)) return false;
         if (maxPrice !== null && (ep == null || ep > maxPrice)) return false;
       }
@@ -312,8 +317,10 @@ export default async function Products({
   const originCounts: Record<string, number> = {};
   const colorCounts: Record<string, number> = {};
   const shippingCounts: Record<string, number> = {};
+  let clearanceCount = 0;
   for (const p of countBase) {
     statusCounts[p.status] = (statusCounts[p.status] ?? 0) + 1;
+    if (p.is_clearance) clearanceCount++;
     if (p.origin) originCounts[p.origin] = (originCounts[p.origin] ?? 0) + 1;
     for (const c of p.color ?? []) {
       if (c) colorCounts[c] = (colorCounts[c] ?? 0) + 1;
@@ -389,10 +396,12 @@ export default async function Products({
           originCounts={originCounts}
           colorCounts={colorCounts}
           shippingCounts={shippingCounts}
+          clearanceCount={clearanceCount}
           initialColors={selectedColors}
           initialStatuses={selectedStatuses}
           initialOrigins={selectedOrigins}
           initialShipping={selectedShipping}
+          initialClearance={filterClearance}
           initialMinSize={params.minSize ?? ""}
           initialMaxSize={params.maxSize ?? ""}
           initialMinPrice={params.minPrice ?? ""}
@@ -433,43 +442,44 @@ export default async function Products({
                         Draft
                       </div>
                     )}
-                    {product.status === "sold" && (
-                      <div className="ProductCard_Badge_Sold absolute top-2 left-2 sm:top-3 sm:left-3 z-10 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-gray-500 dark:text-gray-400 text-[10px] sm:text-[14px] font-medium tracking-widest uppercase px-2.5 py-1 rounded-full">
-                        Sold
-                      </div>
-                    )}
-                    {(() => {
-                      if (product.status === "clearance") {
-                        return (
-                          <div className="ProductCard_Badge_Clearance absolute top-2 left-2 sm:top-3 sm:left-3 z-10 bg-amber-800/85 backdrop-blur-sm text-amber-100 text-[10px] sm:text-[13px] font-semibold uppercase tracking-widest px-2.5 py-1">
-                            Clearance
-                          </div>
-                        );
-                      }
-                      const eventEntry = eventPrices.get(product.id);
-                      if (eventEntry && product.status !== "sold") {
-                        return (
-                          <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 bg-emerald-600/90 backdrop-blur-sm text-white text-[10px] sm:text-[14px] font-semibold uppercase tracking-widest px-2.5 py-1">
-                            {eventEntry.campaignName}
-                          </div>
-                        );
-                      }
-                      if (product.status === "on_sale") {
-                        return (
-                          <div className="ProductCard_Badge_OnSale absolute top-2 left-2 sm:top-3 sm:left-3 z-10 flex items-center gap-1.5">
-                            <div className="bg-red-500/90 backdrop-blur-sm text-white text-[10px] sm:text-[14px] font-semibold tracking-wide px-2.5 py-1">
-                              Sale
+                    {/* Left badge strip — sold + clearance can coexist */}
+                    <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 flex flex-col gap-1">
+                      {product.status === "sold" && (
+                        <div className="ProductCard_Badge_Sold self-start bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-gray-500 dark:text-gray-400 text-[10px] sm:text-[14px] font-medium tracking-widest uppercase px-2.5 py-1 rounded-full">
+                          Sold
+                        </div>
+                      )}
+                      {product.is_clearance && (
+                        <div className="ProductCard_Badge_Clearance self-start bg-amber-800/85 backdrop-blur-sm text-amber-100 text-[10px] sm:text-[13px] font-semibold uppercase tracking-widest px-2.5 py-1">
+                          Clearance
+                        </div>
+                      )}
+                      {product.status !== "sold" && (() => {
+                        const eventEntry = eventPrices.get(product.id);
+                        if (eventEntry) {
+                          return (
+                            <div className="self-start bg-emerald-600/90 backdrop-blur-sm text-white text-[10px] sm:text-[14px] font-semibold uppercase tracking-widest px-2.5 py-1">
+                              {eventEntry.campaignName}
                             </div>
-                            {product.show_price && product.price_display_usd != null && product.sale_price_usd != null && (
-                              <div className="bg-amber-500/90 backdrop-blur-sm text-white text-[10px] sm:text-[14px] font-semibold tracking-wide px-2.5 py-1 rounded-full">
-                                −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
+                          );
+                        }
+                        if (product.status === "on_sale") {
+                          return (
+                            <div className="ProductCard_Badge_OnSale self-start flex items-center gap-1.5">
+                              <div className="bg-red-500/90 backdrop-blur-sm text-white text-[10px] sm:text-[14px] font-semibold tracking-wide px-2.5 py-1">
+                                Sale
                               </div>
-                            )}
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
+                              {product.show_price && product.price_display_usd != null && product.sale_price_usd != null && (
+                                <div className="bg-amber-500/90 backdrop-blur-sm text-white text-[10px] sm:text-[14px] font-semibold tracking-wide px-2.5 py-1 rounded-full">
+                                  −{Math.round((1 - product.sale_price_usd / product.price_display_usd) * 100)}%
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
                     {product.quick_ship && product.status !== "sold" && (
                       <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 z-10">
                         <div
@@ -541,7 +551,7 @@ export default async function Products({
                             </span>
                           );
                         }
-                        if ((product.status === "on_sale" || product.status === "clearance") && sp != null) {
+                        if ((product.status === "on_sale" || product.is_clearance) && sp != null) {
                           return (
                             <span className="flex items-center gap-2">
                               <span className="text-[17px] font-semibold text-amber-600 dark:text-amber-400">{fmtCardPrice(sp)}</span>
@@ -610,7 +620,7 @@ export default async function Products({
                             </span>
                           );
                         }
-                        if ((product.status === "on_sale" || product.status === "clearance") && sp != null) {
+                        if ((product.status === "on_sale" || product.is_clearance) && sp != null) {
                           return (
                             <span className="flex items-center gap-1.5">
                               <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">{fmtCardPrice(sp)}</span>
@@ -648,6 +658,7 @@ export default async function Products({
                 ...(params.status ? { status: params.status } : {}),
                 ...(params.category ? { category: params.category } : {}),
                 ...(params.origins ? { origins: params.origins } : {}),
+                ...(params.clearance ? { clearance: params.clearance } : {}),
                 ...(params.minSize ? { minSize: params.minSize } : {}),
                 ...(params.maxSize ? { maxSize: params.maxSize } : {}),
                 ...(params.minPrice ? { minPrice: params.minPrice } : {}),

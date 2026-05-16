@@ -45,7 +45,7 @@ const getCachedFeaturedProducts = unstable_cache(
   async () => {
     const { data } = await supabase
       .from("products")
-      .select("id, name, category, images, tier, price_display_usd, sale_price_usd, status, slug, public_id, size, origin")
+      .select("id, name, category, images, tier, price_display_usd, sale_price_usd, is_clearance, status, slug, public_id, size, origin")
       .eq("is_featured", true)
       .order("created_at", { ascending: false });
 

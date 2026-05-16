@@ -36,6 +36,7 @@ interface ProductClient {
   description: string | null;
   blemishes: string | null;
   is_featured: boolean | null;
+  is_clearance: boolean;
   quick_ship: boolean;
   origin: string;
   status: string;
@@ -212,7 +213,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
               · {product.tier.join(" · ")}
             </span>
           )}
-          {product.status === "clearance" && (
+          {product.is_clearance && (
             <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-800 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-400">
               Clearance
             </span>

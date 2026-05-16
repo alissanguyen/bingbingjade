@@ -167,9 +167,10 @@ interface ProductData {
   show_price: boolean;
   vendor_id: string;
   is_featured: boolean;
+  is_clearance: boolean;
   is_published: boolean;
   quick_ship: boolean;
-  status: "available" | "sold";
+  status: "available" | "sold" | "on_sale" | "archived";
 }
 
 interface InitialOption {
@@ -369,8 +370,9 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
   const [isFeatured, setIsFeatured] = useState(product.is_featured);
   const [isPublished, setIsPublished] = useState(product.is_published);
   const [isQuickShip, setIsQuickShip] = useState(product.quick_ship ?? false);
+  const [isIsClearance, setIsIsClearance] = useState(product.is_clearance ?? false);
   const [showPrice, setShowPrice] = useState(product.show_price ?? true);
-  const [status, setStatus] = useState<"available" | "sold" | "on_sale" | "archived" | "clearance">(product.status ?? "available");
+  const [status, setStatus] = useState<"available" | "sold" | "on_sale" | "archived">(product.status ?? "available");
 
   const [form, setForm] = useState({
     name: product.name,
@@ -550,6 +552,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       fd.append("is_featured", String(isFeatured));
       fd.append("is_published", String(isPublished));
       fd.append("quick_ship", String(isQuickShip));
+      fd.append("is_clearance", String(isIsClearance));
       fd.append("show_price", String(showPrice));
       fd.append("status", status);
       sizeDetailed.forEach((v, i) => fd.append(`size_detailed_${i}`, v));
@@ -1261,7 +1264,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
           <div>
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</p>
             <div className="flex gap-2">
-              {(["available", "on_sale", "clearance", "sold", "archived"] as const).map((s) => (
+              {(["available", "on_sale", "sold", "archived"] as const).map((s) => (
                 <button
                   key={s}
                   type="button"
@@ -1271,11 +1274,9 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
                       ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
                       : s === "on_sale"
                         ? "border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400"
-                        : s === "clearance"
-                          ? "border-orange-400 bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400"
-                          : s === "sold"
-                            ? "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400"
-                            : "border-gray-400 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
+                        : s === "sold"
+                          ? "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400"
+                          : "border-gray-400 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
                     : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
                     }`}
                 >
@@ -1317,6 +1318,16 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
             </div>
             <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
               {isQuickShip ? "Quick Ship — eligible for expedited shipping" : "Standard shipping timeline"}
+            </span>
+          </button>
+
+          {/* Clearance */}
+          <button type="button" onClick={() => setIsIsClearance((v) => !v)} className="flex items-center gap-3 group">
+            <div className={`relative w-10 h-6 rounded-full transition-colors ${isIsClearance ? "bg-orange-500" : "bg-gray-200 dark:bg-gray-700"}`}>
+              <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${isIsClearance ? "translate-x-4" : ""}`} />
+            </div>
+            <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+              {isIsClearance ? "Clearance — shown with clearance badge" : "Not clearance"}
             </span>
           </button>
         </div>

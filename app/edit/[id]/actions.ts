@@ -100,6 +100,7 @@ export async function updateProduct(
           is_featured: formData.get("is_featured") === "true",
           is_published: false,
           quick_ship: formData.get("quick_ship") === "true",
+          is_clearance: formData.get("is_clearance") === "true",
           status: productStatus,
           images: imageUrls,
           videos: videoUrls,
@@ -136,6 +137,7 @@ export async function updateProduct(
         vendor_id: formData.get("vendor_id"),
         is_featured: formData.get("is_featured") === "true",
         quick_ship: formData.get("quick_ship") === "true",
+        is_clearance: formData.get("is_clearance") === "true",
         status: productStatus,
         images: imageUrls,
         videos: videoUrls,
@@ -178,6 +180,7 @@ export async function updateProduct(
       // Admin: respect the published toggle. Non-admin path is handled above and never reaches here.
       is_published: adminUser ? formData.get("is_published") === "true" : false,
       quick_ship: formData.get("quick_ship") === "true",
+      is_clearance: formData.get("is_clearance") === "true",
       status: productStatus,
       images: imageUrls,
       videos: videoUrls,

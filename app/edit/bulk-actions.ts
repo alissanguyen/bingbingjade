@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 
 export async function bulkUpdateStatus(
   ids: string[],
-  status: "available" | "on_sale" | "sold" | "archived" | "clearance"
+  status: "available" | "on_sale" | "sold" | "archived"
 ): Promise<{ error?: string; count?: number }> {
   if (ids.length === 0) return { count: 0 };
 
@@ -50,6 +50,25 @@ export async function bulkUpdateQuickShip(
   const { error, count } = await supabaseAdmin
     .from("products")
     .update({ quick_ship })
+    .in("id", ids);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/edit");
+  revalidatePath("/products");
+  revalidatePath("/products-admin");
+  return { count: count ?? ids.length };
+}
+
+export async function bulkUpdateClearance(
+  ids: string[],
+  is_clearance: boolean
+): Promise<{ error?: string; count?: number }> {
+  if (ids.length === 0) return { count: 0 };
+
+  const { error, count } = await supabaseAdmin
+    .from("products")
+    .update({ is_clearance })
     .in("id", ids);
 
   if (error) return { error: error.message };

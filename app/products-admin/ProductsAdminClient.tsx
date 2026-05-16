@@ -6,6 +6,7 @@ import {
   bulkUpdateStatus,
   bulkUpdatePublished,
   bulkUpdateQuickShip,
+  bulkUpdateClearance,
   bulkDelete,
 } from "@/app/edit/bulk-actions";
 import type { AdminProduct, PendingProduct } from "./page";
@@ -17,7 +18,6 @@ const CATEGORIES = ["bracelet", "bangle", "ring", "pendant", "necklace", "set", 
 const STATUS_META: Record<string, { label: string; badge: string }> = {
   available:  { label: "Available",  badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" },
   on_sale:    { label: "On Sale",    badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400" },
-  clearance:  { label: "Clearance",  badge: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400" },
   sold:       { label: "Sold",       badge: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400" },
   archived:   { label: "Archived",   badge: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400" },
 };
@@ -123,7 +123,7 @@ export function ProductsAdminClient({
 
   const selectedIds = [...selected];
 
-  function handleBulkStatus(status: "available" | "on_sale" | "sold" | "archived" | "clearance") {
+  function handleBulkStatus(status: "available" | "on_sale" | "sold" | "archived") {
     if (!selectedIds.length) return;
     startTransition(async () => {
       const res = await bulkUpdateStatus(selectedIds, status);
@@ -146,6 +146,19 @@ export function ProductsAdminClient({
       );
       setSelected(new Set());
       showToast(`${is_published ? "Published" : "Drafted"} ${res.count} product${res.count !== 1 ? "s" : ""}`);
+    });
+  }
+
+  function handleBulkClearance(is_clearance: boolean) {
+    if (!selectedIds.length) return;
+    startTransition(async () => {
+      const res = await bulkUpdateClearance(selectedIds, is_clearance);
+      if (res.error) { showToast(`Error: ${res.error}`); return; }
+      setProducts((prev) =>
+        prev.map((p) => selectedIds.includes(p.id) ? { ...p, is_clearance } : p)
+      );
+      setSelected(new Set());
+      showToast(`${is_clearance ? "Marked Clearance" : "Removed Clearance"} — ${res.count} product${res.count !== 1 ? "s" : ""}`);
     });
   }
 
@@ -362,14 +375,6 @@ export function ProductsAdminClient({
             </button>
             <button
               type="button"
-              onClick={() => handleBulkStatus("clearance")}
-              disabled={isPending}
-              className="rounded-full px-3 py-1 text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-900/60 disabled:opacity-50 transition-colors"
-            >
-              Set Clearance
-            </button>
-            <button
-              type="button"
               onClick={() => handleBulkStatus("sold")}
               disabled={isPending}
               className="rounded-full px-3 py-1 text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60 disabled:opacity-50 transition-colors"
@@ -423,6 +428,26 @@ export function ProductsAdminClient({
               className="rounded-full px-3 py-1 text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
             >
               Standard
+            </button>
+
+            <div className="w-px bg-gray-200 dark:bg-gray-700 self-stretch" />
+
+            {/* Clearance */}
+            <button
+              type="button"
+              onClick={() => handleBulkClearance(true)}
+              disabled={isPending}
+              className="rounded-full px-3 py-1 text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-900/60 disabled:opacity-50 transition-colors"
+            >
+              Clearance
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkClearance(false)}
+              disabled={isPending}
+              className="rounded-full px-3 py-1 text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+            >
+              Not Clearance
             </button>
 
             <div className="flex-1" />
@@ -520,6 +545,11 @@ export function ProductsAdminClient({
                           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusMeta.badge}`}>
                             {statusMeta.label}
                           </span>
+                          {p.is_clearance && (
+                            <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400">
+                              Clearance
+                            </span>
+                          )}
                           {!p.is_published && (
                             <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                               Draft

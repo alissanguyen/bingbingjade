@@ -39,7 +39,8 @@ export interface Product {
   vendor_id: string;
   created_at: string;
   is_featured: boolean;
-  status: "available" | "sold" | "on_sale" | "archived" | "clearance";
+  is_clearance: boolean;
+  status: "available" | "sold" | "on_sale" | "archived";
   slug: string;
   public_id: string;
 }

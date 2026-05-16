@@ -346,7 +346,8 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
   const [isPublished, setIsPublished] = useState(false);
   const [isQuickShip, setIsQuickShip] = useState(false);
   const [showPrice, setShowPrice] = useState(true);
-  const [status, setStatus] = useState<"available" | "sold" | "on_sale" | "clearance">("available");
+  const [status, setStatus] = useState<"available" | "sold" | "on_sale">("available");
+  const [isIsClearance, setIsIsClearance] = useState(false);
 
   const [cropTarget, setCropTarget] = useState<{ index: number; src: string; fileName: string } | null>(null);
   const [trimTarget, setTrimTarget] = useState<{ index: number; file: File } | null>(null);
@@ -695,6 +696,7 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
       fd.append("is_featured", String(isFeatured));
       fd.append("is_published", String(isPublished));
       fd.append("quick_ship", String(isQuickShip));
+      fd.append("is_clearance", String(isIsClearance));
       fd.append("show_price", String(showPrice));
       fd.append("status", status);
       fd.append("sku", sku);
@@ -1492,19 +1494,17 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
           <div>
             <p className="text-[14px] sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</p>
             <div className="flex gap-2">
-              {(["available", "on_sale", "clearance", "sold"] as const).map((s) => (
+              {(["available", "on_sale", "sold"] as const).map((s) => (
                 <button
                   key={s}
                   type="button"
                   onClick={() => setStatus(s)}
-                  className={`text-[12px] sm: px-4 py-2 rounded-full text-sm font-medium border transition-all ${status === s
+                  className={`text-[12px] sm:text-sm px-4 py-2 rounded-full font-medium border transition-all ${status === s
                       ? s === "available"
                         ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
                         : s === "on_sale"
                           ? "border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400"
-                          : s === "clearance"
-                            ? "border-orange-400 bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400"
-                            : "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400"
+                          : "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400"
                       : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
                     }`}
                 >
@@ -1560,6 +1560,20 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
             </div>
             <span className="text-[12px] sm:text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
               {isQuickShip ? "Quick Ship — eligible for expedited shipping" : "Standard shipping timeline"}
+            </span>
+          </button>
+
+          {/* Clearance */}
+          <button
+            type="button"
+            onClick={() => setIsIsClearance((v) => !v)}
+            className="flex items-center gap-3 group"
+          >
+            <div className={`relative w-10 h-6 rounded-full transition-colors ${isIsClearance ? "bg-orange-500" : "bg-gray-200 dark:bg-gray-700"}`}>
+              <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${isIsClearance ? "translate-x-4" : ""}`} />
+            </div>
+            <span className="text-[12px] sm:text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+              {isIsClearance ? "Clearance — shown with clearance badge" : "Not clearance"}
             </span>
           </button>
         </div>

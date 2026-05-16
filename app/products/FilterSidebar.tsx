@@ -19,7 +19,6 @@ const ALL_COLORS = [
 const ALL_STATUSES = [
   { value: "available",  label: "Available",  dot: "bg-emerald-500" },
   { value: "on_sale",    label: "On Sale",    dot: "bg-amber-400" },
-  { value: "clearance",  label: "Clearance",  dot: "bg-orange-500" },
   { value: "sold",       label: "Sold",       dot: "bg-red-500" },
 ];
 
@@ -89,10 +88,12 @@ export function FilterSidebar({
   originCounts = {},
   colorCounts = {},
   shippingCounts = {},
+  clearanceCount = 0,
   initialColors = [],
   initialStatuses = [],
   initialOrigins = [],
   initialShipping = [],
+  initialClearance = false,
   initialMinSize = "",
   initialMaxSize = "",
   initialMinPrice = "",
@@ -102,10 +103,12 @@ export function FilterSidebar({
   originCounts?: Record<string, number>;
   colorCounts?: Record<string, number>;
   shippingCounts?: Record<string, number>;
+  clearanceCount?: number;
   initialColors?: string[];
   initialStatuses?: string[];
   initialOrigins?: string[];
   initialShipping?: string[];
+  initialClearance?: boolean;
   initialMinSize?: string;
   initialMaxSize?: string;
   initialMinPrice?: string;
@@ -120,6 +123,7 @@ export function FilterSidebar({
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(initialStatuses);
   const [selectedOrigins,  setSelectedOrigins]  = useState<string[]>(initialOrigins);
   const [selectedShipping, setSelectedShipping] = useState<string[]>(initialShipping);
+  const [selectedClearance, setSelectedClearance] = useState<boolean>(initialClearance);
   const [minSize,  setMinSize]  = useState(initialMinSize);
   const [maxSize,  setMaxSize]  = useState(initialMaxSize);
   const [minPrice, setMinPrice] = useState(initialMinPrice);
@@ -131,6 +135,7 @@ export function FilterSidebar({
     setSelectedStatuses(params.get("status")?.split(",").filter(Boolean) ?? []);
     setSelectedOrigins(params.get("origins")?.split(",").filter(Boolean) ?? []);
     setSelectedShipping(params.get("shipping")?.split(",").filter(Boolean) ?? []);
+    setSelectedClearance(params.get("clearance") === "1");
     setMinSize(params.get("minSize")  ?? "");
     setMaxSize(params.get("maxSize")  ?? "");
     setMinPrice(params.get("minPrice") ?? "");
@@ -142,6 +147,7 @@ export function FilterSidebar({
     selectedStatuses.length +
     selectedOrigins.length +
     selectedShipping.length +
+    (selectedClearance ? 1 : 0) +
     (minSize  ? 1 : 0) +
     (maxSize  ? 1 : 0) +
     (minPrice ? 1 : 0) +
@@ -199,6 +205,12 @@ export function FilterSidebar({
     push({ shipping: next.length > 0 ? next.join(",") : null });
   }
 
+  function toggleClearance() {
+    const next = !selectedClearance;
+    setSelectedClearance(next);
+    push({ clearance: next ? "1" : null });
+  }
+
   function clearAll() {
     router.push(pathname);
   }
@@ -237,6 +249,15 @@ export function FilterSidebar({
               )}
             </CheckRow>
           ))}
+          <CheckRow checked={selectedClearance} onChange={toggleClearance}>
+            <span className="w-2 h-2 rounded-full shrink-0 bg-orange-500" />
+            <span className="text-xs text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors flex-1">
+              Clearance
+            </span>
+            {clearanceCount > 0 && (
+              <span className="text-[13px] text-gray-400 dark:text-gray-600 tabular-nums">({clearanceCount})</span>
+            )}
+          </CheckRow>
         </div>
       </div>
 
@@ -428,6 +449,13 @@ export function FilterSidebar({
                     )}
                   </CheckRow>
                 ))}
+                <CheckRow checked={selectedClearance} onChange={toggleClearance}>
+                  <span className="w-2 h-2 rounded-full shrink-0 bg-orange-500" />
+                  <span className="text-sm text-gray-600 dark:text-gray-400 flex-1">Clearance</span>
+                  {clearanceCount > 0 && (
+                    <span className="text-xs text-gray-400 dark:text-gray-600 tabular-nums">({clearanceCount})</span>
+                  )}
+                </CheckRow>
               </div>
             </div>
 

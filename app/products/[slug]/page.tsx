@@ -28,6 +28,7 @@ interface Product {
   description: string | null;
   blemishes: string | null;
   is_featured: boolean | null;
+  is_clearance: boolean;
   is_published: boolean;
   quick_ship: boolean;
   status: string;
@@ -48,6 +49,7 @@ interface RelatedProduct {
   size: number | null;
   price_display_usd: number | null;
   sale_price_usd: number | null;
+  is_clearance: boolean;
   status: string;
   quick_ship: boolean;
   cardImages: string[];
@@ -71,7 +73,7 @@ const getCachedProductByPublicId = unstable_cache(
   async (publicId: string) => {
     const { data } = await supabase
       .from("products")
-      .select("id, name, category, origin, images, videos, color, tier, size, size_detailed, price_display_usd, sale_price_usd, show_price, description, blemishes, is_featured, is_published, quick_ship, status, slug, public_id, sku")
+      .select("id, name, category, origin, images, videos, color, tier, size, size_detailed, price_display_usd, sale_price_usd, show_price, description, blemishes, is_featured, is_clearance, is_published, quick_ship, status, slug, public_id, sku")
       .eq("public_id", publicId)
       .single<Product>();
 
@@ -113,7 +115,7 @@ const getCachedRelatedProducts = unstable_cache(
   async (category: string, productId: string) => {
     const { data } = await supabase
       .from("products")
-      .select("id, name, slug, public_id, category, origin, color, tier, size, price_display_usd, sale_price_usd, show_price, status, quick_ship, images")
+      .select("id, name, slug, public_id, category, origin, color, tier, size, price_display_usd, sale_price_usd, show_price, is_clearance, status, quick_ship, images")
       .eq("category", category)
       .eq("is_published", true)
       .neq("id", productId)
@@ -253,6 +255,7 @@ export default async function ProductPage({
         size: p.size as number | null,
         price_display_usd: (p.show_price as boolean) ? (p.price_display_usd as number | null) : null,
         sale_price_usd:    (p.show_price as boolean) ? (p.sale_price_usd as number | null)    : null,
+        is_clearance: (p.is_clearance as boolean) ?? false,
         status: p.status as string,
         quick_ship: (p.quick_ship as boolean) ?? false,
         cardImages: imgs.slice(0, 2).filter(Boolean),

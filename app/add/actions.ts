@@ -63,6 +63,7 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
       pending_approval: approvedUser,
       created_by: approvedUser ? approvedCreatedBy(approvedUserId!) : "admin",
       quick_ship: formData.get("quick_ship") === "true",
+      is_clearance: formData.get("is_clearance") === "true",
       status: productStatus,
       images: imageUrls,
       videos: videoUrls,
