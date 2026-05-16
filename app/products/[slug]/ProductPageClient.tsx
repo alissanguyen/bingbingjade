@@ -212,6 +212,11 @@ export function ProductPageClient({ product, productImages, productVideos, optio
               · {product.tier.join(" · ")}
             </span>
           )}
+          {product.status === "clearance" && (
+            <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-800 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-400">
+              Clearance
+            </span>
+          )}
           {product.is_featured && (
             <span className="ml-auto rounded-full bg-amber-100 dark:bg-amber-900/40 px-2.5 py-0.5 text-sm font-medium text-amber-700 dark:text-amber-400">
               Featured
@@ -335,6 +340,13 @@ export function ProductPageClient({ product, productImages, productVideos, optio
         {/* BNPL payment messaging */}
         {!isEffectivelySold && !needsInquiry && checkoutPrice != null && (
           <PaymentMessaging price={checkoutPrice} className="mt-2" />
+        )}
+
+        {/* Clearance note */}
+        {product.status === "clearance" && (
+          <p className="mt-2 text-xs text-amber-700 dark:text-amber-500 leading-relaxed">
+            Clearance pieces may be final sale and priced accordingly. Please review all photos, videos, and condition notes carefully before checkout.
+          </p>
         )}
 
         {/* Raw material note */}

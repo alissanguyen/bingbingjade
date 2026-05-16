@@ -370,7 +370,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
   const [isPublished, setIsPublished] = useState(product.is_published);
   const [isQuickShip, setIsQuickShip] = useState(product.quick_ship ?? false);
   const [showPrice, setShowPrice] = useState(product.show_price ?? true);
-  const [status, setStatus] = useState<"available" | "sold" | "on_sale" | "archived">(product.status ?? "available");
+  const [status, setStatus] = useState<"available" | "sold" | "on_sale" | "archived" | "clearance">(product.status ?? "available");
 
   const [form, setForm] = useState({
     name: product.name,
@@ -1261,7 +1261,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
           <div>
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</p>
             <div className="flex gap-2">
-              {(["available", "on_sale", "sold", "archived"] as const).map((s) => (
+              {(["available", "on_sale", "clearance", "sold", "archived"] as const).map((s) => (
                 <button
                   key={s}
                   type="button"
@@ -1271,9 +1271,11 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
                       ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
                       : s === "on_sale"
                         ? "border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400"
-                        : s === "sold"
-                          ? "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400"
-                          : "border-gray-400 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
+                        : s === "clearance"
+                          ? "border-orange-400 bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400"
+                          : s === "sold"
+                            ? "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400"
+                            : "border-gray-400 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
                     : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
                     }`}
                 >

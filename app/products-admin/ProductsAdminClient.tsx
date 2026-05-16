@@ -15,10 +15,11 @@ import type { AdminProduct, PendingProduct } from "./page";
 const CATEGORIES = ["bracelet", "bangle", "ring", "pendant", "necklace", "set", "earring", "raw_material"] as const;
 
 const STATUS_META: Record<string, { label: string; badge: string }> = {
-  available: { label: "Available",  badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" },
-  on_sale:   { label: "On Sale",    badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400" },
-  sold:      { label: "Sold",       badge: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400" },
-  archived:  { label: "Archived",   badge: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400" },
+  available:  { label: "Available",  badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" },
+  on_sale:    { label: "On Sale",    badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400" },
+  clearance:  { label: "Clearance",  badge: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400" },
+  sold:       { label: "Sold",       badge: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400" },
+  archived:   { label: "Archived",   badge: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400" },
 };
 
 const CAT_LABEL: Record<string, string> = {
@@ -122,7 +123,7 @@ export function ProductsAdminClient({
 
   const selectedIds = [...selected];
 
-  function handleBulkStatus(status: "available" | "on_sale" | "sold" | "archived") {
+  function handleBulkStatus(status: "available" | "on_sale" | "sold" | "archived" | "clearance") {
     if (!selectedIds.length) return;
     startTransition(async () => {
       const res = await bulkUpdateStatus(selectedIds, status);
@@ -358,6 +359,14 @@ export function ProductsAdminClient({
               className="rounded-full px-3 py-1 text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/60 disabled:opacity-50 transition-colors"
             >
               Set On Sale
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkStatus("clearance")}
+              disabled={isPending}
+              className="rounded-full px-3 py-1 text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-900/60 disabled:opacity-50 transition-colors"
+            >
+              Set Clearance
             </button>
             <button
               type="button"

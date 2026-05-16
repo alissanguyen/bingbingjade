@@ -194,7 +194,7 @@ export default async function Products({
   function effectiveSortPrice(p: ProductCard): number {
     const ep = allEventPrices.get(p.id)?.computedBasePrice ?? null;
     if (ep != null) return ep;
-    if (p.status === "on_sale" && p.sale_price_usd != null) return p.sale_price_usd;
+    if ((p.status === "on_sale" || p.status === "clearance") && p.sale_price_usd != null) return p.sale_price_usd;
     const vp = getVariantPrices(p);
     return vp.length > 0 ? Math.min(...vp) : (p.price_display_usd ?? Infinity);
   }
@@ -214,7 +214,7 @@ export default async function Products({
       const matchesStandard = selectedShipping.includes("standard") && !p.quick_ship;
       if (!matchesShipNow && !matchesStandard) return false;
     }
-    // Status filter — "available" also matches "on_sale" products
+    // Status filter — "available" also matches "on_sale" products; clearance is its own bucket
     if (selectedStatuses.length > 0) {
       const effectiveStatus = selectedStatuses.includes("available") && p.status === "on_sale"
         ? "available"
@@ -234,7 +234,7 @@ export default async function Products({
     // Price filter — match if any available variant price overlaps the filter range
     if (minPrice !== null || maxPrice !== null) {
       const effectivePrice =
-        p.status === "on_sale" && p.sale_price_usd != null ? p.sale_price_usd : null;
+        (p.status === "on_sale" || p.status === "clearance") && p.sale_price_usd != null ? p.sale_price_usd : null;
       const vPrices = getVariantPrices(p);
       if (vPrices.length > 0) {
         const vMin = Math.min(...vPrices);
@@ -244,7 +244,7 @@ export default async function Products({
         if (minPrice !== null && checkMax < minPrice) return false;
         if (maxPrice !== null && checkMin > maxPrice) return false;
       } else {
-        const ep = p.status === "on_sale" && p.sale_price_usd != null ? p.sale_price_usd : p.price_display_usd;
+        const ep = (p.status === "on_sale" || p.status === "clearance") && p.sale_price_usd != null ? p.sale_price_usd : p.price_display_usd;
         if (minPrice !== null && (ep == null || ep < minPrice)) return false;
         if (maxPrice !== null && (ep == null || ep > maxPrice)) return false;
       }
@@ -439,6 +439,13 @@ export default async function Products({
                       </div>
                     )}
                     {(() => {
+                      if (product.status === "clearance") {
+                        return (
+                          <div className="ProductCard_Badge_Clearance absolute top-2 left-2 sm:top-3 sm:left-3 z-10 bg-amber-800/85 backdrop-blur-sm text-amber-100 text-[10px] sm:text-[13px] font-semibold uppercase tracking-widest px-2.5 py-1 rounded-sm">
+                            Clearance
+                          </div>
+                        );
+                      }
                       const eventEntry = eventPrices.get(product.id);
                       if (eventEntry && product.status !== "sold") {
                         return (
@@ -534,7 +541,7 @@ export default async function Products({
                             </span>
                           );
                         }
-                        if (product.status === "on_sale" && sp != null) {
+                        if ((product.status === "on_sale" || product.status === "clearance") && sp != null) {
                           return (
                             <span className="flex items-center gap-2">
                               <span className="text-[17px] font-semibold text-amber-600 dark:text-amber-400">{fmtCardPrice(sp)}</span>
@@ -603,7 +610,7 @@ export default async function Products({
                             </span>
                           );
                         }
-                        if (product.status === "on_sale" && sp != null) {
+                        if ((product.status === "on_sale" || product.status === "clearance") && sp != null) {
                           return (
                             <span className="flex items-center gap-1.5">
                               <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">{fmtCardPrice(sp)}</span>

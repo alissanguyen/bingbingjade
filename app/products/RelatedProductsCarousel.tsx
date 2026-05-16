@@ -100,6 +100,7 @@ export function RelatedProductsCarousel({ products }: { products: RelatedProduct
           const cardSlug = productSlug(p);
           const isSold = p.status === "sold";
           const isOnSale = p.status === "on_sale";
+          const isClearance = p.status === "clearance";
           const colors = (p.color ?? []).filter((c) => c && c.trim());
           const tiers = p.tier ?? [];
           const displayPrice = p.sale_price_usd ?? p.price_display_usd;
@@ -122,6 +123,11 @@ export function RelatedProductsCarousel({ products }: { products: RelatedProduct
                 {isSold && (
                   <div className="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-10 bg-black text-white text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow">
                     Sold
+                  </div>
+                )}
+                {isClearance && !isSold && (
+                  <div className="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-10 bg-amber-800/85 backdrop-blur-sm text-amber-100 text-[10px] sm:text-xs font-semibold uppercase tracking-wider px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-sm">
+                    Clearance
                   </div>
                 )}
                 {isOnSale && (
@@ -171,7 +177,7 @@ export function RelatedProductsCarousel({ products }: { products: RelatedProduct
                   </div>
                 )}
                 <div className={`mt-2 pt-2 sm:mt-3 sm:pt-3 border-t dark:border-gray-800 flex items-center justify-between ${p.status === "sold" ? "border-gray-200" : "border-gray-100"}`}>
-                  <span className={`font-medium ${isSold ? "text-gray-400 dark:text-gray-500" : isOnSale ? "text-amber-600 dark:text-amber-400" : "text-gray-800 dark:text-gray-200"}`}>
+                  <span className={`font-medium ${isSold ? "text-gray-400 dark:text-gray-500" : isOnSale || isClearance ? "text-amber-600 dark:text-amber-400" : "text-gray-800 dark:text-gray-200"}`}>
                     {displayPrice != null ? fmtCardPrice(displayPrice) : "Inquire for Pricing"}
                   </span>
                   <span className="text-xs text-gray-400 dark:text-gray-500 text-right">

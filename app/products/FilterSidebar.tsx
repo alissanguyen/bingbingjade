@@ -17,9 +17,10 @@ const ALL_COLORS = [
 ];
 
 const ALL_STATUSES = [
-  { value: "available", label: "Available", dot: "bg-emerald-500" },
-  { value: "on_sale",   label: "On Sale",   dot: "bg-amber-400" },
-  { value: "sold",      label: "Sold",      dot: "bg-red-500" },
+  { value: "available",  label: "Available",  dot: "bg-emerald-500" },
+  { value: "on_sale",    label: "On Sale",    dot: "bg-amber-400" },
+  { value: "clearance",  label: "Clearance",  dot: "bg-orange-500" },
+  { value: "sold",       label: "Sold",       dot: "bg-red-500" },
 ];
 
 const ALL_ORIGINS = [

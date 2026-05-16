@@ -149,6 +149,7 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
           {products.map((product, productIdx) => {
             const isSold = product.status === "sold";
             const isOnSale = product.status === "on_sale";
+            const isClearance = product.status === "clearance";
             const colors = (product.color ?? []).filter((c) => c && c.trim());
             const basePrice = product.price_display_usd;
             const salePrice = product.sale_price_usd;
@@ -172,6 +173,12 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
                   {isSold && (
                     <div className="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-10 bg-black text-white text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow">
                       Sold
+                    </div>
+                  )}
+
+                  {isClearance && !isSold && (
+                    <div className="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-10 bg-amber-800/85 backdrop-blur-sm text-amber-100 text-[10px] sm:text-xs font-semibold uppercase tracking-wider px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-sm shadow">
+                      Clearance
                     </div>
                   )}
 
