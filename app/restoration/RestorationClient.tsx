@@ -11,9 +11,9 @@ type ServiceType = "polishing" | "silver_wrapping" | "gold_wrapping";
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const inputCls =
-  "mt-1 block w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-4 py-3 text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors";
+  "mt-1 block w-full rounded-xl border border-stone-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 text-sm text-stone-900 dark:text-gray-100 placeholder-stone-400 dark:placeholder-gray-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors";
 
-const labelCls = "block text-sm font-medium text-stone-700 dark:text-stone-300";
+const labelCls = "block text-sm font-medium text-stone-700 dark:text-gray-300";
 
 function RadioCard({
   checked,
@@ -35,20 +35,20 @@ function RadioCard({
       className={`w-full text-left px-4 py-3.5 rounded-xl border-2 transition-all ${
         checked
           ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40"
-          : "border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600"
+          : "border-stone-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-stone-300 dark:hover:border-gray-600"
       }`}
     >
       <div className="flex items-start gap-3">
         <span
           className={`mt-0.5 flex-shrink-0 h-4 w-4 rounded-full border-2 flex items-center justify-center ${
-            checked ? "border-emerald-500 bg-emerald-500" : "border-stone-400 dark:border-stone-600"
+            checked ? "border-emerald-500 bg-emerald-500" : "border-stone-400 dark:border-gray-600"
           }`}
         >
           {checked && <span className="block h-1.5 w-1.5 rounded-full bg-white" />}
         </span>
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-sm font-semibold ${checked ? "text-emerald-800 dark:text-emerald-200" : "text-stone-800 dark:text-stone-200"}`}>
+            <span className={`text-sm font-semibold ${checked ? "text-emerald-800 dark:text-emerald-200" : "text-stone-800 dark:text-gray-200"}`}>
               {title}
             </span>
             {badge && (
@@ -58,7 +58,7 @@ function RadioCard({
             )}
           </div>
           {description && (
-            <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400 leading-relaxed">{description}</p>
+            <p className="mt-0.5 text-xs text-stone-500 dark:text-gray-400 leading-relaxed">{description}</p>
           )}
         </div>
       </div>
@@ -72,7 +72,7 @@ function SectionHeading({ step, title }: { step: number; title: string }) {
       <span className="flex-shrink-0 h-7 w-7 rounded-full bg-emerald-700 text-white text-xs font-bold flex items-center justify-center">
         {step}
       </span>
-      <h3 className="text-base font-semibold text-stone-800 dark:text-stone-100">{title}</h3>
+      <h3 className="text-base font-semibold text-stone-800 dark:text-gray-100">{title}</h3>
     </div>
   );
 }
@@ -261,11 +261,11 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <h2 className="text-2xl font-semibold text-stone-800 dark:text-stone-100">Service Confirmed</h2>
-          <p className="text-stone-600 dark:text-stone-400 leading-relaxed">
+          <h2 className="text-2xl font-semibold text-stone-800 dark:text-gray-100">Service Confirmed</h2>
+          <p className="text-stone-600 dark:text-gray-400 leading-relaxed">
             Thank you for booking your jade bangle polishing service. You&apos;ll receive a confirmation email shortly with instructions on how to ship your bangle to us.
           </p>
-          <p className="text-sm text-stone-500 dark:text-stone-500">
+          <p className="text-sm text-stone-500 dark:text-gray-500">
             Please handle and package your bangle carefully. We recommend a padded box with bubble wrap.
           </p>
           <a
@@ -280,18 +280,18 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
   }
 
   return (
-    <div className="bg-white dark:bg-stone-950 min-h-screen">
+    <div className="bg-white dark:bg-gray-950 min-h-screen">
 
       {/* ── Hero ───────────────────────────────────────────────────────────── */}
-      <div className="bg-stone-50 dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800">
+      <div className="bg-stone-50 dark:bg-gray-900 border-b border-stone-200 dark:border-gray-800">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 sm:py-20 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 mb-3">
             BingBing Jade
           </p>
-          <h1 className="text-3xl sm:text-4xl font-semibold text-stone-900 dark:text-stone-50 leading-tight">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-stone-900 dark:text-gray-50 leading-tight">
             Jade Bangle Preservation Services
           </h1>
-          <p className="mt-4 text-base sm:text-lg text-stone-500 dark:text-stone-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="mt-4 text-base sm:text-lg text-stone-500 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
             Thoughtful polishing and protective metal wrapping for jade pieces worth preserving.
           </p>
         </div>
@@ -303,24 +303,24 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
         <section className="prose prose-stone dark:prose-invert max-w-none">
           <div className="grid sm:grid-cols-2 gap-8">
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-stone-800 dark:text-stone-100 not-prose">
+              <h2 className="text-xl font-semibold text-stone-800 dark:text-gray-100 not-prose">
                 A Tradition of Care
               </h2>
-              <p className="text-sm sm:text-base text-stone-600 dark:text-stone-400 leading-relaxed">
+              <p className="text-sm sm:text-base text-stone-600 dark:text-gray-400 leading-relaxed">
                 In Chinese jade culture, a bangle is more than an ornament — it is a living keepsake. Over time, even the most carefully worn jade can develop surface wear, micro-abrasions, or vulnerable stress points. Preservation is not restoration in the repair sense; it is an act of continued care for a piece that holds lasting meaning.
               </p>
-              <p className="text-sm sm:text-base text-stone-600 dark:text-stone-400 leading-relaxed">
+              <p className="text-sm sm:text-base text-stone-600 dark:text-gray-400 leading-relaxed">
                 Our polishing service revives surface brilliance while our protective metal wrapping — available in silver or gold — reinforces the bangle structurally and aesthetically, helping extend its wearability for generations.
               </p>
             </div>
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-stone-800 dark:text-stone-100 not-prose">
+              <h2 className="text-xl font-semibold text-stone-800 dark:text-gray-100 not-prose">
                 About Metal Wrapping
               </h2>
-              <p className="text-sm sm:text-base text-stone-600 dark:text-stone-400 leading-relaxed">
+              <p className="text-sm sm:text-base text-stone-600 dark:text-gray-400 leading-relaxed">
                 Protective metal wrapping uses fine silver or gold metalwork to reinforce vulnerable areas of a bangle — including visible lines, thin sections, or areas prone to stress. The wrapping may help cover surface imperfections and reduce the risk of further wear, while adding an elegant, bespoke finish.
               </p>
-              <p className="text-sm sm:text-base text-stone-600 dark:text-stone-400 leading-relaxed">
+              <p className="text-sm sm:text-base text-stone-600 dark:text-gray-400 leading-relaxed">
                 Final feasibility depends on a physical inspection of your piece. Metal wrapping does not guarantee prevention of future damage, and pricing varies based on metal choice, design complexity, bangle condition, and the artisan&apos;s final quote.
               </p>
             </div>
@@ -329,19 +329,19 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
 
         {/* ── Service cards ──────────────────────────────────────────────── */}
         <section>
-          <h2 className="text-xl font-semibold text-stone-800 dark:text-stone-100 mb-6">Our Services</h2>
+          <h2 className="text-xl font-semibold text-stone-800 dark:text-gray-100 mb-6">Our Services</h2>
           <div className="grid sm:grid-cols-2 gap-4">
 
             {/* Standard Polishing */}
-            <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900 p-5 space-y-3">
+            <div className="rounded-2xl border border-stone-200 dark:border-gray-800 bg-stone-50 dark:bg-gray-900 p-5 space-y-3">
               <div className="flex items-start justify-between gap-2">
-                <h3 className="font-semibold text-stone-800 dark:text-stone-100">Standard Polishing</h3>
+                <h3 className="font-semibold text-stone-800 dark:text-gray-100">Standard Polishing</h3>
                 <span className="text-lg font-semibold text-emerald-700 dark:text-emerald-400 shrink-0">$100</span>
               </div>
-              <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+              <p className="text-xs text-stone-500 dark:text-gray-400 leading-relaxed">
                 Professional surface polishing that restores natural luster and removes light abrasions. Best for bangles that have lost their sheen from daily wear.
               </p>
-              <div className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-500">
+              <div className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-gray-500">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 Estimated timeline: 4–6 weeks
               </div>
@@ -357,15 +357,15 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
             <div className="rounded-2xl border-2 border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-950/20 p-5 space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h3 className="font-semibold text-stone-800 dark:text-stone-100">BingBing Jade Client Polishing</h3>
+                  <h3 className="font-semibold text-stone-800 dark:text-gray-100">BingBing Jade Client Polishing</h3>
                   <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium mt-0.5">For existing clients</p>
                 </div>
                 <span className="text-lg font-semibold text-emerald-700 dark:text-emerald-400 shrink-0">$50</span>
               </div>
-              <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+              <p className="text-xs text-stone-500 dark:text-gray-400 leading-relaxed">
                 A loyalty rate for clients who have purchased from BingBing Jade. Requires verification of your order number, phone, and ZIP code before checkout.
               </p>
-              <div className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-500">
+              <div className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-gray-500">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 Estimated timeline: 2–4 weeks
               </div>
@@ -378,20 +378,20 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
             </div>
 
             {/* Silver Wrapping */}
-            <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900 p-5 space-y-3">
+            <div className="rounded-2xl border border-stone-200 dark:border-gray-800 bg-stone-50 dark:bg-gray-900 p-5 space-y-3">
               <div className="flex items-start justify-between gap-2">
-                <h3 className="font-semibold text-stone-800 dark:text-stone-100">Silver Protective Wrapping</h3>
-                <span className="text-lg font-semibold text-stone-700 dark:text-stone-300 shrink-0">$250+</span>
+                <h3 className="font-semibold text-stone-800 dark:text-gray-100">Silver Protective Wrapping</h3>
+                <span className="text-lg font-semibold text-stone-700 dark:text-gray-300 shrink-0">$250+</span>
               </div>
-              <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+              <p className="text-xs text-stone-500 dark:text-gray-400 leading-relaxed">
                 Fine silver metalwork applied to reinforce and protect vulnerable bangle areas. Design and pricing are custom to each piece — subject to artisan quote after inspection.
               </p>
-              <div className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-500">
+              <div className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-gray-500">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 Timeline subject to quote
               </div>
               <div className="pt-1">
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-500 dark:text-stone-500">
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-500 dark:text-gray-500">
                   <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   Inquiry &amp; quote required — no direct checkout
                 </span>
@@ -401,18 +401,18 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
             {/* Gold Wrapping */}
             <div className="rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/10 p-5 space-y-3">
               <div className="flex items-start justify-between gap-2">
-                <h3 className="font-semibold text-stone-800 dark:text-stone-100">Gold Protective Wrapping</h3>
+                <h3 className="font-semibold text-stone-800 dark:text-gray-100">Gold Protective Wrapping</h3>
                 <span className="text-lg font-semibold text-amber-700 dark:text-amber-400 shrink-0">$400+</span>
               </div>
-              <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+              <p className="text-xs text-stone-500 dark:text-gray-400 leading-relaxed">
                 Premium gold metalwork for bangles of the highest sentimental or monetary value. Pricing reflects metal choice, design intricacy, bangle condition, and artisan hours — subject to final quote.
               </p>
-              <div className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-500">
+              <div className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-gray-500">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 Timeline subject to quote
               </div>
               <div className="pt-1">
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-500 dark:text-stone-500">
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-500 dark:text-gray-500">
                   <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   Inquiry &amp; quote required — no direct checkout
                 </span>
@@ -421,7 +421,7 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
 
           </div>
 
-          <p className="mt-4 text-xs text-stone-400 dark:text-stone-600 leading-relaxed">
+          <p className="mt-4 text-xs text-stone-400 dark:text-gray-600 leading-relaxed">
             All timelines are estimates and may vary. Final service acceptance depends on physical inspection of your piece. Metal wrapping does not guarantee prevention of future damage.
           </p>
         </section>
@@ -429,8 +429,8 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
         {/* ── Service request form ────────────────────────────────────────── */}
         <section ref={formRef} id="request">
           <div className="max-w-2xl mx-auto">
-            <h2 className="text-xl font-semibold text-stone-800 dark:text-stone-100 mb-2">Start Your Service Request</h2>
-            <p className="text-sm text-stone-500 dark:text-stone-400 mb-8">
+            <h2 className="text-xl font-semibold text-stone-800 dark:text-gray-100 mb-2">Start Your Service Request</h2>
+            <p className="text-sm text-stone-500 dark:text-gray-400 mb-8">
               Select your client type and service below. Polishing can be booked directly; wrapping services require a quote.
             </p>
 
@@ -470,8 +470,8 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
                   ) : (
                     <>
                       <div>
-                        <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 mb-0.5">Verify your BingBing Jade order</p>
-                        <p className="text-xs text-stone-500 dark:text-stone-400">
+                        <p className="text-sm font-semibold text-stone-800 dark:text-gray-100 mb-0.5">Verify your BingBing Jade order</p>
+                        <p className="text-xs text-stone-500 dark:text-gray-400">
                           Enter your order number, the phone number on the order, and the shipping ZIP code to unlock the $50 client rate.
                         </p>
                       </div>
@@ -556,8 +556,8 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
 
               {/* Wrapping quote info */}
               {isWrapping && (
-                <div className="rounded-xl bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 px-5 py-4 text-sm text-stone-600 dark:text-stone-400 leading-relaxed space-y-1">
-                  <p className="font-medium text-stone-800 dark:text-stone-200">Pricing is subject to quote after review.</p>
+                <div className="rounded-xl bg-stone-100 dark:bg-gray-900 border border-stone-200 dark:border-gray-800 px-5 py-4 text-sm text-stone-600 dark:text-gray-400 leading-relaxed space-y-1">
+                  <p className="font-medium text-stone-800 dark:text-gray-200">Pricing is subject to quote after review.</p>
                   <p>
                     {service === "silver_wrapping"
                       ? "Silver wrapping generally starts around $250+."
@@ -617,7 +617,7 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
                             className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
                               banglesFromBingBing === v
                                 ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300"
-                                : "border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-400 dark:hover:border-stone-600"
+                                : "border-stone-300 dark:border-gray-700 text-stone-600 dark:text-gray-400 hover:border-stone-400 dark:hover:border-gray-600"
                             }`}
                           >
                             {v === "yes" ? "Yes" : "No"}
@@ -639,10 +639,10 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
                     </div>
 
                     {/* Photo upload — TODO */}
-                    <div className="rounded-xl border border-dashed border-stone-300 dark:border-stone-700 px-4 py-4 text-center">
-                      <p className="text-xs text-stone-400 dark:text-stone-600">
+                    <div className="rounded-xl border border-dashed border-stone-300 dark:border-gray-700 px-4 py-4 text-center">
+                      <p className="text-xs text-stone-400 dark:text-gray-600">
                         📷 Bangle photo upload — coming soon. For now, you may attach photos to your confirmation email or send them via our{" "}
-                        <a href="/contact" className="underline underline-offset-2 hover:text-stone-600 dark:hover:text-stone-400 transition-colors">
+                        <a href="/contact" className="underline underline-offset-2 hover:text-stone-600 dark:hover:text-gray-400 transition-colors">
                           contact page
                         </a>.
                       </p>
@@ -653,10 +653,10 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
 
               {/* CTA — Polishing checkout */}
               {service === "polishing" && (
-                <div className="rounded-2xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 p-5 space-y-4">
+                <div className="rounded-2xl border border-stone-200 dark:border-gray-700 bg-stone-50 dark:bg-gray-900 p-5 space-y-4">
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-stone-700 dark:text-stone-300">
+                      <span className="text-sm font-medium text-stone-700 dark:text-gray-300">
                         {clientType === "bingbing_client" && verified
                           ? "BingBing Jade Client Polishing"
                           : "Standard Polishing"}
@@ -665,7 +665,7 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
                         ${polishingPrice}.00
                       </span>
                     </div>
-                    <p className="text-xs text-stone-500 dark:text-stone-500 mt-0.5">
+                    <p className="text-xs text-stone-500 dark:text-gray-500 mt-0.5">
                       Estimated {polishingTimeline} · Includes return shipping
                     </p>
                   </div>
@@ -692,7 +692,7 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
                       ? "Verify above to proceed"
                       : `Proceed to Checkout — $${polishingPrice}.00`}
                   </button>
-                  <p className="text-[11px] text-stone-400 dark:text-stone-600 text-center">
+                  <p className="text-[11px] text-stone-400 dark:text-gray-600 text-center">
                     You will provide your shipping address on the next screen. After payment, we will send instructions for shipping your bangle to us.
                   </p>
                 </div>
@@ -707,11 +707,11 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
                   <button
                     type="submit"
                     disabled={inquiryLoading || !name.trim() || !email.trim()}
-                    className="w-full rounded-full bg-stone-800 dark:bg-stone-100 hover:bg-stone-900 dark:hover:bg-white text-white dark:text-stone-900 py-3 text-sm font-medium transition-colors disabled:opacity-50"
+                    className="w-full rounded-full bg-stone-800 dark:bg-gray-100 hover:bg-stone-900 dark:hover:bg-gray-50 text-white dark:text-gray-900 py-3 text-sm font-medium transition-colors disabled:opacity-50"
                   >
                     {inquiryLoading ? "Sending…" : "Contact Us for a Quote"}
                   </button>
-                  <p className="text-[11px] text-stone-400 dark:text-stone-600 text-center">
+                  <p className="text-[11px] text-stone-400 dark:text-gray-600 text-center">
                     We&apos;ll review your request and respond within 1–3 business days with a personalized quote.
                   </p>
                 </div>
@@ -731,13 +731,13 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
         </section>
 
         {/* ── Bottom CTA ──────────────────────────────────────────────────── */}
-        <section className="border-t border-stone-200 dark:border-stone-800 pt-10 text-center space-y-3">
-          <p className="text-sm text-stone-500 dark:text-stone-400">
+        <section className="border-t border-stone-200 dark:border-gray-800 pt-10 text-center space-y-3">
+          <p className="text-sm text-stone-500 dark:text-gray-400">
             Have questions before submitting? We&apos;re happy to help.
           </p>
           <a
             href="/contact"
-            className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 dark:border-stone-700 px-5 py-2.5 text-sm font-medium text-stone-700 dark:text-stone-300 hover:border-stone-400 dark:hover:border-stone-500 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 dark:border-gray-700 px-5 py-2.5 text-sm font-medium text-stone-700 dark:text-gray-300 hover:border-stone-400 dark:hover:border-gray-500 transition-colors"
           >
             Go to Contact Page
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
