@@ -116,7 +116,7 @@ export default async function CollectionPage({ params }: Params) {
   const { data: collection } = await supabase
     .from("collections")
     .select(`
-      id, name, subtitle, description, hero_image, hero_scene_id, status,
+      *,
       collection_scenes (
         id, image, mobile_image, caption, sort_order,
         collection_scene_tags (
@@ -141,13 +141,14 @@ export default async function CollectionPage({ params }: Params) {
     ? await resolveImageUrl(collection.hero_image)
     : null;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const scenes = await Promise.all(
-    (collection.collection_scenes ?? []).map(async (s) => ({
-      id: s.id,
-      imageUrl: await resolveImageUrl(s.image),
-      mobileImageUrl: s.mobile_image ? await resolveImageUrl(s.mobile_image) : null,
-      caption: s.caption,
-      tags: (s.collection_scene_tags ?? []).map((tag) => {
+    ((collection.collection_scenes ?? []) as any[]).map(async (s: any) => ({
+      id: s.id as string,
+      imageUrl: await resolveImageUrl(s.image as string),
+      mobileImageUrl: s.mobile_image ? await resolveImageUrl(s.mobile_image as string) : null,
+      caption: s.caption as string | null,
+      tags: ((s.collection_scene_tags ?? []) as any[]).map((tag: any) => {
         const p = Array.isArray(tag.products) ? tag.products[0] : tag.products;
         return {
           id: tag.id as string, x: tag.x as number, y: tag.y as number,
@@ -155,12 +156,12 @@ export default async function CollectionPage({ params }: Params) {
           mobile_y: (tag.mobile_y ?? null) as number | null,
           products: p as { id: string; name: string; slug: string; public_id: string | null; images: string[]; price_display_usd: number | null; sale_price_usd: number | null; show_price: boolean; status: string },
         };
-      }).filter((t) => t.products),
+      }).filter((t: any) => t.products),
     }))
   );
 
-  const products = (collection.collection_products ?? [])
-    .map((cp) => (Array.isArray(cp.products) ? cp.products[0] : cp.products) as {
+  const products = ((collection.collection_products ?? []) as any[])
+    .map((cp: any) => (Array.isArray(cp.products) ? cp.products[0] : cp.products) as {
       id: string; name: string; slug: string; public_id: string | null;
       category: string | null; images: string[]; price_display_usd: number | null;
       sale_price_usd: number | null; show_price: boolean; status: string; quick_ship: boolean | null;
