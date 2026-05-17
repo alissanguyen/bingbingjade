@@ -140,34 +140,54 @@ export default async function CollectionPage({ params }: Params) {
     ? await resolveImageUrl(collection.hero_image)
     : null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const scenes = await Promise.all(
-    ((collection.collection_scenes ?? []) as any[])
-      .filter((s: any) => s.image)
-      .map(async (s: any) => ({
-        id: s.id as string,
-        imageUrl: await resolveImageUrl(s.image as string),
-        mobileImageUrl: s.mobile_image ? await resolveImageUrl(s.mobile_image as string) : null,
-        caption: s.caption as string | null,
-        tags: ((s.collection_scene_tags ?? []) as any[]).map((tag: any) => {
-          const p = Array.isArray(tag.products) ? tag.products[0] : tag.products;
-          return {
-            id: tag.id as string, x: tag.x as number, y: tag.y as number,
-            mobile_x: (tag.mobile_x ?? null) as number | null,
-            mobile_y: (tag.mobile_y ?? null) as number | null,
-            products: p as { id: string; name: string; slug: string; public_id: string | null; images: string[]; price_display_usd: number | null; sale_price_usd: number | null; show_price: boolean; status: string },
-          };
-        }).filter((t: any) => t.products),
-      }))
-  );
-
-  const products = ((collection.collection_products ?? []) as any[])
-    .map((cp: any) => (Array.isArray(cp.products) ? cp.products[0] : cp.products) as {
+  type RawTagProduct = {
+    id: string; name: string; slug: string; public_id: string | null;
+    images: string[]; price_display_usd: number | null; sale_price_usd: number | null;
+    show_price: boolean; status: string;
+  };
+  type RawSceneTag = {
+    id: string; x: number; y: number; mobile_x: number | null; mobile_y: number | null;
+    products: RawTagProduct | RawTagProduct[] | null;
+  };
+  type RawScene = {
+    id: string; image: string; mobile_image: string | null; caption: string | null;
+    collection_scene_tags: RawSceneTag[] | null;
+  };
+  type RawCollectionProduct = {
+    products: ({
       id: string; name: string; slug: string; public_id: string | null;
       category: string | null; images: string[]; price_display_usd: number | null;
       sale_price_usd: number | null; show_price: boolean; status: string; quick_ship: boolean | null;
-    } | null)
-    .filter(Boolean);
+    }) | ({
+      id: string; name: string; slug: string; public_id: string | null;
+      category: string | null; images: string[]; price_display_usd: number | null;
+      sale_price_usd: number | null; show_price: boolean; status: string; quick_ship: boolean | null;
+    })[] | null;
+  };
+
+  const scenes = await Promise.all(
+    ((collection.collection_scenes ?? []) as unknown as RawScene[])
+      .filter((s) => s.image)
+      .map(async (s) => ({
+        id: s.id,
+        imageUrl: await resolveImageUrl(s.image),
+        mobileImageUrl: s.mobile_image ? await resolveImageUrl(s.mobile_image) : null,
+        caption: s.caption,
+        tags: (s.collection_scene_tags ?? []).map((tag) => {
+          const p = Array.isArray(tag.products) ? tag.products[0] : tag.products;
+          return {
+            id: tag.id, x: tag.x, y: tag.y,
+            mobile_x: tag.mobile_x ?? null,
+            mobile_y: tag.mobile_y ?? null,
+            products: p,
+          };
+        }).filter((t): t is typeof t & { products: RawTagProduct } => t.products != null),
+      }))
+  );
+
+  const products = ((collection.collection_products ?? []) as unknown as RawCollectionProduct[])
+    .map((cp) => (Array.isArray(cp.products) ? cp.products[0] : cp.products))
+    .filter((p): p is NonNullable<typeof p> => p != null);
 
   const [, ...restScenes] = scenes;
 
