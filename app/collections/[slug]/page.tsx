@@ -191,7 +191,7 @@ export default async function CollectionPage({ params }: Params) {
         const mfy = c.hero_mobile_focal_y ?? fy;
         const heroClass = `collection-hero-${meta.id}`;
         return (
-          <section className="relative w-full min-h-[60vh] sm:min-h-[75vh] flex items-end overflow-hidden bg-gray-900">
+          <section className="relative w-full min-h-[50vh] sm:min-h-[65vh] flex items-end overflow-hidden bg-gray-900">
             {bannerImageUrl ? (
               <>
                 <style>{`.${heroClass}{object-position:${fx}% ${fy}%}@media(max-width:639px){.${heroClass}{object-position:${mfx}% ${mfy}%}}`}</style>
@@ -201,7 +201,7 @@ export default async function CollectionPage({ params }: Params) {
                     src={bannerImageUrl}
                     alt={collection.name}
                     fill
-                    className={`object-cover opacity-80 ${heroClass}`}
+                    className={`object-cover ${heroClass}`}
                     priority
                     unoptimized
                   />
@@ -210,16 +210,16 @@ export default async function CollectionPage({ params }: Params) {
             ) : (
               <div className="absolute inset-0 bg-linear-to-br from-emerald-950 to-gray-950" />
             )}
-            <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
+            <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/30 to-transparent" />
             <div className="relative z-10 px-6 pb-12 sm:px-12 sm:pb-16 max-w-3xl">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-emerald-300 mb-3">
-                Collection
+              <p className="text-[9px] sm:text-[13px] font-semibold uppercase tracking-[0.25em] text-emerald-300 mb-3">
+                BINGBING EXCLUSIVE
               </p>
               <h1 className="text-4xl sm:text-6xl font-bold text-white leading-tight mb-4">
                 {collection.name}
               </h1>
               {collection.subtitle && (
-                <p className="text-lg sm:text-xl text-white/70 leading-relaxed max-w-xl">
+                <p className="text-[16px] sm:text-xl text-white/70 leading-relaxed max-w-xl">
                   {collection.subtitle}
                 </p>
               )}
@@ -230,8 +230,8 @@ export default async function CollectionPage({ params }: Params) {
 
       {/* ── Description ─────────────────────────────────────────────────── */}
       {collection.description && (
-        <div className="max-w-2xl mx-auto px-6 py-12 text-center">
-          <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
+        <div className="max-w-2xl mx-auto px-6 py-8 sm:py-12 text-center">
+          <p className="text-[14px] sm:text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
             {collection.description}
           </p>
         </div>

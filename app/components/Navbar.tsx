@@ -311,7 +311,7 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                   Ready to Ship - US 
                 </Link>
-                <p className="px-3 pt-2 pb-1 text-[12px] font-semibold uppercase tracking-widest text-gray-400">The BingBing Collections</p>
+                <p className="px-3 pt-2 pb-1 text-[12px] font-semibold uppercase tracking-widest text-gray-400">BingBing Exclusive Collections</p>
                 {collections.map((c) => (
                   <Link
                     key={c.id}
@@ -595,7 +595,7 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                     Ready to Ship
                   </Link>
-                  <p className="pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">The BingBing Collections</p>
+                  <p className="pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">BingBing Exclusive Collections</p>
                   <ul className="space-y-0.5 mb-2">
                     {collections.map((c) => (
                       <li key={c.id}>
