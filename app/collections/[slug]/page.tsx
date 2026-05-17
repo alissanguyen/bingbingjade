@@ -198,55 +198,55 @@ export default async function CollectionPage({ params }: Params) {
   const bannerImageUrl = heroBannerScene?.imageUrl ?? heroUrl;
   const bannerMobileUrl = heroBannerScene?.mobileImageUrl ?? null;
 
+  // hero_focal_* columns exist in the DB but may not be reflected in generated types yet
+  const col = collection as typeof collection & {
+    hero_focal_x?: number | null; hero_focal_y?: number | null;
+    hero_mobile_focal_x?: number | null; hero_mobile_focal_y?: number | null;
+  };
+  const focalX  = col.hero_focal_x  ?? 50;
+  const focalY  = col.hero_focal_y  ?? 50;
+  const focalMX = col.hero_mobile_focal_x ?? focalX;
+  const focalMY = col.hero_mobile_focal_y ?? focalY;
+  const heroClass = `collection-hero-${meta.id}`;
+
   return (
     <main className="min-h-screen bg-white dark:bg-gray-950">
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      {(() => {
-        const c = collection as any;
-        const fx  = c.hero_focal_x        ?? 50;
-        const fy  = c.hero_focal_y        ?? 50;
-        const mfx = c.hero_mobile_focal_x ?? fx;
-        const mfy = c.hero_mobile_focal_y ?? fy;
-        const heroClass = `collection-hero-${meta.id}`;
-        return (
-          <section className="relative w-full min-h-[50vh] sm:min-h-[65vh] flex items-end overflow-hidden bg-gray-900">
-            {bannerImageUrl ? (
-              <>
-                <style>{`.${heroClass}{object-position:${fx}% ${fy}%}@media(max-width:639px){.${heroClass}{object-position:${mfx}% ${mfy}%}}`}</style>
-                <picture>
-                  {bannerMobileUrl && <source media="(max-width: 639px)" srcSet={bannerMobileUrl} />}
-                  <Image
-                    src={bannerImageUrl}
-                    alt={collection.name}
-                    fill
-                    className={`object-cover ${heroClass}`}
-                    priority
-                    unoptimized
-                  />
-                </picture>
-              </>
-            ) : (
-              <div className="absolute inset-0 bg-linear-to-br from-emerald-950 to-gray-950" />
-            )}
-            <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/30 to-transparent" />
-            <div className="relative z-10 px-6 pb-12 sm:px-12 sm:pb-16 max-w-3xl">
-              <p className="text-[9px] sm:text-[13px] font-semibold uppercase tracking-[0.25em] text-emerald-300 mb-3">
-                BINGBING EXCLUSIVE
-              </p>
-              <h1 className="text-4xl sm:text-6xl font-bold text-white leading-tight mb-4">
-                {collection.name}
-              </h1>
-              {collection.subtitle && (
-                <p className="text-[16px] sm:text-xl text-white/70 leading-relaxed max-w-xl">
-                  {collection.subtitle}
-                </p>
-              )}
-            </div>
-          </section>
-        );
-      })()}
+      <section className="relative w-full min-h-[50vh] sm:min-h-[65vh] flex items-end overflow-hidden bg-gray-900">
+        {bannerImageUrl ? (
+          <>
+            <style>{`.${heroClass}{object-position:${focalX}% ${focalY}%}@media(max-width:639px){.${heroClass}{object-position:${focalMX}% ${focalMY}%}}`}</style>
+            <picture>
+              {bannerMobileUrl && <source media="(max-width: 639px)" srcSet={bannerMobileUrl} />}
+              <Image
+                src={bannerImageUrl}
+                alt={collection.name}
+                fill
+                className={`object-cover ${heroClass}`}
+                priority
+                unoptimized
+              />
+            </picture>
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-linear-to-br from-emerald-950 to-gray-950" />
+        )}
+        <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/30 to-transparent" />
+        <div className="relative z-10 px-6 pb-12 sm:px-12 sm:pb-16 max-w-3xl">
+          <p className="text-[9px] sm:text-[13px] font-semibold uppercase tracking-[0.25em] text-emerald-300 mb-3">
+            BINGBING EXCLUSIVE
+          </p>
+          <h1 className="text-4xl sm:text-6xl font-bold text-white leading-tight mb-4">
+            {collection.name}
+          </h1>
+          {collection.subtitle && (
+            <p className="text-[16px] sm:text-xl text-white/70 leading-relaxed max-w-xl">
+              {collection.subtitle}
+            </p>
+          )}
+        </div>
+      </section>
 
       {/* ── Description ─────────────────────────────────────────────────── */}
       {collection.description && (
