@@ -168,8 +168,6 @@ export function CollectionScene({ scene }: Props) {
   const [isMobile, setIsMobile] = useState(false);
   const [activeTagId, setActiveTagId] = useState<string | null>(null);
   const [hoverTagId, setHoverTagId] = useState<string | null>(null);
-  const hasActiveTag = activeTagId !== null || hoverTagId !== null;
-
   const containerRef = useCallback((node: HTMLDivElement | null) => {
     if (!node) return;
     const mq = window.matchMedia("(pointer: coarse)");
@@ -192,7 +190,7 @@ export function CollectionScene({ scene }: Props) {
     : null;
 
   return (
-    <figure className={`relative group ${hasActiveTag ? "z-50" : ""}`}>
+    <figure className="relative group hover:z-10">
       <div
         ref={containerRef}
         className="relative w-full"
