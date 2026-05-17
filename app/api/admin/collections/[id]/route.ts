@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     .from("collections")
     .select(`
       *,
-      collection_scenes (
+      collection_scenes!collection_id (
         id, image, mobile_image, caption, sort_order,
         collection_scene_tags (
           id, x, y,

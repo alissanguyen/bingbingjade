@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { resolveImageUrl } from "@/lib/storage";
 import { CollectionScene } from "@/app/components/collection/CollectionScene";
@@ -113,11 +112,12 @@ export default async function CollectionPage({ params }: Params) {
   }
 
   // ── Published: full collection page ──────────────────────────────────────
-  const { data: collection } = await supabase
+  // Use supabaseAdmin so RLS can't block the fetch — we already verified status above.
+  const { data: collection } = await supabaseAdmin
     .from("collections")
     .select(`
       *,
-      collection_scenes (
+      collection_scenes!collection_id (
         id, image, mobile_image, caption, sort_order,
         collection_scene_tags (
           id, x, y, mobile_x, mobile_y,
@@ -129,8 +129,7 @@ export default async function CollectionPage({ params }: Params) {
         products ( id, name, slug, public_id, category, images, price_display_usd, sale_price_usd, show_price, status, quick_ship )
       )
     `)
-    .eq("slug", slug)
-    .eq("status", "published")
+    .eq("id", meta.id)
     .order("sort_order", { referencedTable: "collection_scenes" })
     .order("sort_order", { referencedTable: "collection_products" })
     .single();
@@ -143,21 +142,23 @@ export default async function CollectionPage({ params }: Params) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const scenes = await Promise.all(
-    ((collection.collection_scenes ?? []) as any[]).map(async (s: any) => ({
-      id: s.id as string,
-      imageUrl: await resolveImageUrl(s.image as string),
-      mobileImageUrl: s.mobile_image ? await resolveImageUrl(s.mobile_image as string) : null,
-      caption: s.caption as string | null,
-      tags: ((s.collection_scene_tags ?? []) as any[]).map((tag: any) => {
-        const p = Array.isArray(tag.products) ? tag.products[0] : tag.products;
-        return {
-          id: tag.id as string, x: tag.x as number, y: tag.y as number,
-          mobile_x: (tag.mobile_x ?? null) as number | null,
-          mobile_y: (tag.mobile_y ?? null) as number | null,
-          products: p as { id: string; name: string; slug: string; public_id: string | null; images: string[]; price_display_usd: number | null; sale_price_usd: number | null; show_price: boolean; status: string },
-        };
-      }).filter((t: any) => t.products),
-    }))
+    ((collection.collection_scenes ?? []) as any[])
+      .filter((s: any) => s.image)
+      .map(async (s: any) => ({
+        id: s.id as string,
+        imageUrl: await resolveImageUrl(s.image as string),
+        mobileImageUrl: s.mobile_image ? await resolveImageUrl(s.mobile_image as string) : null,
+        caption: s.caption as string | null,
+        tags: ((s.collection_scene_tags ?? []) as any[]).map((tag: any) => {
+          const p = Array.isArray(tag.products) ? tag.products[0] : tag.products;
+          return {
+            id: tag.id as string, x: tag.x as number, y: tag.y as number,
+            mobile_x: (tag.mobile_x ?? null) as number | null,
+            mobile_y: (tag.mobile_y ?? null) as number | null,
+            products: p as { id: string; name: string; slug: string; public_id: string | null; images: string[]; price_display_usd: number | null; sale_price_usd: number | null; show_price: boolean; status: string },
+          };
+        }).filter((t: any) => t.products),
+      }))
   );
 
   const products = ((collection.collection_products ?? []) as any[])
