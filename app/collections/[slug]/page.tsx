@@ -9,6 +9,7 @@ import { CollectionScene } from "@/app/components/collection/CollectionScene";
 import { ProductCardLink } from "@/app/products/ProductCardLink";
 import { ProductCardImage } from "@/app/products/ProductCardImage";
 import { requiresInquiry } from "@/lib/price";
+import { productSlug } from "@/lib/slug";
 
 export const revalidate = 120;
 
@@ -120,7 +121,7 @@ export default async function CollectionPage({ params }: Params) {
         id, image, mobile_image, caption, sort_order,
         collection_scene_tags (
           id, x, y, mobile_x, mobile_y,
-          products ( id, name, slug, images, price_display_usd, sale_price_usd, show_price, status )
+          products ( id, name, slug, public_id, images, price_display_usd, sale_price_usd, show_price, status )
         )
       ),
       collection_products (
@@ -152,7 +153,7 @@ export default async function CollectionPage({ params }: Params) {
           id: tag.id as string, x: tag.x as number, y: tag.y as number,
           mobile_x: (tag.mobile_x ?? null) as number | null,
           mobile_y: (tag.mobile_y ?? null) as number | null,
-          products: p as { id: string; name: string; slug: string; images: string[]; price_display_usd: number | null; sale_price_usd: number | null; show_price: boolean; status: string },
+          products: p as { id: string; name: string; slug: string; public_id: string | null; images: string[]; price_display_usd: number | null; sale_price_usd: number | null; show_price: boolean; status: string },
         };
       }).filter((t) => t.products),
     }))
@@ -256,7 +257,7 @@ export default async function CollectionPage({ params }: Params) {
               return (
                 <ProductCardLink
                   key={product.id}
-                  href={`/products/${product.slug}`}
+                  href={`/products/${product.public_id ? productSlug({ slug: product.slug, public_id: product.public_id }) : product.slug}`}
                   className={`group flex flex-col gap-2 ${isSold ? "opacity-60" : ""}`}
                 >
                   <div className="overflow-hidden rounded-lg bg-gray-50 dark:bg-gray-900">

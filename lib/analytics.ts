@@ -5,8 +5,6 @@ declare global {
     gtag?: (...args: any[]) => void;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     dataLayer?: any[];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    clarity?: (...args: any[]) => void;
   }
 }
 

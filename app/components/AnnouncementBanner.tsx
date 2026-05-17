@@ -165,11 +165,11 @@ export function AnnouncementBanner() {
         }
       } catch { }
       const controller = new AbortController();
-      const timeoutId = window.setTimeout(() => controller.abort(), 1500);
+      const timeoutId = window.setTimeout(() => controller.abort(new DOMException("Timeout", "AbortError")), 1500);
       fetch("/api/banner", { signal: controller.signal })
         .then((r) => (r.ok ? r.json() : null))
         .then((data) => { if (alive) setConfig(normalizeBannerConfig(data)); })
-        .catch((err) => { console.error("[AnnouncementBanner] fetch failed:", err); })
+        .catch((err) => { if (err?.name !== "AbortError") console.error("[AnnouncementBanner] fetch failed:", err); })
         .finally(() => { clearTimeout(timeoutId); });
     }, 0);
     return () => { alive = false; clearTimeout(initId); };
