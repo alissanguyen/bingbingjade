@@ -47,9 +47,14 @@ export default async function CollectionAdminDetailPage({ params }: Params) {
     }))
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const heroImageUrl = (collection as any).hero_image
+    ? await resolveImageUrl((collection as any).hero_image as string)
+    : null;
+
   return (
     <CollectionAdminClient
-      collection={{ ...collection, collection_scenes: scenesWithUrls }}
+      collection={{ ...collection, collection_scenes: scenesWithUrls, heroImageUrl }}
     />
   );
 }

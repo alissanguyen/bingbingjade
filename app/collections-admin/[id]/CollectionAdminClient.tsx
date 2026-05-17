@@ -30,7 +30,12 @@ interface CollectionProduct {
 interface Collection {
   id: string; name: string; slug: string; subtitle: string | null;
   description: string | null; hero_image: string | null;
+  heroImageUrl: string | null;
   hero_scene_id: string | null;
+  hero_focal_x: number | null;        hero_focal_y: number | null;
+  hero_mobile_focal_x: number | null; hero_mobile_focal_y: number | null;
+  hero_crop_x: number | null;         hero_crop_y: number | null;
+  hero_crop_width: number | null;     hero_crop_height: number | null;
   status: string; sort_order: number;
   collection_scenes: Scene[];
   collection_products: CollectionProduct[];
@@ -69,6 +74,355 @@ function SectionCard({ title, children }: { title: string; children: React.React
       <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-5">{title}</h2>
       {children}
     </div>
+  );
+}
+
+/* ── Hero Image Editor ───────────────────────────────────────────────── */
+
+function HeroImageEditor({
+  collection,
+  onSaved,
+}: {
+  collection: Collection;
+  onSaved: (updates: Partial<Collection>) => void;
+}) {
+  const [mode, setMode] = useState<"scene" | "upload">(() =>
+    collection.hero_image ? "upload" : "scene"
+  );
+  const [selectedSceneId, setSelectedSceneId] = useState(collection.hero_scene_id ?? "");
+  const [activeImageUrl, setActiveImageUrl] = useState<string | null>(() => {
+    if (collection.hero_image) return collection.heroImageUrl ?? null;
+    const scene = collection.collection_scenes.find((s) => s.id === collection.hero_scene_id);
+    return scene?.imageUrl ?? null;
+  });
+  const [view, setView] = useState<"desktop" | "mobile">("desktop");
+  const [focalX, setFocalX] = useState(collection.hero_focal_x ?? 50);
+  const [focalY, setFocalY] = useState(collection.hero_focal_y ?? 50);
+  const [mobileFocalX, setMobileFocalX] = useState(
+    collection.hero_mobile_focal_x ?? collection.hero_focal_x ?? 50
+  );
+  const [mobileFocalY, setMobileFocalY] = useState(
+    collection.hero_mobile_focal_y ?? collection.hero_focal_y ?? 50
+  );
+
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const imgRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+
+  function getCoords(e: React.MouseEvent | React.PointerEvent): { x: number; y: number } | null {
+    if (!imgRef.current) return null;
+    const rect = imgRef.current.getBoundingClientRect();
+    return {
+      x: Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100)),
+      y: Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100)),
+    };
+  }
+
+  function applyCoords(x: number, y: number) {
+    if (view === "mobile") { setMobileFocalX(x); setMobileFocalY(y); }
+    else { setFocalX(x); setFocalY(y); }
+  }
+
+  function handleImageClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (isDragging.current) return;
+    const coords = getCoords(e);
+    if (coords) applyCoords(coords.x, coords.y);
+  }
+
+  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    isDragging.current = false;
+    imgRef.current?.setPointerCapture(e.pointerId);
+  }
+
+  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!(e.buttons & 1)) return;
+    isDragging.current = true;
+    const coords = getCoords(e);
+    if (coords) applyCoords(coords.x, coords.y);
+  }
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const res = await fetch(`/api/admin/collections/${collection.id}/hero-image`, {
+        method: "POST",
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Upload failed"); return; }
+      setActiveImageUrl(data.heroImageUrl);
+      onSaved({ hero_image: data.hero_image, heroImageUrl: data.heroImageUrl, hero_scene_id: null });
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  async function handleRemoveCustomImage() {
+    if (!confirm("Remove the custom hero image?")) return;
+    const res = await fetch(`/api/admin/collections/${collection.id}/hero-image`, { method: "DELETE" });
+    if (!res.ok) return;
+    setActiveImageUrl(null);
+    onSaved({ hero_image: null, heroImageUrl: null });
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    try {
+      const body: Record<string, unknown> = {
+        hero_focal_x: focalX,
+        hero_focal_y: focalY,
+        hero_mobile_focal_x: mobileFocalX,
+        hero_mobile_focal_y: mobileFocalY,
+      };
+      if (mode === "scene") {
+        body.hero_scene_id = selectedSceneId || null;
+        body.hero_image = null;
+      }
+      const res = await fetch(`/api/admin/collections/${collection.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Save failed"); return; }
+      onSaved(data);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function selectScene(sceneId: string) {
+    setSelectedSceneId(sceneId);
+    const scene = collection.collection_scenes.find((s) => s.id === sceneId);
+    setActiveImageUrl(scene?.imageUrl ?? null);
+  }
+
+  const curFocalX = view === "mobile" ? mobileFocalX : focalX;
+  const curFocalY = view === "mobile" ? mobileFocalY : focalY;
+  const mobileOverridden = mobileFocalX !== focalX || mobileFocalY !== focalY;
+
+  return (
+    <SectionCard title="Hero Image">
+      {/* Mode toggle */}
+      <div className="flex gap-2 mb-5">
+        {(["scene", "upload"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => setMode(m)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              mode === m
+                ? "bg-emerald-600 text-white"
+                : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+            }`}
+          >
+            {m === "scene" ? "Use Scene Image" : "Upload Custom Image"}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Scene picker ──────────────────────────────────────────────── */}
+      {mode === "scene" && (
+        collection.collection_scenes.length === 0 ? (
+          <p className="text-sm text-gray-400 dark:text-gray-500 mb-5">
+            No scenes yet — add scenes first, then return here to pick one.
+          </p>
+        ) : (
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-5">
+            <button
+              type="button"
+              onClick={() => { setSelectedSceneId(""); setActiveImageUrl(null); }}
+              className={`relative aspect-video rounded-lg border-2 flex items-center justify-center text-xs font-medium transition-colors ${
+                selectedSceneId === ""
+                  ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400"
+                  : "border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300 dark:hover:border-gray-500"
+              }`}
+            >
+              None
+            </button>
+            {collection.collection_scenes.map((s, i) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => selectScene(s.id)}
+                className={`relative aspect-video rounded-lg border-2 overflow-hidden transition-colors ${
+                  selectedSceneId === s.id
+                    ? "border-emerald-500 ring-2 ring-emerald-500/30"
+                    : "border-transparent hover:border-gray-300 dark:hover:border-gray-600"
+                }`}
+              >
+                {s.imageUrl && (
+                  <Image src={s.imageUrl} alt="" fill className="object-cover" unoptimized />
+                )}
+                <span className="absolute bottom-1 left-1 text-[10px] text-white/80 bg-black/50 rounded px-1 leading-4">
+                  {i + 1}
+                </span>
+              </button>
+            ))}
+          </div>
+        )
+      )}
+
+      {/* ── Custom upload ─────────────────────────────────────────────── */}
+      {mode === "upload" && (
+        <div className="mb-5">
+          <label className={`block w-full py-3 rounded-xl border-2 border-dashed text-sm font-medium text-center cursor-pointer transition-colors ${
+            uploading
+              ? "border-emerald-300 text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20"
+              : "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400"
+          }`}>
+            {uploading ? "Uploading…" : activeImageUrl ? "Replace Hero Image" : "+ Upload Hero Image"}
+            <input
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
+              className="hidden"
+              onChange={handleUpload}
+              disabled={uploading}
+            />
+          </label>
+          {activeImageUrl && (
+            <button
+              type="button"
+              onClick={handleRemoveCustomImage}
+              className="mt-2 text-xs text-red-400 hover:text-red-600 transition-colors"
+            >
+              Remove custom image
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── Focal point editor ────────────────────────────────────────── */}
+      {activeImageUrl && (
+        <div className="space-y-4">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Click or drag to set the focal point — the most important part of the image.
+            Used as <code className="text-[11px] bg-gray-100 dark:bg-gray-800 px-1 rounded">object-position</code> in the hero banner.
+          </p>
+
+          {/* Desktop / Mobile toggle */}
+          <div className="flex items-center gap-2">
+            {(["desktop", "mobile"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  view === v
+                    ? "bg-emerald-600 text-white"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                }`}
+              >
+                {v === "desktop" ? "Desktop" : "Mobile"}
+              </button>
+            ))}
+            {view === "mobile" && (
+              <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                {mobileOverridden ? "Mobile override active" : "Matches desktop — drag to override"}
+              </span>
+            )}
+          </div>
+
+          {/* Focal point canvas */}
+          <div
+            ref={imgRef}
+            className="relative cursor-crosshair overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 select-none"
+            onClick={handleImageClick}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+          >
+            <Image src={activeImageUrl} alt="" width={1400} height={900} className="w-full h-auto" unoptimized />
+            {/* Crosshair dot */}
+            <div
+              className="absolute pointer-events-none"
+              style={{ left: `${curFocalX}%`, top: `${curFocalY}%`, transform: "translate(-50%, -50%)" }}
+            >
+              <div className="w-8 h-8 rounded-full border-2 border-white shadow-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <div className="w-2 h-2 rounded-full bg-white" />
+              </div>
+              {/* Tick marks */}
+              <div className="absolute left-1/2 bottom-full h-3 w-px bg-white/80 -translate-x-1/2 mb-0.5" />
+              <div className="absolute left-1/2 top-full h-3 w-px bg-white/80 -translate-x-1/2 mt-0.5" />
+              <div className="absolute top-1/2 right-full w-3 h-px bg-white/80 -translate-y-1/2 mr-0.5" />
+              <div className="absolute top-1/2 left-full w-3 h-px bg-white/80 -translate-y-1/2 ml-0.5" />
+            </div>
+          </div>
+
+          <p className="text-xs font-mono text-gray-400">
+            {view === "desktop" ? "Desktop" : "Mobile"}: ({curFocalX.toFixed(1)}%,&nbsp;{curFocalY.toFixed(1)}%)
+            {view === "mobile" && mobileOverridden && (
+              <span className="text-gray-300 dark:text-gray-600 ml-2">
+                Desktop: ({focalX.toFixed(1)}%,&nbsp;{focalY.toFixed(1)}%)
+              </span>
+            )}
+          </p>
+
+          {/* Previews */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">
+                Desktop hero
+              </p>
+              <div className="relative aspect-video overflow-hidden rounded-lg bg-gray-900 border border-gray-200 dark:border-gray-700">
+                <Image
+                  src={activeImageUrl}
+                  alt=""
+                  fill
+                  unoptimized
+                  className="object-cover opacity-80"
+                  style={{ objectPosition: `${focalX}% ${focalY}%` }}
+                />
+              </div>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">
+                Mobile hero
+              </p>
+              <div
+                className="relative overflow-hidden rounded-lg bg-gray-900 border border-gray-200 dark:border-gray-700"
+                style={{ aspectRatio: "9/16", maxHeight: "12rem" }}
+              >
+                <Image
+                  src={activeImageUrl}
+                  alt=""
+                  fill
+                  unoptimized
+                  className="object-cover opacity-80"
+                  style={{ objectPosition: `${mobileFocalX}% ${mobileFocalY}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {error && <p className="text-sm text-red-500 mt-4">{error}</p>}
+
+      <div className="flex items-center gap-3 mt-5">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium disabled:opacity-50 transition-colors"
+        >
+          {saving ? "Saving…" : "Save Hero Settings"}
+        </button>
+        {saved && <span className="text-sm text-emerald-600 dark:text-emerald-400">Saved ✓</span>}
+      </div>
+    </SectionCard>
   );
 }
 
@@ -424,7 +778,6 @@ export function CollectionAdminClient({ collection: initial }: { collection: Col
     description: initial.description ?? "",
     status: initial.status,
     sort_order: String(initial.sort_order),
-    heroSceneId: initial.hero_scene_id ?? "",
   });
   const [savingInfo, setSavingInfo] = useState(false);
   const [infoSaved, setInfoSaved] = useState(false);
@@ -457,7 +810,6 @@ export function CollectionAdminClient({ collection: initial }: { collection: Col
           description: infoForm.description || null,
           status: infoForm.status,
           sort_order: parseInt(infoForm.sort_order, 10) || 0,
-          hero_scene_id: infoForm.heroSceneId || null,
         }),
       });
       const data = await res.json();
@@ -614,32 +966,6 @@ export function CollectionAdminClient({ collection: initial }: { collection: Col
               </div>
               <Input label="Sort Order" type="number" value={infoForm.sort_order} onChange={(e) => setInfoForm((f) => ({ ...f, sort_order: e.target.value }))} />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Hero Background Scene</label>
-              <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-2">Use one of this collection&apos;s scenes as the banner background. No need to upload the image twice.</p>
-              <div className="flex items-start gap-3">
-                <select
-                  value={infoForm.heroSceneId}
-                  onChange={(e) => setInfoForm((f) => ({ ...f, heroSceneId: e.target.value }))}
-                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="">None</option>
-                  {collection.collection_scenes.map((s, i) => (
-                    <option key={s.id} value={s.id}>
-                      Scene {i + 1}{s.caption ? ` — ${s.caption}` : ""}
-                    </option>
-                  ))}
-                </select>
-                {(() => {
-                  const selected = collection.collection_scenes.find((s) => s.id === infoForm.heroSceneId);
-                  return selected?.imageUrl ? (
-                    <div className="shrink-0 w-20 h-14 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                      <Image src={selected.imageUrl} alt="" width={80} height={56} className="w-full h-full object-cover" unoptimized />
-                    </div>
-                  ) : null;
-                })()}
-              </div>
-            </div>
             <div className="flex items-center gap-3">
               <button type="submit" disabled={savingInfo} className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors disabled:opacity-50">
                 {savingInfo ? "Saving…" : "Save Changes"}
@@ -648,6 +974,12 @@ export function CollectionAdminClient({ collection: initial }: { collection: Col
             </div>
           </form>
         </SectionCard>
+
+        {/* ── Hero Image ──────────────────────── */}
+        <HeroImageEditor
+          collection={collection}
+          onSaved={(updates) => setCollection((c) => ({ ...c, ...updates }))}
+        />
 
         {/* ── Collection Scenes ──────────────── */}
         <SectionCard title="Collection Scenes">

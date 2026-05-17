@@ -49,6 +49,14 @@ export async function PUT(req: NextRequest, { params }: Params) {
     description?: string | null;
     hero_image?: string | null;
     hero_scene_id?: string | null;
+    hero_focal_x?: number | null;
+    hero_focal_y?: number | null;
+    hero_mobile_focal_x?: number | null;
+    hero_mobile_focal_y?: number | null;
+    hero_crop_x?: number | null;
+    hero_crop_y?: number | null;
+    hero_crop_width?: number | null;
+    hero_crop_height?: number | null;
     status?: "draft" | "published";
     sort_order?: number;
   };
