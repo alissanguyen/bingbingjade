@@ -48,6 +48,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     subtitle?: string | null;
     description?: string | null;
     hero_image?: string | null;
+    hero_scene_id?: string | null;
     status?: "draft" | "published";
     sort_order?: number;
   };

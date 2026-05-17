@@ -115,7 +115,7 @@ export default async function CollectionPage({ params }: Params) {
   const { data: collection } = await supabase
     .from("collections")
     .select(`
-      id, name, subtitle, description, hero_image, status,
+      id, name, subtitle, description, hero_image, hero_scene_id, status,
       collection_scenes (
         id, image, mobile_image, caption, sort_order,
         collection_scene_tags (
@@ -166,22 +166,32 @@ export default async function CollectionPage({ params }: Params) {
     } | null)
     .filter(Boolean);
 
-  const [heroScene, ...restScenes] = scenes;
+  const [, ...restScenes] = scenes;
+
+  // Resolve hero banner: admin-selected scene → hero_image upload → dark gradient
+  const heroBannerScene = collection.hero_scene_id
+    ? scenes.find((s) => s.id === collection.hero_scene_id) ?? null
+    : null;
+  const bannerImageUrl = heroBannerScene?.imageUrl ?? heroUrl;
+  const bannerMobileUrl = heroBannerScene?.mobileImageUrl ?? null;
 
   return (
     <main className="min-h-screen bg-white dark:bg-gray-950">
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <section className="relative w-full min-h-[60vh] sm:min-h-[75vh] flex items-end overflow-hidden bg-gray-900">
-        {heroUrl ? (
-          <Image
-            src={heroScene ? heroScene.imageUrl : heroUrl}
-            alt={collection.name}
-            fill
-            className="object-cover opacity-80"
-            priority
-            unoptimized
-          />
+        {bannerImageUrl ? (
+          <picture>
+            {bannerMobileUrl && <source media="(max-width: 639px)" srcSet={bannerMobileUrl} />}
+            <Image
+              src={bannerImageUrl}
+              alt={collection.name}
+              fill
+              className="object-cover opacity-80"
+              priority
+              unoptimized
+            />
+          </picture>
         ) : (
           <div className="absolute inset-0 bg-linear-to-br from-emerald-950 to-gray-950" />
         )}
@@ -214,7 +224,7 @@ export default async function CollectionPage({ params }: Params) {
       {scenes.length > 0 && (
         <section className="px-3 sm:px-6 lg:px-16 pb-16 max-w-8xl mx-auto">
           {(() => {
-            const masonryScenes = heroUrl ? scenes : restScenes;
+            const masonryScenes = (bannerImageUrl) ? scenes : restScenes;
             if (masonryScenes.length === 0) return null;
             return (
               <div className="columns-1 sm:columns-2 lg:columns-3 gap-3">

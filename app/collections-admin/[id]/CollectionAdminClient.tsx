@@ -30,6 +30,7 @@ interface CollectionProduct {
 interface Collection {
   id: string; name: string; slug: string; subtitle: string | null;
   description: string | null; hero_image: string | null;
+  hero_scene_id: string | null;
   status: string; sort_order: number;
   collection_scenes: Scene[];
   collection_products: CollectionProduct[];
@@ -423,6 +424,7 @@ export function CollectionAdminClient({ collection: initial }: { collection: Col
     description: initial.description ?? "",
     status: initial.status,
     sort_order: String(initial.sort_order),
+    heroSceneId: initial.hero_scene_id ?? "",
   });
   const [savingInfo, setSavingInfo] = useState(false);
   const [infoSaved, setInfoSaved] = useState(false);
@@ -455,6 +457,7 @@ export function CollectionAdminClient({ collection: initial }: { collection: Col
           description: infoForm.description || null,
           status: infoForm.status,
           sort_order: parseInt(infoForm.sort_order, 10) || 0,
+          hero_scene_id: infoForm.heroSceneId || null,
         }),
       });
       const data = await res.json();
@@ -610,6 +613,32 @@ export function CollectionAdminClient({ collection: initial }: { collection: Col
                 </select>
               </div>
               <Input label="Sort Order" type="number" value={infoForm.sort_order} onChange={(e) => setInfoForm((f) => ({ ...f, sort_order: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Hero Background Scene</label>
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-2">Use one of this collection&apos;s scenes as the banner background. No need to upload the image twice.</p>
+              <div className="flex items-start gap-3">
+                <select
+                  value={infoForm.heroSceneId}
+                  onChange={(e) => setInfoForm((f) => ({ ...f, heroSceneId: e.target.value }))}
+                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="">None</option>
+                  {collection.collection_scenes.map((s, i) => (
+                    <option key={s.id} value={s.id}>
+                      Scene {i + 1}{s.caption ? ` — ${s.caption}` : ""}
+                    </option>
+                  ))}
+                </select>
+                {(() => {
+                  const selected = collection.collection_scenes.find((s) => s.id === infoForm.heroSceneId);
+                  return selected?.imageUrl ? (
+                    <div className="shrink-0 w-20 h-14 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                      <Image src={selected.imageUrl} alt="" width={80} height={56} className="w-full h-full object-cover" unoptimized />
+                    </div>
+                  ) : null;
+                })()}
+              </div>
             </div>
             <div className="flex items-center gap-3">
               <button type="submit" disabled={savingInfo} className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors disabled:opacity-50">
