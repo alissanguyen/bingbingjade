@@ -8,6 +8,7 @@ import { resolveImageUrl } from "@/lib/storage";
 import { CollectionScene } from "@/app/components/collection/CollectionScene";
 import { ProductCardLink } from "@/app/products/ProductCardLink";
 import { ProductCardImage } from "@/app/products/ProductCardImage";
+import { requiresInquiry } from "@/lib/price";
 
 export const revalidate = 120;
 
@@ -211,7 +212,7 @@ export default async function CollectionPage({ params }: Params) {
 
       {/* ── Editorial Masonry ─────────────────────────────────────────────── */}
       {scenes.length > 0 && (
-        <section className="px-3 sm:px-6 pb-16 max-w-7xl mx-auto">
+        <section className="px-3 sm:px-6 lg:px-16 pb-16 max-w-8xl mx-auto">
           {(() => {
             const masonryScenes = heroUrl ? scenes : restScenes;
             if (masonryScenes.length === 0) return null;
@@ -255,12 +256,14 @@ export default async function CollectionPage({ params }: Params) {
                     <p className="text-sm font-medium text-gray-800 dark:text-gray-200 leading-snug line-clamp-2 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
                       {product.name}
                     </p>
-                    {product.show_price && (product.sale_price_usd ?? product.price_display_usd) && (
-                      <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-0.5">
-                        {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
-                          .format(((product.sale_price_usd ?? product.price_display_usd) as number) / 100)}
-                      </p>
-                    )}
+                    {(() => {
+                        const price = product.sale_price_usd ?? product.price_display_usd;
+                        if (!product.show_price || price == null) return null;
+                        const label = requiresInquiry(price)
+                          ? "Inquire for Pricing"
+                          : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(price);
+                        return <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-0.5">{label}</p>;
+                      })()}
                     {isSold && (
                       <p className="text-xs text-gray-400 uppercase tracking-wider mt-0.5">Sold</p>
                     )}
