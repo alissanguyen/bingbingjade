@@ -86,3 +86,31 @@ export async function GET(req: NextRequest) {
     product: product ?? null,
   });
 }
+
+export async function DELETE(req: NextRequest) {
+  const user = await getSessionUser();
+  if (!user || !isAdmin(user))
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const id = req.nextUrl.searchParams.get("id")?.trim();
+  if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
+
+  const { data: img } = await supabaseAdmin
+    .from("product_original_images")
+    .select("original_storage_path")
+    .eq("id", id)
+    .single();
+
+  const { error: dbErr } = await supabaseAdmin
+    .from("product_original_images")
+    .delete()
+    .eq("id", id);
+
+  if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
+
+  if (img?.original_storage_path) {
+    await supabaseAdmin.storage.from(IMAGE_BUCKET).remove([img.original_storage_path]);
+  }
+
+  return new NextResponse(null, { status: 204 });
+}

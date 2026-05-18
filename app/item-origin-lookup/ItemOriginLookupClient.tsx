@@ -33,6 +33,7 @@ export function ItemOriginLookupClient() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<LookupResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function handleLookup(e: React.FormEvent) {
     e.preventDefault();
@@ -52,6 +53,16 @@ export function ItemOriginLookupClient() {
     } else {
       setResult(json);
     }
+  }
+
+  async function handleDelete(img: OriginalImage) {
+    if (!confirm("Delete this image? This cannot be undone.")) return;
+    setDeletingId(img.id);
+    const res = await fetch(`/api/admin/item-origin-lookup?id=${img.id}`, { method: "DELETE" });
+    if (res.ok) {
+      setResult((prev) => prev ? { ...prev, images: prev.images.filter((i) => i.id !== img.id) } : prev);
+    }
+    setDeletingId(null);
   }
 
   const vendor = result?.vendor;
@@ -204,15 +215,24 @@ export function ItemOriginLookupClient() {
                           day: "numeric",
                         })}
                       </span>
-                      {img.signed_url && (
-                        <a
-                          href={img.signed_url}
-                          download
-                          className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline shrink-0"
+                      <div className="flex items-center gap-2 shrink-0">
+                        {img.signed_url && (
+                          <a
+                            href={img.signed_url}
+                            download
+                            className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
+                          >
+                            Download
+                          </a>
+                        )}
+                        <button
+                          onClick={() => handleDelete(img)}
+                          disabled={deletingId === img.id}
+                          className="text-[11px] font-medium text-red-500 hover:text-red-700 disabled:opacity-40"
                         >
-                          Download
-                        </a>
-                      )}
+                          {deletingId === img.id ? "Deleting…" : "Delete"}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { productThumbUrl } from "@/lib/storage";
@@ -111,9 +111,38 @@ function HeroImageEditor({
   const [error, setError] = useState<string | null>(null);
 
   const imgRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
+  const dotRef = useRef<HTMLDivElement>(null);
+  const coordsSpanRef = useRef<HTMLSpanElement>(null);
+  const viewRef = useRef(view);
+  const rafId = useRef<number | null>(null);
+  const livePos = useRef({ x: collection.hero_focal_x ?? 50, y: collection.hero_focal_y ?? 50 });
+  const isPointerDown = useRef(false);
 
-  function getCoords(e: React.MouseEvent | React.PointerEvent): { x: number; y: number } | null {
+  // Keep viewRef current so RAF callbacks read the right value without stale closures
+  useEffect(() => { viewRef.current = view; }, [view]);
+
+  // Sync livePos when state changes (view switch, external save) but not during drag
+  useEffect(() => {
+    if (!isPointerDown.current) {
+      const x = viewRef.current === "mobile" ? mobileFocalX : focalX;
+      const y = viewRef.current === "mobile" ? mobileFocalY : focalY;
+      livePos.current = { x, y };
+    }
+  }, [focalX, focalY, mobileFocalX, mobileFocalY]);
+
+  // Direct DOM paint — runs inside RAF, never triggers a React render
+  function paintDot(x: number, y: number) {
+    if (dotRef.current) {
+      dotRef.current.style.left = `${x}%`;
+      dotRef.current.style.top  = `${y}%`;
+    }
+    if (coordsSpanRef.current) {
+      const label = viewRef.current === "desktop" ? "Desktop" : "Mobile";
+      coordsSpanRef.current.textContent = `${label}: (${x.toFixed(1)}%, ${y.toFixed(1)}%)`;
+    }
+  }
+
+  function getCoordsFromEvent(e: PointerEvent): { x: number; y: number } | null {
     if (!imgRef.current) return null;
     const rect = imgRef.current.getBoundingClientRect();
     return {
@@ -122,27 +151,40 @@ function HeroImageEditor({
     };
   }
 
-  function applyCoords(x: number, y: number) {
-    if (view === "mobile") { setMobileFocalX(x); setMobileFocalY(y); }
-    else { setFocalX(x); setFocalY(y); }
-  }
-
-  function handleImageClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (isDragging.current) return;
-    const coords = getCoords(e);
-    if (coords) applyCoords(coords.x, coords.y);
-  }
-
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    isDragging.current = false;
+    e.preventDefault();
+    isPointerDown.current = true;
     imgRef.current?.setPointerCapture(e.pointerId);
+    const coords = getCoordsFromEvent(e.nativeEvent);
+    if (coords) livePos.current = coords;
   }
 
   function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    if (!(e.buttons & 1)) return;
-    isDragging.current = true;
-    const coords = getCoords(e);
-    if (coords) applyCoords(coords.x, coords.y);
+    if (!isPointerDown.current) return;
+    e.preventDefault();
+    const coords = getCoordsFromEvent(e.nativeEvent);
+    if (!coords) return;
+    livePos.current = coords;
+    if (rafId.current !== null) return; // frame already queued
+    rafId.current = requestAnimationFrame(() => {
+      rafId.current = null;
+      paintDot(livePos.current.x, livePos.current.y);
+    });
+  }
+
+  function handlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    if (!isPointerDown.current) return;
+    isPointerDown.current = false;
+    if (rafId.current !== null) { cancelAnimationFrame(rafId.current); rafId.current = null; }
+    const coords = getCoordsFromEvent(e.nativeEvent) ?? livePos.current;
+    // One state update → one re-render → previews update once at end of drag
+    if (viewRef.current === "mobile") { setMobileFocalX(coords.x); setMobileFocalY(coords.y); }
+    else { setFocalX(coords.x); setFocalY(coords.y); }
+  }
+
+  function handlePointerCancel() {
+    isPointerDown.current = false;
+    if (rafId.current !== null) { cancelAnimationFrame(rafId.current); rafId.current = null; }
   }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -339,14 +381,17 @@ function HeroImageEditor({
           {/* Focal point canvas */}
           <div
             ref={imgRef}
-            className="relative cursor-crosshair overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 select-none"
-            onClick={handleImageClick}
+            className="relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700"
+            style={{ cursor: "crosshair", touchAction: "none", userSelect: "none" }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerCancel}
           >
-            <Image src={activeImageUrl} alt="" width={1400} height={900} className="w-full h-auto" unoptimized />
-            {/* Crosshair dot */}
+            <Image src={activeImageUrl} alt="" width={1400} height={900} className="w-full h-auto pointer-events-none" unoptimized />
+            {/* Crosshair dot — position set by React state initially, then painted via ref during drag */}
             <div
+              ref={dotRef}
               className="absolute pointer-events-none"
               style={{ left: `${curFocalX}%`, top: `${curFocalY}%`, transform: "translate(-50%, -50%)" }}
             >
@@ -362,10 +407,12 @@ function HeroImageEditor({
           </div>
 
           <p className="text-xs font-mono text-gray-400">
-            {view === "desktop" ? "Desktop" : "Mobile"}: ({curFocalX.toFixed(1)}%,&nbsp;{curFocalY.toFixed(1)}%)
+            <span ref={coordsSpanRef}>
+              {view === "desktop" ? "Desktop" : "Mobile"}: ({curFocalX.toFixed(1)}%, {curFocalY.toFixed(1)}%)
+            </span>
             {view === "mobile" && mobileOverridden && (
               <span className="text-gray-300 dark:text-gray-600 ml-2">
-                Desktop: ({focalX.toFixed(1)}%,&nbsp;{focalY.toFixed(1)}%)
+                Desktop: ({focalX.toFixed(1)}%, {focalY.toFixed(1)}%)
               </span>
             )}
           </p>
