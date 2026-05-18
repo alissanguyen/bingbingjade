@@ -34,6 +34,8 @@ export function ItemOriginLookupClient() {
   const [result, setResult] = useState<LookupResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   async function handleLookup(e: React.FormEvent) {
     e.preventDefault();
@@ -52,7 +54,22 @@ export function ItemOriginLookupClient() {
       setError(json.error ?? "Not found");
     } else {
       setResult(json);
+      setSelectedIds(new Set());
     }
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (!result) return;
+    const allIds = result.images.map((i) => i.id);
+    setSelectedIds((prev) => prev.size === allIds.length ? new Set() : new Set(allIds));
   }
 
   async function handleDelete(img: OriginalImage) {
@@ -61,8 +78,22 @@ export function ItemOriginLookupClient() {
     const res = await fetch(`/api/admin/item-origin-lookup?id=${img.id}`, { method: "DELETE" });
     if (res.ok) {
       setResult((prev) => prev ? { ...prev, images: prev.images.filter((i) => i.id !== img.id) } : prev);
+      setSelectedIds((prev) => { const next = new Set(prev); next.delete(img.id); return next; });
     }
     setDeletingId(null);
+  }
+
+  async function handleBulkDelete() {
+    if (!selectedIds.size) return;
+    if (!confirm(`Delete ${selectedIds.size} image${selectedIds.size === 1 ? "" : "s"}? This cannot be undone.`)) return;
+    setBulkDeleting(true);
+    const ids = [...selectedIds].join(",");
+    const res = await fetch(`/api/admin/item-origin-lookup?ids=${encodeURIComponent(ids)}`, { method: "DELETE" });
+    if (res.ok) {
+      setResult((prev) => prev ? { ...prev, images: prev.images.filter((i) => !selectedIds.has(i.id)) } : prev);
+      setSelectedIds(new Set());
+    }
+    setBulkDeleting(false);
   }
 
   const vendor = result?.vendor;
@@ -184,58 +215,93 @@ export function ItemOriginLookupClient() {
 
             {/* Original images grid */}
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
-                Original Images ({result.images.length})
-              </p>
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                  Original Images ({result.images.length})
+                </p>
+                {result.images.length > 0 && (
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={toggleSelectAll}
+                      className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                    >
+                      {selectedIds.size === result.images.length ? "Deselect all" : "Select all"}
+                    </button>
+                    {selectedIds.size > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleBulkDelete}
+                        disabled={bulkDeleting}
+                        className="rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 transition-colors"
+                      >
+                        {bulkDeleting ? "Deleting…" : `Delete selected (${selectedIds.size})`}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {result.images.map((img, i) => (
-                  <div
-                    key={img.id}
-                    className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden"
-                  >
-                    {img.signed_url ? (
-                      <div className="relative aspect-square bg-gray-100 dark:bg-gray-800">
-                        <Image
-                          src={img.signed_url}
-                          alt={`Original image ${i + 1}`}
-                          fill
-                          unoptimized
-                          className="object-contain"
+                {result.images.map((img, i) => {
+                  const isSelected = selectedIds.has(img.id);
+                  return (
+                    <div
+                      key={img.id}
+                      className={`rounded-xl border bg-white dark:bg-gray-900 overflow-hidden transition-colors ${isSelected ? "border-red-400 dark:border-red-600 ring-2 ring-red-400/40" : "border-gray-200 dark:border-gray-700"}`}
+                    >
+                      <div className="relative">
+                        {img.signed_url ? (
+                          <div className="relative aspect-square bg-gray-100 dark:bg-gray-800">
+                            <Image
+                              src={img.signed_url}
+                              alt={`Original image ${i + 1}`}
+                              fill
+                              unoptimized
+                              className="object-contain"
+                            />
+                          </div>
+                        ) : (
+                          <div className="aspect-square bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 text-xs">
+                            Unavailable
+                          </div>
+                        )}
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(img.id)}
+                          className="absolute top-2 left-2 w-4 h-4 accent-red-500 cursor-pointer"
+                          aria-label={`Select image ${i + 1}`}
                         />
                       </div>
-                    ) : (
-                      <div className="aspect-square bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 text-xs">
-                        Unavailable
-                      </div>
-                    )}
-                    <div className="p-2 flex items-center justify-between gap-2">
-                      <span className="text-[11px] text-gray-400">
-                        {new Date(img.uploaded_at).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </span>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {img.signed_url && (
-                          <a
-                            href={img.signed_url}
-                            download
-                            className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
+                      <div className="p-2 flex items-center justify-between gap-2">
+                        <span className="text-[11px] text-gray-400">
+                          {new Date(img.uploaded_at).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {img.signed_url && (
+                            <a
+                              href={img.signed_url}
+                              download
+                              className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
+                            >
+                              Download
+                            </a>
+                          )}
+                          <button
+                            onClick={() => handleDelete(img)}
+                            disabled={deletingId === img.id || bulkDeleting}
+                            className="text-[11px] font-medium text-red-500 hover:text-red-700 disabled:opacity-40"
                           >
-                            Download
-                          </a>
-                        )}
-                        <button
-                          onClick={() => handleDelete(img)}
-                          disabled={deletingId === img.id}
-                          className="text-[11px] font-medium text-red-500 hover:text-red-700 disabled:opacity-40"
-                        >
-                          {deletingId === img.id ? "Deleting…" : "Delete"}
-                        </button>
+                            {deletingId === img.id ? "Deleting…" : "Delete"}
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

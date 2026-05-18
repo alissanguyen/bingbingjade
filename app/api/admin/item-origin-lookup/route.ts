@@ -92,8 +92,33 @@ export async function DELETE(req: NextRequest) {
   if (!user || !isAdmin(user))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // Bulk delete: ?ids=id1,id2,id3
+  const idsParam = req.nextUrl.searchParams.get("ids")?.trim();
+  if (idsParam) {
+    const idList = idsParam.split(",").map((s) => s.trim()).filter(Boolean);
+    if (!idList.length) return NextResponse.json({ error: "ids is empty" }, { status: 400 });
+
+    const { data: imgs } = await supabaseAdmin
+      .from("product_original_images")
+      .select("original_storage_path")
+      .in("id", idList);
+
+    const { error: dbErr } = await supabaseAdmin
+      .from("product_original_images")
+      .delete()
+      .in("id", idList);
+
+    if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
+
+    const paths = (imgs ?? []).map((i) => i.original_storage_path).filter(Boolean) as string[];
+    if (paths.length) await supabaseAdmin.storage.from(IMAGE_BUCKET).remove(paths);
+
+    return new NextResponse(null, { status: 204 });
+  }
+
+  // Single delete: ?id=uuid
   const id = req.nextUrl.searchParams.get("id")?.trim();
-  if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
+  if (!id) return NextResponse.json({ error: "id or ids is required" }, { status: 400 });
 
   const { data: img } = await supabaseAdmin
     .from("product_original_images")
