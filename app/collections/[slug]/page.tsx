@@ -9,6 +9,7 @@ import { ProductCardLink } from "@/app/products/ProductCardLink";
 import { ProductCardImage } from "@/app/products/ProductCardImage";
 import { requiresInquiry } from "@/lib/price";
 import { productSlug } from "@/lib/slug";
+import { getCategoryLabel } from "@/app/products/categories";
 
 export const revalidate = 120;
 
@@ -126,7 +127,7 @@ export default async function CollectionPage({ params }: Params) {
       ),
       collection_products (
         id, sort_order,
-        products ( id, name, slug, public_id, category, images, price_display_usd, sale_price_usd, show_price, status, quick_ship )
+        products ( id, name, slug, public_id, category, images, price_display_usd, sale_price_usd, show_price, status, quick_ship, size, tier, origin )
       )
     `)
     .eq("id", meta.id)
@@ -158,10 +159,12 @@ export default async function CollectionPage({ params }: Params) {
       id: string; name: string; slug: string; public_id: string | null;
       category: string | null; images: string[]; price_display_usd: number | null;
       sale_price_usd: number | null; show_price: boolean; status: string; quick_ship: boolean | null;
+      size: number | null; tier: string[] | null; origin: string | null;
     }) | ({
       id: string; name: string; slug: string; public_id: string | null;
       category: string | null; images: string[]; price_display_usd: number | null;
       sale_price_usd: number | null; show_price: boolean; status: string; quick_ship: boolean | null;
+      size: number | null; tier: string[] | null; origin: string | null;
     })[] | null;
   };
 
@@ -290,47 +293,98 @@ export default async function CollectionPage({ params }: Params) {
             {products.map((product) => {
               if (!product) return null;
               const isSold = product.status === "sold";
+              const isOnSale = product.status === "on_sale" && product.sale_price_usd != null;
+              const fmt = (p: number) =>
+                new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(p);
+              const salePrice = product.show_price ? product.sale_price_usd : null;
+              const origPrice = product.show_price ? product.price_display_usd : null;
+              const displayPrice = salePrice ?? origPrice;
+              const hasSale = isOnSale && salePrice != null && origPrice != null && origPrice > salePrice;
               return (
                 <ProductCardLink
                   key={product.id}
                   href={`/products/${product.public_id ? productSlug({ slug: product.slug, public_id: product.public_id }) : product.slug}`}
-                  className={`group flex flex-col gap-2 ${isSold ? "opacity-60" : ""}`}
+                  className="group flex flex-col"
                 >
-                  <div className="overflow-hidden rounded-lg bg-gray-50 dark:bg-gray-900">
+                  {/* Image + overlay badges */}
+                  <div className="relative overflow-hidden rounded-xl bg-gray-50 dark:bg-gray-900">
                     <ProductCardImage images={product.images ?? []} name={product.name} />
+                    <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+                      {isSold && (
+                        <div className="self-start bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-gray-500 dark:text-gray-400 text-[10px] sm:text-xs font-medium tracking-widest uppercase px-2.5 py-1 rounded-full">
+                          Sold
+                        </div>
+                      )}
+                      {!isSold && isOnSale && (
+                        <div className="self-start flex items-center gap-1.5">
+                          <div className="bg-red-500/90 backdrop-blur-sm text-white text-[10px] sm:text-xs font-semibold tracking-wide px-2.5 py-1">
+                            Sale
+                          </div>
+                          {product.show_price && origPrice != null && salePrice != null && (
+                            <div className="bg-amber-500/90 backdrop-blur-sm text-white text-[10px] sm:text-xs font-semibold tracking-wide px-2.5 py-1 rounded-full">
+                              −{Math.round((1 - salePrice / origPrice) * 100)}%
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="px-0.5">
-                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200 leading-snug line-clamp-2 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
+
+                  {/* Info */}
+                  <div className={`px-1 pt-3 pb-3 flex flex-col gap-1 ${isSold ? "opacity-60" : ""}`}>
+                    {/* Category + tier */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.15em] text-emerald-700 dark:text-emerald-400">
+                        {getCategoryLabel(product.category ?? "")}
+                      </span>
+                      {(product.tier ?? []).length > 0 && (
+                        <>
+                          <span className="text-[10px] sm:text-xs text-gray-400">·</span>
+                          <span className="text-[10px] sm:text-xs text-gray-400 italic">{(product.tier ?? []).join(" · ")}</span>
+                        </>
+                      )}
+                    </div>
+                    {/* Name */}
+                    <p className="text-sm sm:text-[15px] font-semibold text-gray-900 dark:text-gray-100 leading-snug line-clamp-2 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
                       {product.name}
                     </p>
-                    {(() => {
-                        if (!product.show_price) return null;
-                        const salePrice = product.sale_price_usd;
-                        const origPrice = product.price_display_usd;
-                        const displayPrice = salePrice ?? origPrice;
-                        if (displayPrice == null) return null;
-                        const fmt = (p: number) =>
-                          new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(p);
-                        const hasSale = salePrice != null && origPrice != null && origPrice > salePrice;
+                    {/* Price row */}
+                    <div className="mt-1.5 pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2">
+                      {(() => {
+                        if (!product.show_price || displayPrice == null) return <span />;
                         if (requiresInquiry(displayPrice)) {
-                          return <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-0.5">Inquire for Pricing</p>;
+                          return <span className="text-sm text-emerald-600 dark:text-emerald-400">Inquire for Pricing</span>;
                         }
                         if (hasSale) {
                           return (
-                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                              <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">{fmt(salePrice!)}</span>
+                            <span className="flex items-center gap-2">
+                              <span className="text-sm sm:text-[15px] font-semibold text-amber-500 dark:text-amber-400">{fmt(salePrice!)}</span>
                               <span className="text-xs text-gray-400 line-through">{fmt(origPrice!)}</span>
-                              <span className="text-[10px] font-bold bg-red-500 text-white rounded-full px-1.5 py-0.5 leading-tight">
-                                -{Math.round((1 - salePrice! / origPrice!) * 100)}%
-                              </span>
-                            </div>
+                            </span>
                           );
                         }
-                        return <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-0.5">{fmt(displayPrice)}</p>;
+                        if (isSold && salePrice != null && origPrice != null) {
+                          return (
+                            <span className="flex items-center gap-2">
+                              <span className="text-sm sm:text-[15px] text-gray-400">{fmt(salePrice)}</span>
+                              <span className="text-xs text-gray-300 dark:text-gray-600 line-through">{fmt(origPrice)}</span>
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="text-sm sm:text-[15px] font-semibold text-gray-800 dark:text-gray-200">{fmt(displayPrice)}</span>
+                        );
                       })()}
-                    {isSold && (
-                      <p className="text-xs text-gray-400 uppercase tracking-wider mt-0.5">Sold</p>
-                    )}
+                      {(product.size || product.origin) && (
+                        <span className="text-[11px] sm:text-xs text-gray-400 dark:text-gray-500 text-right shrink-0">
+                          {product.size ? `${product.size}mm` : ""}
+                          {product.size && product.origin ? " · " : ""}
+                          {product.origin && (
+                            <span className={product.origin === "Myanmar" ? "text-emerald-600 dark:text-emerald-400" : ""}>{product.origin}</span>
+                          )}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </ProductCardLink>
               );
