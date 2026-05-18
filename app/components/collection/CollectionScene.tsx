@@ -132,7 +132,7 @@ function TagDot({
   return (
     <div
       className="absolute"
-      style={{ left: `${posX}%`, top: `${posY}%`, transform: "translate(-50%, -50%)" }}
+      style={{ left: `${posX}%`, top: `${posY}%`, transform: "translate(-50%, -50%)", zIndex: open ? 50 : 1 }}
     >
       <button
         onClick={handleDotClick}
