@@ -40,19 +40,16 @@ interface Props {
   scene: Scene;
 }
 
-function formatPrice(p: TagProduct): string | null {
-  if (!p.show_price) return null;
-  const price = p.sale_price_usd ?? p.price_display_usd;
-  if (price == null) return null;
-  if (requiresInquiry(price)) return "Inquire for Pricing";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(price);
-}
-
 // Shared card UI used by both desktop (inside TagDot) and mobile (inside CollectionScene).
 function TagCard({ product }: { product: TagProduct }) {
   const thumb = product.images?.[0] ? productThumbUrl(product.images[0]) : null;
-  const price = formatPrice(product);
   const isSold = product.status === "sold";
+  const salePrice = product.sale_price_usd;
+  const origPrice = product.price_display_usd;
+  const displayPrice = salePrice ?? origPrice;
+  const hasSale = salePrice != null && origPrice != null && origPrice > salePrice;
+  const fmt = (p: number) =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(p);
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
@@ -68,19 +65,31 @@ function TagCard({ product }: { product: TagProduct }) {
       )}
       <div className="px-3 py-2.5">
         <p className="text-xs font-medium text-gray-900 dark:text-white leading-snug line-clamp-2">{product.name}</p>
-        {price && <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">{price}</p>}
-        {!isSold && (
-          <Link
-            href={`/products/${product.public_id ? productSlug({ slug: product.slug, public_id: product.public_id }) : product.slug}`}
-            className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-            onClick={(e) => e.stopPropagation()}
-          >
-            View piece
-            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </Link>
+        {product.show_price && displayPrice != null && (
+          requiresInquiry(displayPrice) ? (
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">Inquire for Pricing</p>
+          ) : hasSale ? (
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{fmt(salePrice!)}</span>
+              <span className="text-[10px] text-gray-400 line-through">{fmt(origPrice!)}</span>
+              <span className="text-[9px] font-bold bg-red-500 text-white rounded-full px-1.5 py-0.5 leading-tight">
+                -{Math.round((1 - salePrice! / origPrice!) * 100)}%
+              </span>
+            </div>
+          ) : (
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">{fmt(displayPrice)}</p>
+          )
         )}
+        <Link
+          href={`/products/${product.public_id ? productSlug({ slug: product.slug, public_id: product.public_id }) : product.slug}`}
+          className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+          onClick={(e) => e.stopPropagation()}
+        >
+          View piece
+          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+        </Link>
       </div>
     </div>
   );
