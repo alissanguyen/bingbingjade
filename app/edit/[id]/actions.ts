@@ -206,9 +206,12 @@ export async function updateProduct(
     }
   }
 
-  // Bust the product page ISR cache so changes appear immediately
-  const { data: saved } = await supabaseAdmin.from("products").select("slug").eq("id", id).single();
-  if (saved?.slug) revalidatePath(`/products/${saved.slug}`);
+  // Bust caches so changes appear immediately everywhere the product is shown
+  const { data: saved } = await supabaseAdmin.from("products").select("slug, public_id").eq("id", id).single();
+  if (saved?.slug && saved?.public_id) revalidatePath(`/products/${saved.slug}-${saved.public_id}`);
+  revalidatePath("/products");
+  revalidatePath("/collections/[slug]", "page");
+  revalidatePath("/");
 
   return { success: true };
 }

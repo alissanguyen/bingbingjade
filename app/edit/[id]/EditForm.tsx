@@ -498,11 +498,29 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       }
     }
 
-    // Save pending originals
+    // Pending images were not explicitly accepted but should still be saved to the listing.
+    // Upload local files through /api/upload-image (applies watermark) so they land in
+    // products.images. Existing-URL pending items already have a wm/ path — include as-is.
+    for (const item of pendingImages) {
+      if (item.kind === "local") {
+        const fd = new FormData();
+        fd.append("file", item.file);
+        fd.append("category", form.category);
+        const res = await fetch("/api/upload-image", { method: "POST", body: fd });
+        if (res.ok) {
+          const { path } = await res.json();
+          orderedImageUrls.push(path);
+        }
+      } else {
+        // kind: "existing" — was pulled back to pending for reprocessing but not yet done
+        orderedImageUrls.push(item.url);
+      }
+    }
+
+    // Record originals for provenance tracking (separate from the listing save above)
     for (const item of pendingImages) {
       if (!sku) continue;
       if (item.kind === "local") {
-        // New file — upload raw bytes to originals/ and record
         const fd = new FormData();
         fd.append("file", item.file);
         fd.append("sku", sku);
@@ -510,7 +528,6 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
         await fetch("/api/image/record-original", { method: "POST", body: fd })
           .catch((e) => console.warn("[record-original] local:", e));
       } else {
-        // Existing Supabase image — already in originals/; just record the DB row
         await fetch("/api/image/record-original", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
