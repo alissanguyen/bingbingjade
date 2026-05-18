@@ -304,12 +304,29 @@ export default async function CollectionPage({ params }: Params) {
                       {product.name}
                     </p>
                     {(() => {
-                        const price = product.sale_price_usd ?? product.price_display_usd;
-                        if (!product.show_price || price == null) return null;
-                        const label = requiresInquiry(price)
-                          ? "Inquire for Pricing"
-                          : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(price);
-                        return <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-0.5">{label}</p>;
+                        if (!product.show_price) return null;
+                        const salePrice = product.sale_price_usd;
+                        const origPrice = product.price_display_usd;
+                        const displayPrice = salePrice ?? origPrice;
+                        if (displayPrice == null) return null;
+                        const fmt = (p: number) =>
+                          new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(p);
+                        const hasSale = salePrice != null && origPrice != null && origPrice > salePrice;
+                        if (requiresInquiry(displayPrice)) {
+                          return <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-0.5">Inquire for Pricing</p>;
+                        }
+                        if (hasSale) {
+                          return (
+                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                              <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">{fmt(salePrice!)}</span>
+                              <span className="text-xs text-gray-400 line-through">{fmt(origPrice!)}</span>
+                              <span className="text-[10px] font-bold bg-red-500 text-white rounded-full px-1.5 py-0.5 leading-tight">
+                                -{Math.round((1 - salePrice! / origPrice!) * 100)}%
+                              </span>
+                            </div>
+                          );
+                        }
+                        return <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-0.5">{fmt(displayPrice)}</p>;
                       })()}
                     {isSold && (
                       <p className="text-xs text-gray-400 uppercase tracking-wider mt-0.5">Sold</p>
