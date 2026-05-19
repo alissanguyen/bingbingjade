@@ -50,7 +50,7 @@ export function CollectionStory({
         style={{ background: "linear-gradient(to bottom, var(--tw-gradient-from, transparent), #020817)" }} />
 
       <div
-        className="relative mx-auto max-w-[900px] px-6 sm:px-12 py-20 sm:py-28"
+        className="relative mx-auto max-w-225 px-6 sm:px-12 py-20 sm:py-28"
         style={{
           opacity: visible ? 1 : 0,
           transform: visible ? "translateY(0)" : "translateY(18px)",
@@ -59,14 +59,14 @@ export function CollectionStory({
       >
         {/* Decorative rule */}
         <div className="flex items-center gap-5 mb-10 sm:mb-14">
-          <div className="flex-1 h-px" style={{ background: "linear-gradient(to right, transparent, #2d4a3e)" }} />
-          <span className="text-[10px] tracking-[0.35em] uppercase font-medium text-emerald-700/60">BingBing Jade</span>
-          <div className="flex-1 h-px" style={{ background: "linear-gradient(to left, transparent, #2d4a3e)" }} />
+          <div className="flex-1 h-[2px]" style={{ background: "linear-gradient(to right, transparent, #2d4a3e)" }} />
+          <span className="text-[10px] sm:text-[13px] tracking-[0.35em] uppercase font-semibold text-emerald-700/60">BingBing Jade Exclusive Collection</span>
+          <div className="flex-1 h-[2px]" style={{ background: "linear-gradient(to left, transparent, #2d4a3e)" }} />
         </div>
 
         {/* Heading */}
         <h2
-          className="text-[22px] sm:text-[32px] font-light text-white leading-snug tracking-wide mb-10 sm:mb-12"
+          className="text-[22px] sm:text-[36px] font-light text-white leading-snug tracking-wide mb-10 sm:mb-12"
           style={{ fontFamily: "'Georgia', 'Times New Roman', serif", letterSpacing: "0.03em" }}
         >
           {title}
@@ -77,11 +77,10 @@ export function CollectionStory({
           {paragraphs.map((p, i) => (
             <p
               key={i}
-              className={`text-[14px] sm:text-[16px] leading-[1.85] ${
-                i === 0
-                  ? "text-white/90 font-light italic"
-                  : "text-white/55"
-              }`}
+              className={`text-[14px] sm:text-[18px] leading-[1.85] ${i === 0
+                  ? "text-slate-400 font-light italic"
+                  : "text-gray-400"
+                }`}
               style={{
                 opacity: visible ? 1 : 0,
                 transform: visible ? "translateY(0)" : "translateY(10px)",
@@ -96,13 +95,13 @@ export function CollectionStory({
         {/* Footer line */}
         {footer && (
           <p
-            className="mt-12 sm:mt-16 text-[13px] sm:text-[14px] tracking-[0.25em] uppercase font-medium text-emerald-500/70"
+            className="mt-8 sm:mt-12 text-[13px] sm:text-[14px] italic tracking-[0.25em] uppercase font-medium text-emerald-500/70"
             style={{
               opacity: visible ? 1 : 0,
               transition: "opacity 1s ease 0.6s",
             }}
           >
-            {footer}
+            THE BINGBING&#39;S PROMISE — &quot;{footer}&ldquo;
           </p>
         )}
 

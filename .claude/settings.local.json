@@ -93,7 +93,8 @@
       "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/campaigns-admin/[id]\")",
       "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/sale/[slug]\")",
       "Bash(sed -i '' '1s/^/export const dynamic = \"force-dynamic\";\\\\n\\\\n/' /Users/nouveau/Documents/workspaces/jade-shop/app/page.tsx)",
-      "Bash(sed -i '' '1s/^/export const dynamic = \"force-dynamic\";\\\\n\\\\n/' /Users/nouveau/Documents/workspaces/jade-shop/app/contact/page.tsx)"
+      "Bash(sed -i '' '1s/^/export const dynamic = \"force-dynamic\";\\\\n\\\\n/' /Users/nouveau/Documents/workspaces/jade-shop/app/contact/page.tsx)",
+      "Bash(git *)"
     ]
   }
 }
