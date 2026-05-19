@@ -830,7 +830,8 @@ export function CollectionAdminClient({ collection: initial }: { collection: Col
   const [infoSaved, setInfoSaved] = useState(false);
   const [infoError, setInfoError] = useState<string | null>(null);
 
-  const [uploadingScene, setUploadingScene] = useState(false);
+  type UploadProgress = { total: number; done: number; failed: number; errors: string[] };
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [sceneError, setSceneError] = useState<string | null>(null);
   const [expandedTagger, setExpandedTagger] = useState<string | null>(null);
 
@@ -872,29 +873,36 @@ export function CollectionAdminClient({ collection: initial }: { collection: Col
   /* ── Scene upload ──────────────────────────── */
 
   async function handleSceneUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingScene(true);
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    e.target.value = "";
+    const baseSortOrder = collection.collection_scenes.length;
+    const progress: UploadProgress = { total: files.length, done: 0, failed: 0, errors: [] };
+    setUploadProgress({ ...progress });
     setSceneError(null);
-    try {
-      const fd = new FormData();
-      fd.append("image", file);
-      fd.append("sort_order", String(collection.collection_scenes.length));
-      const res = await fetch(`/api/admin/collections/${collection.id}/scenes`, {
-        method: "POST",
-        body: fd,
-      });
-      const data = await res.json();
-      if (!res.ok) { setSceneError(data.error ?? "Upload failed"); return; }
-      setCollection((c) => ({
-        ...c,
-        collection_scenes: [...c.collection_scenes, { ...data, imageUrl: "", mobileImageUrl: null, collection_scene_tags: [] }],
-      }));
-      window.location.reload();
-    } finally {
-      setUploadingScene(false);
-      e.target.value = "";
+    let fileIndex = 0;
+    async function worker() {
+      while (fileIndex < files.length) {
+        const idx = fileIndex++;
+        const file = files[idx];
+        try {
+          const fd = new FormData();
+          fd.append("image", file);
+          fd.append("sort_order", String(baseSortOrder + idx));
+          const res = await fetch(`/api/admin/collections/${collection.id}/scenes`, { method: "POST", body: fd });
+          const data = await res.json();
+          if (!res.ok) { progress.failed++; progress.errors.push(`${file.name}: ${data.error ?? "Upload failed"}`); }
+          else progress.done++;
+        } catch (err) {
+          progress.failed++;
+          progress.errors.push(`${file.name}: ${err instanceof Error ? err.message : "Network error"}`);
+        }
+        setUploadProgress({ ...progress });
+      }
     }
+    await Promise.all(Array.from({ length: Math.min(3, files.length) }, () => worker()));
+    if (progress.done > 0) window.location.reload();
+    else setUploadProgress(null);
   }
 
   async function updateSceneCaption(sceneId: string, caption: string) {
@@ -1032,14 +1040,25 @@ export function CollectionAdminClient({ collection: initial }: { collection: Col
         <SectionCard title="Collection Scenes">
           {sceneError && <p className="text-sm text-red-500 mb-3">{sceneError}</p>}
 
-          <label className={`block w-full py-3 rounded-xl border-2 border-dashed text-sm font-medium text-center cursor-pointer transition-colors mb-5 ${
-            uploadingScene
-              ? "border-emerald-300 text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20"
-              : "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400"
+          <label className={`block w-full py-3 rounded-xl border-2 border-dashed text-sm font-medium text-center transition-colors mb-1 ${
+            uploadProgress
+              ? "border-emerald-300 text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 cursor-default"
+              : "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer"
           }`}>
-            {uploadingScene ? "Uploading…" : "+ Upload Collection Scene"}
-            <input type="file" accept="image/*" className="hidden" onChange={handleSceneUpload} disabled={uploadingScene} />
+            {uploadProgress
+              ? `Uploading ${uploadProgress.done + uploadProgress.failed} / ${uploadProgress.total}…`
+              : "+ Add Scene Images"}
+            <input type="file" accept="image/*" multiple className="hidden" onChange={handleSceneUpload} disabled={!!uploadProgress} />
           </label>
+          {uploadProgress && (
+            <div className="mb-3 text-xs flex gap-4 px-1">
+              <span className="text-emerald-600 dark:text-emerald-400">{uploadProgress.done} uploaded</span>
+              {uploadProgress.failed > 0 && <span className="text-red-500">{uploadProgress.failed} failed</span>}
+            </div>
+          )}
+          {uploadProgress?.errors.map((err, i) => (
+            <p key={i} className="text-xs text-red-500 mb-1 px-1">{err}</p>
+          ))}
 
           <div className="space-y-6">
             {collection.collection_scenes.map((scene, i) => (
