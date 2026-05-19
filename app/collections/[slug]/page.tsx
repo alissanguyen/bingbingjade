@@ -5,6 +5,7 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { resolveImageUrl } from "@/lib/storage";
 import { CollectionScene } from "@/app/components/collection/CollectionScene";
+import { CollectionStory } from "@/app/components/collection/CollectionStory";
 import { ProductCardLink } from "@/app/products/ProductCardLink";
 import { ProductCardImage } from "@/app/products/ProductCardImage";
 import { requiresInquiry } from "@/lib/price";
@@ -259,6 +260,9 @@ export default async function CollectionPage({ params }: Params) {
           </p>
         </div>
       )}
+
+      {/* ── BingBing Difference ──────────────────────────────────────────── */}
+      <CollectionStory />
 
       {/* ── Editorial Masonry ─────────────────────────────────────────────── */}
       {scenes.length > 0 && (
