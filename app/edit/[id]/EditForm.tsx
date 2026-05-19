@@ -766,7 +766,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
                   const preview = item.kind === "local" ? item.preview : item.url;
                   return (
                     <div key={item.id} className="relative group rounded-xl border-2 border-dashed border-amber-300 dark:border-amber-700 bg-amber-50/30 dark:bg-amber-950/10 overflow-hidden">
-                      <div className="aspect-square">
+                      <div className="relative aspect-square">
                         {preview ? (
                           <img src={preview} alt="pending" className="w-full h-full object-cover" />
                         ) : (
@@ -779,24 +779,24 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
                             </span>
                           </div>
                         )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeFromPending(item.id)}
-                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow text-xs"
-                      >
-                        <XIcon />
-                      </button>
-                      {item.kind === "local" && item.preview && !item.processing && (
                         <button
                           type="button"
-                          onClick={() => setPendingCropTarget({ id: item.id, src: item.preview!, fileName: item.file.name })}
-                          className="absolute bottom-1 right-1 w-6 h-6 rounded-md bg-black/60 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-emerald-600"
-                          title="Crop"
+                          onClick={(e) => { e.stopPropagation(); removeFromPending(item.id); }}
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow text-xs"
                         >
-                          <CropIcon />
+                          <XIcon />
                         </button>
-                      )}
+                        {item.kind === "local" && item.preview && !item.processing && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setPendingCropTarget({ id: item.id, src: item.preview!, fileName: item.file.name }); }}
+                            className="absolute bottom-1 right-1 w-6 h-6 rounded-md bg-black/60 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-emerald-600"
+                            title="Crop"
+                          >
+                            <CropIcon />
+                          </button>
+                        )}
+                      </div>
                       <div className="flex border-t border-amber-200 dark:border-amber-800">
                         {(["navy", "beige"] as const).map((mode) => (
                           <button
