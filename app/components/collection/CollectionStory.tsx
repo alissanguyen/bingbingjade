@@ -32,7 +32,12 @@ export function CollectionStory({
     const el = ref.current;
     if (!el) return;
     const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          obs.disconnect();
+        }
+      },
       { threshold: 0.08 }
     );
     obs.observe(el);
@@ -42,15 +47,15 @@ export function CollectionStory({
   return (
     <section
       ref={ref}
-      className="relative w-full overflow-hidden"
-      style={{ background: "linear-gradient(to bottom, transparent 0%, #020817 6%, #020817 94%, transparent 100%)" }}
+      className="relative w-full overflow-hidden bg-stone-50 dark:bg-[#020817]"
     >
-      {/* Top fade */}
-      <div className="absolute inset-x-0 top-0 h-12 pointer-events-none"
-        style={{ background: "linear-gradient(to bottom, var(--tw-gradient-from, transparent), #020817)" }} />
+      {/* Top fade — transitions from page bg into section bg */}
+      <div className="absolute inset-x-0 top-0 h-16 pointer-events-none bg-gradient-to-b from-white to-stone-50 dark:from-gray-950 dark:to-[#020817]" />
+      {/* Bottom fade */}
+      <div className="absolute inset-x-0 bottom-0 h-16 pointer-events-none bg-gradient-to-t from-white to-stone-50 dark:from-gray-950 dark:to-[#020817]" />
 
       <div
-        className="relative mx-auto max-w-225 px-6 sm:px-12 py-20 sm:py-28"
+        className="relative mx-auto max-w-[900px] px-6 sm:px-12 py-20 sm:py-28"
         style={{
           opacity: visible ? 1 : 0,
           transform: visible ? "translateY(0)" : "translateY(18px)",
@@ -59,14 +64,16 @@ export function CollectionStory({
       >
         {/* Decorative rule */}
         <div className="flex items-center gap-5 mb-10 sm:mb-14">
-          <div className="flex-1 h-[2px]" style={{ background: "linear-gradient(to right, transparent, #2d4a3e)" }} />
-          <span className="text-[10px] sm:text-[13px] tracking-[0.35em] uppercase font-semibold text-emerald-700/60">BingBing Jade Exclusive Collection</span>
-          <div className="flex-1 h-[2px]" style={{ background: "linear-gradient(to left, transparent, #2d4a3e)" }} />
+          <div className="flex-1 h-px bg-emerald-800/20 dark:bg-emerald-800/40" />
+          <span className="text-[10px] sm:text-[12px] tracking-[0.35em] uppercase font-semibold text-emerald-700 dark:text-emerald-700/60">
+            BingBing Jade Exclusive Collection
+          </span>
+          <div className="flex-1 h-px bg-emerald-800/20 dark:bg-emerald-800/40" />
         </div>
 
         {/* Heading */}
         <h2
-          className="text-[22px] sm:text-[36px] font-light text-white leading-snug tracking-wide mb-10 sm:mb-12"
+          className="text-[22px] sm:text-[34px] font-light leading-snug mb-10 sm:mb-12 text-gray-900 dark:text-white"
           style={{ fontFamily: "'Georgia', 'Times New Roman', serif", letterSpacing: "0.03em" }}
         >
           {title}
@@ -77,10 +84,11 @@ export function CollectionStory({
           {paragraphs.map((p, i) => (
             <p
               key={i}
-              className={`text-[14px] sm:text-[18px] leading-[1.85] ${i === 0
-                  ? "text-slate-400 font-light italic"
-                  : "text-gray-400"
-                }`}
+              className={`text-[14px] sm:text-[17px] leading-[1.85] ${
+                i === 0
+                  ? "font-light italic text-gray-600 dark:text-slate-300"
+                  : "text-gray-500 dark:text-white/55"
+              }`}
               style={{
                 opacity: visible ? 1 : 0,
                 transform: visible ? "translateY(0)" : "translateY(10px)",
@@ -95,27 +103,23 @@ export function CollectionStory({
         {/* Footer line */}
         {footer && (
           <p
-            className="mt-8 sm:mt-12 text-[13px] sm:text-[14px] italic tracking-[0.25em] uppercase font-medium text-emerald-500/70"
+            className="mt-12 sm:mt-16 text-[12px] sm:text-[13px] tracking-[0.28em] uppercase font-semibold text-emerald-700 dark:text-emerald-500/70"
             style={{
               opacity: visible ? 1 : 0,
               transition: "opacity 1s ease 0.6s",
             }}
           >
-            THE BINGBING&#39;S PROMISE — &quot;{footer}&ldquo;
+            {footer}
           </p>
         )}
 
         {/* Bottom decorative rule */}
-        <div className="flex items-center gap-5 mt-10 sm:mt-14">
-          <div className="flex-1 h-px" style={{ background: "linear-gradient(to right, transparent, #2d4a3e)" }} />
-          <div className="w-1 h-1 rounded-full bg-emerald-700/40" />
-          <div className="flex-1 h-px" style={{ background: "linear-gradient(to left, transparent, #2d4a3e)" }} />
+        <div className="flex items-center gap-4 mt-10 sm:mt-14">
+          <div className="flex-1 h-px bg-emerald-800/20 dark:bg-emerald-900/60" />
+          <div className="w-1 h-1 rounded-full bg-emerald-700/30" />
+          <div className="flex-1 h-px bg-emerald-800/20 dark:bg-emerald-900/60" />
         </div>
       </div>
-
-      {/* Bottom fade */}
-      <div className="absolute inset-x-0 bottom-0 h-12 pointer-events-none"
-        style={{ background: "linear-gradient(to top, var(--tw-gradient-from, transparent), #020817)" }} />
     </section>
   );
 }
