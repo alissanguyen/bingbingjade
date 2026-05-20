@@ -55,7 +55,7 @@ export function CollectionStory({
       <div className="absolute inset-x-0 bottom-0 h-16 pointer-events-none bg-linear-to-t from-white to-stone-100 dark:from-gray-950 dark:to-[#020a1c]" />
 
       <div
-        className="relative mx-auto max-w-225 px-6 sm:px-12 py-20 sm:pb-28 pt-20"
+        className="relative mx-auto max-w-225 px-6 sm:px-12 pb-20 pt-12 sm:pb-28 sm:pt-20"
         style={{
           opacity: visible ? 1 : 0,
           transform: visible ? "translateY(0)" : "translateY(18px)",
@@ -64,16 +64,16 @@ export function CollectionStory({
       >
         {/* Decorative rule */}
         <div className="flex items-center gap-5 mb-10 sm:mb-14">
-          <div className="flex-1 h-[2px]" style={{ background: "linear-gradient(to right, transparent, #2d4a3e)" }} />
+          <div className="flex-1 h-px sm:h-0.5" style={{ background: "linear-gradient(to right, transparent, #2d4a3e)" }} />
           <span className="text-[10px] sm:text-[12px] tracking-[0.35em] uppercase font-semibold text-emerald-700 dark:text-emerald-700/60">
             BingBing Jade
           </span>
-          <div className="flex-1 h-[2px]" style={{ background: "linear-gradient(to left, transparent, #2d4a3e)" }} />
+          <div className="flex-1 h-px sm:h-0.5" style={{ background: "linear-gradient(to left, transparent, #2d4a3e)" }} />
         </div>
 
         {/* Heading */}
         <h2
-          className="text-[22px] sm:text-[34px] font-light leading-snug mb-10 sm:mb-12 text-gray-900 dark:text-white"
+          className="text-[22px] sm:text-[34px] font-light leading-snug mb-6 sm:mb-12 text-gray-900 dark:text-white"
           style={{ fontFamily: "'Georgia', 'Times New Roman', serif", letterSpacing: "0.03em" }}
         >
           {title}
@@ -86,8 +86,8 @@ export function CollectionStory({
               key={i}
               className={`leading-[1.85] ${
                 i === 0
-                  ? "font-light italic text-gray-600 dark:text-slate-300 text-[16px] sm:text-[20px]"
-                  : "text-gray-500 dark:text-white/55 text-[14px] sm:text-[18px]"
+                  ? "font-light italic text-gray-600 dark:text-slate-300 text-[14px] sm:text-[20px]"
+                  : "text-gray-500 dark:text-white/55 text-[13px] sm:text-[18px]"
               }`}
               style={{
                 opacity: visible ? 1 : 0,
@@ -103,7 +103,7 @@ export function CollectionStory({
         {/* Footer line */}
         {footer && (
           <p
-            className="mt-12 sm:mt-16 text-[12px] sm:text-[15px] tracking-[0.28em] uppercase font-semibold text-emerald-700 dark:text-emerald-500/70 italic"
+            className="mt-8 sm:mt-12 sm:mt-16 text-[12px] sm:text-[15px] tracking-[0.28em] uppercase font-semibold text-emerald-700 dark:text-emerald-500/70 italic"
             style={{
               opacity: visible ? 1 : 0,
               transition: "opacity 1s ease 0.6s",
@@ -115,9 +115,9 @@ export function CollectionStory({
 
         {/* Bottom decorative rule */}
         <div className="flex items-center gap-4 mt-10 sm:mt-14">
-          <div className="flex-1 h-px" style={{ background: "linear-gradient(to right, transparent, #2d4a3e)" }} />
+          <div className="flex-1 h-px sm:h-0.5" style={{ background: "linear-gradient(to right, transparent, #2d4a3e)" }} />
           <div className="w-1 h-1 rounded-full bg-emerald-700/40" />
-          <div className="flex-1 h-px" style={{ background: "linear-gradient(to left, transparent, #2d4a3e)" }} />
+          <div className="flex-1 h-px sm:h-0.5" style={{ background: "linear-gradient(to left, transparent, #2d4a3e)" }} />
         </div>
       </div>
     </section>
