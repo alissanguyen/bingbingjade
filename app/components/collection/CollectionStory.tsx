@@ -63,7 +63,7 @@ export function CollectionStory({
         }}
       >
         {/* Decorative rule */}
-        <div className="flex items-center gap-5 mb-10 sm:mb-14">
+        <div className="flex items-center gap-5 mb-10 sm:mb-18">
           <div className="flex-1 h-px sm:h-0.5" style={{ background: "linear-gradient(to right, transparent, #2d4a3e)" }} />
           <span className="text-[10px] sm:text-[12px] tracking-[0.35em] uppercase font-semibold text-emerald-700 dark:text-emerald-700/60">
             BingBing Jade
@@ -103,7 +103,7 @@ export function CollectionStory({
         {/* Footer line */}
         {footer && (
           <p
-            className="mt-8 sm:mt-12 sm:mt-16 text-[12px] sm:text-[15px] tracking-[0.28em] uppercase font-semibold text-emerald-700 dark:text-emerald-500/70 italic"
+            className="mt-8 sm:mt-12 text-[12px] sm:text-[15px] tracking-[0.28em] uppercase font-semibold text-emerald-700 dark:text-emerald-500/70 italic"
             style={{
               opacity: visible ? 1 : 0,
               transition: "opacity 1s ease 0.6s",
@@ -114,7 +114,7 @@ export function CollectionStory({
         )}
 
         {/* Bottom decorative rule */}
-        <div className="flex items-center gap-4 mt-10 sm:mt-14">
+        <div className="flex items-center gap-4 mt-10 sm:mt-18">
           <div className="flex-1 h-px sm:h-0.5" style={{ background: "linear-gradient(to right, transparent, #2d4a3e)" }} />
           <div className="w-1 h-1 rounded-full bg-emerald-700/40" />
           <div className="flex-1 h-px sm:h-0.5" style={{ background: "linear-gradient(to left, transparent, #2d4a3e)" }} />
