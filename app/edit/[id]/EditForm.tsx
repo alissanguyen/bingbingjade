@@ -1007,7 +1007,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Listing Price (USD) <span className="text-red-400">*</span></label>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <div className="relative flex-1">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
                 <input
@@ -1035,7 +1035,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
             )}
           </div>
           {!isApprovedUser && (
-            <div className="col-span-2 pt-1">
+            <div className="sm:col-span-2 pt-1">
               <button
                 type="button"
                 onClick={() => setShowPrice((v) => !v)}
