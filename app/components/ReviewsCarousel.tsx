@@ -19,7 +19,7 @@ const reviews = [
   },
   {
     orderNumber: "BBJ-1057",
-    datePurchased: "September 5, 2026",
+    datePurchased: "September 5, 2025",
     name: "Michelle A.",
     review:
       "I had looked at jade from a few different sellers before, but I always felt unsure about what I was actually buying. BingBing Jade took the time to explain texture, color, and certification in a way that finally made sense. I felt much more confident choosing my piece.",
@@ -33,7 +33,7 @@ const reviews = [
   },
   {
     orderNumber: "BBJ-1086",
-    datePurchased: "September 28, 2026",
+    datePurchased: "September 28, 2025",
     name: "Grace W.",
     review:
       "What stood out to me was the education behind the purchase. I had seen similar-looking pieces elsewhere, but I didn’t understand why the prices were different until everything was explained clearly. The transparency made the experience feel very trustworthy.",
@@ -47,7 +47,7 @@ const reviews = [
   },
   {
     orderNumber: "BBJ-1109",
-    datePurchased: "November 19, 2026",
+    datePurchased: "November 19, 2025",
     name: "Annie N.",
     review:
       "I bought jade once before and realized later that I didn’t really understand the certificate or quality details. This time, I felt guided instead of rushed. The seller answered my questions honestly and helped me choose a piece that matched what I actually wanted.",

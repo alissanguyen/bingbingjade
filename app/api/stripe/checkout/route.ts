@@ -7,6 +7,7 @@ import { computeAvailableCredit } from "@/lib/sourcing-classification";
 import type { LedgerRow } from "@/lib/sourcing-classification";
 import type { CartItem } from "@/types/cart";
 import { getShippingZone, calculateShipping, calculateStripeFee, calculateBnplFee, ALLOWED_COUNTRIES, ACTIVE_BNPL_METHODS } from "@/lib/shipping";
+import { checkCustomerRestriction, logBlockedAttempt } from "@/lib/customer-restrictions";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
 
@@ -344,6 +345,49 @@ export async function POST(req: NextRequest) {
   }
   if (!allowedCountryCodes.has(addr.country)) {
     return NextResponse.json({ error: "Shipping to that country is not supported." }, { status: 400 });
+  }
+
+  // ── Customer restriction check ────────────────────────────────────────────────
+  {
+    const restrictionResult = await checkCustomerRestriction({
+      email: body.customerEmail ?? null,
+      name: addr.name,
+      phone: null,
+      shippingAddress: {
+        line1: addr.line1,
+        city: addr.city,
+        state: addr.state ?? null,
+        postal: addr.postal,
+        country: addr.country,
+      },
+      customerId: null,
+    });
+
+    if (restrictionResult.blocked) {
+      logBlockedAttempt({
+        restrictionId: restrictionResult.restrictionId!,
+        matchedSignals: restrictionResult.matchedSignals ?? [],
+        attemptedCustomer: {
+          email: body.customerEmail ?? null,
+          name: addr.name,
+          line1: addr.line1,
+          city: addr.city,
+          state: addr.state ?? null,
+          postal: addr.postal,
+          country: addr.country,
+        },
+        cartSnapshot: {
+          itemCount: validatedItems.length,
+          subtotalCents: itemsSubtotalCents,
+          items: validatedItems.map((i) => ({ productId: i.productId, name: i.productName, price: i.price })),
+        },
+      }).catch(() => {});
+
+      return NextResponse.json(
+        { error: "We're unable to complete this order online at this time. Please contact us if you believe this was a mistake." },
+        { status: 403 }
+      );
+    }
   }
 
   const paymentMethod = body.paymentMethod ?? "standard";

@@ -128,6 +128,15 @@ export function CustomerDetailClient() {
   // Referral invite
   const [sendingReferral, setSendingReferral] = useState(false);
 
+  // Restrict customer modal
+  const [showRestrictModal, setShowRestrictModal] = useState(false);
+  const [restricting, setRestricting] = useState(false);
+  const [restrictForm, setRestrictForm] = useState({
+    name: "", email: "", phone: "",
+    address_line1: "", city: "", state: "", postal_code: "", country: "",
+    reason: "manual_admin_review", severity: "blocked", internal_notes: "",
+  });
+
   // Assign order
   const [availableOrders, setAvailableOrders] = useState<AvailableOrder[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState("");
@@ -293,6 +302,58 @@ export function CustomerDetailClient() {
     }
   }
 
+  function openRestrictModal() {
+    if (!customer) return;
+    const latestAddr = customer.customer_addresses?.[0];
+    setRestrictForm({
+      name: customer.customer_name ?? "",
+      email: customer.customer_email ?? "",
+      phone: customer.customer_phone ?? "",
+      address_line1: latestAddr?.address_line1 ?? "",
+      city: latestAddr?.city ?? "",
+      state: latestAddr?.state_or_region ?? "",
+      postal_code: latestAddr?.postal_code ?? "",
+      country: latestAddr?.country ?? "",
+      reason: "manual_admin_review",
+      severity: "blocked",
+      internal_notes: "",
+    });
+    setShowRestrictModal(true);
+  }
+
+  async function handleRestrict(e: React.FormEvent) {
+    e.preventDefault();
+    if (!customer) return;
+    setRestricting(true);
+    try {
+      const res = await fetch("/api/admin/customer-restrictions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customer_id: customer.id,
+          name: restrictForm.name || null,
+          email: restrictForm.email || null,
+          phone: restrictForm.phone || null,
+          address_line1: restrictForm.address_line1 || null,
+          city: restrictForm.city || null,
+          state: restrictForm.state || null,
+          postal_code: restrictForm.postal_code || null,
+          country: restrictForm.country || null,
+          reason: restrictForm.reason || null,
+          severity: restrictForm.severity,
+          internal_notes: restrictForm.internal_notes || null,
+          status: "active",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast("err", data.error ?? "Failed to add restriction"); return; }
+      setShowRestrictModal(false);
+      showToast("ok", "Customer restriction added");
+    } finally {
+      setRestricting(false);
+    }
+  }
+
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-sm text-gray-400">Loading…</div>;
   }
@@ -307,6 +368,100 @@ export function CustomerDetailClient() {
           toast.type === "ok" ? "bg-emerald-700 text-white" : "bg-red-600 text-white"
         }`}>
           {toast.msg}
+        </div>
+      )}
+
+      {/* Restrict customer modal */}
+      {showRestrictModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowRestrictModal(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Restrict Customer</h2>
+              <button onClick={() => setShowRestrictModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <form onSubmit={handleRestrict} className="p-6 space-y-4">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Fill in the fields to match against during checkout. At minimum, one field must be present for a restriction to match.
+              </p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>Name</label>
+                  <input value={restrictForm.name} onChange={(e) => setRestrictForm((p) => ({ ...p, name: e.target.value }))} className={inputCls} placeholder="Full name" />
+                </div>
+                <div>
+                  <label className={labelCls}>Email</label>
+                  <input type="email" value={restrictForm.email} onChange={(e) => setRestrictForm((p) => ({ ...p, email: e.target.value }))} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Phone</label>
+                  <input value={restrictForm.phone} onChange={(e) => setRestrictForm((p) => ({ ...p, phone: e.target.value }))} className={inputCls} placeholder="+1 555 000 0000" />
+                </div>
+                <div>
+                  <label className={labelCls}>Address Line 1</label>
+                  <input value={restrictForm.address_line1} onChange={(e) => setRestrictForm((p) => ({ ...p, address_line1: e.target.value }))} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>City</label>
+                  <input value={restrictForm.city} onChange={(e) => setRestrictForm((p) => ({ ...p, city: e.target.value }))} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>State / Region</label>
+                  <input value={restrictForm.state} onChange={(e) => setRestrictForm((p) => ({ ...p, state: e.target.value }))} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Postal Code</label>
+                  <input value={restrictForm.postal_code} onChange={(e) => setRestrictForm((p) => ({ ...p, postal_code: e.target.value }))} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Country</label>
+                  <input value={restrictForm.country} onChange={(e) => setRestrictForm((p) => ({ ...p, country: e.target.value }))} className={inputCls} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>Reason</label>
+                  <select value={restrictForm.reason} onChange={(e) => setRestrictForm((p) => ({ ...p, reason: e.target.value }))} className={inputCls}>
+                    <option value="expectation_mismatch">Expectation Mismatch</option>
+                    <option value="chargeback_dispute_risk">Chargeback / Dispute Risk</option>
+                    <option value="abusive_communication">Abusive Communication</option>
+                    <option value="repeated_failed_sourcing">Repeated Failed Sourcing</option>
+                    <option value="policy_abuse">Policy Abuse</option>
+                    <option value="manual_admin_review">Manual Admin Review</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Severity</label>
+                  <select value={restrictForm.severity} onChange={(e) => setRestrictForm((p) => ({ ...p, severity: e.target.value }))} className={inputCls}>
+                    <option value="blocked">Blocked</option>
+                    <option value="review">Review</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className={labelCls}>Internal Notes</label>
+                <textarea value={restrictForm.internal_notes} onChange={(e) => setRestrictForm((p) => ({ ...p, internal_notes: e.target.value }))} rows={3}
+                  placeholder="Internal notes (not visible to customer)…"
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-red-500 resize-none" />
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <button type="button" onClick={() => setShowRestrictModal(false)}
+                  className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 py-2.5 text-sm font-medium transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" disabled={restricting}
+                  className="flex-1 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white py-2.5 text-sm font-medium transition-colors">
+                  {restricting ? "Saving…" : "Add Restriction"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
@@ -428,6 +583,26 @@ export function CustomerDetailClient() {
                   Referral code is assigned automatically after their first order is delivered.
                 </p>
               )}
+            </div>
+
+            {/* Restrict Customer */}
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-red-100 dark:border-red-900/30 p-5">
+              <h2 className="text-sm font-semibold text-red-700 dark:text-red-400 mb-2">Customer Restriction</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Prevent this customer from completing checkout. Restriction is applied server-side and not disclosed to the customer.
+              </p>
+              <button
+                onClick={openRestrictModal}
+                className="w-full rounded-lg border border-red-300 dark:border-red-800 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 py-2.5 text-sm font-medium transition-colors"
+              >
+                Restrict Customer
+              </button>
+              <a
+                href="/restricted-customers"
+                className="block text-center text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 mt-2 transition-colors"
+              >
+                View all restricted customers →
+              </a>
             </div>
           </div>
 
