@@ -94,6 +94,20 @@ const reviews = [
     review:
       "Beautiful natural jade and excellent service. I loved that the seller clearly explained origin, type, and certification instead of being vague. It made me trust the shop a lot more.",
   },
+  {
+    orderNumber: "BBJ-1252",
+    datePurchased: "May 5, 2026",
+    name: "Melissa C.",
+    review:
+      "100% would recommend!  Bing Bing is very kind and responsive to my inquiries.  The item was very well packed (and I’ve never seen such beautiful packaging before!) - you can tell this company really puts a lot of thought and care into their business.  The bangle that I purchased was exactly as described/depicted and I love it so much.  Thank you for the free gifts, too!",
+  },
+  {
+    orderNumber: "BBJ-1256",
+    datePurchased: "May 9, 2026",
+    name: "Gracie W.",
+    review:
+      "Such an incredible bangle! Very reasonable prices for various qualities/sizes and beautiful cared for packaging!",
+  }
 ];
 
 // Duplicate for seamless infinite loop
