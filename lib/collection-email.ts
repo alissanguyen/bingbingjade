@@ -70,19 +70,47 @@ function productCard(product: EmailProduct, siteUrl: string): string {
 export function buildCollectionDropsHtml(params: {
   collectionName: string;
   collectionSlug: string;
-  sceneImageUrl: string | null;
+  sceneImageUrls: string[];
   subject: string;
   intro: string;
   products: EmailProduct[];
   unsubscribeUrl: string;
   siteUrl: string;
 }): string {
-  const { collectionName, collectionSlug, sceneImageUrl, subject, intro, products, unsubscribeUrl, siteUrl } = params;
+  const { collectionName, collectionSlug, sceneImageUrls, subject, intro, products, unsubscribeUrl, siteUrl } = params;
 
-  const bannerImage = sceneImageUrl ?? FALLBACK_BANNER;
+  const bannerImage = sceneImageUrls[0] ?? FALLBACK_BANNER;
   const collectionUrl = `${siteUrl}/collections/${collectionSlug}`;
   const introText = intro || `Discover the ${collectionName} collection — a curated selection of natural jadeite pieces chosen for their beauty and rarity. Each piece is one of a kind.`;
 
+  // Scene gallery: 3-column masonry — distribute images round-robin across columns
+  const col1 = sceneImageUrls.filter((_, i) => i % 3 === 0);
+  const col2 = sceneImageUrls.filter((_, i) => i % 3 === 1);
+  const col3 = sceneImageUrls.filter((_, i) => i % 3 === 2);
+  const altText = collectionName.replace(/"/g, "&quot;");
+
+  const colHtml = (urls: string[]) => urls.map((url) => `
+            <a href="${collectionUrl}" style="display:block;text-decoration:none;margin-bottom:3px;">
+              <img src="${url}" alt="${altText}" style="display:block;width:100%;border-radius:0;" />
+            </a>`).join("");
+
+  const sceneGalleryHtml = sceneImageUrls.length > 0
+    ? `
+        <!-- ═══ SCENE GALLERY ═══ -->
+        <tr>
+          <td style="padding:0;line-height:0;font-size:0;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+              <tr>
+                <td width="33%" style="padding:0 1.5px 0 0;vertical-align:top;">${colHtml(col1)}</td>
+                <td width="34%" style="padding:0 0.75px;vertical-align:top;">${colHtml(col2)}</td>
+                <td width="33%" style="padding:0 0 0 1.5px;vertical-align:top;">${colHtml(col3)}</td>
+              </tr>
+            </table>
+          </td>
+        </tr>`
+    : "";
+
+  // Product grid rows
   const rows: EmailProduct[][] = [];
   for (let i = 0; i < products.length; i += 2) {
     rows.push(products.slice(i, i + 2));
@@ -177,9 +205,11 @@ export function buildCollectionDropsHtml(params: {
           </td>
         </tr>
 
+        ${sceneGalleryHtml}
+
         <!-- ═══ SECTION LABEL ═══ -->
         <tr>
-          <td style="padding:52px 48px 12px;text-align:center;">
+          <td style="padding:${sceneImageUrls.length > 0 ? "40px" : "52px"} 48px 12px;text-align:center;">
             <p style="margin:0 0 6px;font-size:13px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#6b7280;">From This Collection</p>
             <h2 style="margin:0;font-size:30px;font-weight:700;color:#111827;">${subject}</h2>
           </td>

@@ -55,7 +55,7 @@ The application is split into a **customer storefront** and a **password-protect
 
 ### Customer Storefront
 
-- **Product catalog** with multi-faceted filtering (category, availability status, origin, color, price range, size) and sorting (newest, price ascending/descending)
+- **Product catalog** with multi-faceted filtering (category, availability status, origin, color, price range, size, clearance) and sorting (newest, price ascending/descending); multi-category URL params (e.g. `?category=ring,earring`) display combined category views from nav links
 - **Product detail pages** with full image gallery (lightbox), inline video preview, variant selection (product options with per-option pricing), and add-to-cart
 - **Persistent cart** stored in localStorage with a slide-out cart drawer
 - **Zone-based international shipping** — US $20 / Canada+Europe $35 / Asia-Pacific $75 base, +$10–$20 per additional piece; shipping address collected in the storefront UI before redirecting to Stripe so customers never re-enter it; address passed to `payment_intent_data.shipping` for Stripe records
@@ -64,7 +64,7 @@ The application is split into a **customer storefront** and a **password-protect
 - **Shipping insurance option** — 5% of item subtotal (before discount), covers declared value; opt-in toggle in checkout
 - **Expedited / Priority Sourcing toggle** in cart drawer with link to `/faq#expedited-shipping` policy
 - **Discount code entry** in cart drawer — validated live against `/api/validate-discount`; supports welcome, referral, campaign, and store credit sources
-- **Stripe Checkout** integration — cart contents are re-validated server-side before the Stripe session is created, preventing price manipulation; discount is re-validated server-side too
+- **Stripe Checkout** integration — cart contents are re-validated server-side before the Stripe session is created, preventing price manipulation; discount is re-validated server-side too; customer email collected in the checkout UI and passed to the checkout API for restriction checks and order confirmation
 - **Announcement banner** (`AnnouncementBanner`) — configurable site-wide banner managed from `/admin`:
   - Presets: New Drops, Mother's Day, Valentine's Day, Black Friday, Custom
   - Supports multiple rotating messages displayed as a seamless right-to-left ticker (CSS `translateX(0→-50%)` loop over doubled content — no fade, true marquee)
@@ -82,8 +82,30 @@ The application is split into a **customer storefront** and a **password-protect
 - **Hash-based accordion navigation** on `/faq` and `/policy` — clicking an accordion section updates the URL hash; sharing a hash link auto-opens and scrolls to that section
 - **WhatsApp inquiry** links that auto-compose a message with product details and a deep link
 - **BNPL payment messaging** — `PaymentMessaging` component shows estimated monthly payments using Afterpay (orders < $500) and Affirm, with tiered calculation (4 payments at 5% APR / 12 / 24 months depending on order size); compact one-line variant on product cards, full logo row on product detail pages; hides for inquiry-priced and sold items
+- **Campaign event sale pages** — `/sale/[slug]` landing pages per campaign event (e.g. Black Friday, Mother's Day): full-bleed hero with banner message, discount badge, and product grid scoped to that event's tagged products; category-filtered tabs; draft preview mode for admin
+- **Clearance section** — products flagged `is_clearance` (independent boolean from status) appear with an amber "Clearance" badge on product cards and are filterable via `?clearance=1`; clearance pricing uses `sale_price_usd` for the marked-down amount
+- **Size guide** at `/size-guide` — bangle and ring measurement guides with visual diagrams
+- **Jade Preservation service** at `/restoration` — inquiry form for jade bangle polishing and protective metal wrapping (silver/gold); intake collects service type, piece details, contact info, and uploads; request sent to admin via email
+- **Rewards portal** at `/rewards` — no-login customer dashboard accessed via magic link emailed on request:
+  - Email lookup form requests a time-limited token (15-minute TTL, 32 bytes entropy)
+  - Token-authenticated dashboard shows referral code with one-click copy, store credit balance, total earned, total used, successful referral count, and pending referral count
+  - Full-height split-screen layout on desktop (editorial photo + form); centered card in token mode
 - **Fully responsive** design with dark mode support (next-themes)
 - **SEO-optimised** product pages with dynamic `<meta>` tags, OpenGraph images, and structured keywords
+
+### Collections / Lookbook
+
+A luxury editorial system for curated collections with shoppable lifestyle photography.
+
+- **Collection pages** at `/collections/[slug]` — each collection has a full-bleed hero banner (with focal-point control via CSS `object-position` driven by per-collection `hero_focal_x/y` percentages; separate mobile focal points), an optional description, and a customisable hero banner image or a selected scene image as the banner
+- **Editorial section** — a `CollectionStory` component sits between the description and the lifestyle grid: deep navy (dark mode) / warm stone (light mode) full-width section with serif heading, luxury-editorial body copy, staggered `IntersectionObserver` fade-in animations, and gradient fades top and bottom. Reusable with optional `title`, `paragraphs`, and `footer` props for per-collection customisation
+- **Lifestyle photo gallery** — CSS masonry grid (`columns-1/2/3`) of scenes; each scene is an `<picture>` element with a desktop image and optional mobile-specific image
+- **Shoppable scene tags** — circular dot overlays positioned by percentage coordinates on each scene image; hover (desktop) or tap (mobile) opens a product card:
+  - Desktop: absolute edge-aware popup card (`w-52`) that flips left/right and up/down based on tag position relative to the 60%/65% thresholds; 200ms hover debounce keeps the card open while moving between dot and card
+  - Mobile: fixed-to-viewport bottom overlay card (`w-56`, `z-[9999]`) rendered at the `CollectionScene` level rather than inside the `TagDot`'s CSS `transform` container — avoids the browser rule that `position: fixed` inside a `transform` ancestor anchors to that ancestor instead of the viewport; close × button + Escape key dismissal
+  - Separate mobile coordinate overrides (`mobile_x`, `mobile_y`) allow repositioning dots for the mobile image crop
+- **Product grid ("Shop the Collection")** — responsive card grid with sale badge overlay (red "Sale" + amber `−N%` pill on image top-left), sold badge, category + tier row, product name, amber sale price with original struck-through, and size · origin in the price row; sold products dim the info section but retain pricing for reference
+- **Admin CMS** at `/collections-admin` — create/edit/delete collections; manage scenes (upload desktop + mobile images, set captions, reorder); tag products onto scenes with drag-to-position dot placement; assign products to the "Shop the Collection" grid; set hero image / hero scene; control focal points
 
 ### Educational Blog (Sanity CMS)
 
@@ -98,8 +120,9 @@ The application is split into a **customer storefront** and a **password-protect
 
 - **Add product** — rich form with media upload, image crop (react-easy-crop), video trim, category/origin/color/tier tagging, pricing, and vendor attribution
 - **AI-assisted copy generation** — admin can click "Generate Copy" to have Claude analyse the actual uploaded product photos (via vision API) alongside structured product facts and raw vendor notes (Vietnamese or English). Claude generates an elevated product title, a luxury single-paragraph description, and a trust-building blemishes note. All fields are editable before saving. Claude also extracts size, dimensions, origin, and imported price from the vendor notes. A pre-flight token-count check enforces a per-request cost cap ($0.20) before any tokens are billed
-- **Edit product** — same full-featured form, pre-populated with existing data; includes lightbox for existing images and inline video preview
-- **Draft/publish workflow** — products default to draft and are hidden from the storefront until explicitly published
+- **Edit product** — same full-featured form, pre-populated with existing data; includes lightbox for existing images and inline video preview; pending images (pre-background-processing) are also uploaded and saved when the form is submitted
+- **Draft/publish workflow** — products default to draft and are hidden from the storefront until explicitly published; `published_at` timestamp set only on first publish
+- **Product status values** — `available`, `on_sale`, `sold`, `archived`; `is_clearance` boolean is independent from status and can coexist with any status
 - **Bulk operations** — select multiple products to batch-update status (available / on sale / sold) or bulk delete
 - **Order management** — admin panel at `/orders-admin` lists all orders sorted by order number descending; two-column amount display separates "Items" (sum of `order_items.price_usd × quantity`) from "Total" (full `amount_total` including shipping/fees/tax); search, status filtering, and pagination; each order has a full detail/edit page supporting:
   - Status updates with optional email notification to customer; changing status to `order_cancelled` opens a mandatory reason picker modal — `piece_unavailable` or `customer_cancelled` — stored on the order and used to render the correct cancellation state on the tracking page
@@ -115,12 +138,46 @@ The application is split into a **customer storefront** and a **password-protect
   - **Annual summary table** — Total Collected / Item Revenue / COGS / Gross Profit / Margin % per year
   - **By payment source breakdown** — horizontal progress bars showing revenue split across Stripe, PayPal, Cash, Zelle, Wire, Manual
   - **COGS tracking** — `imported_price_vnd` captured at webhook time (frozen to the price at time of sale), converted at a fixed 1 USD = 26,000 VND rate, stored as `cogs_cents` on the order; profit columns gracefully hidden for orders without COGS data (`hasCogs` flag)
+- **Full detailed accounting** (`/full-detailed-accounting`) — expanded P&L dashboard built on a dedicated schema:
+  - `order_payments` universal ledger anchors all payment methods (Stripe, PayPal, Zelle, bank, cash, other) to BBJ order codes
+  - `product_costs` tracks per-product import cost; `order_fulfillment_costs` tracks per-order variable costs (shipping, packaging, label)
+  - `business_expenses` for fixed overhead
+  - `accounting_summaries` cached pre-computed P&L per month/quarter/year; a "Recalculate" button in the admin triggers a fresh aggregation
+  - `accounting_settings` — single-row config for default supplies cost estimate method
 - **Custom order entry** — admin can create manual orders (Cash/Zelle/PayPal/Stripe/Wire Transfer source); order numbers prefixed `BBJ-` with a minimum value enforced; customer and address records created or linked automatically
 - **Vendor management** — CRUD for supplier records
+- **Campaign Events** (`/campaigns-admin`) — named sale events (Black Friday, Mother's Day, etc.) with:
+  - Category, description, banner message, date range, status (draft / active / ended)
+  - Optional discount type (fixed / percent) and amount applied to event-tagged products
+  - Products explicitly tagged to an event via `campaign_event_products` join table
+  - Event pricing takes priority over `sale_price_usd` on the product listing; `Sale` badge replaced with the campaign name badge (emerald) on product cards
+  - Public landing page at `/sale/[slug]` with full-bleed hero, discount callout, and product grid with category tabs; admin-only draft preview mode
+- **Collections admin** (`/collections-admin`) — full CMS for the lookbook/collections system (see Collections section above)
+- **Item Origin Lookup** (`/item-origin-lookup`) — admin tool to retrieve original (pre-watermark) vendor images for any product by 8-digit SKU:
+  - Looks up `product_original_images` by SKU; generates signed URLs (1-hour TTL) for each original
+  - Displays vendor name, platform, and contact alongside product metadata
+  - Individual delete (removes from DB + storage) and **bulk delete** — checkbox-select multiple images, single `DELETE ?ids=...` request removes all from both DB and Supabase storage
+  - Originals are stored in a separate private bucket path (`originals/`) during the upload pipeline; vendor provenance snapshot stored in `product_originals` at upload time
 - **Coupon campaign management** (`/coupons-admin`) — create seasonal/promotional codes with configurable discount type (fixed, percent, or tiered $10/$20), active date window, minimum order amount, per-customer and global redemption caps, and new-customer restriction; toggle active/inactive; live redemption count per campaign
 - **Subscriber management** (`/subscribers-admin`) — view all email subscribers with their coupon code, expiry, and status (Active / Used / Expired / No code); filter tabs; resend welcome coupon email to individual subscriber; bulk email with custom subject and message body targeting all or unused-coupon subscribers; backfill coupon codes for pre-migration subscribers
 - **Admin profile** (`/profile`) — at-a-glance action items: pending product approvals and pending partner token requests with inline approve/deny and adjustable grant amount
 - **Beta checkout mode** — checkout locked to admin during soft-launch; toggle to public with `NEXT_PUBLIC_CHECKOUT_MODE=live`
+
+### Customer Restriction System
+
+A server-side fraud prevention layer that screens customers at checkout based on multiple identity signals.
+
+- **Admin UI** at `/restricted-customers` — create, edit, and deactivate restriction records; each record stores email, phone, name, address fields, reason (fraud / chargeback / policy violation / manual admin review), severity, internal notes, and status
+- **Multi-signal matching** in `lib/customer-restrictions.ts` at checkout time:
+  - **Strong singles** (any single match sufficient): `customer_id`, `normalized_email`, `normalized_phone`, `full_address` fingerprint (`line1|city|postal|country`)
+  - **Two-signal combinations** (both required): `name + address_line1`, `name + postal + city`, or `address_line1 + postal`
+  - Signals not sufficient alone: name, city, postal, state, country
+  - All inputs normalised before comparison (lowercase, strip punctuation, collapse whitespace)
+- **Severity levels**:
+  - `blocked` — checkout is hard-rejected with an error message; customer cannot proceed
+  - `review` — checkout proceeds normally but the attempt is logged for admin visibility; useful for monitoring without disrupting orders
+- **Attempt logging** — every match (blocked or review) writes a record to `blocked_checkout_attempts` with the matched signals, customer snapshot, and cart snapshot; accessible in the restriction detail panel
+- Restriction check runs after cart validation, before Stripe session creation — no Stripe calls for blocked customers
 
 ### Partner Portal (Approved Users)
 
@@ -146,6 +203,7 @@ Every uploaded product image goes through an automated server-side processing pi
    - **All other categories** → bottom-left
 4. **Single JPEG encode at quality 90** — one-pass pipeline eliminates double-compression artifacts
 5. Both originals and watermarked versions stored in a private Supabase bucket, served via short-lived signed URLs
+6. **SKU assignment** — each product is assigned a unique 8-digit SKU on creation; every uploaded image is recorded in `product_original_images` tied to that SKU for vendor provenance tracking
 
 ### Payment & Order Processing
 
@@ -179,6 +237,8 @@ A production-hardened discount engine with no stacking (exactly one discount sou
 - Collision-safe: up to 10 retry attempts on duplicate code generation
 - **Abuse prevention:** after redemption, a shipping fingerprint (`phone|city|postal|country`) is stored on the subscriber record; duplicate fingerprints on separate redeemed coupons emit a server-side warning log; order still completes (no silent blocking)
 - Backward compat: subscribers without a code (pre-migration) still receive auto-applied welcome discount; admin can generate codes for them via "Backfill Coupons" in `/subscribers-admin`
+- **Soft-delete on unsubscribe** — unsubscribing sets `unsubscribed_at` rather than deleting the row; prevents a user from re-subscribing with the same email to receive a fresh coupon code
+- **Per-recipient unsubscribe tokens** — each subscriber record has a `uuid` token used in email footers; unsubscribe links use this token rather than a base64-encoded email
 
 **Referral program:**
 - After a customer's first delivered order, they receive a referral code and an invite email
@@ -233,6 +293,8 @@ All transactional emails use custom branded HTML templates and are BCC'd to `con
 - **Blog Announcement** (`/custom-emails-admin/new-blog`) — 1200px wide; blog thumbnail used as hero background; title displayed as large h1 in the banner
 - **Order Delay** (`/custom-emails-admin/order-delays`) — 600px transactional email with jade hero banner, order number displayed in banner, "Track My Order" button linking to customer's `/orders/[orderNumber]` page; supports multi-order batch send
 - **Care Tips** (`/custom-emails-admin/care-tips`) — 600px transactional email with jade hero banner "Caring Tips for Your New Piece"; sent to customers with recently delivered orders (last 90 days by `created_at`)
+- **Product Showcase** (`/product-email-admin`) — admin selects from recent published products and sends a curated showcase email to all subscribers; product cards rendered with image, name, category, and price
+- **Collection Drops** (`/custom-emails-admin/collection-drops`) — announces a BingBing exclusive collection; compose UI selects a collection, pulls its hero image and featured scenes, and sends to all or selected subscribers with a full-width editorial hero and scene imagery
 - **Customer coupon emails** — initial send (thank you / retention copy), plus automated reminders at 30 and 60 days
 - **Campaign emails** (`/custom-emails-admin/campaign`) — seasonal and promotional broadcast emails with a 4-step compose UI:
   - **Step 1 — Preset picker:** 12 presets (Black Friday, Cyber Monday, Valentine's Day, Mother's Day, Women's Day, Birthday, Lunar New Year, Christmas, Anniversary, Flash Sale, VIP, Last Chance); each auto-populates subject, headline, intro, urgency line, CTA, and banner image; all fields editable
@@ -242,7 +304,7 @@ All transactional emails use custom branded HTML templates and are BCC'd to `con
   - Full-width hero banner: each preset has a corresponding image from `public/campaign_banners/` (JPEG); relative paths are resolved to absolute URLs at render time; falls back to the default jade Unsplash photo if no image is set
   - Preview modal before send; per-recipient HTML rendering (personalised unsubscribe tokens)
 
-**Unsubscribe:** `/api/unsubscribe?e=<base64-email>` removes the subscriber record and renders a confirmation page. A subtle 10px light-gray link is embedded in welcome email footers (CAN-SPAM compliant, intentionally unobtrusive).
+**Unsubscribe:** `/api/unsubscribe?token=<uuid>` sets `unsubscribed_at` on the subscriber record (soft delete) and renders a confirmation page. A subtle 10px light-gray link is embedded in welcome email footers (CAN-SPAM compliant, intentionally unobtrusive). Soft-deletion preserves coupon history and prevents re-subscribe coupon abuse.
 
 ---
 
@@ -253,18 +315,36 @@ jade-shop/
 ├── app/
 │   ├── page.tsx                        # Homepage — subscribe popup + featured carousel
 │   ├── products/
-│   │   ├── page.tsx                    # Listing — RSC, ISR, multi-filter
+│   │   ├── page.tsx                    # Listing — RSC, ISR, multi-filter, event pricing
 │   │   └── [slug]/page.tsx             # Detail — SSG + ISR, SEO metadata
+│   ├── collections/
+│   │   └── [slug]/page.tsx             # Collection/lookbook — hero, editorial, scenes, product grid
+│   ├── collections-admin/
+│   │   ├── page.tsx                    # Collections list
+│   │   └── [id]/CollectionAdminClient.tsx  # Scene + tag + product CMS
+│   ├── sale/
+│   │   └── [slug]/page.tsx             # Campaign event landing page
+│   ├── campaigns-admin/
+│   │   └── CampaignsAdminClient.tsx    # Campaign event CRUD
 │   ├── orders/[orderNumber]/
 │   │   ├── page.tsx                    # Order status page (server)
 │   │   └── OrderTimeline.tsx           # Animated timeline (client component)
+│   ├── rewards/
+│   │   ├── page.tsx                    # Magic-link rewards portal
+│   │   └── RewardsClient.tsx           # Token-authenticated dashboard
+│   ├── restricted-customers/
+│   │   └── RestrictedCustomersClient.tsx  # Customer restriction management
+│   ├── item-origin-lookup/
+│   │   └── ItemOriginLookupClient.tsx  # SKU → original images + vendor lookup
+│   ├── restoration/
+│   │   └── RestorationClient.tsx       # Jade preservation service intake
+│   ├── size-guide/page.tsx             # Bangle + ring sizing guides
 │   ├── faq/page.tsx                    # FAQ — accordion with hash navigation + IDs
 │   ├── policy/page.tsx                 # Policy — accordion with hash navigation + IDs
 │   ├── checkout/
 │   │   ├── success/page.tsx
 │   │   └── cancel/page.tsx
 │   ├── contact/
-│   │
 │   ├── orders-admin/
 │   │   ├── page.tsx                    # Order list — sorted by order number, Items+Total split
 │   │   ├── [id]/page.tsx               # Order detail / edit (strips cogs_cents before client)
@@ -272,21 +352,38 @@ jade-shop/
 │   ├── accounting-admin/
 │   │   ├── page.tsx                    # Server wrapper (force-dynamic)
 │   │   └── AccountingClient.tsx        # KPI cards, SVG chart, annual table, source breakdown
+│   ├── full-detailed-accounting/
+│   │   └── AccountingDashboard.tsx     # Expanded P&L — ledger, COGS, expenses, summaries cache
 │   ├── customers-admin/
+│   ├── product-email-admin/
+│   │   └── ProductEmailClient.tsx      # Product showcase email composer
+│   ├── custom-emails-admin/
+│   │   ├── page.tsx                    # Email type picker
+│   │   ├── new-drops/
+│   │   ├── new-blog/
+│   │   ├── order-delays/
+│   │   ├── care-tips/
+│   │   ├── campaign/                   # 4-step campaign email composer
+│   │   └── collection-drops/           # Collection announcement email
 │   ├── studio/
 │   │   └── [[...tool]]/page.tsx        # Sanity Studio (force-dynamic; localhost-only via middleware)
 │   │
 │   ├── api/
 │   │   ├── stripe/
-│   │   │   ├── checkout/route.ts       # Cart + discount validation → Stripe session
+│   │   │   ├── checkout/route.ts       # Cart + discount + restriction check → Stripe session
 │   │   │   └── webhook/route.ts        # Order creation + COGS capture + inventory + discount commit
 │   │   ├── admin/
 │   │   │   ├── orders/route.ts         # Order list — joins order_items for item_subtotal
 │   │   │   ├── orders/[id]/route.ts    # Order CRUD + email triggers + delivery flows
-│   │   │   └── accounting/route.ts     # Monthly/annual revenue, COGS, by-source aggregation
+│   │   │   ├── accounting/route.ts     # Monthly/annual revenue, COGS, by-source aggregation
+│   │   │   ├── customer-restrictions/route.ts        # List + create restrictions
+│   │   │   ├── customer-restrictions/[id]/route.ts   # Get + update + delete restriction
+│   │   │   ├── item-origin-lookup/route.ts            # SKU lookup + image delete (single + bulk)
+│   │   │   ├── emails/collection-drops/route.ts       # Collection drop email send
+│   │   │   └── ...
 │   │   ├── subscribe/route.ts          # Email list signup + welcome email
 │   │   ├── validate-discount/route.ts  # Read-only discount preview for cart drawer
-│   │   ├── unsubscribe/route.ts        # One-click unsubscribe (base64 email param)
+│   │   ├── unsubscribe/route.ts        # Soft-delete unsubscribe (token param)
 │   │   ├── generate-product-copy/route.ts
 │   │   ├── upload-image/route.ts
 │   │   ├── create-upload-url/route.ts
@@ -300,6 +397,9 @@ jade-shop/
 │       ├── Accordion.tsx               # Hash-aware accordion (URL sync + auto-scroll)
 │       ├── Navbar.tsx
 │       ├── FeaturedCarousel.tsx
+│       ├── collection/
+│       │   ├── CollectionScene.tsx     # Shoppable scene: tag dots, hover/tap cards, mobile overlay
+│       │   └── CollectionStory.tsx     # Luxury editorial section with IntersectionObserver fade-in
 │       └── ...
 │
 ├── lib/
@@ -307,6 +407,9 @@ jade-shop/
 │   ├── discount-emails.ts              # Welcome, referral invite, referral reward emails
 │   ├── orders.ts                       # Confirmation, status, delivery date emails; helpers
 │   ├── stripe-metadata.ts              # Compact encode/decode + discount metadata
+│   ├── customer-restrictions.ts        # Multi-signal restriction check + attempt logging
+│   ├── active-event-prices.ts          # Resolves live campaign event pricing per product
+│   ├── collection-email.ts             # Collection drop email HTML rendering
 │   ├── claude.ts
 │   ├── watermark.ts
 │   ├── storage.ts
@@ -327,7 +430,7 @@ jade-shop/
 │   └── discount.test.ts                # 34 Vitest tests — logic, abuse, flow
 │
 ├── supabase/
-│   └── migration_001.sql → migration_071.sql
+│   └── migration_001.sql → migration_082.sql
 │
 ├── middleware.ts
 └── next.config.ts
@@ -345,10 +448,13 @@ Customer fills email + optional discount code in cart drawer
       → validateDiscount() — checks referral, campaign, store credit, welcome
       → Returns { valid, source, discountAmountCents, displayMessage }
   → Cart displays discounted total + transaction fee on discounted amount
-  → Customer clicks Checkout
+  → Customer fills email + shipping address, clicks Checkout
   → POST /api/stripe/checkout
       → Re-validate all items (price + sold status)
       → Re-run validateDiscount() server-side (client discount amount ignored)
+      → checkCustomerRestriction() — email + address matched against restrictions
+          → blocked: reject with 403 and log attempt
+          → review: log attempt, continue checkout
       → Build line items: items + shipping + tx fee + discount (negative)
       → Encode discount into Stripe session metadata
       → stripe.checkout.sessions.create(...)
@@ -423,14 +529,14 @@ Page renders (RSC) → resolveImageUrl("wm/abc123.jpg")
 
 | Endpoint | Method | Auth | Description |
 |---|---|---|---|
-| `/api/stripe/checkout` | POST | Beta: `x-admin-password` header | Validates cart + discount, creates Stripe session |
+| `/api/stripe/checkout` | POST | Beta: `x-admin-password` header | Validates cart + discount + restriction check, creates Stripe session |
 | `/api/stripe/webhook` | POST | `Stripe-Signature` header | Handles `checkout.session.completed` |
 | `/api/admin/orders/[id]` | GET | `admin_session` cookie | Fetch order details |
 | `/api/admin/orders/[id]` | PATCH | `admin_session` cookie | Update order — status, delivery date, items, address, fees |
 | `/api/subscribe` | POST | — | Add email to subscribers list; generate 6-digit coupon; fire welcome email |
 | `/api/validate-discount` | POST | — | Preview discount (read-only); returns amount + message |
-| `/api/unsubscribe` | GET | — | Remove email from subscribers (`?e=<base64-email>`) |
-| `/api/upload-image` | POST | `admin_session` cookie | Watermark + upload product image |
+| `/api/unsubscribe` | GET | — | Soft-delete subscriber by token (`?token=<uuid>`) |
+| `/api/upload-image` | POST | `admin_session` cookie | Watermark + upload product image; record in `product_original_images` |
 | `/api/create-upload-url` | POST | `admin_session` cookie | Signed URL for direct video upload |
 | `/api/generate-product-copy` | POST | session cookie | Claude vision → title, description, blemishes, facts; token-gated for partners |
 | `/api/revalidate` | POST | `?secret=` query param | Clear Next.js ISR cache for product pages |
@@ -447,6 +553,11 @@ Page renders (RSC) → resolveImageUrl("wm/abc123.jpg")
 | `/api/admin/products/[id]/approve` | PATCH | `admin_session` cookie | Approve or dismiss a pending product submission |
 | `/api/admin/accounting` | GET | `admin_session` cookie | Monthly/annual revenue + COGS aggregation; by-source breakdown; `hasCogs` flag |
 | `/api/admin/orders` | GET | `admin_session` cookie | Paginated order list with joined `item_subtotal` (sum of `price_usd × quantity`) |
+| `/api/admin/customer-restrictions` | GET / POST | `admin_session` cookie | List active restrictions / create restriction |
+| `/api/admin/customer-restrictions/[id]` | GET / PUT / DELETE | `admin_session` cookie | Fetch restriction + attempts / update / delete |
+| `/api/admin/item-origin-lookup` | GET | `admin_session` cookie | Lookup original images + vendor by SKU; generates signed URLs |
+| `/api/admin/item-origin-lookup` | DELETE | `admin_session` cookie | Delete single (`?id=`) or bulk (`?ids=id1,id2,...`) original images from DB + storage |
+| `/api/admin/emails/collection-drops` | POST | `admin_session` cookie | Send collection drop announcement email to selected subscribers |
 
 ---
 
@@ -528,6 +639,39 @@ All schema changes are tracked as numbered SQL files in `/supabase/`. Run them i
 | 035 | Subscriber coupon codes: `email_subscribers.welcome_coupon_code` (CHAR 6, unique), `welcome_coupon_expires_at`, `used_fingerprint`; `coupon_campaigns.created_by`, `coupon_campaigns.notes` |
 | 036–047 | Partner portal refinements, sourcing workflow, approved-user access controls, shipment tracking, token request improvements |
 | 048 | Add `cogs_cents integer` to `orders` — stores cost of goods sold in USD cents, captured at webhook time from `imported_price_vnd` at a fixed 1 USD = 26,000 VND rate |
+| 049 | Add scheduled send and reminder tracking columns to `coupon_campaigns` (`scheduled_send_at`, `reminder1_sent_at`, `reminder2_sent_at`) |
+| 050 | Allow `on_sale` status on `product_options` (previously only `available` / `sold`) |
+| 051 | Replace per-option `images[]` array with a single `image_index` pointer; variants reference parent product images by index rather than duplicating paths |
+| 052 | Add `shipping_address_json` JSONB fallback on orders for orders without a `customer_id` |
+| 053 | Rewards magic-link tokens — `reward_tokens` table with 15-minute TTL for the no-login `/rewards` portal |
+| 054 | Full accounting schema: `acct_vendors`, `product_costs`, `order_fulfillment_costs`, `business_expenses`, `stripe_accounting_snapshots` |
+| 055 | Add `show_price boolean` to products — controls public price visibility independently from `price_display_usd` |
+| 056 | `order_payments` universal payment ledger — anchors all payment methods to BBJ order codes |
+| 057 | `accounting_summaries` cache table — pre-computed P&L per month/quarter/year |
+| 058 | `accounting_settings` — single-row config for supplies cost estimate method |
+| 059 | Add supplies reconciliation columns to `accounting_summaries` for estimated vs. actual comparison |
+| 060 | Product SKU column (unique 8-digit); `product_original_images` table — original unwatermarked images keyed by SKU |
+| 061 | Backfill `product_original_images` for all existing listings from `wm/` storage paths |
+| 062 | Add `vendor_id` to `product_original_images` and backfill |
+| 063 | `product_originals` table — SKU → vendor mapping snapshot (denormalised `vendor_name` survives vendor record changes) |
+| 064–065 | Add then corrected `label_cost_usd` to `product_costs`; remove from `total_cogs_usd` (label cost tracked separately from COGS) |
+| 066 | Rename product color "purple" → "lavender" across all `color[]` arrays |
+| 067 | Add `unsubscribe_token uuid` to `email_subscribers` for per-recipient unsubscribe links |
+| 068 | Soft-delete unsubscribes — replace hard-delete with `unsubscribed_at` timestamp; prevents coupon re-issuance via re-subscribe |
+| 069 | Add `cancellation_reason` to orders (`piece_unavailable` / `customer_cancelled`) for tracking-page variant messaging |
+| 070 | Add `messages jsonb` array to `site_banners` for multi-message rotating ticker support |
+| 071 | Extend `site_banners` with full banner system: rename `target_date` → `start_date`, add `end_date`, `is_active`, `theme`, `bg_color`, `text_color`, `accent_color` |
+| 072 | Add `giveaway` as a valid `coupon_purpose` value |
+| 073 | Add `archived` to product status constraint; add `published_at` timestamp |
+| 074 | `campaign_events` table — named sale events with category, date range, discount type/amount, status; `campaign_event_products` join table |
+| 075 | Add `countdown_label` to `site_banners` (`Starting in` / `Ends in`) for countdown mode |
+| 076 | Add `campaign_event` to `orders.discount_source` allowed values |
+| 077 | Collections system: `collections`, `collection_scenes`, `collection_scene_tags`, `collection_products` tables |
+| 078 | Add `mobile_x` / `mobile_y` position overrides to `collection_scene_tags` for mobile image crops |
+| 079 | Convert `is_clearance` from a `status` value to an independent boolean flag on products |
+| 080 | Add `hero_scene_id` to `collections` — allows selecting an existing scene as the hero banner |
+| 081 | Add hero focal point columns to `collections` (`hero_focal_x/y`, `hero_mobile_focal_x/y`, `hero_crop_*`) for CSS `object-position` control |
+| 082 | Customer restriction system: `customer_restrictions` table (email, phone, address, severity, reason, status); `blocked_checkout_attempts` table |
 
 ---
 
@@ -631,3 +775,12 @@ A separate table would require schema parity with `products` and a merge step th
 
 **Why gate AI generation by tokens rather than a flat rate limit?**
 Token budgets give admin fine-grained control per partner (a high-volume partner can be granted more; a low-trust partner stays at the default 10) without hard-coding rate limiting logic. It also makes the cost model transparent to partners — they know exactly how many generations they have left and can request more with justification.
+
+**Why use two severity levels (blocked vs. review) for customer restrictions rather than a single block?**
+Hard-blocking every flagged customer risks false positives — a suspicious address pattern could match a legitimate repeat buyer. Review-severity lets the admin monitor a customer's activity (all attempts are logged) without refusing their order. Only confirmed bad actors get the `blocked` flag. This mirrors fraud tooling patterns: flag first, block after evidence accumulates.
+
+**Why render the mobile collection tag card at the `CollectionScene` level instead of inside `TagDot`?**
+The `TagDot` wrapper applies `transform: translate(-50%, -50%)` to centre the dot on its coordinates. CSS specifies that `position: fixed` inside any element with a `transform`, `filter`, or `will-change` property creates a new containing block — so a `fixed` card inside `TagDot` anchors to the dot rather than the viewport, causing it to appear clipped at the tag position. Moving the overlay rendering to the parent `CollectionScene` figure (which has no transform) means `position: fixed` resolves to the viewport correctly, producing the intended bottom-of-screen overlay on mobile.
+
+**Why soft-delete unsubscribes instead of hard-deleting the row?**
+Hard-deleting allowed a user to re-subscribe with the same email and receive a fresh welcome coupon code, bypassing the single-use intent. Soft-deletion (`unsubscribed_at` timestamp) preserves the subscriber record and coupon history. The subscription API checks for an existing row (including soft-deleted ones) before generating a new code, so re-subscribers do not receive a second coupon.

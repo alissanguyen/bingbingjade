@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
     collectionId?: string;
     subject?: string;
     intro?: string;
+    sceneIds?: string[];
     productIds?: string[];
     targetEmails?: string[] | null;
   };
@@ -44,11 +45,22 @@ export async function POST(req: NextRequest) {
 
   if (!collection) return NextResponse.json({ error: "Collection not found." }, { status: 404 });
 
-  // Resolve hero scene image (first by sort_order)
-  const scenes = (collection.collection_scenes ?? []).sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order);
-  const sceneImageUrl = scenes[0]?.image
-    ? await resolveImageUrl(scenes[0].image)
-    : null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allScenes = ((collection.collection_scenes ?? []) as any[])
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+  // Filter to selected scene IDs (preserve sort order), falling back to all scenes
+  const selectedScenes = body.sceneIds?.length
+    ? body.sceneIds
+        .map((id) => allScenes.find((s) => s.id === id))
+        .filter(Boolean)
+    : allScenes;
+
+  const sceneImageUrls: string[] = (
+    await Promise.all(
+      selectedScenes.map((s) => s.image ? resolveImageUrl(s.image as string) : Promise.resolve(null))
+    )
+  ).filter((url): url is string => url !== null);
 
   type RawProduct = { id: string; name: string; category: string; slug: string; public_id: string; show_price: boolean; price_display_usd: number | null; sale_price_usd: number | null; status: string; images: string[] };
 
@@ -82,7 +94,7 @@ export async function POST(req: NextRequest) {
   const renderHtml = (unsubscribeUrl: string) => buildCollectionDropsHtml({
     collectionName: collection.name,
     collectionSlug: collection.slug,
-    sceneImageUrl,
+    sceneImageUrls,
     subject,
     intro: body.intro?.trim() ?? "",
     products: emailProducts,

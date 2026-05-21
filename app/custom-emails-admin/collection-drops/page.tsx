@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { productSlug } from "@/lib/slug";
 import { resolveImageUrl, resolveFirstImageUrl } from "@/lib/storage";
-import { CollectionDropsClient, type CollectionOption, type PickerSubscriber } from "./CollectionDropsClient";
+import { CollectionDropsClient, type CollectionOption, type CollectionScene, type PickerSubscriber } from "./CollectionDropsClient";
 
 export default async function CollectionDropsPage() {
   const [{ data: rawCollections }, { data: subs }, { count }] = await Promise.all([
@@ -32,12 +32,17 @@ export default async function CollectionDropsPage() {
 
   const collections: CollectionOption[] = await Promise.all(
     (rawCollections ?? []).map(async (col) => {
-      const scenes = (col.collection_scenes ?? []).sort(
-        (a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rawScenes = ((col.collection_scenes ?? []) as any[]).sort(
+        (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
       );
-      const sceneImageUrl = scenes[0]?.image
-        ? await resolveImageUrl(scenes[0].image)
-        : null;
+      const scenes: CollectionScene[] = await Promise.all(
+        rawScenes.map(async (s) => ({
+          id: s.id as string,
+          imageUrl: s.image ? await resolveImageUrl(s.image as string) : null,
+          sortOrder: s.sort_order ?? 0,
+        }))
+      );
 
       type RawP = { id: string; name: string; category: string; slug: string; public_id: string; price_display_usd: number | null; sale_price_usd: number | null; status: string; images: string[] };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -63,7 +68,7 @@ export default async function CollectionDropsPage() {
         name: col.name,
         slug: col.slug,
         description: col.description ?? null,
-        sceneImageUrl,
+        scenes,
         products,
       };
     })

@@ -50,6 +50,7 @@ export function CollectionDropsClient({
   const [selectedCollectionId, setSelectedCollectionId] = useState<string>(collections[0]?.id ?? "");
   const [subject, setSubject] = useState("");
   const [intro, setIntro] = useState("");
+  const [selectedSceneIds, setSelectedSceneIds] = useState<Set<string>>(new Set());
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
   const [targetMode, setTargetMode] = useState<"all" | "selected">("all");
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
@@ -67,6 +68,7 @@ export function CollectionDropsClient({
     setSelectedCollectionId(id);
     setSubject(`Introducing ${col.name} — BingBing Jade`);
     setIntro(col.description ?? "");
+    setSelectedSceneIds(new Set(col.scenes.map((s) => s.id)));
     setSelectedProductIds(new Set(col.products.map((p) => p.id)));
     setError(null);
     setResult(null);
@@ -94,10 +96,16 @@ export function CollectionDropsClient({
   }
 
   function buildBody() {
+    const col = collections.find((c) => c.id === selectedCollectionId);
+    const orderedSceneIds = (col?.scenes ?? [])
+      .filter((s) => selectedSceneIds.has(s.id))
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((s) => s.id);
     return {
       collectionId: selectedCollectionId,
       subject: subject.trim(),
       intro: intro.trim(),
+      sceneIds: orderedSceneIds.length > 0 ? orderedSceneIds : undefined,
       productIds: selectedProductIds.size > 0 ? [...selectedProductIds] : undefined,
       targetEmails: targetMode === "selected" ? [...selectedEmails] : null,
     };
@@ -168,8 +176,8 @@ export function CollectionDropsClient({
                     className={`relative text-left rounded-xl border-2 overflow-hidden transition-all ${isSelected ? "border-teal-500 ring-1 ring-teal-500/30" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"}`}
                   >
                     <div className="relative aspect-video bg-gray-100 dark:bg-gray-800">
-                      {col.sceneImageUrl
-                        ? <Image src={col.sceneImageUrl} alt={col.name} fill unoptimized className="object-cover" sizes="200px" />
+                      {col.scenes[0]?.imageUrl
+                        ? <Image src={col.scenes[0].imageUrl} alt={col.name} fill unoptimized className="object-cover" sizes="200px" />
                         : <div className="w-full h-full flex items-center justify-center text-2xl">🪨</div>}
                       <div className={`absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center transition-all ${isSelected ? "bg-teal-500 text-white" : "bg-white/80 border border-gray-300"}`}>
                         {isSelected && <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>}
@@ -185,6 +193,56 @@ export function CollectionDropsClient({
             </div>
           )}
         </section>
+
+        {/* Scene selection */}
+        {collection && collection.scenes.length > 0 && (
+          <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Scenes</h2>
+                <p className="text-[11px] text-gray-400 mt-0.5">First selected scene is used as the email hero banner. All selected scenes appear as a gallery.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-400">{selectedSceneIds.size} selected</span>
+                <button type="button" onClick={() => setSelectedSceneIds(new Set(collection.scenes.map((s) => s.id)))}
+                  className="text-[11px] text-teal-600 dark:text-teal-400 hover:underline">Select all</button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {collection.scenes.map((scene, i) => {
+                const isSelected = selectedSceneIds.has(scene.id);
+                const orderedSelected = collection.scenes
+                  .filter((s) => selectedSceneIds.has(s.id))
+                  .sort((a, b) => a.sortOrder - b.sortOrder);
+                const posInSelected = orderedSelected.findIndex((s) => s.id === scene.id);
+                const isHero = posInSelected === 0;
+                return (
+                  <button key={scene.id} type="button"
+                    onClick={() => setSelectedSceneIds((prev) => {
+                      const next = new Set(prev);
+                      next.has(scene.id) ? next.delete(scene.id) : next.add(scene.id);
+                      return next;
+                    })}
+                    className={`relative text-left rounded-xl border-2 overflow-hidden transition-all ${isSelected ? "border-teal-500 ring-1 ring-teal-500/30" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"}`}
+                  >
+                    <div className="relative aspect-video bg-gray-100 dark:bg-gray-800">
+                      {scene.imageUrl
+                        ? <Image src={scene.imageUrl} alt={`Scene ${i + 1}`} fill unoptimized className="object-cover" sizes="200px" />
+                        : <div className="w-full h-full flex items-center justify-center text-xl">🖼️</div>}
+                      <div className={`absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center transition-all ${isSelected ? "bg-teal-500 text-white" : "bg-white/80 border border-gray-300"}`}>
+                        {isSelected && <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>}
+                      </div>
+                      {isSelected && isHero && (
+                        <span className="absolute bottom-1.5 left-1.5 bg-teal-600 text-white text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">Hero</span>
+                      )}
+                    </div>
+                    <p className="px-2 py-1.5 text-[10px] text-gray-400">Scene {i + 1}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Email details */}
         <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
