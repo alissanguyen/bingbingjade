@@ -36,6 +36,13 @@ const EMAIL_TYPES = [
     description: "Launch seasonal promotions and special campaigns — Black Friday, Mother's Day, Flash Sales, and more.",
     color: "rose",
   },
+  {
+    href: "/custom-emails-admin/collection-drops",
+    icon: "⬡",
+    label: "Collection Drops",
+    description: "Announce a BingBing exclusive collection with its hero imagery and featured pieces.",
+    color: "teal",
+  },
 ];
 
 const colorMap: Record<string, { card: string; icon: string; badge: string }> = {
@@ -63,6 +70,11 @@ const colorMap: Record<string, { card: string; icon: string; badge: string }> = 
     card: "hover:border-rose-300 dark:hover:border-rose-700",
     icon: "bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400",
     badge: "text-rose-700 dark:text-rose-400",
+  },
+  teal: {
+    card: "hover:border-teal-300 dark:hover:border-teal-700",
+    icon: "bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400",
+    badge: "text-teal-700 dark:text-teal-400",
   },
 };
 

@@ -84,6 +84,7 @@ export function AdminBar({
     { href: "/vendors", label: "Vendors" },
     { href: "/orders-admin", label: "Orders" },
     { href: "/customers-admin", label: "Customers" },
+    { href: "/restricted-customers", label: "Restricted List" },
     { href: "/sourcing-admin", label: "Sourcing" },
     { href: "/item-origin-lookup", label: "Origin Lookup" },
     { href: "/accounting-admin", label: "Finance Snapshot" },
@@ -121,6 +122,7 @@ export function AdminBar({
             {/* Group 2 — Sales & Ops */}
             <a href="/orders-admin" className={linkCls}>Orders</a>
             <a href="/customers-admin" className={linkCls}>Customers</a>
+            <a href="/restricted-customers" className={linkCls}>Restricted List</a>
             <a href="/sourcing-admin" className={linkCls}>Sourcing</a>
             <a href="/item-origin-lookup" className={linkCls}>Origin Lookup</a>
 

@@ -88,6 +88,9 @@ export function CheckoutClient() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Customer email
+  const [customerEmail, setCustomerEmail] = useState("");
+
   // Submit
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -219,7 +222,8 @@ export function CheckoutClient() {
 
   const addressComplete = addressValue !== null;
 
-  const canCheckout = availableItems.length > 0 && adminUnlocked && addressComplete && paymentMethod !== null;
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail.trim());
+  const canCheckout = availableItems.length > 0 && adminUnlocked && emailValid && addressComplete && paymentMethod !== null;
 
   // Stable key — only changes when the address or item prices genuinely differ.
   // Avoids the re-render loop caused by availableItems being a new array ref each render.
@@ -359,6 +363,7 @@ export function CheckoutClient() {
           items: availableItems,
           expedited: prioritySourcing && hasSourcingItems,
           shippingInsurance,
+          customerEmail: customerEmail.trim(),
           discountCode: discountCode.trim() || undefined,
           taxAmountCents: taxAmountCents > 0 ? taxAmountCents : undefined,
           taxCalculationId: taxCalculationId || undefined,
@@ -800,6 +805,26 @@ export function CheckoutClient() {
                     >
                       <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${shippingInsurance ? "translate-x-4" : "translate-x-0"}`} />
                     </button>
+                  </div>
+                )}
+
+                {/* ── Email ───────────────────────────────────────── */}
+                {availableItems.length > 0 && (
+                  <div className="rounded-xl border border-stone-200 dark:border-gray-700 bg-stone-50 dark:bg-gray-900/40 p-2.5 sm:p-3.5 space-y-2">
+                    <p className="text-[11px] sm:text-[15px] uppercase tracking-[0.2em] font-semibold text-stone-400 dark:text-gray-500">
+                      Email
+                    </p>
+                    <input
+                      type="email"
+                      autoComplete="email"
+                      value={customerEmail}
+                      onChange={(e) => setCustomerEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      className="w-full rounded-lg border border-stone-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-[13px] text-stone-900 dark:text-gray-100 placeholder-stone-400 dark:placeholder-gray-600 outline-none focus:ring-2 focus:ring-emerald-500 transition-shadow"
+                    />
+                    <p className="text-[11px] sm:text-[12px] text-stone-400 dark:text-gray-500">
+                      We use this to send you your order confirmation.
+                    </p>
                   </div>
                 )}
 

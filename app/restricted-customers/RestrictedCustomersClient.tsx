@@ -268,7 +268,7 @@ export function RestrictedCustomersClient() {
       const res = await fetch("/api/admin/customer-restrictions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, customer_id: form.customer_id || null }),
       });
       const data = await res.json();
       if (!res.ok) { showToast("err", data.error ?? "Failed to create restriction"); return; }
@@ -307,7 +307,7 @@ export function RestrictedCustomersClient() {
       const res = await fetch(`/api/admin/customer-restrictions/${editingId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, customer_id: form.customer_id || null }),
       });
       const data = await res.json();
       if (!res.ok) { showToast("err", data.error ?? "Save failed"); return; }
