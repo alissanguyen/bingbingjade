@@ -151,7 +151,8 @@ export default async function Products({
   const selectedOrigins = params.origins?.split(",").filter(Boolean) ?? [];
   const selectedShipping = params.shipping?.split(",").filter(Boolean) ?? [];
   const filterClearance = params.clearance === "1";
-  const selectedCategory = params.category ?? "";
+  const selectedCategories = params.category ? params.category.split(",").filter(Boolean) : [];
+  const selectedCategory = selectedCategories.length === 1 ? selectedCategories[0] : (params.category ?? "");
   const searchQuery = params.search?.trim() ?? "";
   const minSize = params.minSize ? Number(params.minSize) : null;
   const maxSize = params.maxSize ? Number(params.maxSize) : null;
@@ -209,8 +210,8 @@ export default async function Products({
   })).filter((p) => {
     // Search filter
     if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    // Category filter
-    if (selectedCategory && p.category !== selectedCategory) return false;
+    // Category filter (supports comma-separated multi-category, e.g. ring,earring)
+    if (selectedCategories.length > 0 && !selectedCategories.includes(p.category)) return false;
     // Shipping filter
     if (selectedShipping.length > 0) {
       const matchesShipNow = selectedShipping.includes("ship_now") && p.quick_ship;
@@ -310,8 +311,8 @@ export default async function Products({
 
   // Compute counts from the lightweight product list scoped to the selected category.
   // The image-bearing card rows are loaded later only for a 3-page window.
-  const countBase = selectedCategory
-    ? allProductsList.filter((p) => p.category === selectedCategory)
+  const countBase = selectedCategories.length > 0
+    ? allProductsList.filter((p) => selectedCategories.includes(p.category))
     : allProductsList;
   const statusCounts: Record<string, number> = {};
   const originCounts: Record<string, number> = {};

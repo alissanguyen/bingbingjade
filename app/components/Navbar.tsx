@@ -24,8 +24,8 @@ const NAV_ALL_PIECES = [
   { href: "/products", label: "All Products" },
   { href: "/products?category=bangle", label: "Bangles" },
   { href: "/products?category=bracelet", label: "Bracelets" },
-  { href: "/products?category=ring", label: "Rings & Earrings" },
-  { href: "/products?category=pendant", label: "Pendants & Necklaces" },
+  { href: "/products?category=ring,earring", label: "Rings & Earrings" },
+  { href: "/products?category=pendant,necklace", label: "Pendants & Necklaces" },
   { href: "/products?category=set", label: "Sets" },
   { href: "/products?category=raw_material", label: "Raw Materials" },
 ];
