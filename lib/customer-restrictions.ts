@@ -80,7 +80,8 @@ export interface RestrictionCheckParams {
 }
 
 export interface RestrictionCheckResult {
-  blocked: boolean;
+  blocked: boolean;   // true only for severity=blocked
+  flagged: boolean;   // true for severity=review (checkout allowed but logged)
   restrictionId?: string;
   matchedSignals?: string[];
   severity?: string;
@@ -112,24 +113,24 @@ export async function checkCustomerRestriction(
     )
     .eq("status", "active");
 
-  if (!restrictions || restrictions.length === 0) return { blocked: false };
+  if (!restrictions || restrictions.length === 0) return { blocked: false, flagged: false };
 
   for (const r of restrictions) {
     // ── Strong singles ────────────────────────────────────────────────────
     if (params.customerId && r.customer_id && params.customerId === r.customer_id) {
-      return { blocked: true, restrictionId: r.id, matchedSignals: ["customer_id"], severity: r.severity };
+      return { blocked: r.severity !== "review", flagged: r.severity === "review", restrictionId: r.id, matchedSignals: ["customer_id"], severity: r.severity };
     }
 
     if (normEmail && r.normalized_email && normEmail === r.normalized_email) {
-      return { blocked: true, restrictionId: r.id, matchedSignals: ["email"], severity: r.severity };
+      return { blocked: r.severity !== "review", flagged: r.severity === "review", restrictionId: r.id, matchedSignals: ["email"], severity: r.severity };
     }
 
     if (normPhone && r.normalized_phone && normPhone === r.normalized_phone) {
-      return { blocked: true, restrictionId: r.id, matchedSignals: ["phone"], severity: r.severity };
+      return { blocked: r.severity !== "review", flagged: r.severity === "review", restrictionId: r.id, matchedSignals: ["phone"], severity: r.severity };
     }
 
     if (normAddrFull && r.normalized_address && normAddrFull === r.normalized_address) {
-      return { blocked: true, restrictionId: r.id, matchedSignals: ["full_address"], severity: r.severity };
+      return { blocked: r.severity !== "review", flagged: r.severity === "review", restrictionId: r.id, matchedSignals: ["full_address"], severity: r.severity };
     }
 
     // ── Two-signal combinations ───────────────────────────────────────────
@@ -156,7 +157,8 @@ export async function checkCustomerRestriction(
 
     if (signals.length > 0) {
       return {
-        blocked: true,
+        blocked: r.severity !== "review",
+        flagged: r.severity === "review",
         restrictionId: r.id,
         matchedSignals: [...new Set(signals)],
         severity: r.severity,
@@ -164,7 +166,7 @@ export async function checkCustomerRestriction(
     }
   }
 
-  return { blocked: false };
+  return { blocked: false, flagged: false };
 }
 
 // ── Logging ───────────────────────────────────────────────────────────────────

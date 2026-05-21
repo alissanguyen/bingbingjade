@@ -363,7 +363,7 @@ export async function POST(req: NextRequest) {
       customerId: null,
     });
 
-    if (restrictionResult.blocked) {
+    if (restrictionResult.blocked || restrictionResult.flagged) {
       logBlockedAttempt({
         restrictionId: restrictionResult.restrictionId!,
         matchedSignals: restrictionResult.matchedSignals ?? [],
@@ -382,7 +382,9 @@ export async function POST(req: NextRequest) {
           items: validatedItems.map((i) => ({ productId: i.productId, name: i.productName, price: i.price })),
         },
       }).catch(() => {});
+    }
 
+    if (restrictionResult.blocked) {
       return NextResponse.json(
         { error: "We're unable to complete this order online at this time. Please contact us if you believe this was a mistake." },
         { status: 403 }
@@ -612,6 +614,7 @@ export async function POST(req: NextRequest) {
       payment_method_types: paymentMethod === "bnpl"
         ? ACTIVE_BNPL_METHODS
         : ["card"],
+      ...(body.customerEmail ? { customer_email: normalizeEmail(body.customerEmail) } : {}),
       line_items: lineItems,
       success_url: `${SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${SITE_URL}/checkout/cancel`,
