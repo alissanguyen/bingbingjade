@@ -33,6 +33,7 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
   const [tab, setTab] = useState<(typeof TAB_VALUES)[number]>("all");
   const [subscribers, setSubscribers] = useState(initial);
   const [resending, setResending] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkForm, setBulkForm] = useState({ subject: "", message: "", target: "all" as "all" | "unused" });
@@ -81,6 +82,26 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
       }
     } finally {
       setResending(null);
+    }
+  }
+
+  async function handleRestore(subscriber: Subscriber) {
+    if (!confirm(`Restore coupon for ${subscriber.email}?\n\nThis clears the used fingerprint and resets the expiry to 30 days from today so they can redeem it again.`)) return;
+    setRestoring(subscriber.id);
+    try {
+      const res = await fetch(`/api/admin/subscribers/${subscriber.id}/restore-coupon`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        setSubscribers((prev) => prev.map((s) => s.id === subscriber.id
+          ? { ...s, welcome_discount_redeemed_at: null, used_fingerprint: null, welcome_coupon_expires_at: data.new_expiry }
+          : s
+        ));
+        showToast(`Coupon restored for ${subscriber.email} — expires in 30 days`);
+      } else {
+        showToast(data.error ?? "Restore failed.");
+      }
+    } finally {
+      setRestoring(null);
     }
   }
 
@@ -185,6 +206,7 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
               {filteredLocal.map((s) => {
                 const status = couponStatus(s);
                 const canResend = !!s.welcome_coupon_code && !s.welcome_discount_redeemed_at;
+                const canRestore = !!s.welcome_coupon_code && !!s.welcome_discount_redeemed_at;
                 return (
                   <tr key={s.id}>
                     <td className="px-5 py-3">
@@ -208,16 +230,28 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
                       {fmt(s.subscribed_at)}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {canResend && (
-                        <button
-                          type="button"
-                          disabled={resending === s.id}
-                          onClick={() => handleResend(s)}
-                          className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline disabled:opacity-50"
-                        >
-                          {resending === s.id ? "Sending…" : "Resend"}
-                        </button>
-                      )}
+                      <div className="flex items-center justify-end gap-3">
+                        {canRestore && (
+                          <button
+                            type="button"
+                            disabled={restoring === s.id}
+                            onClick={() => handleRestore(s)}
+                            className="text-xs text-amber-600 dark:text-amber-400 hover:underline disabled:opacity-50"
+                          >
+                            {restoring === s.id ? "Restoring…" : "Restore"}
+                          </button>
+                        )}
+                        {canResend && (
+                          <button
+                            type="button"
+                            disabled={resending === s.id}
+                            onClick={() => handleResend(s)}
+                            className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline disabled:opacity-50"
+                          >
+                            {resending === s.id ? "Sending…" : "Resend"}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
