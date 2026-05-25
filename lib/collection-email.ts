@@ -98,7 +98,7 @@ export function buildCollectionDropsHtml(params: {
     ? `
         <!-- ═══ SCENE GALLERY ═══ -->
         <tr>
-          <td style="padding:0;line-height:0;font-size:0;">
+          <td style="padding:40px 0 0;line-height:0;font-size:0;">
             <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
               <tr>
                 <td width="33%" style="padding:0 1.5px 0 0;vertical-align:top;">${colHtml(col1)}</td>
