@@ -37,6 +37,8 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
   const [restoring, setRestoring] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkResending, setBulkResending] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkForm, setBulkForm] = useState({ subject: "", message: "", target: "all" as "all" | "unused" });
@@ -57,7 +59,7 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
       const data = await res.json();
       if (res.ok) {
         showToast(`Done — ${data.assigned} codes assigned, ${data.skipped} skipped.`);
-        await loadTab(tab); // refresh the list
+        await loadTab(tab);
       } else {
         showToast(data.error ?? "Backfill failed.");
       }
@@ -68,6 +70,7 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
 
   async function loadTab(t: (typeof TAB_VALUES)[number]) {
     setTab(t);
+    setSelectedIds(new Set());
     const res = await fetch(`/api/admin/subscribers?status=${t}`);
     if (res.ok) setSubscribers(await res.json());
   }
@@ -90,11 +93,8 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
     try {
       const res = await fetch(`/api/admin/subscribers/${subscriber.id}/resend`, { method: "POST" });
       const data = await res.json();
-      if (res.ok) {
-        showToast(`Coupon email resent to ${subscriber.email}`);
-      } else {
-        showToast(data.error ?? "Failed to resend.");
-      }
+      if (res.ok) showToast(`Coupon email resent to ${subscriber.email}`);
+      else showToast(data.error ?? "Failed to resend.");
     } finally {
       setResending(null);
     }
@@ -120,6 +120,29 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
     }
   }
 
+  async function handleBulkResend() {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    if (!confirm(`Send the "expiring soon" coupon email to ${ids.length} subscriber${ids.length === 1 ? "" : "s"}?`)) return;
+    setBulkResending(true);
+    try {
+      const res = await fetch("/api/admin/subscribers/bulk-resend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(`Sent to ${data.sent} subscriber${data.sent === 1 ? "" : "s"}${data.failed > 0 ? `, ${data.failed} failed` : ""}.`);
+        setSelectedIds(new Set());
+      } else {
+        showToast(data.error ?? "Bulk resend failed.");
+      }
+    } finally {
+      setBulkResending(false);
+    }
+  }
+
   async function handleBulkSend(e: React.FormEvent) {
     e.preventDefault();
     setBulkSending(true);
@@ -131,11 +154,8 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
         body: JSON.stringify(bulkForm),
       });
       const data = await res.json();
-      if (res.ok) {
-        setBulkResult(data);
-      } else {
-        showToast(data.error ?? "Bulk send failed.");
-      }
+      if (res.ok) setBulkResult(data);
+      else showToast(data.error ?? "Bulk send failed.");
     } finally {
       setBulkSending(false);
     }
@@ -148,6 +168,33 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
     if (tab === "expired") return s.welcome_coupon_code && !s.welcome_discount_redeemed_at && s.welcome_coupon_expires_at && new Date(s.welcome_coupon_expires_at) < now;
     return true;
   });
+
+  const resendableIds = filteredLocal
+    .filter((s) => s.welcome_coupon_code && !s.welcome_discount_redeemed_at)
+    .map((s) => s.id);
+  const allSelected = resendableIds.length > 0 && resendableIds.every((id) => selectedIds.has(id));
+  const someSelected = selectedIds.size > 0;
+
+  function toggleAll() {
+    if (allSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        resendableIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => new Set([...prev, ...resendableIds]));
+    }
+  }
+
+  function toggleOne(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10 space-y-6">
@@ -167,7 +214,17 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
           <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Subscribers</h1>
           <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{initial.length} total</p>
         </div>
-        <div className="flex gap-2 self-start sm:self-auto">
+        <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+          {someSelected && (
+            <button
+              type="button"
+              onClick={handleBulkResend}
+              disabled={bulkResending}
+              className="text-sm font-medium px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50 transition-colors"
+            >
+              {bulkResending ? "Sending…" : `Resend Selected (${selectedIds.size})`}
+            </button>
+          )}
           <button
             type="button"
             onClick={handleBackfill}
@@ -210,10 +267,19 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
       ) : (
         <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[600px]">
+          <table className="w-full text-sm min-w-[640px]">
             <thead>
               <tr className="border-b border-gray-100 dark:border-gray-800 text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                <th className="text-left px-5 py-3 font-medium">Email</th>
+                <th className="px-4 py-3 w-8">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                    disabled={resendableIds.length === 0}
+                    className="rounded border-gray-300 dark:border-gray-600 text-emerald-600 focus:ring-emerald-500 disabled:opacity-30"
+                  />
+                </th>
+                <th className="text-left px-3 py-3 font-medium">Email</th>
                 <th className="text-left px-4 py-3 font-medium">Coupon</th>
                 <th className="text-left px-4 py-3 font-medium">Expiry</th>
                 <th className="text-center px-4 py-3 font-medium">Status</th>
@@ -226,9 +292,20 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
                 const status = couponStatus(s);
                 const canResend = !!s.welcome_coupon_code && !s.welcome_discount_redeemed_at;
                 const canRestore = !!s.welcome_coupon_code && !!s.welcome_discount_redeemed_at;
+                const isChecked = selectedIds.has(s.id);
                 return (
-                  <tr key={s.id}>
-                    <td className="px-5 py-3">
+                  <tr key={s.id} className={isChecked ? "bg-amber-50/50 dark:bg-amber-900/10" : ""}>
+                    <td className="px-4 py-3">
+                      {canResend && (
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleOne(s.id)}
+                          className="rounded border-gray-300 dark:border-gray-600 text-emerald-600 focus:ring-emerald-500"
+                        />
+                      )}
+                    </td>
+                    <td className="px-3 py-3">
                       <span className="text-gray-900 dark:text-gray-100">{s.email}</span>
                       {s.used_fingerprint && (
                         <span className="ml-2 text-xs text-amber-600 dark:text-amber-400" title={`Fingerprint: ${s.used_fingerprint}`}>⚠ fingerprint</span>
