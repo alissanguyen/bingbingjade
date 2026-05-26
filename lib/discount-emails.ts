@@ -189,8 +189,8 @@ export async function sendWelcomeSubscriberEmail(
 }
 
 /**
- * Admin resend: re-send the welcome coupon email to a specific subscriber.
- * Uses the same template as the initial welcome email.
+ * Admin resend: re-send the welcome coupon to a subscriber using the
+ * "expiring soon" reminder template so it feels like a nudge, not a duplicate welcome.
  */
 export async function resendSubscriberCouponEmail(
   email: string,
@@ -200,15 +200,14 @@ export async function resendSubscriberCouponEmail(
   const resend = getResend();
   if (!resend) return;
 
-  const siteUrl = getSiteUrl();
   const from =
     process.env.RESEND_FROM_EMAIL_GENERIC ??
     "BingBing Jade <hello@bingbingjade.com>";
-  const html = buildWelcomeCouponHtml({
-    email,
+  const html = buildCustomerCouponReminderHtml({
     couponCode,
+    discountLabel: "Up to $20 off your first order",
     expiresAt,
-    siteUrl
+    reminderNumber: 2,
   });
 
   try {
@@ -216,7 +215,7 @@ export async function resendSubscriberCouponEmail(
       from,
       to: email,
       bcc: "contact@bingbingjade.com",
-      subject: `Your BingBing Jade welcome coupon: ${couponCode}`,
+      subject: `Last chance — your BingBing Jade coupon expires soon`,
       html
     });
   } catch (err) {
@@ -548,7 +547,7 @@ export function buildCustomerCouponReminderHtml(params: {
     ? "Your coupon<br>expires soon"
     : "Your coupon is<br>still waiting for you";
   const bodyText = isLast
-    ? `Your personal discount code expires on <strong>${expiryStr}</strong> &mdash; just one month away. Don&rsquo;t let it go to waste! Browse our collection and use it before it expires.`
+    ? `Your personal discount code expires on <strong>${expiryStr}</strong>. Don&rsquo;t let it go to waste! Browse our collection and use it before it expires.`
     : `We sent you a personal discount a little while ago, and we noticed you haven&rsquo;t had a chance to use it yet. It&rsquo;s still valid and waiting for you &mdash; we&rsquo;d love to have you back.`;
   const boxBg = isLast ? "#fffbeb" : "#f0fdf4";
   const boxBorder = isLast ? "#fde68a" : "#bbf7d0";

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { EmailPreviewModal } from "@/app/custom-emails-admin/EmailPreviewModal";
 
 export type Subscriber = {
   id: string;
@@ -34,6 +35,8 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
   const [subscribers, setSubscribers] = useState(initial);
   const [resending, setResending] = useState<string | null>(null);
   const [restoring, setRestoring] = useState<string | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewing, setPreviewing] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkForm, setBulkForm] = useState({ subject: "", message: "", target: "all" as "all" | "unused" });
@@ -67,6 +70,18 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
     setTab(t);
     const res = await fetch(`/api/admin/subscribers?status=${t}`);
     if (res.ok) setSubscribers(await res.json());
+  }
+
+  async function handlePreview(subscriber: Subscriber) {
+    setPreviewing(subscriber.id);
+    try {
+      const res = await fetch(`/api/admin/subscribers/${subscriber.id}/preview`);
+      const data = await res.json();
+      if (res.ok) setPreviewHtml(data.html);
+      else showToast(data.error ?? "Failed to load preview.");
+    } finally {
+      setPreviewing(null);
+    }
   }
 
   async function handleResend(subscriber: Subscriber) {
@@ -136,6 +151,10 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10 space-y-6">
+      {previewHtml && (
+        <EmailPreviewModal html={previewHtml} onClose={() => setPreviewHtml(null)} maxWidth="max-w-3xl" />
+      )}
+
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm px-4 py-2 rounded-lg shadow-lg">
           {toast}
@@ -242,14 +261,24 @@ export function SubscribersAdminClient({ subscribers: initial }: { subscribers: 
                           </button>
                         )}
                         {canResend && (
-                          <button
-                            type="button"
-                            disabled={resending === s.id}
-                            onClick={() => handleResend(s)}
-                            className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline disabled:opacity-50"
-                          >
-                            {resending === s.id ? "Sending…" : "Resend"}
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              disabled={previewing === s.id}
+                              onClick={() => handlePreview(s)}
+                              className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:underline disabled:opacity-50"
+                            >
+                              {previewing === s.id ? "Loading…" : "Preview"}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={resending === s.id}
+                              onClick={() => handleResend(s)}
+                              className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline disabled:opacity-50"
+                            >
+                              {resending === s.id ? "Sending…" : "Resend"}
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
