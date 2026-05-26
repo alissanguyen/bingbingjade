@@ -42,7 +42,8 @@ export async function POST(req: NextRequest) {
   if (!key) return NextResponse.json({ error: "Email service not configured." }, { status: 500 });
 
   const resend = new Resend(key);
-  const from = process.env.RESEND_FROM_EMAIL_GENERIC ?? "BingBing Jade <hello@bingbingjade.com>";
+  const rawFrom = process.env.RESEND_FROM_EMAIL_GENERIC ?? "hello@bingbingjade.com";
+  const from = rawFrom.includes("<") ? rawFrom : `BingBing Jade <${rawFrom}>`;
 
   let sent = 0;
   let failed = 0;

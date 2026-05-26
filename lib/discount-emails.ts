@@ -16,6 +16,11 @@ function getResend() {
   return key ? new Resend(key) : null;
 }
 
+function getFromAddress() {
+  const raw = process.env.RESEND_FROM_EMAIL_GENERIC ?? "hello@bingbingjade.com";
+  return raw.includes("<") ? raw : `BingBing Jade <${raw}>`;
+}
+
 const JADE_BANNER =
   "https://images.unsplash.com/photo-1705931396849-93822983c1dc?q=80&w=1624&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
 
@@ -165,9 +170,7 @@ export async function sendWelcomeSubscriberEmail(
   if (!resend) return;
 
   const siteUrl = getSiteUrl();
-  const from =
-    process.env.RESEND_FROM_EMAIL_GENERIC ??
-    "BingBing Jade <hello@bingbingjade.com>";
+  const from = getFromAddress();
   const html = buildWelcomeCouponHtml({
     email,
     couponCode,
@@ -200,9 +203,7 @@ export async function resendSubscriberCouponEmail(
   const resend = getResend();
   if (!resend) return;
 
-  const from =
-    process.env.RESEND_FROM_EMAIL_GENERIC ??
-    "BingBing Jade <hello@bingbingjade.com>";
+  const from = getFromAddress();
   const html = buildCustomerCouponReminderHtml({
     couponCode,
     discountLabel: "Up to $20 off your first order",
@@ -244,9 +245,7 @@ export async function sendBulkSubscriberEmail(params: {
   const resend = getResend();
   if (!resend) return { sent: 0, failed: params.subscribers.length };
 
-  const from =
-    process.env.RESEND_FROM_EMAIL_GENERIC ??
-    "BingBing Jade <hello@bingbingjade.com>";
+  const from = getFromAddress();
   const BATCH_SIZE = 50;
   let sent = 0;
   let failed = 0;
