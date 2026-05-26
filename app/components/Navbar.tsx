@@ -35,6 +35,7 @@ const NAV_SELECTIONS = [
   { label: "Most Loved Pieces", href: "/products?minPrice=700&maxPrice=3999" },
   { label: "Collector's Picks", href: "/products?minPrice=4000&maxPrice=9999" },
   { label: "Rare & Investment Jade", href: "/products?minPrice=10000" },
+  { label: "Clearance", href: "/products?clearance=1" },
 ];
 
 const NAV_SERVICES = [
