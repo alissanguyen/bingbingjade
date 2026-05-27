@@ -265,19 +265,26 @@ export default async function Products({
     const unsold = products.filter((p) => p.status !== "sold");
     const sold = products.filter((p) => p.status === "sold");
 
-    // Interleave in batches of 12: 12 newest → 12 ship now → 12 newest → ...
-    const newlyAdded = unsold.filter((p) => !p.quick_ship);
-    const quickship = unsold.filter((p) => p.quick_ship);
-    const BATCH = 3;
-    sorted = [];
-    let ni = 0, qi = 0;
-    while (ni < newlyAdded.length || qi < quickship.length) {
-      for (let k = 0; k < BATCH && qi < quickship.length; k++, qi++) sorted.push(quickship[qi]);
-      for (let k = 0; k < BATCH && ni < newlyAdded.length; k++, ni++) sorted.push(newlyAdded[ni]);
-
+    if (selectedShipping.includes("ship_now") && !selectedShipping.includes("standard")) {
+      // Ship-Now filter active: show all available first (available → on_sale), then sold — no interleave needed
+      const available = unsold.filter((p) => p.status === "available");
+      const onSale = unsold.filter((p) => p.status === "on_sale");
+      const otherUnsold = unsold.filter((p) => p.status !== "available" && p.status !== "on_sale");
+      sorted = [...available, ...onSale, ...otherUnsold, ...sold];
+    } else {
+      // Default all-products view: interleave ship-now and regular in batches of 3
+      const newlyAdded = unsold.filter((p) => !p.quick_ship);
+      const quickship = unsold.filter((p) => p.quick_ship);
+      const BATCH = 3;
+      sorted = [];
+      let ni = 0, qi = 0;
+      while (ni < newlyAdded.length || qi < quickship.length) {
+        for (let k = 0; k < BATCH && qi < quickship.length; k++, qi++) sorted.push(quickship[qi]);
+        for (let k = 0; k < BATCH && ni < newlyAdded.length; k++, ni++) sorted.push(newlyAdded[ni]);
+      }
+      // Sold always last
+      sorted.push(...sold);
     }
-    // Sold always last
-    sorted.push(...sold);
   } else if (sort === "price_asc" || sort === "price_desc") {
     sorted = [...products].sort((a, b) => {
       const pa = effectiveSortPrice(a);
@@ -660,6 +667,7 @@ export default async function Products({
                 ...(params.category ? { category: params.category } : {}),
                 ...(params.origins ? { origins: params.origins } : {}),
                 ...(params.clearance ? { clearance: params.clearance } : {}),
+                ...(params.shipping ? { shipping: params.shipping } : {}),
                 ...(params.minSize ? { minSize: params.minSize } : {}),
                 ...(params.maxSize ? { maxSize: params.maxSize } : {}),
                 ...(params.minPrice ? { minPrice: params.minPrice } : {}),
