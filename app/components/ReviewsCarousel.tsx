@@ -95,12 +95,23 @@ const reviews = [
       "Beautiful natural jade and excellent service. I loved that the seller clearly explained origin, type, and certification instead of being vague. It made me trust the shop a lot more.",
   },
   {
+    orderNumber: "BBJ-1236",
+    datePurchased: "Apr 8, 2026",
+    name: "Candice M.",
+    review: `From the beginning to the end of the process, ordering my Monet jade bangle was a smooth and enjoyable experience. The seller was very communicative throughout every stage, from selecting the raw material to the finished product, and provided lots of updates and photos along the way which made me feel very confident in my purchase.
+
+I’m extremely happy with both the customer service and the bangle itself. The piece is beautiful, unique, and very high quality with an excellent polish and a beautiful colour combination. I am especially glad I went with a raw material purchase as that allowed it to be made in my ideal size and shape, which can be difficult to find.
+
+You can really tell care and attention went into the entire process, even at the end with the beautiful packaging. I’ve already started looking at other pieces from BingBing Jade and would definitely purchase again.`,
+  },
+  {
     orderNumber: "BBJ-1252",
     datePurchased: "May 5, 2026",
     name: "Melissa C.",
     review:
       "100% would recommend!  Bing Bing is very kind and responsive to my inquiries.  The item was very well packed (and I’ve never seen such beautiful packaging before!) - you can tell this company really puts a lot of thought and care into their business.  The bangle that I purchased was exactly as described/depicted and I love it so much.  Thank you for the free gifts, too!",
   },
+
   {
     orderNumber: "BBJ-1256",
     datePurchased: "May 9, 2026",

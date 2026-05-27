@@ -94,7 +94,11 @@
       "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/sale/[slug]\")",
       "Bash(sed -i '' '1s/^/export const dynamic = \"force-dynamic\";\\\\n\\\\n/' /Users/nouveau/Documents/workspaces/jade-shop/app/page.tsx)",
       "Bash(sed -i '' '1s/^/export const dynamic = \"force-dynamic\";\\\\n\\\\n/' /Users/nouveau/Documents/workspaces/jade-shop/app/contact/page.tsx)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/api/admin/inventory-batches/[id]\")",
+      "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/inventory-batches/[id]\")",
+      "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/api/admin/inventory-batches/[id]/items/[itemId]\")",
+      "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/api/admin/inventory-batches/[id]/items\")"
     ]
   }
 }
