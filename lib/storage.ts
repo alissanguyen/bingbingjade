@@ -18,6 +18,7 @@
 
 export const IMAGE_BUCKET = "jade-images";
 export const VIDEO_BUCKET = "jade-videos";
+export const REVIEW_IMAGE_BUCKET = "review-images";
 
 /** Signed URL TTL for videos (seconds). 7 days. */
 const VIDEO_TTL = 60 * 60 * 24 * 7;
@@ -177,6 +178,20 @@ export const productZoomUrl = (src: string) =>
 /** 128 px wide WebP — cart thumbnails, navbar search, small admin chips */
 export const productMicroUrl = (src: string) =>
   supabaseImageUrl(src, { width: 128, height: 128, quality: 80, format: "webp" });
+
+// ── Review image helpers — public bucket ─────────────────────────────────────
+
+export function reviewImagePublicUrl(path: string): string {
+  const storageBase = supabaseStorageBase();
+  if (!storageBase) return path;
+  return `${storageBase}/object/public/${REVIEW_IMAGE_BUCKET}/${path.replace(/^\/+/, "")}`;
+}
+
+export function reviewImageThumbnailUrl(path: string, width = 400): string {
+  const storageBase = supabaseStorageBase();
+  if (!storageBase) return path;
+  return `${storageBase}/render/image/public/${REVIEW_IMAGE_BUCKET}/${path.replace(/^\/+/, "")}?width=${width}&quality=75&format=webp&resize=cover`;
+}
 
 // ── Video helpers — signed URLs (private bucket) ──────────────────────────────
 

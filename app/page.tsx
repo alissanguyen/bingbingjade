@@ -5,8 +5,10 @@ import { unstable_cache } from "next/cache";
 import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+import { reviewImagePublicUrl } from "@/lib/storage";
 import { FeaturedCarousel } from "@/app/components/FeaturedCarousel";
-import { ReviewsCarousel } from "@/app/components/ReviewsCarousel";
+import { ReviewsCarousel, type CarouselReview } from "@/app/components/ReviewsCarousel";
 import { SubscribePopup } from "@/app/components/SubscribePopup";
 import { GalleryGrid } from "@/app/components/GalleryGrid";
 
@@ -55,8 +57,41 @@ const getCachedFeaturedProducts = unstable_cache(
   { revalidate: 120 }
 );
 
+async function getApprovedReviews(): Promise<CarouselReview[]> {
+  try {
+    const { data } = await supabaseAdmin
+      .from("reviews")
+      .select(`
+        id, order_number, customer_name, rating, description, date_purchased,
+        review_images ( image_path, sort_order )
+      `)
+      .eq("is_approved", true)
+      .not("description", "is", null)
+      .order("date_rated", { ascending: false })
+      .limit(32);
+
+    return (data ?? []).map((r) => ({
+      id: r.id,
+      orderNumber: r.order_number,
+      datePurchased: new Date(r.date_purchased).toLocaleDateString("en-US", {
+        month: "long", day: "numeric", year: "numeric",
+      }),
+      name: r.customer_name,
+      review: r.description ?? "",
+      images: ((r.review_images as { image_path: string; sort_order: number }[]) ?? [])
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((img) => ({ image_url: reviewImagePublicUrl(img.image_path) })),
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export default async function Home() {
-  const rawFeatured = await getCachedFeaturedProducts();
+  const [rawFeatured, dbReviews] = await Promise.all([
+    getCachedFeaturedProducts(),
+    getApprovedReviews(),
+  ]);
   const featuredProducts = rawFeatured.map((p) => ({
     ...p,
     images: (p.images ?? []).slice(0, 2).filter(Boolean),
@@ -166,7 +201,7 @@ export default async function Home() {
       <FeaturedCarousel products={featuredProducts} />
 
       {/* ── Reviews Carousel ── */}
-      <ReviewsCarousel />
+      <ReviewsCarousel dbReviews={dbReviews} />
 
       {/* ── About section ── */}
       <div className="mx-auto max-w-7xl px-6 py-20 lg:py-28">

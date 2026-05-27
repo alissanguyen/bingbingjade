@@ -85,6 +85,7 @@ export function AdminBar({
     { href: "/orders-admin", label: "Orders" },
     { href: "/customers-admin", label: "Customers" },
     { href: "/restricted-customers", label: "Restricted List" },
+    { href: "/reviews-admin", label: "Reviews" },
     { href: "/sourcing-admin", label: "Sourcing" },
     { href: "/item-origin-lookup", label: "Origin Lookup" },
     { href: "/accounting-admin", label: "Finance Snapshot" },
@@ -124,6 +125,7 @@ export function AdminBar({
             <a href="/orders-admin" className={linkCls}>Orders</a>
             <a href="/customers-admin" className={linkCls}>Customers</a>
             <a href="/restricted-customers" className={linkCls}>Restricted List</a>
+            <a href="/reviews-admin" className={linkCls}>Reviews</a>
             <a href="/sourcing-admin" className={linkCls}>Sourcing</a>
             <a href="/item-origin-lookup" className={linkCls}>Origin Lookup</a>
 

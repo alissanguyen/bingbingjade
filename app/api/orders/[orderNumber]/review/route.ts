@@ -51,6 +51,7 @@ export async function POST(
       rating,
       description: description || null,
       date_purchased: order.created_at,
+      is_approved: false,
     })
     .select("id, rating, description, date_rated")
     .single();
