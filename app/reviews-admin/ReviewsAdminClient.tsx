@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { AdminReview } from "./page";
+import { ImageCropModal } from "@/app/add/MediaCroppers";
 
 const TAB_VALUES = ["all", "pending", "approved"] as const;
 type Tab = (typeof TAB_VALUES)[number];
@@ -24,25 +25,64 @@ function StarRow({ rating }: { rating: number }) {
 function ImageZone({
   reviewId,
   imageUrl,
-  imagePath,
   onImageChange,
   onToast,
 }: {
   reviewId: string;
   imageUrl: string | null;
-  imagePath: string | null;
   onImageChange: (path: string | null, url: string | null) => void;
   onToast: (msg: string) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
+
+  // crop modal state
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropFileName, setCropFileName] = useState("");
+
+  // pending (cropped, not yet saved) state
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingPreview, setPendingPreview] = useState<string | null>(null);
+
+  const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  async function handleFile(file: File | null) {
+  function openPicker() {
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    fileInputRef.current?.click();
+  }
+
+  function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
     if (!file) return;
-    setUploading(true);
+    const url = URL.createObjectURL(file);
+    setCropFileName(file.name);
+    setCropSrc(url);
+  }
+
+  function handleCropConfirm(croppedFile: File) {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+    if (pendingPreview) URL.revokeObjectURL(pendingPreview);
+    setPendingFile(croppedFile);
+    setPendingPreview(URL.createObjectURL(croppedFile));
+  }
+
+  function handleCropCancel() {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+  }
+
+  function discardPending() {
+    if (pendingPreview) URL.revokeObjectURL(pendingPreview);
+    setPendingFile(null);
+    setPendingPreview(null);
+  }
+
+  async function handleSave() {
+    if (!pendingFile) return;
+    setSaving(true);
     const fd = new FormData();
-    fd.append("image", file);
+    fd.append("image", pendingFile);
     try {
       const res = await fetch(`/api/admin/reviews/${reviewId}/images`, { method: "POST", body: fd });
       const data = await res.json().catch(() => ({}));
@@ -50,13 +90,13 @@ function ImageZone({
         onToast(data.error ?? "Upload failed.");
       } else {
         onImageChange(data.image_path, data.image_url);
-        onToast("Photo updated.");
+        discardPending();
+        onToast("Photo saved.");
       }
     } catch {
       onToast("Upload failed.");
     } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      setSaving(false);
     }
   }
 
@@ -77,47 +117,104 @@ function ImageZone({
     }
   }
 
-  void imagePath;
-
   return (
-    <div className="flex items-center gap-3 pt-1 flex-wrap">
-      {imageUrl ? (
-        <div className="relative w-16 h-16 shrink-0 group">
-          <a href={imageUrl} target="_blank" rel="noopener noreferrer"
-            className="block w-full h-full rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:opacity-90 transition-opacity">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imageUrl} alt="Review" className="w-full h-full object-cover" />
-          </a>
+    <div className="space-y-3 pt-1">
+      {/* Saved image */}
+      {imageUrl && !pendingPreview && (
+        <div className="flex items-center gap-3">
+          <div className="relative w-20 h-20 shrink-0 group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+            <a href={imageUrl} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={imageUrl} alt="Review" className="w-full h-full object-cover" />
+            </a>
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={handleDelete}
+              className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 hover:bg-red-600 text-white text-xs flex items-center justify-center leading-none opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+              title="Remove photo"
+            >
+              ×
+            </button>
+          </div>
           <button
             type="button"
-            disabled={deleting}
-            onClick={handleDelete}
-            className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 hover:bg-red-600 text-white text-xs flex items-center justify-center leading-none opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
-            title="Remove photo"
+            onClick={openPicker}
+            className="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
           >
-            ×
+            Replace photo
           </button>
         </div>
-      ) : null}
+      )}
+
+      {/* Pending (cropped, unsaved) preview */}
+      {pendingPreview && (
+        <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/20 p-3 flex items-center gap-4">
+          <div className="w-20 h-20 shrink-0 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={pendingPreview} alt="Cropped preview" className="w-full h-full object-cover" />
+          </div>
+          <div className="flex flex-col gap-2">
+            <p className="text-xs text-gray-500 dark:text-gray-400">Ready to save — crop applied</p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={handleSave}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 transition-colors"
+              >
+                {saving ? "Saving…" : "Save photo"}
+              </button>
+              <button
+                type="button"
+                onClick={openPicker}
+                className="text-xs font-medium text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+              >
+                Re-crop
+              </button>
+              <button
+                type="button"
+                onClick={discardPending}
+                className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add photo button (shown when no saved image and no pending) */}
+      {!imageUrl && !pendingPreview && (
+        <button
+          type="button"
+          onClick={openPicker}
+          className="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-1.5"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+          </svg>
+          Add photo
+        </button>
+      )}
 
       <input
         ref={fileInputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp"
         className="hidden"
-        onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+        onChange={handleFileSelected}
       />
-      <button
-        type="button"
-        disabled={uploading}
-        onClick={() => fileInputRef.current?.click()}
-        className="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 disabled:opacity-50 transition-colors flex items-center gap-1.5"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
-        </svg>
-        {uploading ? "Uploading…" : imageUrl ? "Replace photo" : "Add photo"}
-      </button>
+
+      {/* Crop modal */}
+      {cropSrc && (
+        <ImageCropModal
+          src={cropSrc}
+          fileName={cropFileName}
+          onConfirm={handleCropConfirm}
+          onClose={handleCropCancel}
+        />
+      )}
     </div>
   );
 }
@@ -288,7 +385,6 @@ export function ReviewsAdminClient({ reviews: initial }: { reviews: AdminReview[
               <ImageZone
                 reviewId={r.id}
                 imageUrl={r.image_url}
-                imagePath={r.image_path}
                 onImageChange={(path, url) => handleImageChange(r.id, path, url)}
                 onToast={showToast}
               />
