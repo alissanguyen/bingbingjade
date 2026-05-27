@@ -6,6 +6,17 @@ import { REVIEW_IMAGE_BUCKET, reviewImagePublicUrl } from "@/lib/storage";
 const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
+async function ensureBucket() {
+  const { error } = await supabaseAdmin.storage.createBucket(REVIEW_IMAGE_BUCKET, {
+    public: true,
+    fileSizeLimit: MAX_FILE_SIZE,
+    allowedMimeTypes: ALLOWED_MIME,
+  });
+  if (error && !error.message.toLowerCase().includes("already exist")) {
+    console.error("[review-images] bucket create error:", error.message);
+  }
+}
+
 // POST /api/admin/reviews/[id]/images — upload (or replace) the single review image
 export async function POST(
   req: NextRequest,
@@ -42,6 +53,8 @@ export async function POST(
     return NextResponse.json({ error: `${file.name}: exceeds 5 MB limit.` }, { status: 400 });
   }
 
+  await ensureBucket();
+
   // Remove old image if one exists
   if (review.image_path) {
     await supabaseAdmin.storage.from(REVIEW_IMAGE_BUCKET).remove([review.image_path]);
@@ -55,7 +68,8 @@ export async function POST(
     .upload(storagePath, await file.arrayBuffer(), { contentType: file.type, upsert: false });
 
   if (uploadErr) {
-    return NextResponse.json({ error: `Failed to upload image.` }, { status: 500 });
+    console.error("[admin review-images] upload error:", uploadErr.message);
+    return NextResponse.json({ error: uploadErr.message }, { status: 500 });
   }
 
   const { error: updateErr } = await supabaseAdmin
@@ -64,8 +78,9 @@ export async function POST(
     .eq("id", id);
 
   if (updateErr) {
+    console.error("[admin review-images] db update error:", updateErr.message);
     await supabaseAdmin.storage.from(REVIEW_IMAGE_BUCKET).remove([storagePath]);
-    return NextResponse.json({ error: "Failed to save image record." }, { status: 500 });
+    return NextResponse.json({ error: updateErr.message }, { status: 500 });
   }
 
   return NextResponse.json({
