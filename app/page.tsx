@@ -61,10 +61,7 @@ async function getApprovedReviews(): Promise<CarouselReview[]> {
   try {
     const { data } = await supabaseAdmin
       .from("reviews")
-      .select(`
-        id, order_number, customer_name, rating, description, date_purchased,
-        review_images ( image_path, sort_order )
-      `)
+      .select("id, order_number, customer_name, rating, description, date_purchased, image_path")
       .eq("is_approved", true)
       .not("description", "is", null)
       .order("date_rated", { ascending: false })
@@ -78,9 +75,7 @@ async function getApprovedReviews(): Promise<CarouselReview[]> {
       }),
       name: r.customer_name,
       review: r.description ?? "",
-      images: ((r.review_images as { image_path: string; sort_order: number }[]) ?? [])
-        .sort((a, b) => a.sort_order - b.sort_order)
-        .map((img) => ({ image_url: reviewImagePublicUrl(img.image_path) })),
+      image_url: r.image_path ? reviewImagePublicUrl(r.image_path) : undefined,
     }));
   } catch {
     return [];

@@ -9,13 +9,6 @@ type Props = {
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
-const MAX_IMAGES = 5;
-
-function validateImage(file: File): string | null {
-  if (!ALLOWED_TYPES.includes(file.type)) return `${file.name}: only jpg, png, webp allowed.`;
-  if (file.size > MAX_FILE_SIZE) return `${file.name}: exceeds 5 MB limit.`;
-  return null;
-}
 
 export default function ReviewForm({ orderNumber, existingReview }: Props) {
   const [rating, setRating] = useState<number>(existingReview?.rating ?? 0);
@@ -26,40 +19,32 @@ export default function ReviewForm({ orderNumber, existingReview }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [imageWarning, setImageWarning] = useState<string | null>(null);
 
-  const [images, setImages] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [image, setImage] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function addImages(files: FileList | null) {
-    if (!files) return;
-    const incoming = Array.from(files);
-
-    if (images.length + incoming.length > MAX_IMAGES) {
-      setImageWarning(`You can attach up to ${MAX_IMAGES} photos.`);
+  function handleFile(file: File | null) {
+    if (!file) return;
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setImageWarning("Only jpg, png, webp images are allowed.");
       return;
     }
-
-    for (const f of incoming) {
-      const err = validateImage(f);
-      if (err) { setImageWarning(err); return; }
+    if (file.size > MAX_FILE_SIZE) {
+      setImageWarning("Image exceeds 5 MB limit.");
+      return;
     }
-
+    if (preview) URL.revokeObjectURL(preview);
     setImageWarning(null);
-    const newPreviews = incoming.map((f) => URL.createObjectURL(f));
-    setImages((prev) => [...prev, ...incoming]);
-    setPreviews((prev) => [...prev, ...newPreviews]);
+    setImage(file);
+    setPreview(URL.createObjectURL(file));
   }
 
-  function removeImage(index: number) {
-    URL.revokeObjectURL(previews[index]);
-    setImages((prev) => prev.filter((_, i) => i !== index));
-    setPreviews((prev) => prev.filter((_, i) => i !== index));
+  function removeImage() {
+    if (preview) URL.revokeObjectURL(preview);
+    setImage(null);
+    setPreview(null);
     setImageWarning(null);
-  }
-
-  function handleDrop(e: React.DragEvent) {
-    e.preventDefault();
-    addImages(e.dataTransfer.files);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -87,18 +72,18 @@ export default function ReviewForm({ orderNumber, existingReview }: Props) {
       return;
     }
 
-    // Step 2: upload images (best-effort — failure shows warning, not blocking error)
-    if (images.length > 0 && reviewId) {
+    // Step 2: upload image if provided (best-effort)
+    if (image && reviewId) {
       const fd = new FormData();
-      images.forEach((f) => fd.append("image", f));
+      fd.append("image", image);
       try {
-        const res = await fetch(`/api/reviews/${reviewId}/images`, { method: "POST", body: fd });
+        const res = await fetch(`/api/reviews/${reviewId}/image`, { method: "POST", body: fd });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           setImageWarning(`Review submitted, but image upload failed: ${data.error ?? "Unknown error."}`);
         }
       } catch {
-        setImageWarning("Review submitted, but we couldn't upload your photos. Please contact us if you'd like them added.");
+        setImageWarning("Review submitted, but we couldn't upload your photo. Please contact us if you'd like it added.");
       }
     }
 
@@ -194,28 +179,49 @@ export default function ReviewForm({ orderNumber, existingReview }: Props) {
             />
           </div>
 
-          {/* Image upload */}
+          {/* Single image upload */}
           <div>
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
-              Photos <span className="font-normal text-gray-400">(optional · up to {MAX_IMAGES})</span>
+              Photo <span className="font-normal text-gray-400">(optional · 1 image · max 5 MB)</span>
             </p>
 
-            {/* Drop zone — shown when under limit */}
-            {images.length < MAX_IMAGES && (
+            {preview ? (
+              <div className="flex items-center gap-3">
+                <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={preview} alt="" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 text-white text-xs flex items-center justify-center leading-none hover:bg-black/80 transition-colors"
+                    aria-label="Remove image"
+                  >
+                    ×
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                >
+                  Replace
+                </button>
+              </div>
+            ) : (
               <div
                 role="button"
                 tabIndex={0}
                 onClick={() => fileInputRef.current?.click()}
                 onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
                 onDragOver={(e) => e.preventDefault()}
-                onDrop={handleDrop}
+                onDrop={(e) => { e.preventDefault(); handleFile(e.dataTransfer.files[0] ?? null); }}
                 className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-300 dark:border-gray-700 px-4 py-5 text-center cursor-pointer hover:border-emerald-400 dark:hover:border-emerald-600 transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 dark:text-gray-600">
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
                 </svg>
                 <p className="text-xs text-gray-400 dark:text-gray-500">Click or drag to upload</p>
-                <p className="text-[10px] text-gray-300 dark:text-gray-600">jpg · png · webp · max 5 MB each</p>
+                <p className="text-[10px] text-gray-300 dark:text-gray-600">jpg · png · webp · max 5 MB</p>
               </div>
             )}
 
@@ -223,30 +229,9 @@ export default function ReviewForm({ orderNumber, existingReview }: Props) {
               ref={fileInputRef}
               type="file"
               accept="image/jpeg,image/png,image/webp"
-              multiple
               className="hidden"
-              onChange={(e) => addImages(e.target.files)}
+              onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
             />
-
-            {/* Previews */}
-            {previews.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3">
-                {previews.map((src, i) => (
-                  <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shrink-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={src} alt="" className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(i)}
-                      className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 text-white text-xs flex items-center justify-center leading-none hover:bg-black/80 transition-colors"
-                      aria-label="Remove image"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
 
             {imageWarning && (
               <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">{imageWarning}</p>

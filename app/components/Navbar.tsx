@@ -63,6 +63,7 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
   const [searchLoading, setSearchLoading] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeDropdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const { count, openDrawer, closeDrawer } = useCart();
@@ -111,6 +112,15 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
   function handleResultClick() {
     closeSearch();
     setOpen(false);
+  }
+
+  function openShopDropdown() {
+    if (closeDropdownTimer.current) clearTimeout(closeDropdownTimer.current);
+    setProductsOpen(true);
+  }
+
+  function closeShopDropdown() {
+    closeDropdownTimer.current = setTimeout(() => setProductsOpen(false), 150);
   }
 
 
@@ -279,8 +289,8 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
         {/* Products with hover dropdown */}
         <li
           className="relative"
-          onMouseEnter={() => setProductsOpen(true)}
-          onMouseLeave={() => setProductsOpen(false)}
+          onMouseEnter={openShopDropdown}
+          onMouseLeave={closeShopDropdown}
         >
           <Link
             href="/products"
