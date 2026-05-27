@@ -26,7 +26,7 @@ export async function POST(
       allocation_method:            body.allocation_method || "manual",
       notes:                        (body.notes as string | undefined)?.trim() || null,
     })
-    .select("id, product_id, assigned_inventory_cost_usd, allocation_method, notes, created_at, products(id, name)")
+    .select("id, product_id, assigned_inventory_cost_usd, allocation_method, notes, created_at, products(id, name, public_id)")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -34,6 +34,6 @@ export async function POST(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const product = Array.isArray((data as any).products) ? (data as any).products[0] : (data as any).products;
   return NextResponse.json({
-    item: { ...data, productName: product?.name ?? null, productImageUrl: null },
+    item: { ...data, productName: product?.name ?? null, productPublicId: product?.public_id ?? null, productImageUrl: null },
   }, { status: 201 });
 }

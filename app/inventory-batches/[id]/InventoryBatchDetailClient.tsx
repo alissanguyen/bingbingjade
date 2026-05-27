@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -12,6 +12,7 @@ interface BatchItem {
   notes: string | null;
   created_at: string;
   productName: string | null;
+  productPublicId: string | null;
   productImageUrl: string | null;
 }
 
@@ -30,9 +31,18 @@ interface Batch {
   certification_cost_usd: number;
   misc_cost_usd: number;
   total_batch_cost_usd: number;
+  partner_payment_usd: number;
+  payment_to_partner_usd: number;
   notes: string | null;
   created_at: string;
   updated_at: string;
+}
+
+interface ProductSearchResult {
+  id: string;
+  name: string;
+  public_id: string;
+  images: string[] | null;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -67,7 +77,19 @@ const ALLOC_LABELS: Record<string, string> = {
   manual: "Manual", proportional: "Proportional", equal: "Equal", legacy: "Legacy",
 };
 
-export function InventoryBatchDetailClient({ batch: initialBatch, items: initialItems }: { batch: Batch; items: BatchItem[] }) {
+export function InventoryBatchDetailClient({
+  batch: initialBatch,
+  items: initialItems,
+  revenue,
+  soldCount,
+  totalCount,
+}: {
+  batch: Batch;
+  items: BatchItem[];
+  revenue: number;
+  soldCount: number;
+  totalCount: number;
+}) {
   const [batch, setBatch] = useState(initialBatch);
   const [items, setItems] = useState(initialItems);
   const [editing, setEditing] = useState(false);
@@ -78,8 +100,21 @@ export function InventoryBatchDetailClient({ batch: initialBatch, items: initial
 
   // Add item form
   const [showAddItem, setShowAddItem] = useState(false);
-  const [itemForm, setItemForm] = useState({ product_id: "", assigned_inventory_cost_usd: "", allocation_method: "manual", notes: "" });
+  const [itemForm, setItemForm] = useState({
+    product_id: "",
+    assigned_inventory_cost_usd: "",
+    allocation_method: "manual",
+    notes: "",
+  });
   const [savingItem, setSavingItem] = useState(false);
+
+  // Product search
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<ProductSearchResult[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchWrapperRef = useRef<HTMLDivElement>(null);
 
   function showToast(type: "ok" | "err", msg: string) {
     setToast({ type, msg });
@@ -88,19 +123,21 @@ export function InventoryBatchDetailClient({ batch: initialBatch, items: initial
 
   function startEdit() {
     setEditForm({
-      name:                  batch.name,
-      batch_code:            batch.batch_code ?? "",
-      vendor:                batch.vendor ?? "",
-      status:                batch.status,
-      purchase_date:         batch.purchase_date ?? "",
-      received_date:         batch.received_date ?? "",
-      goods_cost_usd:        String(batch.goods_cost_usd),
-      freight_cost_usd:      String(batch.freight_cost_usd),
-      insurance_cost_usd:    String(batch.insurance_cost_usd),
-      duties_cost_usd:       String(batch.duties_cost_usd),
-      certification_cost_usd: String(batch.certification_cost_usd),
-      misc_cost_usd:         String(batch.misc_cost_usd),
-      notes:                 batch.notes ?? "",
+      name:                    batch.name,
+      batch_code:              batch.batch_code ?? "",
+      vendor:                  batch.vendor ?? "",
+      status:                  batch.status,
+      purchase_date:           batch.purchase_date ?? "",
+      received_date:           batch.received_date ?? "",
+      goods_cost_usd:          String(batch.goods_cost_usd),
+      freight_cost_usd:        String(batch.freight_cost_usd),
+      insurance_cost_usd:      String(batch.insurance_cost_usd),
+      duties_cost_usd:         String(batch.duties_cost_usd),
+      certification_cost_usd:  String(batch.certification_cost_usd),
+      misc_cost_usd:           String(batch.misc_cost_usd),
+      partner_payment_usd:     String(batch.partner_payment_usd ?? 0),
+      payment_to_partner_usd:  String(batch.payment_to_partner_usd ?? 0),
+      notes:                   batch.notes ?? "",
     });
     setEditing(true);
   }
@@ -110,6 +147,8 @@ export function InventoryBatchDetailClient({ batch: initialBatch, items: initial
     try {
       const body: Record<string, unknown> = { ...editForm };
       for (const { key } of COST_FIELDS) body[key as string] = parseFloat(editForm[key as string] || "0") || 0;
+      body.partner_payment_usd    = parseFloat(editForm.partner_payment_usd    || "0") || 0;
+      body.payment_to_partner_usd = parseFloat(editForm.payment_to_partner_usd || "0") || 0;
       const res = await fetch(`/api/admin/inventory-batches/${batch.id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -136,6 +175,41 @@ export function InventoryBatchDetailClient({ batch: initialBatch, items: initial
     }
   }
 
+  // ── Product search handlers ──────────────────────────────────────────────
+
+  function handleProductSearch(q: string) {
+    setSearchQuery(q);
+    setSearchOpen(true);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (!q.trim()) { setSearchResults([]); setSearchOpen(false); return; }
+    searchTimerRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(`/api/admin/inventory-batches/product-search?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        setSearchResults(data.products ?? []);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+  }
+
+  function selectProduct(p: ProductSearchResult) {
+    setItemForm((f) => ({ ...f, product_id: p.id }));
+    setSearchQuery(`${p.name}  ·  ${p.public_id}`);
+    setSearchResults([]);
+    setSearchOpen(false);
+  }
+
+  function clearProductSelection() {
+    setItemForm((f) => ({ ...f, product_id: "" }));
+    setSearchQuery("");
+    setSearchResults([]);
+    setSearchOpen(false);
+  }
+
+  // ── Add / remove items ───────────────────────────────────────────────────
+
   async function handleAddItem(ev: React.FormEvent) {
     ev.preventDefault();
     setSavingItem(true);
@@ -154,6 +228,7 @@ export function InventoryBatchDetailClient({ batch: initialBatch, items: initial
       setItems((prev) => [...prev, data.item]);
       setShowAddItem(false);
       setItemForm({ product_id: "", assigned_inventory_cost_usd: "", allocation_method: "manual", notes: "" });
+      setSearchQuery("");
       showToast("ok", "Item added.");
     } finally {
       setSavingItem(false);
@@ -178,6 +253,14 @@ export function InventoryBatchDetailClient({ batch: initialBatch, items: initial
 
   const allocatedTotal = items.reduce((s, i) => s + Number(i.assigned_inventory_cost_usd), 0);
   const unallocated = Number(batch.total_batch_cost_usd) - allocatedTotal;
+
+  // Financial summary
+  const partnerIn  = Number(batch.partner_payment_usd ?? 0);
+  const partnerOut = Number(batch.payment_to_partner_usd ?? 0);
+  const totalCost  = Number(batch.total_batch_cost_usd);
+  const grossProfit = revenue - totalCost;
+  const netProfit   = grossProfit + partnerIn - partnerOut;
+  const soldPct     = totalCount > 0 ? Math.round((soldCount / totalCount) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -261,6 +344,8 @@ export function InventoryBatchDetailClient({ batch: initialBatch, items: initial
                 <input type="date" value={editForm.received_date ?? ""} onChange={setEdit("received_date")} className={inputCls} />
               </div>
             </div>
+
+            {/* Cost breakdown */}
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">Cost Breakdown</p>
               <div className="grid grid-cols-2 gap-3">
@@ -275,6 +360,28 @@ export function InventoryBatchDetailClient({ batch: initialBatch, items: initial
                 ))}
               </div>
             </div>
+
+            {/* Partner payments */}
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">Partner Payments</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>Partner Payment Received <span className="text-emerald-500">(+income)</span></label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
+                    <input type="number" min="0" step="0.01" value={editForm.partner_payment_usd ?? "0"} onChange={setEdit("partner_payment_usd")} className={`${inputCls} pl-7`} />
+                  </div>
+                </div>
+                <div>
+                  <label className={labelCls}>Payment Back to Partner <span className="text-red-400">(−expense)</span></label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
+                    <input type="number" min="0" step="0.01" value={editForm.payment_to_partner_usd ?? "0"} onChange={setEdit("payment_to_partner_usd")} className={`${inputCls} pl-7`} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div>
               <label className={labelCls}>Notes</label>
               <textarea value={editForm.notes ?? ""} onChange={setEdit("notes")} rows={2} className={`${inputCls} resize-none`} />
@@ -316,23 +423,125 @@ export function InventoryBatchDetailClient({ batch: initialBatch, items: initial
           {batch.notes && <p className="mt-3 text-xs text-gray-400 italic">{batch.notes}</p>}
         </div>
 
+        {/* Financial Summary */}
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-5 py-4 mb-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Financial Summary</h2>
+            {totalCount > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-24 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                  <div className="h-full rounded-full bg-emerald-500" style={{ width: `${soldPct}%` }} />
+                </div>
+                <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
+                  {soldPct}% sold ({soldCount}/{totalCount})
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500 dark:text-gray-400">Revenue from Sales</span>
+              <span className="font-medium text-emerald-700 dark:text-emerald-400">{fmtUSD(revenue)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500 dark:text-gray-400">Total Batch Cost</span>
+              <span className="font-medium text-gray-800 dark:text-gray-200">− {fmtUSD(totalCost)}</span>
+            </div>
+            <div className="flex justify-between text-sm border-t border-gray-100 dark:border-gray-800 pt-1.5 mt-1.5">
+              <span className="text-gray-600 dark:text-gray-300 font-medium">Gross Profit</span>
+              <span className={`font-semibold ${grossProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>{fmtUSD(grossProfit)}</span>
+            </div>
+
+            {(partnerIn > 0 || partnerOut > 0) && (
+              <>
+                <div className="border-t border-dashed border-gray-100 dark:border-gray-800 pt-1.5 mt-1" />
+                {partnerIn > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 dark:text-gray-400">Partner Payment Received</span>
+                    <span className="font-medium text-emerald-700 dark:text-emerald-400">+ {fmtUSD(partnerIn)}</span>
+                  </div>
+                )}
+                {partnerOut > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 dark:text-gray-400">Payment Back to Partner</span>
+                    <span className="font-medium text-red-500 dark:text-red-400">− {fmtUSD(partnerOut)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm border-t border-gray-100 dark:border-gray-800 pt-1.5 mt-1.5">
+                  <span className="text-gray-600 dark:text-gray-300 font-medium">Net Profit</span>
+                  <span className={`font-semibold ${netProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>{fmtUSD(netProfit)}</span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
         {/* Batch items */}
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
           <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
               Products in Batch ({items.length})
             </h2>
-            <button onClick={() => setShowAddItem(true)} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">+ Add product</button>
+            <button onClick={() => { setShowAddItem(true); setSearchQuery(""); setItemForm({ product_id: "", assigned_inventory_cost_usd: "", allocation_method: "manual", notes: "" }); }} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">+ Add product</button>
           </div>
 
           {/* Add item form */}
           {showAddItem && (
             <form onSubmit={handleAddItem} className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/60 space-y-3">
               <div className="grid grid-cols-2 gap-3">
+
+                {/* Product search */}
                 <div className="col-span-2">
-                  <label className={labelCls}>Product ID (UUID)</label>
-                  <input value={itemForm.product_id} onChange={setItem("product_id")} placeholder="Paste product UUID" className={inputCls} />
+                  <label className={labelCls}>Product (search by name or SKU)</label>
+                  <div className="relative" ref={searchWrapperRef}>
+                    <input
+                      value={searchQuery}
+                      onChange={(e) => handleProductSearch(e.target.value)}
+                      onFocus={() => searchQuery && setSearchOpen(true)}
+                      placeholder="Type product name or SKU…"
+                      autoComplete="off"
+                      className={inputCls}
+                    />
+                    {/* Clear button */}
+                    {itemForm.product_id && (
+                      <button
+                        type="button"
+                        onClick={clearProductSelection}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 dark:hover:text-gray-300"
+                        aria-label="Clear"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    )}
+                    {/* Dropdown */}
+                    {searchOpen && (searchResults.length > 0 || searching) && (
+                      <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg overflow-hidden">
+                        {searching && (
+                          <div className="px-3 py-2 text-xs text-gray-400">Searching…</div>
+                        )}
+                        {searchResults.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => selectProduct(p)}
+                            className="w-full text-left px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2.5 transition-colors"
+                          >
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-sm text-gray-900 dark:text-gray-100 truncate">{p.name}</span>
+                              <span className="block text-xs text-gray-400 font-mono">{p.public_id}</span>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {/* Selected product UUID hint */}
+                  {itemForm.product_id && (
+                    <p className="mt-1 text-[10px] text-gray-400 font-mono truncate">{itemForm.product_id}</p>
+                  )}
                 </div>
+
                 <div>
                   <label className={labelCls}>Assigned Cost</label>
                   <div className="relative">
@@ -355,7 +564,7 @@ export function InventoryBatchDetailClient({ batch: initialBatch, items: initial
                 </div>
               </div>
               <div className="flex gap-3">
-                <button type="button" onClick={() => setShowAddItem(false)} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">Cancel</button>
+                <button type="button" onClick={() => { setShowAddItem(false); setSearchQuery(""); }} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">Cancel</button>
                 <button type="submit" disabled={savingItem} className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline disabled:opacity-50">{savingItem ? "Adding…" : "Add"}</button>
               </div>
             </form>
@@ -379,6 +588,7 @@ export function InventoryBatchDetailClient({ batch: initialBatch, items: initial
                       {item.productName ?? <span className="text-gray-400 font-mono text-xs">{item.product_id ?? "Unknown"}</span>}
                     </p>
                     <p className="text-xs text-gray-400 dark:text-gray-500">
+                      {item.productPublicId && <span className="font-mono mr-1.5">{item.productPublicId}</span>}
                       {ALLOC_LABELS[item.allocation_method] ?? item.allocation_method}
                       {item.notes && ` · ${item.notes}`}
                     </p>

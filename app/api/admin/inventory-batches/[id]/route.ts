@@ -47,6 +47,7 @@ export async function PATCH(
     "name", "batch_code", "vendor", "purchase_date", "received_date", "status",
     "goods_cost_usd", "freight_cost_usd", "insurance_cost_usd", "duties_cost_usd",
     "certification_cost_usd", "misc_cost_usd", "notes",
+    "partner_payment_usd", "payment_to_partner_usd",
   ];
 
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
