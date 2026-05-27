@@ -29,6 +29,10 @@ function ArrowBtn({ dir, onClick }: { dir: "left" | "right"; onClick: () => void
 
 const PREVIEW_LENGTH = 180;
 
+function toInitials(name: string): string {
+  return name.split(/\s+/).map((p) => p.charAt(0).toUpperCase() + ".").join("");
+}
+
 function StarRating() {
   return (
     <div className="flex gap-0.5">
@@ -78,7 +82,7 @@ function ReviewModal({ review, onClose }: { review: CarouselReview; onClose: () 
         <StarRating />
         <div className="mt-3 flex items-end justify-between">
           <div>
-            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{review.name}</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{toInitials(review.name)}</p>
             <p className="text-xs text-gray-400 dark:text-gray-500">{review.datePurchased}</p>
           </div>
           <span className="text-xs text-gray-300 dark:text-gray-600 font-mono">{review.orderNumber}</span>
@@ -218,7 +222,7 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
                       </button>
                     )}
                     <div>
-                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{r.name}</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{toInitials(r.name)}</p>
                       <p className="text-xs text-gray-400 dark:text-gray-500">{r.datePurchased}</p>
                     </div>
                   </div>
@@ -257,7 +261,7 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
                       </button>
                     )}
                     <div>
-                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{r.name}</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{toInitials(r.name)}</p>
                       <p className="text-xs text-gray-400 dark:text-gray-500">{r.datePurchased}</p>
                     </div>
                   </div>
