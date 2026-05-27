@@ -67,25 +67,27 @@ function ReviewModal({ review, onClose }: { review: CarouselReview; onClose: () 
 
         {review.image_url && (
           <a href={review.image_url} target="_blank" rel="noopener noreferrer"
-            className="block w-full mb-4 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 hover:opacity-95 transition-opacity">
+            className="block mx-5 mt-2 mb-4 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 hover:opacity-95 transition-opacity">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={review.image_url} alt="" className="w-full aspect-square object-cover" />
+            <img src={review.image_url} alt="" className="w-full aspect-[4/3] sm:aspect-square object-cover" />
           </a>
         )}
 
-        <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none block mb-2">&ldquo;</span>
-        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line max-h-60 overflow-y-auto pr-1">
-          {review.review}
-        </p>
-        <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none block text-right mt-2">&rdquo;</span>
+        <div className="px-6 pb-6">
+          <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none block mb-2">&ldquo;</span>
+          <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line max-h-60 overflow-y-auto pr-1">
+            {review.review}
+          </p>
+          <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none block text-right mt-2">&rdquo;</span>
 
-        <StarRating />
-        <div className="mt-3 flex items-end justify-between">
-          <div>
-            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{toInitials(review.name)}</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500">{review.datePurchased}</p>
+          <StarRating />
+          <div className="mt-3 flex items-end justify-between">
+            <div>
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{toInitials(review.name)}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">{review.datePurchased}</p>
+            </div>
+            <span className="text-xs text-gray-300 dark:text-gray-600 font-mono">{review.orderNumber}</span>
           </div>
-          <span className="text-xs text-gray-300 dark:text-gray-600 font-mono">{review.orderNumber}</span>
         </div>
       </div>
     </div>
