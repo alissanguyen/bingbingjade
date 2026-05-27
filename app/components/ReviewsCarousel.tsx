@@ -258,10 +258,10 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
   useEffect(() => {
     function update() {
       const w = window.innerWidth;
-      if (w < 640)       setColCount(1); // mobile: handled by CSS, but keeps globalIndex math consistent
-      else if (w < 750)  setColCount(2);
-      else if (w < 1024) setColCount(3);
-      else               setColCount(4);
+      if (w < 640)        setColCount(1); // mobile: handled by CSS, but keeps globalIndex math consistent
+      else if (w < 900)   setColCount(2);
+      else if (w < 1280)  setColCount(3);
+      else                setColCount(4);
     }
     update();
     window.addEventListener("resize", update);
