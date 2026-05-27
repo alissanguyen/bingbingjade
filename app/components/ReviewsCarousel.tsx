@@ -408,7 +408,10 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
         </div>
 
         {/* Desktop: 4-column grid */}
-        <div className="hidden r2:grid r2:grid-cols-2 r3:grid-cols-3 r4:grid-cols-4 gap-5">
+        <div
+          className="hidden r2:grid gap-5"
+          style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
+        >
           {pageReviews.map((r) => {
             const isLong = r.review.length > PREVIEW_LENGTH;
             const preview = isLong ? r.review.slice(0, PREVIEW_LENGTH).trimEnd() + "…" : r.review;
