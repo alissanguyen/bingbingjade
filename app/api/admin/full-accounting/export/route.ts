@@ -39,7 +39,8 @@ export async function GET(req: NextRequest) {
       .from("orders")
       .select(`
         id, order_number, created_at, customer_name, customer_email, source,
-        order_status, amount_total, discount_amount_cents, cogs_cents, fee_breakdown,
+        order_status, amount_total, discount_amount_cents,
+        inventory_expense_amount, inventory_expense_source, fee_breakdown,
         stripe_session_id, stripe_payment_intent_id,
         order_items(price_usd, quantity, line_total, product_id),
         stripe_accounting_snapshots(stripe_fee_cents, stripe_net_cents, refunded_amount_cents),
@@ -53,22 +54,6 @@ export async function GET(req: NextRequest) {
     if (to)   query = query.lte("created_at", to + "T23:59:59Z");
 
     const { data: orders } = await query;
-
-    // Product cost map
-    const productIds = new Set<string>();
-    for (const o of orders ?? []) {
-      for (const i of (o.order_items ?? []) as { product_id: string | null }[]) {
-        if (i.product_id) productIds.add(i.product_id);
-      }
-    }
-    const pcMap = new Map<string, number>();
-    if (productIds.size > 0) {
-      const { data: pcs } = await supabaseAdmin
-        .from("product_costs")
-        .select("product_id, total_cogs_usd")
-        .in("product_id", [...productIds]);
-      for (const pc of pcs ?? []) pcMap.set(pc.product_id as string, Number(pc.total_cogs_usd) || 0);
-    }
 
     // Payment ledger map
     const orderIds = (orders ?? []).map(o => o.id as string);
@@ -96,7 +81,7 @@ export async function GET(req: NextRequest) {
       "Amount Total", "Total Paid", "Amount Due", "Payment Providers",
       "Payment Fees", "Net Received",
       "Stripe Fee (raw)", "Stripe Net (raw)", "Refunded",
-      "COGS", "Missing COGS",
+      "Inv. Expense", "Uncosted",
       "Label Cost", "Insurance Cost", "Supplies Cost", "Dropoff Cost",
       "Total Fulfillment", "Estimated Profit",
       "Stripe Session ID", "Stripe PI ID",
@@ -115,15 +100,11 @@ export async function GET(req: NextRequest) {
       const discApplied = (o.discount_amount_cents as number | null) ? (o.discount_amount_cents as number) / 100 : feeDisc;
       const actualItemRev = totalDol - shipping - insurance - tax;
 
-      let cogs = 0; let missingCogs = false;
-      if ((o.cogs_cents as number | null) != null) {
-        cogs = (o.cogs_cents as number) / 100;
-      } else {
-        for (const i of items) {
-          const c = i.product_id ? (pcMap.get(i.product_id) ?? null) : null;
-          if (c != null) cogs += c * (i.quantity ?? 1); else missingCogs = true;
-        }
-      }
+      const expSrc = o.inventory_expense_source as string | null;
+      const cogs = (expSrc === "manual" || expSrc === "batch_allocated")
+        ? Number(o.inventory_expense_amount ?? 0)
+        : 0;
+      const missingCogs = expSrc === null;
 
       const snaps = (o.stripe_accounting_snapshots ?? []) as { stripe_fee_cents: number | null; stripe_net_cents: number | null; refunded_amount_cents: number | null }[];
       const snap = snaps[0] ?? null;

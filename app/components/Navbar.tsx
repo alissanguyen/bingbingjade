@@ -30,12 +30,12 @@ const NAV_ALL_PIECES = [
 ];
 
 const NAV_BANGLE_SIZES = [
-  { href: "/products?category=bangle&maxSize=48.9999999", label: "Below 49" },
-  { href: "/products?category=bangle&minSize=50.0&maxSize=52.9999999", label: "Size 50 - 52" },
-  { href: "/products?category=bangle&minSize=53&maxSize=55.9999999", label: "Size 53 - 55" },
-  { href: "/products?category=bangle&minSize=56&maxSize=58.9999999", label: "Size 56 - 58" },
-  { href: "/products?category=bangle&minSize=59&maxSize=61", label: "Size 59 - 61" },
-  { href: "/products?category=bangle&minSize=61.0000001", label: "Above 61" },
+  { href: "/products?category=bangle&maxSize=48.9999999", label: "Below 49mm" },
+  { href: "/products?category=bangle&minSize=50.0&maxSize=52.9999999", label: "Size 50mm - 52mm" },
+  { href: "/products?category=bangle&minSize=53&maxSize=55.9999999", label: "Size 53mm - 55mm" },
+  { href: "/products?category=bangle&minSize=56&maxSize=58.9999999", label: "Size 56mm - 58mm" },
+  { href: "/products?category=bangle&minSize=59&maxSize=61", label: "Size 59mm - 61mm" },
+  { href: "/products?category=bangle&minSize=61.0000001", label: "Above 61mm" },
 ];
 
 const NAV_SELECTIONS = [
