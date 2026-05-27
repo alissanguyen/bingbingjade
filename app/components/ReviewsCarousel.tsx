@@ -61,21 +61,19 @@ function ReviewModal({ review, onClose }: { review: CarouselReview; onClose: () 
           </svg>
         </button>
 
+        {review.image_url && (
+          <a href={review.image_url} target="_blank" rel="noopener noreferrer"
+            className="block w-full mb-4 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 hover:opacity-95 transition-opacity">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={review.image_url} alt="" className="w-full max-h-72 object-cover" />
+          </a>
+        )}
+
         <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none block mb-2">&ldquo;</span>
         <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line max-h-60 overflow-y-auto pr-1">
           {review.review}
         </p>
         <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none block text-right mt-2">&rdquo;</span>
-
-        {review.image_url && (
-          <div className="mt-3">
-            <a href={review.image_url} target="_blank" rel="noopener noreferrer"
-              className="block w-20 h-20 rounded-lg overflow-hidden border border-gray-100 dark:border-gray-800 hover:opacity-90 transition-opacity">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={review.image_url} alt="" className="w-full h-full object-cover" />
-            </a>
-          </div>
-        )}
 
         <StarRating />
         <div className="mt-3 flex items-end justify-between">
@@ -210,22 +208,21 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
                   <button onClick={() => setModalReview(r)} className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline self-start">See more</button>
                 )}
                 <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none self-end mt-2">&rdquo;</span>
-                {r.image_url && (
-                  <div className="mt-3 mb-1">
-                    <a href={r.image_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                      className="block w-14 h-14 rounded-md overflow-hidden border border-gray-100 dark:border-gray-800 hover:opacity-90 transition-opacity shrink-0">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={r.image_url} alt="" className="w-full h-full object-cover" />
-                    </a>
-                  </div>
-                )}
                 <StarRating />
-                <div className="mt-3 flex items-end justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{r.name}</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">{r.datePurchased}</p>
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {r.image_url && (
+                      <button onClick={() => setModalReview(r)} className="w-10 h-10 rounded-md overflow-hidden border border-gray-100 dark:border-gray-800 hover:opacity-80 transition-opacity shrink-0">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={r.image_url} alt="" className="w-full h-full object-cover" />
+                      </button>
+                    )}
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{r.name}</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">{r.datePurchased}</p>
+                    </div>
                   </div>
-                  <span className="text-xs text-gray-300 dark:text-gray-600 font-mono">{r.orderNumber}</span>
+                  <span className="text-xs text-gray-300 dark:text-gray-600 font-mono shrink-0">{r.orderNumber}</span>
                 </div>
               </div>
             );
@@ -250,22 +247,21 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
                   </button>
                 )}
                 <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none self-end mt-2">&rdquo;</span>
-                {r.image_url && (
-                  <div className="mt-3 mb-1">
-                    <a href={r.image_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                      className="block w-14 h-14 rounded-md overflow-hidden border border-gray-100 dark:border-gray-800 hover:opacity-90 transition-opacity shrink-0">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={r.image_url} alt="" className="w-full h-full object-cover" />
-                    </a>
-                  </div>
-                )}
                 <StarRating />
-                <div className="mt-3 flex items-end justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{r.name}</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">{r.datePurchased}</p>
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {r.image_url && (
+                      <button onClick={() => setModalReview(r)} className="w-10 h-10 rounded-md overflow-hidden border border-gray-100 dark:border-gray-800 hover:opacity-80 transition-opacity shrink-0">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={r.image_url} alt="" className="w-full h-full object-cover" />
+                      </button>
+                    )}
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{r.name}</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">{r.datePurchased}</p>
+                    </div>
                   </div>
-                  <span className="text-xs text-gray-300 dark:text-gray-600 font-mono">{r.orderNumber}</span>
+                  <span className="text-xs text-gray-300 dark:text-gray-600 font-mono shrink-0">{r.orderNumber}</span>
                 </div>
               </div>
             );
