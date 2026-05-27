@@ -6,14 +6,14 @@ interface MonthlyRow {
   month: string;
   revenue: number;
   itemRevenue: number;
-  cogs: number;
+  inventoryExpense: number;
   profit: number;
 }
 interface YearlyRow {
   year: string;
   revenue: number;
   itemRevenue: number;
-  cogs: number;
+  inventoryExpense: number;
   profit: number;
 }
 interface SourceRow { source: string; revenue: number; }
@@ -24,10 +24,11 @@ interface AccountingData {
   bySource: SourceRow[];
   totalRevenue: number;
   totalItemRevenue: number;
-  totalCogs: number;
+  totalInventoryExpense: number;
   totalProfit: number;
   orderCount: number;
-  hasCogs: boolean;
+  uncostedOrderCount: number;
+  hasInventoryData: boolean;
 }
 
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -43,9 +44,8 @@ function monthLabel(month: string) {
   return `${MONTH_NAMES[parseInt(m) - 1]} '${year.slice(2)}`;
 }
 
-// Pure SVG bar chart with two series: item revenue (green) + COGS (red)
-function BarChart({ data, showCogs }: { data: MonthlyRow[]; showCogs: boolean }) {
-  const BAR_W     = showCogs ? 18 : 36;
+function BarChart({ data, showExpense }: { data: MonthlyRow[]; showExpense: boolean }) {
+  const BAR_W     = showExpense ? 18 : 36;
   const BAR_GAP   = 2;
   const GROUP_GAP = 8;
   const H               = 200;
@@ -54,7 +54,7 @@ function BarChart({ data, showCogs }: { data: MonthlyRow[]; showCogs: boolean })
   const PADDING_LEFT    = 64;
   const PADDING_RIGHT   = 12;
 
-  const groupW   = showCogs ? BAR_W * 2 + BAR_GAP : BAR_W;
+  const groupW   = showExpense ? BAR_W * 2 + BAR_GAP : BAR_W;
   const maxVal   = Math.max(...data.map((d) => d.itemRevenue), 1);
   const chartH   = H - PADDING_TOP - PADDING_BOTTOM;
   const totalW   = PADDING_LEFT + data.length * (groupW + GROUP_GAP) - GROUP_GAP + PADDING_RIGHT;
@@ -85,23 +85,21 @@ function BarChart({ data, showCogs }: { data: MonthlyRow[]; showCogs: boolean })
           const x     = PADDING_LEFT + i * (groupW + GROUP_GAP);
           const label = monthLabel(d.month);
 
-          const revenueH = Math.max(2, (d.itemRevenue / maxVal) * chartH);
-          const cogsH    = showCogs ? Math.max(2, (Math.min(d.cogs, d.itemRevenue) / maxVal) * chartH) : 0;
+          const revenueH  = Math.max(2, (d.itemRevenue / maxVal) * chartH);
+          const expenseH  = showExpense ? Math.max(2, (Math.min(d.inventoryExpense, d.itemRevenue) / maxVal) * chartH) : 0;
 
           return (
             <g key={d.month}>
-              {/* Item revenue bar */}
               <rect x={x} y={PADDING_TOP + chartH - revenueH} width={BAR_W} height={revenueH}
                 rx={3} className="fill-emerald-500 dark:fill-emerald-600" opacity={0.85}>
                 <title>{label} — Item Revenue: {fmtUSDFull(d.itemRevenue)}</title>
               </rect>
 
-              {/* COGS bar */}
-              {showCogs && (
-                <rect x={x + BAR_W + BAR_GAP} y={PADDING_TOP + chartH - cogsH}
-                  width={BAR_W} height={cogsH} rx={3}
-                  className="fill-rose-400 dark:fill-rose-500" opacity={0.75}>
-                  <title>{label} — COGS: {fmtUSDFull(d.cogs)}</title>
+              {showExpense && (
+                <rect x={x + BAR_W + BAR_GAP} y={PADDING_TOP + chartH - expenseH}
+                  width={BAR_W} height={expenseH} rx={3}
+                  className="fill-amber-400 dark:fill-amber-500" opacity={0.8}>
+                  <title>{label} — Inv. Expense: {fmtUSDFull(d.inventoryExpense)}</title>
                 </rect>
               )}
 
@@ -114,16 +112,15 @@ function BarChart({ data, showCogs }: { data: MonthlyRow[]; showCogs: boolean })
         })}
       </svg>
 
-      {/* Legend */}
-      {showCogs && (
+      {showExpense && (
         <div className="flex items-center gap-5 mt-2 ml-2">
           <span className="flex items-center gap-1.5 text-[11px] sm:text-sm text-gray-500 dark:text-gray-400">
             <span className="w-3 h-3 rounded-sm bg-emerald-500 dark:bg-emerald-600 inline-block" />
             Item Revenue
           </span>
           <span className="flex items-center gap-1.5 text-[11px] sm:text-sm text-gray-500 dark:text-gray-400">
-            <span className="w-3 h-3 rounded-sm bg-rose-400 dark:bg-rose-500 inline-block" />
-            COGS
+            <span className="w-3 h-3 rounded-sm bg-amber-400 dark:bg-amber-500 inline-block" />
+            Inv. Expense
           </span>
         </div>
       )}
@@ -172,20 +169,20 @@ export function AccountingClient() {
 
   const filtered = filteredMonthly.reduce(
     (acc, m) => {
-      acc.revenue     += m.revenue;
-      acc.itemRevenue += m.itemRevenue;
-      acc.cogs        += m.cogs;
-      acc.profit      += m.profit;
+      acc.revenue          += m.revenue;
+      acc.itemRevenue      += m.itemRevenue;
+      acc.inventoryExpense += m.inventoryExpense;
+      acc.profit           += m.profit;
       return acc;
     },
-    { revenue: 0, itemRevenue: 0, cogs: 0, profit: 0 }
+    { revenue: 0, itemRevenue: 0, inventoryExpense: 0, profit: 0 }
   );
 
   const marginPct = filtered.itemRevenue > 0
     ? Math.round((filtered.profit / filtered.itemRevenue) * 100)
     : null;
 
-  const showCogs = data.hasCogs;
+  const showExpense = data.hasInventoryData;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
@@ -196,6 +193,11 @@ export function AccountingClient() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Accounting</h1>
           <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
             {data.orderCount} paid order{data.orderCount !== 1 ? "s" : ""} · excludes cancelled
+            {data.uncostedOrderCount > 0 && (
+              <span className="ml-2 text-amber-500 dark:text-amber-400">
+                · {data.uncostedOrderCount} uncosted
+              </span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -221,7 +223,7 @@ export function AccountingClient() {
       </div>
 
       {/* KPI cards */}
-      <div className={`grid gap-4 ${showCogs ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2 sm:grid-cols-3"}`}>
+      <div className={`grid gap-4 ${showExpense ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2 sm:grid-cols-3"}`}>
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-5 py-4">
           <p className="text-[11px] sm:text-sm uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">
             {selectedYear === "all" ? "Total Collected" : `${selectedYear} Collected`}
@@ -241,39 +243,39 @@ export function AccountingClient() {
           <p className="text-[10px] sm:text-[14px] text-gray-400 mt-0.5">excl. shipping & fees</p>
         </div>
 
-        {showCogs && (
-          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-5 py-4">
-            <p className="text-[11px] sm:text-sm uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">
-              COGS
-            </p>
-            <p className="text-lg sm:text-xl font-bold text-rose-500 dark:text-rose-400">
-              {fmtUSDFull(filtered.cogs)}
-            </p>
-            <p className="text-[10px] sm:text-[14px] text-gray-400 mt-0.5">import cost @ ₫26,000/USD</p>
-          </div>
-        )}
+        {showExpense ? (
+          <>
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-5 py-4">
+              <p className="text-[11px] sm:text-sm uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">
+                Inv. Expense
+              </p>
+              <p className="text-lg sm:text-xl font-bold text-amber-500 dark:text-amber-400">
+                {fmtUSDFull(filtered.inventoryExpense)}
+              </p>
+              <p className="text-[10px] sm:text-[14px] text-gray-400 mt-0.5">realized on sold orders</p>
+            </div>
 
-        {showCogs && (
-          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-5 py-4">
-            <p className="text-[11px] sm:text-sm uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">
-              Gross Profit
-            </p>
-            <p className={`text-lg sm:text-xl font-bold ${filtered.profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
-              {fmtUSDFull(filtered.profit)}
-            </p>
-            {marginPct != null && (
-              <p className="text-[10px] sm:text-[14px] text-gray-400 mt-0.5">{marginPct}% margin</p>
-            )}
-          </div>
-        )}
-
-        {!showCogs && (
-          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-5 py-4 col-span-2 sm:col-span-1">
-            <p className="text-[11px] sm:text-sm uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">Avg / Month</p>
-            <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
-              {filteredMonthly.length > 0 ? fmtUSD(filtered.revenue / filteredMonthly.length) : "—"}
-            </p>
-          </div>
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-5 py-4">
+              <p className="text-[11px] sm:text-sm uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">
+                Gross Profit (Est.)
+              </p>
+              <p className={`text-lg sm:text-xl font-bold ${filtered.profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+                {fmtUSDFull(filtered.profit)}
+              </p>
+              {marginPct != null && (
+                <p className="text-[10px] sm:text-[14px] text-gray-400 mt-0.5">{marginPct}% margin</p>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-5 py-4 col-span-2 sm:col-span-1">
+              <p className="text-[11px] sm:text-sm uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">Avg / Month</p>
+              <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
+                {filteredMonthly.length > 0 ? fmtUSD(filtered.revenue / filteredMonthly.length) : "—"}
+              </p>
+            </div>
+          </>
         )}
       </div>
 
@@ -284,7 +286,7 @@ export function AccountingClient() {
         </h2>
         {filteredMonthly.length === 0
           ? <p className="text-xs sm:text-sm text-gray-400 dark:text-gray-500">No data for this period.</p>
-          : <BarChart data={filteredMonthly} showCogs={showCogs} />
+          : <BarChart data={filteredMonthly} showExpense={showExpense} />
         }
       </div>
 
@@ -298,9 +300,9 @@ export function AccountingClient() {
                 <th className="pb-2 pr-4 font-medium">Year</th>
                 <th className="pb-2 pr-4 font-medium text-right">Total Collected</th>
                 <th className="pb-2 pr-4 font-medium text-right">Item Revenue</th>
-                {showCogs && <th className="pb-2 pr-4 font-medium text-right">COGS</th>}
-                {showCogs && <th className="pb-2 pr-4 font-medium text-right">Gross Profit</th>}
-                {showCogs && <th className="pb-2 font-medium text-right">Margin</th>}
+                {showExpense && <th className="pb-2 pr-4 font-medium text-right">Inv. Expense</th>}
+                {showExpense && <th className="pb-2 pr-4 font-medium text-right">Gross Profit</th>}
+                {showExpense && <th className="pb-2 font-medium text-right">Margin</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
@@ -313,13 +315,13 @@ export function AccountingClient() {
                     <td className="py-2.5 pr-4 font-medium text-gray-800 dark:text-gray-200">{y.year}</td>
                     <td className="py-2.5 pr-4 text-right text-gray-600 dark:text-gray-400">{fmtUSDFull(y.revenue)}</td>
                     <td className="py-2.5 pr-4 text-right text-emerald-600 dark:text-emerald-400 font-semibold">{fmtUSDFull(y.itemRevenue)}</td>
-                    {showCogs && <td className="py-2.5 pr-4 text-right text-rose-500 dark:text-rose-400">{fmtUSDFull(y.cogs)}</td>}
-                    {showCogs && (
+                    {showExpense && <td className="py-2.5 pr-4 text-right text-amber-500 dark:text-amber-400">{fmtUSDFull(y.inventoryExpense)}</td>}
+                    {showExpense && (
                       <td className={`py-2.5 pr-4 text-right font-semibold ${y.profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
                         {fmtUSDFull(y.profit)}
                       </td>
                     )}
-                    {showCogs && (
+                    {showExpense && (
                       <td className="py-2.5 text-right text-gray-500 dark:text-gray-400 text-xs">
                         {margin != null ? `${margin}%` : "—"}
                       </td>
@@ -333,13 +335,13 @@ export function AccountingClient() {
                 <td className="pt-2.5 pr-4 font-semibold text-gray-800 dark:text-gray-200">Total</td>
                 <td className="pt-2.5 pr-4 text-right font-bold text-gray-700 dark:text-gray-300">{fmtUSDFull(data.totalRevenue)}</td>
                 <td className="pt-2.5 pr-4 text-right font-bold text-emerald-600 dark:text-emerald-400">{fmtUSDFull(data.totalItemRevenue)}</td>
-                {showCogs && <td className="pt-2.5 pr-4 text-right font-bold text-rose-500 dark:text-rose-400">{fmtUSDFull(data.totalCogs)}</td>}
-                {showCogs && (
+                {showExpense && <td className="pt-2.5 pr-4 text-right font-bold text-amber-500 dark:text-amber-400">{fmtUSDFull(data.totalInventoryExpense)}</td>}
+                {showExpense && (
                   <td className={`pt-2.5 pr-4 text-right font-bold ${data.totalProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
                     {fmtUSDFull(data.totalProfit)}
                   </td>
                 )}
-                {showCogs && (
+                {showExpense && (
                   <td className="pt-2.5 text-right text-gray-400 text-xs">
                     {data.totalItemRevenue > 0
                       ? `${Math.round((data.totalProfit / data.totalItemRevenue) * 100)}%`
@@ -379,9 +381,10 @@ export function AccountingClient() {
         </div>
       </div>
 
-      {!showCogs && (
-        <p className="text-xs text-gray-400 dark:text-gray-600 text-center">
-          COGS and profit margin will appear once new orders are placed with import prices set.
+      {data.uncostedOrderCount > 0 && (
+        <p className="text-xs text-amber-500 dark:text-amber-400 text-center">
+          {data.uncostedOrderCount} order{data.uncostedOrderCount !== 1 ? "s" : ""} have no inventory expense recorded yet.
+          Set the expense source on each order in Orders admin to improve profit accuracy.
         </p>
       )}
 
