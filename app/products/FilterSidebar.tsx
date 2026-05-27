@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useCallback, useState, useEffect, Suspense } from "react";
+import { useCallback, useState, useEffect, Suspense, useRef } from "react";
 
 const ALL_COLORS = [
   { value: "white",    label: "White",    swatch: "bg-white border border-gray-300" },
@@ -128,6 +128,13 @@ export function FilterSidebar({
   const [maxSize,  setMaxSize]  = useState(initialMaxSize);
   const [minPrice, setMinPrice] = useState(initialMinPrice);
   const [maxPrice, setMaxPrice] = useState(initialMaxPrice);
+  const numericFiltersRef = useRef({
+    minSize: initialMinSize,
+    maxSize: initialMaxSize,
+    minPrice: initialMinPrice,
+    maxPrice: initialMaxPrice,
+  });
+  const numericFilterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Sync with URL after mount (handles back/forward navigation and CategoryBar clicks).
   const handleSync = useCallback((params: URLSearchParams) => {
@@ -140,6 +147,12 @@ export function FilterSidebar({
     setMaxSize(params.get("maxSize")  ?? "");
     setMinPrice(params.get("minPrice") ?? "");
     setMaxPrice(params.get("maxPrice") ?? "");
+    numericFiltersRef.current = {
+      minSize: params.get("minSize") ?? "",
+      maxSize: params.get("maxSize") ?? "",
+      minPrice: params.get("minPrice") ?? "",
+      maxPrice: params.get("maxPrice") ?? "",
+    };
   }, []);
 
   const activeCount =
@@ -159,9 +172,15 @@ export function FilterSidebar({
     return () => { document.body.style.overflow = ""; };
   }, [drawerOpen]);
 
+  useEffect(() => {
+    return () => {
+      if (numericFilterTimerRef.current) clearTimeout(numericFilterTimerRef.current);
+    };
+  }, []);
+
   // Build URLs preserving all current params (including sort, page, etc.)
-  const push = useCallback(
-    (updates: Record<string, string | null>) => {
+  const updateUrl = useCallback(
+    (updates: Record<string, string | null>, method: "push" | "replace" = "push") => {
       // Read from window.location so we always have the latest params without
       // needing useSearchParams() in the render body.
       const params = new URLSearchParams(
@@ -172,46 +191,75 @@ export function FilterSidebar({
         else params.set(key, val);
       }
       const qs = params.toString();
-      router.push(qs ? `${pathname}?${qs}` : pathname);
+      const href = qs ? `${pathname}?${qs}` : pathname;
+      if (method === "replace") router.replace(href);
+      else router.push(href);
     },
     [router, pathname]
   );
+
+  const scheduleNumericFilterUpdate = useCallback(() => {
+    if (numericFilterTimerRef.current) clearTimeout(numericFilterTimerRef.current);
+    numericFilterTimerRef.current = setTimeout(() => {
+      numericFilterTimerRef.current = null;
+      updateUrl({
+        minSize: numericFiltersRef.current.minSize || null,
+        maxSize: numericFiltersRef.current.maxSize || null,
+        minPrice: numericFiltersRef.current.minPrice || null,
+        maxPrice: numericFiltersRef.current.maxPrice || null,
+      }, "replace");
+    }, 350);
+  }, [updateUrl]);
+
+  function updateNumericFilter(
+    key: "minSize" | "maxSize" | "minPrice" | "maxPrice",
+    value: string
+  ) {
+    numericFiltersRef.current = { ...numericFiltersRef.current, [key]: value };
+    if (key === "minSize") setMinSize(value);
+    if (key === "maxSize") setMaxSize(value);
+    if (key === "minPrice") setMinPrice(value);
+    if (key === "maxPrice") setMaxPrice(value);
+    scheduleNumericFilterUpdate();
+  }
 
   function toggleColor(color: string) {
     const next = selectedColors.includes(color)
       ? selectedColors.filter((c) => c !== color)
       : [...selectedColors, color];
-    push({ colors: next.length > 0 ? next.join(",") : null });
+    updateUrl({ colors: next.length > 0 ? next.join(",") : null });
   }
 
   function toggleStatus(status: string) {
     const next = selectedStatuses.includes(status)
       ? selectedStatuses.filter((s) => s !== status)
       : [...selectedStatuses, status];
-    push({ status: next.length > 0 ? next.join(",") : null });
+    updateUrl({ status: next.length > 0 ? next.join(",") : null });
   }
 
   function toggleOrigin(origin: string) {
     const next = selectedOrigins.includes(origin)
       ? selectedOrigins.filter((o) => o !== origin)
       : [...selectedOrigins, origin];
-    push({ origins: next.length > 0 ? next.join(",") : null });
+    updateUrl({ origins: next.length > 0 ? next.join(",") : null });
   }
 
   function toggleShipping(value: string) {
     const next = selectedShipping.includes(value)
       ? selectedShipping.filter((s) => s !== value)
       : [...selectedShipping, value];
-    push({ shipping: next.length > 0 ? next.join(",") : null });
+    updateUrl({ shipping: next.length > 0 ? next.join(",") : null });
   }
 
   function toggleClearance() {
     const next = !selectedClearance;
     setSelectedClearance(next);
-    push({ clearance: next ? "1" : null });
+    updateUrl({ clearance: next ? "1" : null });
   }
 
   function clearAll() {
+    if (numericFilterTimerRef.current) clearTimeout(numericFilterTimerRef.current);
+    numericFilterTimerRef.current = null;
     router.push(pathname);
   }
 
@@ -303,13 +351,13 @@ export function FilterSidebar({
         <div className="flex items-center gap-1.5">
           <input
             type="number" min={0} placeholder="Min" value={minSize}
-            onChange={(e) => push({ minSize: e.target.value })}
+            onChange={(e) => updateNumericFilter("minSize", e.target.value)}
             className="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
           />
           <span className="text-gray-400 text-xs shrink-0">–</span>
           <input
             type="number" min={0} placeholder="Max" value={maxSize}
-            onChange={(e) => push({ maxSize: e.target.value })}
+            onChange={(e) => updateNumericFilter("maxSize", e.target.value)}
             className="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
           />
         </div>
@@ -321,13 +369,13 @@ export function FilterSidebar({
         <div className="flex items-center gap-1.5">
           <input
             type="number" min={0} placeholder="Min" value={minPrice}
-            onChange={(e) => push({ minPrice: e.target.value })}
+            onChange={(e) => updateNumericFilter("minPrice", e.target.value)}
             className="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
           />
           <span className="text-gray-400 text-xs shrink-0">–</span>
           <input
             type="number" min={0} placeholder="Max" value={maxPrice}
-            onChange={(e) => push({ maxPrice: e.target.value })}
+            onChange={(e) => updateNumericFilter("maxPrice", e.target.value)}
             className="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
           />
         </div>
@@ -481,13 +529,13 @@ export function FilterSidebar({
               <div className="flex items-center gap-1.5">
                 <input
                   type="number" min={0} placeholder="Min" value={minSize}
-                  onChange={(e) => push({ minSize: e.target.value })}
+                  onChange={(e) => updateNumericFilter("minSize", e.target.value)}
                   className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2.5 py-1.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
                 <span className="text-gray-400 text-xs shrink-0">–</span>
                 <input
                   type="number" min={0} placeholder="Max" value={maxSize}
-                  onChange={(e) => push({ maxSize: e.target.value })}
+                  onChange={(e) => updateNumericFilter("maxSize", e.target.value)}
                   className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2.5 py-1.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
@@ -499,13 +547,13 @@ export function FilterSidebar({
               <div className="flex items-center gap-1.5">
                 <input
                   type="number" min={0} placeholder="Min" value={minPrice}
-                  onChange={(e) => push({ minPrice: e.target.value })}
+                  onChange={(e) => updateNumericFilter("minPrice", e.target.value)}
                   className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2.5 py-1.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
                 <span className="text-gray-400 text-xs shrink-0">–</span>
                 <input
                   type="number" min={0} placeholder="Max" value={maxPrice}
-                  onChange={(e) => push({ maxPrice: e.target.value })}
+                  onChange={(e) => updateNumericFilter("maxPrice", e.target.value)}
                   className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2.5 py-1.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>

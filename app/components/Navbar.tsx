@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
 import { useCart } from "./CartContext";
-import { getCategoryLabel } from "@/app/products/categories";
 import Image from "next/image";
 import { productMicroUrl } from "@/lib/storage";
 
@@ -28,6 +27,15 @@ const NAV_ALL_PIECES = [
   { href: "/products?category=pendant,necklace", label: "Pendants & Necklaces" },
   { href: "/products?category=set", label: "Sets" },
   { href: "/products?category=raw_material", label: "Raw Materials" },
+];
+
+const NAV_BANGLE_SIZES = [
+  { href: "/products?category=bangle&maxSize=48.9999999", label: "Below 49" },
+  { href: "/products?category=bangle&minSize=50.0&maxSize=52.9999999", label: "Size 50 - 52" },
+  { href: "/products?category=bangle&minSize=53&maxSize=55.9999999", label: "Size 53 - 55" },
+  { href: "/products?category=bangle&minSize=56&maxSize=58.9999999", label: "Size 56 - 58" },
+  { href: "/products?category=bangle&minSize=59&maxSize=61", label: "Size 59 - 61" },
+  { href: "/products?category=bangle&minSize=61.0000001", label: "Above 61" },
 ];
 
 const NAV_SELECTIONS = [
@@ -341,6 +349,18 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
                     {label}
                   </Link>
                 ))}
+                <div className="my-2 h-px bg-gray-100 dark:bg-gray-800 mx-3" />
+                <p className="px-3 pb-2 text-[12px] font-semibold uppercase tracking-widest text-gray-400">Shop Bangles by Size</p>
+                {NAV_BANGLE_SIZES.map(({ href, label }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setProductsOpen(false)}
+                    className="block ml-2 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-350 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
+                  >
+                    {label}
+                  </Link>
+                ))}
               </div>
               <div className="w-px bg-gray-100 dark:bg-gray-800 mx-1 self-stretch" />
               {/* Col 3 — Selections + Service */}
@@ -432,29 +452,28 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
       </ul>
 
       {/* Mobile right side */}
-      <div className="flex sm:hidden items-center gap-3">
+      <div className="flex sm:hidden items-center gap-2">
         <button
           onClick={() => { setSearchOpen((v) => !v); setOpen(false); }}
           aria-label="Search products"
-          className={`p-1 transition-colors ${searchOpen ? "text-emerald-700 dark:text-emerald-400" : "text-gray-600 dark:text-gray-300"}`}
+          className={`p-0.5 transition-colors ${searchOpen ? "text-emerald-700 dark:text-emerald-400" : "text-gray-600 dark:text-gray-300"}`}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
         </button>
-        <ThemeToggle />
         <button
           onClick={() => { setOpen(false); setMobileProductsOpen(false); openDrawer(); }}
           aria-label={`Open cart (${count} items)`}
-          className="relative p-1 text-gray-600 dark:text-gray-300"
+          className="relative p-0.5 text-gray-600 dark:text-gray-300"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
             <line x1="3" y1="6" x2="21" y2="6" />
             <path d="M16 10a4 4 0 0 1-8 0" />
           </svg>
           {count > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-emerald-600 text-white text-[10px] font-bold leading-none px-1">
+            <span className="absolute -top-1 -right-1 min-w-4 h-4 flex items-center justify-center rounded-full bg-emerald-600 text-white text-[9px] font-bold leading-none px-1">
               {count}
             </span>
           )}
@@ -462,14 +481,14 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
         <button
           onClick={() => { setOpen((o) => { if (!o) closeDrawer(); return !o; }); }}
           aria-label="Toggle menu"
-          className="p-1 text-gray-600 dark:text-gray-300"
+          className="p-0.5 text-gray-600 dark:text-gray-300"
         >
           {open ? (
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           )}
@@ -628,6 +647,21 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
                       </li>
                     ))}
                   </ul>
+                  {/* Shop Bangles by Size */}
+                  <p className="pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Shop Bangles by Size</p>
+                  <ul className="space-y-0.5 mb-2">
+                    {NAV_BANGLE_SIZES.map(({ href, label }) => (
+                      <li key={href}>
+                        <Link
+                          href={href}
+                          onClick={() => { setOpen(false); setMobileProductsOpen(false); }}
+                          className="block pl-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                        >
+                          {label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
                   {/* Selections */}
                   <p className="pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Selections</p>
                   <ul className="space-y-0.5 mb-2">
@@ -688,6 +722,14 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
               >
                 Rewards
               </Link>
+            </li>
+            <li className="mt-2 border-t border-gray-100 dark:border-gray-800 pt-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+                  Light / Dark Mode
+                </span>
+                <ThemeToggle />
+              </div>
             </li>
           </ul>
         </div>
