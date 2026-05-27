@@ -71,7 +71,7 @@ async function getApprovedReviews(): Promise<CarouselReview[]> {
       id: r.id,
       orderNumber: r.order_number,
       datePurchased: new Date(r.date_purchased).toLocaleDateString("en-US", {
-        month: "long", day: "numeric", year: "numeric",
+        month: "short", day: "numeric", year: "numeric",
       }),
       name: r.customer_name,
       review: r.description ?? "",
