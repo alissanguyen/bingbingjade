@@ -247,10 +247,10 @@ export function AnnouncementBanner() {
     return (
       <div className="relative w-full select-none" style={bannerStyle}>
         <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-10 py-2.5 min-h-10">
-          <span className="text-xs sm:text-[13px] font-medium tracking-[0.04em]" style={{ color: style.textColor }}>
+          <span className="text-[10px] sm:text-[13px] font-medium tracking-[0.04em]" style={{ color: style.textColor }}>
             {messages[0]}
           </span>
-          <span className="text-[10px] tracking-widest hidden sm:block" style={{ color: `${style.accentColor}90` }} aria-hidden>·</span>
+          <span className="text-[8px] tracking-widest hidden sm:block" style={{ color: `${style.accentColor}90` }} aria-hidden>·</span>
           <div className="flex flex-row gap-2 sm:gap-3 items-center">
             <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: style.accentColor }}>
               {config.countdown_label ?? "Starting in"}
@@ -279,11 +279,11 @@ export function AnnouncementBanner() {
   // ── Rotating single-message layout ───────────────────────────────────────
   return (
     <div className="relative w-full select-none" style={bannerStyle}>
-      <div className="relative flex items-center justify-center min-h-10 py-2 overflow-hidden">
+      <div className="relative flex items-center justify-center min-h-10 py-1 sm:py-2 overflow-hidden">
         {reducedMotion ? (
           <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 sm:gap-x-3.5 px-10">
             <span
-              className="text-xs sm:text-[13px] font-medium tracking-[0.04em] text-center"
+              className="text-[10px] sm:text-[14px] font-medium tracking-[0.04em] text-center"
               style={{ color: style.textColor }}
             >
               {messages[0]}
@@ -294,14 +294,14 @@ export function AnnouncementBanner() {
           <>
             {outgoing && (
               <div key={outgoing.key} className={`absolute inset-0 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 sm:gap-x-3.5 px-10 ${outgoing.rev ? "banner-slide-out-rev" : "banner-slide-out"}`}>
-                <span className="text-xs sm:text-[13px] font-medium tracking-[0.04em] text-center" style={{ color: style.textColor }}>
+                <span className="text-[10px] sm:text-[14px] font-medium tracking-[0.04em] text-center" style={{ color: style.textColor }}>
                   {messages[outgoing.idx]}
                 </span>
                 {ctaPill}
               </div>
             )}
             <div key={slideKey} className={`absolute inset-0 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 sm:gap-x-3.5 px-10${slideKey > 0 ? (slideRev ? " banner-slide-in-rev" : " banner-slide-in") : ""}`}>
-              <span className="text-xs sm:text-[13px] font-medium tracking-[0.04em] text-center" style={{ color: style.textColor }}>
+              <span className="text-[10px] sm:text-[14px] font-medium tracking-[0.04em] text-center" style={{ color: style.textColor }}>
                 {messages[idx]}
               </span>
               {ctaPill}

@@ -125,9 +125,9 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
 
 
   return (
-    <nav className="relative mx-auto max-w-7xl flex items-center justify-between px-6 py-4">
+    <nav className="relative mx-auto max-w-7xl flex items-center justify-between px-6 py-1 sm:py-4">
       <Link href="/" onClick={() => setOpen(false)}>
-        <svg viewBox="60 30 750 260" preserveAspectRatio="xMinYMid meet" fill="none" xmlns="http://www.w3.org/2000/svg" className="translate-x-[-10px] sm:translate-x-0 h-17 sm:h-40 w-auto text-[#23443D] dark:text-[#9ED9CB]">
+        <svg viewBox="60 30 750 260" preserveAspectRatio="xMinYMid meet" fill="none" xmlns="http://www.w3.org/2000/svg" className="translate-x-[-10px] sm:translate-x-0 h-20 sm:h-24 md:h-28 lg:h-32 xl:h-36 w-auto text-[#23443D] dark:text-[#9ED9CB]">
           <defs>
             <radialGradient id="jadeBase" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"
               gradientTransform="translate(126 118) rotate(35) scale(115 115)">
@@ -477,7 +477,7 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
           aria-label={`Open cart (${count} items)`}
           className="relative p-0.5 text-gray-600 dark:text-gray-300"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
             <line x1="3" y1="6" x2="21" y2="6" />
             <path d="M16 10a4 4 0 0 1-8 0" />
@@ -494,11 +494,11 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
           className="p-0.5 text-gray-600 dark:text-gray-300"
         >
           {open ? (
-            <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
               <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           )}
