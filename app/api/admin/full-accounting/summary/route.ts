@@ -25,15 +25,13 @@ export async function POST() {
     { data: orders },
     { data: payments },
     { data: expenses },
-    { data: productCosts },
     { data: settingsRow },
   ] = await Promise.all([
     supabaseAdmin
       .from("orders")
       .select(`
-        id, amount_total, discount_amount_cents, cogs_cents, created_at,
+        id, amount_total, discount_amount_cents, inventory_expense_amount, inventory_expense_source, created_at,
         fee_breakdown,
-        order_items(price_usd, quantity, product_id),
         order_fulfillment_costs(label_cost_usd, business_shipping_insurance_cost_usd, supplies_cost_usd, dropoff_transport_cost_usd, other_fulfillment_cost_usd)
       `)
       .neq("order_status", "order_cancelled")
@@ -46,9 +44,6 @@ export async function POST() {
       .from("business_expenses")
       .select("amount_usd, deductible_amount_usd, category, expense_date"),
     supabaseAdmin
-      .from("product_costs")
-      .select("product_id, total_cogs_usd"),
-    supabaseAdmin
       .from("accounting_settings")
       .select("default_supplies_cost_per_order")
       .limit(1)
@@ -56,9 +51,6 @@ export async function POST() {
   ]);
 
   const defaultSuppliesPerOrder = Number(settingsRow?.default_supplies_cost_per_order ?? 20);
-
-  const pcMap = new Map<string, number>();
-  for (const pc of productCosts ?? []) pcMap.set(pc.product_id as string, Number(pc.total_cogs_usd) || 0);
 
   // Per-order paid amounts (for reconciliation)
   const orderPaidMap: Record<string, number> = {};
@@ -97,15 +89,10 @@ export async function POST() {
     const discount = fees.discount ?? (o.discount_amount_cents ?? 0) / 100;
     const total    = (o.amount_total as number) / 100;
 
-    const items = (o.order_items ?? []) as { price_usd: number; quantity: number; product_id: string | null }[];
-    let cogs = 0;
-    if ((o.cogs_cents as number | null) != null) {
-      cogs = (o.cogs_cents as number) / 100;
-    } else {
-      for (const item of items) {
-        if (item.product_id) cogs += (pcMap.get(item.product_id) ?? 0) * (item.quantity ?? 1);
-      }
-    }
+    const expSrc = o.inventory_expense_source as string | null;
+    const cogs = (expSrc === "manual" || expSrc === "batch_allocated")
+      ? Number(o.inventory_expense_amount ?? 0)
+      : 0;
 
     const fc = ((o.order_fulfillment_costs ?? []) as {
       label_cost_usd: number; business_shipping_insurance_cost_usd: number;
