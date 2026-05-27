@@ -250,6 +250,7 @@ function ReviewModal({ review, onClose }: { review: CarouselReview; onClose: () 
 export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] }) {
   const [modalReview, setModalReview] = useState<CarouselReview | null>(null);
   const [page, setPage] = useState(0);
+  const [mobileSubIndex, setMobileSubIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -262,20 +263,37 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
 
   const totalPages = Math.ceil(combined.length / PAGE_SIZE);
   const pageReviews = combined.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const globalIndex = page * PAGE_SIZE + mobileSubIndex;
 
-  // Auto-advance: loop through pages, pause on hover or when modal is open
+  // Auto-advance: step 1 globally so mobile moves 1 card at a time
   useEffect(() => {
     if (paused || modalReview) return;
     timerRef.current = setInterval(() => {
-      setPage((p) => (p + 1) % totalPages);
+      const nextGlobal = (globalIndex + 1) % combined.length;
+      setPage(Math.floor(nextGlobal / PAGE_SIZE));
+      setMobileSubIndex(nextGlobal % PAGE_SIZE);
     }, AUTO_ADVANCE_MS);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [paused, modalReview, totalPages]);
+  }, [paused, modalReview, globalIndex, combined.length]);
 
-  function goTo(next: number) {
-    // Reset timer on manual navigation
+  function resetTimer() {
     if (timerRef.current) clearInterval(timerRef.current);
-    setPage((next + totalPages) % totalPages);
+  }
+
+  // Desktop: jump a full page, reset mobile sub-index
+  function goTo(next: number) {
+    resetTimer();
+    const newPage = (next + totalPages) % totalPages;
+    setPage(newPage);
+    setMobileSubIndex(0);
+  }
+
+  // Mobile: step 1 at a time through all reviews
+  function goMobile(dir: 1 | -1) {
+    resetTimer();
+    const nextGlobal = (globalIndex + dir + combined.length) % combined.length;
+    setPage(Math.floor(nextGlobal / PAGE_SIZE));
+    setMobileSubIndex(nextGlobal % PAGE_SIZE);
   }
 
   return (
@@ -294,8 +312,19 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">What People Are Saying</h2>
           </div>
           <div className="flex items-center gap-3">
+            {/* Mobile: inline arrows + counter */}
+            <div className="flex sm:hidden items-center gap-2">
+              <button onClick={() => goMobile(-1)} aria-label="Previous" className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-center text-gray-500 hover:border-emerald-400 hover:text-emerald-600 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+              <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums w-10 text-center">{globalIndex + 1} / {combined.length}</span>
+              <button onClick={() => goMobile(1)} aria-label="Next" className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-center text-gray-500 hover:border-emerald-400 hover:text-emerald-600 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+
+            {/* Desktop: page arrows + dot indicators */}
             <ArrowBtn dir="left" onClick={() => goTo(page - 1)} />
-            {/* Dot indicators */}
             <div className="hidden sm:flex items-center gap-1.5">
               {Array.from({ length: totalPages }).map((_, i) => (
                 <button
@@ -315,9 +344,51 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
         </div>
       </div>
 
-      {/* 4-column grid */}
+      {/* Cards */}
       <div className="mx-auto max-w-7xl px-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* Mobile: single card */}
+        <div className="sm:hidden">
+          {(() => {
+            const r = pageReviews[mobileSubIndex] ?? pageReviews[0];
+            if (!r) return null;
+            const isLong = r.review.length > PREVIEW_LENGTH;
+            const preview = isLong ? r.review.slice(0, PREVIEW_LENGTH).trimEnd() + "…" : r.review;
+            return (
+              <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-6 flex flex-col">
+                <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none mb-2">&ldquo;</span>
+                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed flex-1">{preview}</p>
+                {isLong && (
+                  <button onClick={() => setModalReview(r)} className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline self-start">See more</button>
+                )}
+                <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none self-end mt-2">&rdquo;</span>
+                {r.images.length > 0 && (
+                  <div className="flex gap-1.5 mt-3 mb-1">
+                    {r.images.slice(0, 3).map((img, i) => (
+                      <a key={i} href={img.image_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="block w-14 h-14 rounded-md overflow-hidden border border-gray-100 dark:border-gray-800 hover:opacity-90 transition-opacity shrink-0">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={img.image_url} alt="" className="w-full h-full object-cover" />
+                      </a>
+                    ))}
+                    {r.images.length > 3 && (
+                      <button onClick={() => setModalReview(r)} className="w-14 h-14 rounded-md border border-gray-100 dark:border-gray-800 bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs text-gray-500 dark:text-gray-400 shrink-0">+{r.images.length - 3}</button>
+                    )}
+                  </div>
+                )}
+                <StarRating />
+                <div className="mt-3 flex items-end justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{r.name}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">{r.datePurchased}</p>
+                  </div>
+                  <span className="text-xs text-gray-300 dark:text-gray-600 font-mono">{r.orderNumber}</span>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* Desktop: 4-column grid */}
+        <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {pageReviews.map((r) => {
             const isLong = r.review.length > PREVIEW_LENGTH;
             const preview = isLong ? r.review.slice(0, PREVIEW_LENGTH).trimEnd() + "…" : r.review;
@@ -383,7 +454,7 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
               </div>
             );
           })}
-        </div>
+        </div>  {/* end desktop grid */}
       </div>
 
       {modalReview && (
