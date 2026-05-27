@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation";
-import { getSessionUser, isAdmin } from "@/lib/approved-auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { ReviewsAdminClient } from "./ReviewsAdminClient";
 import { reviewImagePublicUrl } from "@/lib/storage";
@@ -21,9 +19,6 @@ export type AdminReview = {
 };
 
 export default async function ReviewsAdminPage() {
-  const session = await getSessionUser();
-  if (!isAdmin(session)) redirect("/");
-
   const { data: rows } = await supabaseAdmin
     .from("reviews")
     .select("id, order_number, customer_name, rating, description, date_purchased, date_rated, is_approved, created_at, image_path")
