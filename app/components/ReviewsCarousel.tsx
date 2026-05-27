@@ -24,7 +24,7 @@ function ArrowBtn({
     <button
       onClick={onClick}
       aria-label={dir === "left" ? "Previous" : "Next"}
-      className="hidden sm:flex w-10 h-10 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 items-center justify-center text-gray-600 dark:text-gray-300 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors shadow-sm shrink-0"
+      className="hidden r2:flex w-10 h-10 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 items-center justify-center text-gray-600 dark:text-gray-300 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors shadow-sm shrink-0"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -333,7 +333,7 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
           </div>
           <div className="flex items-center gap-3">
             {/* Mobile: inline arrows + counter */}
-            <div className="flex sm:hidden items-center gap-2">
+            <div className="flex r2:hidden items-center gap-2">
               <button onClick={() => goMobile(-1)} aria-label="Previous" className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-center text-gray-500 hover:border-emerald-400 hover:text-emerald-600 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
               </button>
@@ -345,7 +345,7 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
 
             {/* Desktop: page arrows + dot indicators */}
             <ArrowBtn dir="left" onClick={() => goTo(page - 1)} />
-            <div className="hidden sm:flex items-center gap-1.5">
+            <div className="hidden r2:flex items-center gap-1.5">
               {Array.from({ length: totalPages }).map((_, i) => (
                 <button
                   key={i}
@@ -367,7 +367,7 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
       {/* Cards */}
       <div className="mx-auto max-w-7xl px-6">
         {/* Mobile: single card */}
-        <div className="sm:hidden">
+        <div className="r2:hidden">
           {(() => {
             const r = pageReviews[mobileSubIndex] ?? pageReviews[0];
             if (!r) return null;
@@ -408,7 +408,7 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
         </div>
 
         {/* Desktop: 4-column grid */}
-        <div className="hidden sm:grid sm:grid-cols-2 min-[750px]:grid-cols-3 lg:grid-cols-4 gap-5">
+        <div className="hidden r2:grid r2:grid-cols-2 r3:grid-cols-3 r4:grid-cols-4 gap-5">
           {pageReviews.map((r) => {
             const isLong = r.review.length > PREVIEW_LENGTH;
             const preview = isLong ? r.review.slice(0, PREVIEW_LENGTH).trimEnd() + "…" : r.review;

@@ -14,6 +14,13 @@
   }
 }
 
+@theme {
+  /* Reviews grid — absolute-px breakpoints so rem font-size scaling can't shift them */
+  --breakpoint-r2: 640px;   /* mobile → 2-col  */
+  --breakpoint-r3: 750px;   /* 2-col  → 3-col  */
+  --breakpoint-r4: 1024px;  /* 3-col  → 4-col  */
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
