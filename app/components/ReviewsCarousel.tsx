@@ -75,7 +75,7 @@ function ReviewModal({ review, onClose }: { review: CarouselReview; onClose: () 
 
         <div className="px-6 pb-6">
           <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none block mb-2">&ldquo;</span>
-          <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line max-h-60 overflow-y-auto pr-1">
+          <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line">
             {review.review}
           </p>
           <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none block text-right mt-2">&rdquo;</span>
