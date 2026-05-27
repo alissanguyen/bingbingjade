@@ -130,6 +130,24 @@ export function CampaignsAdminClient({ campaigns: initial }: { campaigns: Campai
     }
   }
 
+  async function handleToggleStatus(campaign: CampaignEvent) {
+    const newStatus = campaign.status === "active" ? "ended" : "active";
+    // Optimistic update
+    setCampaigns((prev) => prev.map((c) => c.id === campaign.id ? { ...c, status: newStatus } : c));
+    const res = await fetch(`/api/admin/campaigns/${campaign.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    if (!res.ok) {
+      // Revert on failure
+      setCampaigns((prev) => prev.map((c) => c.id === campaign.id ? { ...c, status: campaign.status } : c));
+      showToast("Failed to update status.");
+    } else {
+      showToast(newStatus === "ended" ? "Campaign deactivated." : "Campaign activated.");
+    }
+  }
+
   const categoryMap = Object.fromEntries(CAMPAIGN_CATEGORIES.map((c) => [c.value, c]));
 
   return (
@@ -396,29 +414,42 @@ export function CampaignsAdminClient({ campaigns: initial }: { campaigns: Campai
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <a
-                    href={`/sale/${c.slug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors px-2 py-1"
-                  >
-                    View ↗
-                  </a>
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => router.push(`/campaigns-admin/${c.id}`)}
-                    className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-300 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                    onClick={() => handleToggleStatus(c)}
+                    className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
+                      c.status === "active"
+                        ? "border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                        : "border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                    }`}
                   >
-                    Manage
+                    {c.status === "active" ? "Deactivate" : "Activate"}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(c)}
-                    className="text-xs text-red-400 hover:text-red-600 transition-colors px-1"
-                  >
-                    Delete
-                  </button>
+                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <a
+                      href={`/sale/${c.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors px-2 py-1"
+                    >
+                      View ↗
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/campaigns-admin/${c.id}`)}
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-300 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                    >
+                      Manage
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(c)}
+                      className="text-xs text-red-400 hover:text-red-600 transition-colors px-1"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             );

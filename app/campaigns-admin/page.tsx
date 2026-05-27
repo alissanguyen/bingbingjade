@@ -22,8 +22,22 @@ export default async function CampaignsAdminPage() {
     });
   }
 
+  // Auto-expire: any "active" campaign whose ends_at is in the past → set to "ended"
+  const now = new Date().toISOString();
+  const toExpire = (campaigns ?? []).filter(
+    (c) => c.status === "active" && c.ends_at && c.ends_at < now
+  );
+  if (toExpire.length > 0) {
+    await supabaseAdmin
+      .from("campaign_events")
+      .update({ status: "ended" })
+      .in("id", toExpire.map((c) => c.id));
+  }
+
+  const expiredIds = new Set(toExpire.map((c) => c.id));
   const enriched = (campaigns ?? []).map((c) => ({
     ...c,
+    status: expiredIds.has(c.id) ? "ended" : c.status,
     product_count: counts[c.id] ?? 0,
   }));
 
