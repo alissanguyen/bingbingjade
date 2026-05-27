@@ -112,14 +112,12 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
     return () => window.removeEventListener("resize", update);
   }, []);
 
-  useEffect(() => {
-    setPage(0);
-    setMobileSubIndex(0);
-  }, [colCount]);
-
   const totalPages = Math.ceil(reviews.length / colCount);
-  const pageReviews = reviews.slice(page * colCount, (page + 1) * colCount);
-  const globalIndex = page * colCount + mobileSubIndex;
+  // Clamp in render so a colCount change never leaves page/mobileSubIndex out of bounds
+  const safePage = totalPages > 0 ? Math.min(page, totalPages - 1) : 0;
+  const pageReviews = reviews.slice(safePage * colCount, (safePage + 1) * colCount);
+  const safeMobileSubIndex = pageReviews.length > 0 ? Math.min(mobileSubIndex, pageReviews.length - 1) : 0;
+  const globalIndex = safePage * colCount + safeMobileSubIndex;
 
   useEffect(() => {
     if (paused || modalReview || reviews.length === 0) return;
@@ -183,7 +181,7 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
                   onClick={() => goTo(i)}
                   aria-label={`Page ${i + 1}`}
                   className={`rounded-full transition-all duration-300 ${
-                    i === page
+                    i === safePage
                       ? "w-4 h-2 bg-emerald-500 dark:bg-emerald-400"
                       : "w-2 h-2 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500"
                   }`}
@@ -200,7 +198,7 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
         {/* Mobile: single card */}
         <div className="r2:hidden">
           {(() => {
-            const r = pageReviews[mobileSubIndex] ?? pageReviews[0];
+            const r = pageReviews[safeMobileSubIndex] ?? pageReviews[0];
             if (!r) return null;
             const isLong = r.review.length > PREVIEW_LENGTH;
             const preview = isLong ? r.review.slice(0, PREVIEW_LENGTH).trimEnd() + "…" : r.review;
