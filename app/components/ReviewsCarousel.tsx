@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 4;
+const AUTO_ADVANCE_MS = 5000;
 
 export type CarouselReview = {
   id: string;
@@ -16,18 +17,15 @@ export type CarouselReview = {
 function ArrowBtn({
   dir,
   onClick,
-  disabled,
 }: {
   dir: "left" | "right";
   onClick: () => void;
-  disabled?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
-      disabled={disabled}
       aria-label={dir === "left" ? "Previous" : "Next"}
-      className="hidden sm:flex w-10 h-10 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 items-center justify-center text-gray-600 dark:text-gray-300 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors shadow-sm shrink-0 disabled:opacity-30 disabled:pointer-events-none"
+      className="hidden sm:flex w-10 h-10 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 items-center justify-center text-gray-600 dark:text-gray-300 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors shadow-sm shrink-0"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -252,6 +250,8 @@ function ReviewModal({ review, onClose }: { review: CarouselReview; onClose: () 
 export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] }) {
   const [modalReview, setModalReview] = useState<CarouselReview | null>(null);
   const [page, setPage] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // DB reviews first (most recent approved), then hardcoded fallback to fill remaining slots
   const dbIds = new Set((dbReviews ?? []).map((r) => r.orderNumber));
@@ -263,8 +263,27 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
   const totalPages = Math.ceil(combined.length / PAGE_SIZE);
   const pageReviews = combined.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
+  // Auto-advance: loop through pages, pause on hover or when modal is open
+  useEffect(() => {
+    if (paused || modalReview) return;
+    timerRef.current = setInterval(() => {
+      setPage((p) => (p + 1) % totalPages);
+    }, AUTO_ADVANCE_MS);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [paused, modalReview, totalPages]);
+
+  function goTo(next: number) {
+    // Reset timer on manual navigation
+    if (timerRef.current) clearInterval(timerRef.current);
+    setPage((next + totalPages) % totalPages);
+  }
+
   return (
-    <div className="py-16 bg-white dark:bg-gray-950">
+    <div
+      className="py-16 bg-white dark:bg-gray-950"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
       {/* Header */}
       <div className="mx-auto max-w-7xl px-6 mb-10">
         <div className="flex items-center justify-between">
@@ -275,11 +294,23 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">What People Are Saying</h2>
           </div>
           <div className="flex items-center gap-3">
-            <ArrowBtn dir="left" onClick={() => setPage((p) => p - 1)} disabled={page === 0} />
-            <span className="hidden sm:block text-sm text-gray-400 dark:text-gray-500 tabular-nums">
-              {page + 1} / {totalPages}
-            </span>
-            <ArrowBtn dir="right" onClick={() => setPage((p) => p + 1)} disabled={page === totalPages - 1} />
+            <ArrowBtn dir="left" onClick={() => goTo(page - 1)} />
+            {/* Dot indicators */}
+            <div className="hidden sm:flex items-center gap-1.5">
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => goTo(i)}
+                  aria-label={`Page ${i + 1}`}
+                  className={`rounded-full transition-all duration-300 ${
+                    i === page
+                      ? "w-4 h-2 bg-emerald-500 dark:bg-emerald-400"
+                      : "w-2 h-2 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500"
+                  }`}
+                />
+              ))}
+            </div>
+            <ArrowBtn dir="right" onClick={() => goTo(page + 1)} />
           </div>
         </div>
       </div>
