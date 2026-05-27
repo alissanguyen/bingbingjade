@@ -69,7 +69,7 @@ function ReviewModal({ review, onClose }: { review: CarouselReview; onClose: () 
           <a href={review.image_url} target="_blank" rel="noopener noreferrer"
             className="block w-full mb-4 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 hover:opacity-95 transition-opacity">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={review.image_url} alt="" className="w-full max-h-72 object-cover" />
+            <img src={review.image_url} alt="" className="w-full aspect-square object-cover" />
           </a>
         )}
 
