@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 
-const PAGE_SIZE = 4;
 const AUTO_ADVANCE_MS = 5000;
 
 export type CarouselReview = {
@@ -254,6 +253,27 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
   const [paused, setPaused] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Responsive column count — matches the CSS grid breakpoints
+  const [colCount, setColCount] = useState(4); // 4 = SSR default (desktop)
+  useEffect(() => {
+    function update() {
+      const w = window.innerWidth;
+      if (w < 640)       setColCount(1); // mobile: handled by CSS, but keeps globalIndex math consistent
+      else if (w < 750)  setColCount(2);
+      else if (w < 1024) setColCount(3);
+      else               setColCount(4);
+    }
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  // When column count changes, snap back to page 0 so nothing is out of bounds
+  useEffect(() => {
+    setPage(0);
+    setMobileSubIndex(0);
+  }, [colCount]);
+
   // DB reviews first (most recent approved), then hardcoded fallback to fill remaining slots
   const dbIds = new Set((dbReviews ?? []).map((r) => r.orderNumber));
   const combined = [
@@ -261,17 +281,17 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
     ...HARDCODED_REVIEWS.filter((r) => !dbIds.has(r.orderNumber)),
   ];
 
-  const totalPages = Math.ceil(combined.length / PAGE_SIZE);
-  const pageReviews = combined.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-  const globalIndex = page * PAGE_SIZE + mobileSubIndex;
+  const totalPages = Math.ceil(combined.length / colCount);
+  const pageReviews = combined.slice(page * colCount, (page + 1) * colCount);
+  const globalIndex = page * colCount + mobileSubIndex;
 
   // Auto-advance: step 1 globally so mobile moves 1 card at a time
   useEffect(() => {
     if (paused || modalReview) return;
     timerRef.current = setInterval(() => {
       const nextGlobal = (globalIndex + 1) % combined.length;
-      setPage(Math.floor(nextGlobal / PAGE_SIZE));
-      setMobileSubIndex(nextGlobal % PAGE_SIZE);
+      setPage(Math.floor(nextGlobal / colCount));
+      setMobileSubIndex(nextGlobal % colCount);
     }, AUTO_ADVANCE_MS);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [paused, modalReview, globalIndex, combined.length]);
@@ -292,8 +312,8 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
   function goMobile(dir: 1 | -1) {
     resetTimer();
     const nextGlobal = (globalIndex + dir + combined.length) % combined.length;
-    setPage(Math.floor(nextGlobal / PAGE_SIZE));
-    setMobileSubIndex(nextGlobal % PAGE_SIZE);
+    setPage(Math.floor(nextGlobal / colCount));
+    setMobileSubIndex(nextGlobal % colCount);
   }
 
   return (
