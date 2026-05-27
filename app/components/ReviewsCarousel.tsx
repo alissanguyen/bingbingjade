@@ -52,33 +52,35 @@ function ReviewModal({ review, onClose }: { review: CarouselReview; onClose: () 
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-lg rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-2xl max-h-[88vh] overflow-y-auto"
+        className="w-full max-w-lg rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-2xl max-h-[88vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          onClick={onClose}
-          className="sticky top-3 float-right mr-4 mt-3 z-10 w-8 h-8 rounded-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors shadow-sm"
-          aria-label="Close"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
+        <div className="sticky top-0 z-10 flex justify-end px-4 pt-4 pb-2 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm">
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors shadow-sm"
+            aria-label="Close"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
 
         {review.image_url && (
           <a href={review.image_url} target="_blank" rel="noopener noreferrer"
-            className="block mx-5 mt-2 mb-4 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 hover:opacity-95 transition-opacity">
+            className="block mx-5 mb-5 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 hover:opacity-95 transition-opacity">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={review.image_url} alt="" className="w-full aspect-[4/3] sm:aspect-square object-cover" />
           </a>
         )}
 
-        <div className="px-6 pb-6">
-          <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none block mb-2">&ldquo;</span>
+        <div className="px-6 pt-1 pb-6">
+          <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none block mb-1">&ldquo;</span>
           <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line">
             {review.review}
           </p>
-          <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none block text-right mt-2">&rdquo;</span>
+          <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none block text-right mt-1">&rdquo;</span>
 
           <StarRating />
           <div className="mt-3 flex items-end justify-between">
@@ -208,12 +210,12 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
             const preview = isLong ? r.review.slice(0, PREVIEW_LENGTH).trimEnd() + "…" : r.review;
             return (
               <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-6 flex flex-col">
-                <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none mb-2">&ldquo;</span>
+                <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none mb-1">&ldquo;</span>
                 <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed flex-1">{preview}</p>
                 {isLong && (
                   <button onClick={() => setModalReview(r)} className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline self-start">See more</button>
                 )}
-                <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none self-end mt-2">&rdquo;</span>
+                <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none self-end mt-1">&rdquo;</span>
                 <StarRating />
                 <div className="mt-3 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
@@ -245,14 +247,14 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
             const preview = isLong ? r.review.slice(0, PREVIEW_LENGTH).trimEnd() + "…" : r.review;
             return (
               <div key={r.id} className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-6 flex flex-col">
-                <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none mb-2">&ldquo;</span>
+                <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none mb-1">&ldquo;</span>
                 <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed flex-1">{preview}</p>
                 {isLong && (
                   <button onClick={() => setModalReview(r)} className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline self-start">
                     See more
                   </button>
                 )}
-                <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none self-end mt-2">&rdquo;</span>
+                <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none self-end mt-1">&rdquo;</span>
                 <StarRating />
                 <div className="mt-3 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
