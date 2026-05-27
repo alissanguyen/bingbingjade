@@ -107,11 +107,7 @@ WHERE NOT EXISTS (SELECT 1 FROM public.reviews WHERE order_number = 'BBJ-1211');
 INSERT INTO public.reviews (order_id, order_number, customer_name, rating, description, date_purchased, date_rated, is_approved)
 SELECT (SELECT id FROM public.orders WHERE order_number = 'BBJ-1236' LIMIT 1),
        'BBJ-1236', 'Candice M.', 10,
-       'From the beginning to the end of the process, ordering my Monet jade bangle was a smooth and enjoyable experience. The seller was very communicative throughout every stage, from selecting the raw material to the finished product, and provided lots of updates and photos along the way which made me feel very confident in my purchase.
-
-I''m extremely happy with both the customer service and the bangle itself. The piece is beautiful, unique, and very high quality with an excellent polish and a beautiful colour combination. I am especially glad I went with a raw material purchase as that allowed it to be made in my ideal size and shape, which can be difficult to find.
-
-You can really tell care and attention went into the entire process, even at the end with the beautiful packaging. I''ve already started looking at other pieces from BingBing Jade and would definitely purchase again.',
+       E'From the beginning to the end of the process, ordering my Monet jade bangle was a smooth and enjoyable experience. The seller was very communicative throughout every stage, from selecting the raw material to the finished product, and provided lots of updates and photos along the way which made me feel very confident in my purchase.\n\nI\'m extremely happy with both the customer service and the bangle itself. The piece is beautiful, unique, and very high quality with an excellent polish and a beautiful colour combination. I am especially glad I went with a raw material purchase as that allowed it to be made in my ideal size and shape, which can be difficult to find.\n\nYou can really tell care and attention went into the entire process, even at the end with the beautiful packaging. I\'ve already started looking at other pieces from BingBing Jade and would definitely purchase again.',
        '2026-04-08', '2026-04-10', true
 WHERE NOT EXISTS (SELECT 1 FROM public.reviews WHERE order_number = 'BBJ-1236');
 
