@@ -248,7 +248,7 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
                       {getCategoryLabel(product.category)}
                     </span>
                     {product.tier?.length > 0 && (
-                      <span className="text-xs text-gray-400 dark:text-gray-500">
+                      <span className="text-[11px] text-gray-400 dark:text-gray-500">
                         · {product.tier.join(" · ")}
                       </span>
                     )}
@@ -312,8 +312,7 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
                       </span>
                     )}
 
-                    <span className="text-xs text-gray-400 dark:text-gray-500 text-right">
-                      {product.size ? `${product.size}mm` : ""}
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 text-right">
                       {product.size && product.origin ? " · " : ""}
                       {product.origin && (
                         <span className={ORIGIN_TEXT[product.origin] ?? ""}>

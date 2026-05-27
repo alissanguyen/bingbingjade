@@ -16,7 +16,8 @@ export type AdminReview = {
   date_rated: string;
   is_approved: boolean;
   created_at: string;
-  images: { id: string; image_path: string; image_url: string; sort_order: number }[];
+  image_path: string | null;
+  image_url: string | null;
 };
 
 export default async function ReviewsAdminPage() {
@@ -25,11 +26,8 @@ export default async function ReviewsAdminPage() {
 
   const { data: rows } = await supabaseAdmin
     .from("reviews")
-    .select(`
-      id, order_number, customer_name, rating, description,
-      date_purchased, date_rated, is_approved, created_at,
-      review_images ( id, image_path, sort_order )
-    `)
+    .select("id, order_number, customer_name, rating, description, date_purchased, date_rated, is_approved, created_at, image_path")
+    .order("is_approved", { ascending: true })   // pending (false) first
     .order("created_at", { ascending: false });
 
   const reviews: AdminReview[] = (rows ?? []).map((r) => ({
@@ -42,14 +40,8 @@ export default async function ReviewsAdminPage() {
     date_rated: r.date_rated,
     is_approved: r.is_approved,
     created_at: r.created_at,
-    images: ((r.review_images as { id: string; image_path: string; sort_order: number }[]) ?? [])
-      .sort((a, b) => a.sort_order - b.sort_order)
-      .map((img) => ({
-        id: img.id,
-        image_path: img.image_path,
-        image_url: reviewImagePublicUrl(img.image_path),
-        sort_order: img.sort_order,
-      })),
+    image_path: r.image_path ?? null,
+    image_url: r.image_path ? reviewImagePublicUrl(r.image_path) : null,
   }));
 
   return <ReviewsAdminClient reviews={reviews} />;

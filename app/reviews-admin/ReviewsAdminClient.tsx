@@ -6,8 +6,6 @@ import type { AdminReview } from "./page";
 const TAB_VALUES = ["all", "pending", "approved"] as const;
 type Tab = (typeof TAB_VALUES)[number];
 
-type ReviewImage = AdminReview["images"][number];
-
 function fmt(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
@@ -23,120 +21,103 @@ function StarRow({ rating }: { rating: number }) {
   );
 }
 
-function ImageUploadZone({
+function ImageZone({
   reviewId,
-  images,
-  onImagesChange,
+  imageUrl,
+  imagePath,
+  onImageChange,
   onToast,
 }: {
   reviewId: string;
-  images: ReviewImage[];
-  onImagesChange: (imgs: ReviewImage[]) => void;
+  imageUrl: string | null;
+  imagePath: string | null;
+  onImageChange: (path: string | null, url: string | null) => void;
   onToast: (msg: string) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  async function handleFiles(files: FileList | null) {
-    if (!files || files.length === 0) return;
+  async function handleFile(file: File | null) {
+    if (!file) return;
     setUploading(true);
     const fd = new FormData();
-    Array.from(files).forEach((f) => fd.append("image", f));
+    fd.append("image", file);
     try {
       const res = await fetch(`/api/admin/reviews/${reviewId}/images`, { method: "POST", body: fd });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         onToast(data.error ?? "Upload failed.");
       } else {
-        const newImages: ReviewImage[] = (data.images ?? []).map(
-          (img: { id: string; image_path: string; sort_order: number; image_url: string }) => ({
-            id: img.id,
-            image_path: img.image_path,
-            image_url: img.image_url,
-            sort_order: img.sort_order,
-          })
-        );
-        onImagesChange([...images, ...newImages]);
-        onToast(`${data.images.length} photo${data.images.length !== 1 ? "s" : ""} added.`);
+        onImageChange(data.image_path, data.image_url);
+        onToast("Photo updated.");
       }
     } catch {
-      onToast("Upload failed. Please try again.");
+      onToast("Upload failed.");
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
 
-  async function handleDeleteImage(img: ReviewImage) {
+  async function handleDelete() {
     if (!confirm("Remove this photo?")) return;
-    setDeletingId(img.id);
+    setDeleting(true);
     try {
-      const res = await fetch(`/api/admin/reviews/${reviewId}/images?imageId=${img.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/reviews/${reviewId}/images`, { method: "DELETE" });
       if (res.ok) {
-        onImagesChange(images.filter((i) => i.id !== img.id));
+        onImageChange(null, null);
         onToast("Photo removed.");
       } else {
         const data = await res.json().catch(() => ({}));
         onToast(data.error ?? "Failed to remove photo.");
       }
     } finally {
-      setDeletingId(null);
+      setDeleting(false);
     }
   }
 
-  return (
-    <div className="pt-1 space-y-2">
-      {/* Existing images */}
-      {images.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {images.map((img) => (
-            <div key={img.id} className="relative w-20 h-20 shrink-0 group">
-              <a
-                href={img.image_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full h-full rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:opacity-90 transition-opacity"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={img.image_url} alt="Review" className="w-full h-full object-cover" />
-              </a>
-              <button
-                type="button"
-                disabled={deletingId === img.id}
-                onClick={() => handleDeleteImage(img)}
-                className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 hover:bg-red-600 text-white text-xs flex items-center justify-center leading-none opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
-                title="Remove photo"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+  void imagePath;
 
-      {/* Upload button */}
-      <div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          multiple
-          className="hidden"
-          onChange={(e) => handleFiles(e.target.files)}
-        />
-        <button
-          type="button"
-          disabled={uploading}
-          onClick={() => fileInputRef.current?.click()}
-          className="text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 disabled:opacity-50 transition-colors flex items-center gap-1.5"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
-          </svg>
-          {uploading ? "Uploading…" : "Add photos"}
-        </button>
-      </div>
+  return (
+    <div className="flex items-center gap-3 pt-1 flex-wrap">
+      {imageUrl ? (
+        <div className="relative w-16 h-16 shrink-0 group">
+          <a href={imageUrl} target="_blank" rel="noopener noreferrer"
+            className="block w-full h-full rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:opacity-90 transition-opacity">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={imageUrl} alt="Review" className="w-full h-full object-cover" />
+          </a>
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={handleDelete}
+            className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 hover:bg-red-600 text-white text-xs flex items-center justify-center leading-none opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+            title="Remove photo"
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+      />
+      <button
+        type="button"
+        disabled={uploading}
+        onClick={() => fileInputRef.current?.click()}
+        className="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+        </svg>
+        {uploading ? "Uploading…" : imageUrl ? "Replace photo" : "Add photo"}
+      </button>
     </div>
   );
 }
@@ -146,7 +127,6 @@ export function ReviewsAdminClient({ reviews: initial }: { reviews: AdminReview[
   const [tab, setTab] = useState<Tab>("all");
   const [approving, setApproving] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [expandedImages, setExpandedImages] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
 
   function showToast(msg: string) {
@@ -175,7 +155,7 @@ export function ReviewsAdminClient({ reviews: initial }: { reviews: AdminReview[
   }
 
   async function handleDelete(id: string, customerName: string) {
-    if (!confirm(`Delete review from ${customerName}? This also removes their uploaded images.`)) return;
+    if (!confirm(`Delete review from ${customerName}?`)) return;
     setDeleting(id);
     try {
       const res = await fetch(`/api/admin/reviews/${id}`, { method: "DELETE" });
@@ -191,16 +171,8 @@ export function ReviewsAdminClient({ reviews: initial }: { reviews: AdminReview[
     }
   }
 
-  function handleImagesChange(reviewId: string, newImages: ReviewImage[]) {
-    setReviews((prev) => prev.map((r) => r.id === reviewId ? { ...r, images: newImages } : r));
-  }
-
-  function toggleImageZone(id: string) {
-    setExpandedImages((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
+  function handleImageChange(reviewId: string, path: string | null, url: string | null) {
+    setReviews((prev) => prev.map((r) => r.id === reviewId ? { ...r, image_path: path, image_url: url } : r));
   }
 
   const filtered = reviews.filter((r) => {
@@ -219,17 +191,13 @@ export function ReviewsAdminClient({ reviews: initial }: { reviews: AdminReview[
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Reviews</h1>
-          <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-            {reviews.length} total · {pendingCount} pending approval
-          </p>
-        </div>
+      <div>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Reviews</h1>
+        <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+          {reviews.length} total · {pendingCount} pending approval
+        </p>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg w-fit">
         {TAB_VALUES.map((t) => (
           <button
@@ -247,7 +215,6 @@ export function ReviewsAdminClient({ reviews: initial }: { reviews: AdminReview[
         ))}
       </div>
 
-      {/* List */}
       {filtered.length === 0 ? (
         <p className="text-sm text-gray-400 dark:text-gray-500">No reviews in this view.</p>
       ) : (
@@ -281,7 +248,6 @@ export function ReviewsAdminClient({ reviews: initial }: { reviews: AdminReview[
                   </p>
                 </div>
 
-                {/* Actions */}
                 <div className="flex items-center gap-3 shrink-0">
                   {!r.is_approved ? (
                     <button
@@ -313,52 +279,19 @@ export function ReviewsAdminClient({ reviews: initial }: { reviews: AdminReview[
                 </div>
               </div>
 
-              {/* Description */}
               {r.description && (
                 <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed border-l-2 border-gray-200 dark:border-gray-700 pl-3 italic">
                   &ldquo;{r.description}&rdquo;
                 </p>
               )}
 
-              {/* Images + upload zone */}
-              {expandedImages.has(r.id) ? (
-                <ImageUploadZone
-                  reviewId={r.id}
-                  images={r.images}
-                  onImagesChange={(imgs) => handleImagesChange(r.id, imgs)}
-                  onToast={showToast}
-                />
-              ) : (
-                <div className="flex items-center gap-3 pt-1 flex-wrap">
-                  {r.images.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {r.images.map((img) => (
-                        <a
-                          key={img.id}
-                          href={img.image_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block w-16 h-16 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:opacity-90 transition-opacity shrink-0"
-                          title="View full image"
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={img.image_url} alt="Review image" className="w-full h-full object-cover" />
-                        </a>
-                      ))}
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => toggleImageZone(r.id)}
-                    className="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-1.5"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
-                    </svg>
-                    {r.images.length > 0 ? "Edit photos" : "Add photos"}
-                  </button>
-                </div>
-              )}
+              <ImageZone
+                reviewId={r.id}
+                imageUrl={r.image_url}
+                imagePath={r.image_path}
+                onImageChange={(path, url) => handleImageChange(r.id, path, url)}
+                onToast={showToast}
+              />
             </div>
           ))}
         </div>

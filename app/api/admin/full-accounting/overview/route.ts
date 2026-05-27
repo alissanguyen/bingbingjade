@@ -26,7 +26,8 @@ export async function GET(req: NextRequest) {
   let ordersQuery = supabaseAdmin
     .from("orders")
     .select(`
-      id, amount_total, discount_amount_cents, cogs_cents, source, created_at,
+      id, amount_total, discount_amount_cents, source, created_at,
+      inventory_expense_amount, inventory_expense_source,
       stripe_session_id,
       fee_breakdown,
       order_items(price_usd, quantity, product_id),
@@ -55,50 +56,29 @@ export async function GET(req: NextRequest) {
     { data: orders, error: ordErr },
     { data: pmDate },
     { data: expenses },
-    { data: productCosts },
     { data: settingsRow },
   ] = await Promise.all([
     ordersQuery,
     pmDateQuery,
     expQuery,
-    supabaseAdmin.from("product_costs").select("product_id, total_cogs_usd"),
     supabaseAdmin.from("accounting_settings").select("default_supplies_cost_per_order").limit(1).maybeSingle(),
   ]);
 
   if (ordErr) return NextResponse.json({ error: ordErr.message }, { status: 500 });
 
   const defaultSuppliesPerOrder = Number(settingsRow?.default_supplies_cost_per_order ?? 20);
-  const VND_PER_USD = 26000;
 
-  // ── 1b. Secondary fetches — need order data to build ID lists ─────────────
+  // ── 1b. Secondary fetch — Stripe snapshots for tax/shipping fallback ────────
   const stripeSessionIds = (orders ?? [])
     .map((o) => o.stripe_session_id as string | null)
     .filter(Boolean) as string[];
 
-  const allProductIds = [
-    ...new Set(
-      (orders ?? []).flatMap((o) =>
-        ((o.order_items ?? []) as { product_id: string | null }[])
-          .map((i) => i.product_id)
-          .filter(Boolean) as string[]
-      )
-    ),
-  ];
-
-  const [{ data: snapshots }, { data: productVnd }] = await Promise.all([
-    stripeSessionIds.length > 0
-      ? supabaseAdmin
-          .from("stripe_accounting_snapshots")
-          .select("stripe_session_id, amount_tax_cents, amount_shipping_cents")
-          .in("stripe_session_id", stripeSessionIds)
-      : Promise.resolve({ data: [] as { stripe_session_id: string | null; amount_tax_cents: number | null; amount_shipping_cents: number | null }[] }),
-    allProductIds.length > 0
-      ? supabaseAdmin
-          .from("products")
-          .select("id, imported_price_vnd")
-          .in("id", allProductIds)
-      : Promise.resolve({ data: [] as { id: string; imported_price_vnd: number | null }[] }),
-  ]);
+  const { data: snapshots } = stripeSessionIds.length > 0
+    ? await supabaseAdmin
+        .from("stripe_accounting_snapshots")
+        .select("stripe_session_id, amount_tax_cents, amount_shipping_cents")
+        .in("stripe_session_id", stripeSessionIds)
+    : { data: [] as { stripe_session_id: string | null; amount_tax_cents: number | null; amount_shipping_cents: number | null }[] };
 
   // Stripe snapshot map: session_id → { tax, shipping }
   const snapshotMap = new Map<string, { tax: number; shipping: number }>();
@@ -108,14 +88,6 @@ export async function GET(req: NextRequest) {
         tax:      ((s.amount_tax_cents      as number | null) ?? 0) / 100,
         shipping: ((s.amount_shipping_cents as number | null) ?? 0) / 100,
       });
-    }
-  }
-
-  // Product VND cost map: product_id → imported_price_vnd
-  const vndMap = new Map<string, number>();
-  for (const p of productVnd ?? []) {
-    if (p.id && (p.imported_price_vnd as number | null) != null) {
-      vndMap.set(p.id as string, p.imported_price_vnd as number);
     }
   }
 
@@ -132,9 +104,6 @@ export async function GET(req: NextRequest) {
       orderPaidMap[p.order_id as string] = (orderPaidMap[p.order_id as string] ?? 0) + Number(p.amount_paid_usd);
     }
   }
-
-  const pcMap = new Map<string, number>();
-  for (const pc of productCosts ?? []) pcMap.set(pc.product_id as string, Number(pc.total_cogs_usd) || 0);
 
   // ── 3. Aggregate revenue + costs (order basis) ─────────────────────────────
   let grossSales               = 0;
@@ -180,24 +149,10 @@ export async function GET(req: NextRequest) {
     const discount  = fees.discount  ?? (o.discount_amount_cents ?? 0) / 100;
     const total     = (o.amount_total as number) / 100;
 
-    const items = (o.order_items ?? []) as { price_usd: number; quantity: number; product_id: string | null }[];
-    let cogs = 0;
-    if ((o.cogs_cents as number | null) != null) {
-      // Webhook-stamped COGS (most accurate — captured at time of sale)
-      cogs = (o.cogs_cents as number) / 100;
-    } else {
-      // Fallback: compute from products.imported_price_vnd / 26,000
-      // Then try product_costs table as last resort
-      for (const item of items) {
-        if (!item.product_id) continue;
-        const vnd = vndMap.get(item.product_id);
-        if (vnd != null && vnd > 0) {
-          cogs += Math.round(vnd / VND_PER_USD * 100) / 100 * (item.quantity ?? 1);
-        } else {
-          cogs += (pcMap.get(item.product_id) ?? 0) * (item.quantity ?? 1);
-        }
-      }
-    }
+    const expSrc = o.inventory_expense_source as string | null;
+    const cogs = (expSrc === "manual" || expSrc === "batch_allocated")
+      ? Number(o.inventory_expense_amount ?? 0)
+      : 0;
 
     const fc = ((o.order_fulfillment_costs ?? []) as {
       label_cost_usd: number; business_shipping_insurance_cost_usd: number;

@@ -288,7 +288,7 @@ export function OverviewTab() {
           <div>
             <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Costs + bottom line</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              <StatCard label="COGS"              value={fmt(data.cogsTotal)}            color="amber" />
+              <StatCard label="Inv. Expense"              value={fmt(data.cogsTotal)}            color="amber" />
               <StatCard label="Fulfillment Costs" value={fmt(data.fulfillmentCostTotal)} sub="incl. supplies estimate" color="amber" />
               <StatCard label="Business Expenses" value={fmt(data.businessExpenseTotal)} color="amber" />
               <StatCard
@@ -419,7 +419,7 @@ export function OverviewTab() {
                     {[
                       { label: "Net Cash Received",   value: data.netCashReceived,          color: "" },
                       { label: "− Sales Tax",          value: -data.taxCollected,            color: "text-gray-400" },
-                      { label: "− COGS",               value: -data.cogsTotal,               color: "text-amber-600 dark:text-amber-400" },
+                      { label: "− Inv. Expense",               value: -data.cogsTotal,               color: "text-amber-600 dark:text-amber-400" },
                       { label: "− Fulfillment (est.)", value: -data.fulfillmentCostTotal,    color: "text-amber-600 dark:text-amber-400" },
                       { label: "− Other Expenses",     value: -(data.businessExpenseTotal - data.actualSuppliesSpend), color: "text-amber-600 dark:text-amber-400" },
                       {
@@ -452,7 +452,7 @@ export function OverviewTab() {
                     {[
                       { label: "Net Cash Received",     value: data.netCashReceived,               color: "" },
                       { label: "− Sales Tax",            value: -data.taxCollected,                 color: "text-gray-400" },
-                      { label: "− COGS",                 value: -data.cogsTotal,                    color: "text-amber-600 dark:text-amber-400" },
+                      { label: "− Inv. Expense",                 value: -data.cogsTotal,                    color: "text-amber-600 dark:text-amber-400" },
                       { label: "− Fulfillment (excl. supplies)", value: -data.fulfillmentCostExSupplies, color: "text-amber-600 dark:text-amber-400" },
                       { label: "− All Business Expenses", value: -data.businessExpenseTotal,         color: "text-amber-600 dark:text-amber-400" },
                       {
@@ -504,7 +504,7 @@ export function OverviewTab() {
                       <tr className="border-b border-gray-100 dark:border-gray-800 text-gray-400 dark:text-gray-500 uppercase tracking-wide">
                         {[
                           "Quarter", "Gross Sales", "Discounts", "Tax", "Cash Rcvd",
-                          "Pay Fees", "Net Cash", "COGS", "Fulfillment",
+                          "Pay Fees", "Net Cash", "Inv. Expense", "Fulfillment",
                           "Est. Supplies", "Act. Supplies", "Bus. Exp.",
                           "Est. Profit", "Tax-Ready Profit",
                         ].map((h) => (

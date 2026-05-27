@@ -25,7 +25,8 @@ export async function GET(req: NextRequest) {
     .from("orders")
     .select(`
       id, order_number, created_at, customer_name, customer_email, source,
-      order_status, amount_total, discount_amount_cents, cogs_cents,
+      order_status, amount_total, discount_amount_cents,
+      inventory_expense_amount, inventory_expense_source,
       stripe_session_id, stripe_payment_intent_id, fee_breakdown,
       order_items(id, product_id, product_name, option_label, price_usd, quantity, line_total),
       stripe_accounting_snapshots(stripe_fee_cents, stripe_net_cents, refunded_amount_cents, stripe_status),
@@ -42,23 +43,6 @@ export async function GET(req: NextRequest) {
   const { data: orders, count, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Build product cost map
-  const productIds = new Set<string>();
-  for (const o of orders ?? []) {
-    for (const item of (o.order_items ?? []) as { product_id: string | null }[]) {
-      if (item.product_id) productIds.add(item.product_id);
-    }
-  }
-  const pcMap = new Map<string, number>();
-  if (productIds.size > 0) {
-    const { data: pcs } = await supabaseAdmin
-      .from("product_costs")
-      .select("product_id, total_cogs_usd")
-      .in("product_id", [...productIds]);
-    for (const pc of pcs ?? []) {
-      pcMap.set(pc.product_id as string, Number(pc.total_cogs_usd) || 0);
-    }
-  }
 
   // Build order_payments map for this page of orders
   const orderIds = (orders ?? []).map(o => o.id as string);
@@ -107,18 +91,12 @@ export async function GET(req: NextRequest) {
       : feeDiscount;
     const actualItemRevenue = totalDollars - shipping - insurance - tax;
 
-    // COGS
-    let totalCogs = 0;
-    let missingCogs = false;
-    if ((o.cogs_cents as number | null) != null) {
-      totalCogs = (o.cogs_cents as number) / 100;
-    } else {
-      for (const item of items) {
-        const costPerUnit = item.product_id ? (pcMap.get(item.product_id) ?? null) : null;
-        if (costPerUnit != null) totalCogs += costPerUnit * (item.quantity ?? 1);
-        else missingCogs = true;
-      }
-    }
+    // Inventory expense (replaces COGS — set per-order in orders admin)
+    const expSrc   = o.inventory_expense_source as string | null;
+    const totalCogs  = (expSrc === "manual" || expSrc === "batch_allocated")
+      ? Number(o.inventory_expense_amount ?? 0)
+      : 0;
+    const missingCogs = expSrc === null; // not yet recorded
 
     // Stripe snapshot (kept for raw receipt data, used as fee fallback)
     const snaps = (o.stripe_accounting_snapshots ?? []) as {
@@ -221,8 +199,6 @@ export async function GET(req: NextRequest) {
         price:       i.price_usd,
         qty:         i.quantity,
         line_total:  i.line_total ?? r2((i.price_usd ?? 0) * (i.quantity ?? 1)),
-        has_cogs:    i.product_id ? pcMap.has(i.product_id) : false,
-        cogs_per_unit: i.product_id ? (pcMap.get(i.product_id) ?? null) : null,
       })),
     };
   });

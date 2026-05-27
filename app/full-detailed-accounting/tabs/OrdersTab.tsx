@@ -109,7 +109,7 @@ export function OrdersTab() {
                     "Shipping", "Insurance", "Tax",
                     "Total Paid", "Amt Due", "Providers",
                     "Pay Fee", "Net Rcvd",
-                    "COGS", "Label", "Insur.", "Supplies",
+                    "Inv. Expense", "Label", "Insur.", "Supplies",
                     "Est. Profit",
                   ].map((h) => (
                     <th key={h} className="px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4">{h}</th>
@@ -165,7 +165,7 @@ export function OrdersTab() {
                     <td className="px-3 py-2 tabular-nums text-gray-600 dark:text-gray-400">{$$(o.net_received)}</td>
                     <td className="px-3 py-2 tabular-nums">
                       {o.missing_cogs ? (
-                        <span className="text-amber-600 dark:text-amber-400" title="Missing COGS for some items">
+                        <span className="text-amber-600 dark:text-amber-400" title="Missing Inv. Expense for some items">
                           {o.total_cogs > 0 ? $$(o.total_cogs) : "⚠ missing"}
                         </span>
                       ) : (
@@ -177,7 +177,7 @@ export function OrdersTab() {
                     <td className="px-3 py-2 tabular-nums text-gray-500">{$$(o.supplies_cost)}</td>
                     <td className="pr-4 pl-3 py-2 tabular-nums font-semibold">
                       {o.estimated_profit == null ? (
-                        <span className="text-amber-500 text-xs">need COGS</span>
+                        <span className="text-amber-500 text-xs">need inv. expense</span>
                       ) : (
                         <span className={o.estimated_profit >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}>
                           {$$(o.estimated_profit)}
@@ -209,7 +209,7 @@ export function OrdersTab() {
 
       {/* Legend */}
       <p className="text-xs text-gray-400 dark:text-gray-500">
-        ⚠ Amber rows = missing COGS. "Total Paid" and "Amt Due" come from the Payments ledger — run Sync Stripe and/or add manual payments.
+        ⚠ Amber rows = missing inv. expense. "Total Paid" and "Amt Due" come from the Payments ledger — run Sync Stripe and/or add manual payments.
         Payment fee = sum of all provider fees. Supplies default to $20 if not entered.
       </p>
     </div>

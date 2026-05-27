@@ -185,7 +185,7 @@ export function UnmatchedTab() {
           </Section>
 
           {/* 4. Missing COGS */}
-          <Section title="Orders Missing COGS" count={data.counts.missing_cogs} color="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+          <Section title="Orders Missing Inv. Expense" count={data.counts.missing_cogs} color="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
             <div className="overflow-x-auto">
               <table className="w-full text-xs whitespace-nowrap">
                 <thead><tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">

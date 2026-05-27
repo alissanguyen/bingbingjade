@@ -13,7 +13,7 @@ const EXPORTS: ExportConfig[] = [
   {
     label: "Orders (Full Accounting)",
     type: "orders",
-    description: "All orders with item subtotals, discounts, tax, payment fees, COGS, fulfillment costs, and estimated profit.",
+    description: "All orders with item subtotals, discounts, tax, payment fees, inv. expense, fulfillment costs, and estimated profit.",
     needsDateRange: true,
   },
   {
@@ -47,9 +47,9 @@ const EXPORTS: ExportConfig[] = [
     needsDateRange: true,
   },
   {
-    label: "Product COGS",
+    label: "Product Costs",
     type: "product-costs",
-    description: "All product purchase prices, import costs, certification, and total COGS per product.",
+    description: "All product purchase prices, import costs, certification, and total cost per product.",
     needsDateRange: false,
   },
   {
@@ -198,7 +198,7 @@ export function ExportsTab() {
 
       <p className="text-xs text-gray-400 dark:text-gray-500">
         CSV files open in Excel, Google Sheets, or Numbers. For tax filing, share the Tax Summary with your accountant.
-        COGS export is not date-ranged — it reflects current cost data. Payment exports use the Payments ledger — run Sync Stripe first for complete data.
+        Product cost export is not date-ranged — it reflects current cost data. Payment exports use the Payments ledger — run Sync Stripe first for complete data.
       </p>
     </div>
   );
