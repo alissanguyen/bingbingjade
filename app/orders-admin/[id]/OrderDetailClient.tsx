@@ -107,6 +107,9 @@ interface Order {
   estimated_delivery_date: string | null;
   notes: string | null;
   created_at: string;
+  inventory_expense_amount: number | null;
+  inventory_expense_source: string | null;
+  inventory_expense_notes: string | null;
   fee_breakdown: {
     shipping?: number;
     tax?: number;
@@ -324,6 +327,40 @@ export function OrderDetailClient({
   const [editFeeOther, setEditFeeOther] = useState(String(order.fee_breakdown?.other ?? ""));
   const [editFeeOtherLabel, setEditFeeOtherLabel] = useState(order.fee_breakdown?.otherLabel ?? "");
   const [savingInfo, setSavingInfo] = useState(false);
+
+  // Inventory expense state
+  const [expenseSource, setExpenseSource] = useState(order.inventory_expense_source ?? "");
+  const [expenseAmount, setExpenseAmount] = useState(order.inventory_expense_amount != null ? String(order.inventory_expense_amount) : "");
+  const [expenseNotes, setExpenseNotes] = useState(order.inventory_expense_notes ?? "");
+  const [savingExpense, setSavingExpense] = useState(false);
+
+  async function handleSaveExpense() {
+    setSavingExpense(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          inventoryExpenseSource: expenseSource || null,
+          inventoryExpenseAmount: expenseSource === "manual" || expenseSource === "batch_allocated"
+            ? (parseFloat(expenseAmount) || 0)
+            : null,
+          inventoryExpenseNotes: expenseNotes.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast("err", data.error ?? "Save failed."); return; }
+      setOrder((prev) => ({
+        ...prev,
+        inventory_expense_source: data.order?.inventory_expense_source ?? (expenseSource || null),
+        inventory_expense_amount: data.order?.inventory_expense_amount ?? null,
+        inventory_expense_notes:  data.order?.inventory_expense_notes  ?? (expenseNotes.trim() || null),
+      }));
+      showToast("ok", "Inventory expense saved.");
+    } finally {
+      setSavingExpense(false);
+    }
+  }
 
   // Inline item editing state
   const [editingItems, setEditingItems] = useState(false);
@@ -873,6 +910,60 @@ export function OrderDetailClient({
                 className="w-full rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white py-2.5 text-sm font-medium transition-colors"
               >
                 {saving ? "Saving…" : "Save Changes"}
+              </button>
+            </div>
+
+            {/* Inventory Expense */}
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-4 space-y-3">
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Inventory Expense</h2>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Cost Source</label>
+                <select
+                  value={expenseSource}
+                  onChange={(e) => setExpenseSource(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="">— Not set —</option>
+                  <option value="manual">Manual entry</option>
+                  <option value="batch_allocated">Batch allocated</option>
+                  <option value="legacy_import_price">Legacy import price</option>
+                  <option value="none">No cost (N/A)</option>
+                </select>
+              </div>
+
+              {(expenseSource === "manual" || expenseSource === "batch_allocated") && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Amount (USD)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
+                    <input
+                      type="number" min="0" step="0.01"
+                      value={expenseAmount}
+                      onChange={(e) => setExpenseAmount(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm pl-7 pr-3 py-2 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Notes</label>
+                <input
+                  value={expenseNotes}
+                  onChange={(e) => setExpenseNotes(e.target.value)}
+                  placeholder="Optional"
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <button
+                onClick={handleSaveExpense}
+                disabled={savingExpense}
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60 text-gray-700 dark:text-gray-300 py-2 text-sm font-medium transition-colors"
+              >
+                {savingExpense ? "Saving…" : "Save Expense"}
               </button>
             </div>
 

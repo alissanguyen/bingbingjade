@@ -54,7 +54,8 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
       blemishes: (formData.get("blemishes") as string) || null,
       price_display_usd: formData.get("price_display_usd") ? Number(formData.get("price_display_usd")) : null,
       sale_price_usd: formData.get("sale_price_usd") ? Number(formData.get("sale_price_usd")) : null,
-      imported_price_vnd: approvedUser ? 0 : Number(formData.get("imported_price_vnd")),
+      imported_price_vnd: approvedUser ? 0 : (formData.get("imported_price_vnd") ? Number(formData.get("imported_price_vnd")) : null),
+      inventory_type: (!approvedUser && formData.get("inventory_type")) ? formData.get("inventory_type") as string : null,
       vendor_id,
       is_featured: formData.get("is_featured") === "true",
       // Admin: respect the published toggle. Approved user: always draft + pending approval.

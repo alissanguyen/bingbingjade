@@ -74,6 +74,7 @@ export async function PATCH(
     orderStatus, estimatedDeliveryDate, notes, sendEmail, orderType,
     customerName, customerEmail, customerPhone, orderNumber, createdAt,
     shippingAddress, feeBreakdown, orderItems, newItems, deleteItemIds,
+    inventoryExpenseSource, inventoryExpenseAmount, inventoryExpenseNotes,
   } = body as {
     orderStatus?: string;
     estimatedDeliveryDate?: string | null;
@@ -98,6 +99,9 @@ export async function PATCH(
     orderItems?: { id: string; product_id?: string | null; product_name?: string; option_label?: string | null; price_usd: number; quantity: number }[];
     newItems?: { product_id?: string | null; product_name: string; option_label?: string | null; price_usd: number; quantity: number }[];
     deleteItemIds?: string[];
+    inventoryExpenseSource?: string | null;
+    inventoryExpenseAmount?: number | null;
+    inventoryExpenseNotes?: string | null;
   };
 
   if (orderStatus && !VALID_STATUSES.includes(orderStatus as OrderStatus)) {
@@ -151,6 +155,9 @@ export async function PATCH(
   if (orderNumber !== undefined) updates.order_number = orderNumber.trim().toUpperCase() || null;
   if (createdAt !== undefined && createdAt) updates.created_at = new Date(createdAt).toISOString();
   if (feeBreakdown !== undefined) updates.fee_breakdown = feeBreakdown;
+  if (inventoryExpenseSource !== undefined) updates.inventory_expense_source = inventoryExpenseSource;
+  if (inventoryExpenseAmount !== undefined) updates.inventory_expense_amount = inventoryExpenseAmount;
+  if (inventoryExpenseNotes !== undefined) updates.inventory_expense_notes = inventoryExpenseNotes || null;
 
   // Recalculate amount_total whenever items or fees change
   if (orderItems || newItems || deleteItemIds || feeBreakdown !== undefined) {
@@ -172,7 +179,8 @@ export async function PATCH(
     updates.amount_total = Math.round((itemsSubtotal + feesTotal) * 100);
   }
 
-  if (Object.keys(updates).length === 0) {
+  const hasItemChanges = (orderItems && orderItems.length > 0) || (newItems && newItems.length > 0) || (deleteItemIds && deleteItemIds.length > 0);
+  if (Object.keys(updates).length === 0 && !hasItemChanges) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });
   }
 

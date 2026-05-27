@@ -552,6 +552,7 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
 
   const [vendorId, setVendorId] = useState("");
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [inventoryType, setInventoryType] = useState<"available_now" | "sourced_for_you" | "">("");
   const [form, setForm] = useState({
     name: "",
     category: "bracelet" as ProductCategory,
@@ -699,6 +700,7 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
       fd.append("is_clearance", String(isIsClearance));
       fd.append("show_price", String(showPrice));
       fd.append("status", status);
+      if (inventoryType) fd.append("inventory_type", inventoryType);
       fd.append("sku", sku);
       sizeDetailed.forEach((v, i) => fd.append(`size_detailed_${i}`, v));
       imageUrls.forEach((url) => fd.append("imageUrls", url));
@@ -723,6 +725,7 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
         setResult({ success: true, pendingApproval: res.pendingApproval });
         setSelectedTiers([]);
         setForm({ name: "", category: "bracelet", origin: "Myanmar", size: "", description: "", blemishes: "", price_display_usd: "", sale_price_usd: "", imported_price_vnd: "" });
+        setInventoryType("");
         setVendorId("");
         setSelectedColors([]);
         setPendingImages([]);
@@ -1206,11 +1209,22 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
           )}
           {!isApprovedUser && (
             <div>
-              <label className={labelClass}>Imported Price (VND) <span className="text-red-400">*</span></label>
+              <label className={labelClass}>Imported Price (VND) <span className="text-xs text-gray-400 font-normal">(optional)</span></label>
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">₫</span>
-                <input required type="number" min="0" value={form.imported_price_vnd} onChange={set("imported_price_vnd")} placeholder="0" className={`${inputClass} pl-7`} />
+                <input type="number" min="0" value={form.imported_price_vnd} onChange={set("imported_price_vnd")} placeholder="0" className={`${inputClass} pl-7`} />
               </div>
+              <p className="mt-1 text-xs text-gray-400">Leave blank if cost is tracked via an inventory batch</p>
+            </div>
+          )}
+          {!isApprovedUser && (
+            <div>
+              <label className={labelClass}>Inventory Type</label>
+              <select value={inventoryType} onChange={(e) => setInventoryType(e.target.value as typeof inventoryType)} className={inputClass}>
+                <option value="">— Not specified —</option>
+                <option value="available_now">Available Now</option>
+                <option value="sourced_for_you">Sourced for You</option>
+              </select>
             </div>
           )}
           {!isApprovedUser && (

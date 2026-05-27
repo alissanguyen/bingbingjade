@@ -89,6 +89,7 @@ export function AdminBar({
     { href: "/item-origin-lookup", label: "Origin Lookup" },
     { href: "/accounting-admin", label: "Finance Snapshot" },
     { href: "/full-detailed-accounting", label: "Full Accounting" },
+    { href: "/inventory-batches", label: "Inventory Batches" },
     ...(showUsersLink ? [
       { href: "/approved-users", label: "Users" },
       { href: "/coupons-admin", label: "Coupons" },
@@ -134,6 +135,7 @@ export function AdminBar({
               links={[
                 { href: "/accounting-admin", label: "Finance Snapshot" },
                 { href: "/full-detailed-accounting", label: "Full Accounting Details" },
+                { href: "/inventory-batches", label: "Inventory Batches" },
               ]}
             />
 
