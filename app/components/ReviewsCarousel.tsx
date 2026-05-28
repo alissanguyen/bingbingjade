@@ -192,45 +192,43 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
 
       {/* Cards */}
       <div className="mx-auto max-w-7xl">
-        {/* Mobile: CSS slide animation */}
-        <div className="r2:hidden overflow-hidden">
-          <div
-            className="flex transition-transform duration-700 ease-in-out"
-            style={{ transform: `translateX(-${globalIndex * 100}%)` }}
-          >
-            {reviews.map((r) => {
-              const isLong = r.review.length > PREVIEW_LENGTH;
-              const preview = isLong ? r.review.slice(0, PREVIEW_LENGTH).trimEnd() + "…" : r.review;
-              return (
-                <div key={r.id} className="min-w-full px-6">
-                  <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-6 flex flex-col">
-                    <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none mb-1">&ldquo;</span>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed flex-1">{preview}</p>
-                    {isLong && (
-                      <button onClick={() => setModalReview(r)} className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline self-start">See more</button>
-                    )}
-                    <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none self-end mt-1">&rdquo;</span>
-                    <StarRating />
-                    <div className="mt-3 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        {r.image_url && (
-                          <button onClick={() => setModalReview(r)} className="w-10 h-10 rounded-md overflow-hidden border border-gray-100 dark:border-gray-800 hover:opacity-80 transition-opacity shrink-0">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={r.image_url} alt="" className="w-full h-full object-cover" />
-                          </button>
-                        )}
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{toInitials(r.name)}</p>
-                          <p className="text-xs text-gray-400 dark:text-gray-500">{r.datePurchased}</p>
-                        </div>
+        {/* Mobile: free horizontal scroll — all cards visible */}
+        <div
+          className="r2:hidden flex overflow-x-auto gap-4 px-6 pb-2"
+          style={{ scrollbarWidth: "none" }}
+        >
+          {reviews.map((r) => {
+            const isLong = r.review.length > PREVIEW_LENGTH;
+            const preview = isLong ? r.review.slice(0, PREVIEW_LENGTH).trimEnd() + "…" : r.review;
+            return (
+              <div key={r.id} className="shrink-0 w-[75vw]">
+                <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-6 flex flex-col h-full">
+                  <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none mb-1">&ldquo;</span>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed flex-1">{preview}</p>
+                  {isLong && (
+                    <button onClick={() => setModalReview(r)} className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline self-start">See more</button>
+                  )}
+                  <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none self-end mt-1">&rdquo;</span>
+                  <StarRating />
+                  <div className="mt-3 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {r.image_url && (
+                        <button onClick={() => setModalReview(r)} className="w-10 h-10 rounded-md overflow-hidden border border-gray-100 dark:border-gray-800 hover:opacity-80 transition-opacity shrink-0">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={r.image_url} alt="" className="w-full h-full object-cover" />
+                        </button>
+                      )}
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{toInitials(r.name)}</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">{r.datePurchased}</p>
                       </div>
-                      <span className="text-xs text-gray-300 dark:text-gray-600 font-mono shrink-0">{r.orderNumber}</span>
                     </div>
+                    <span className="text-xs text-gray-300 dark:text-gray-600 font-mono shrink-0">{r.orderNumber}</span>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Desktop: grid */}
