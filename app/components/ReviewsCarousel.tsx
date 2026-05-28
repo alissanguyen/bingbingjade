@@ -103,6 +103,9 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
   const [mobileSubIndex, setMobileSubIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mobileScrollRef = useRef<HTMLDivElement>(null);
+  const isProgrammaticScroll = useRef(false);
+  const mobileScrollDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [colCount, setColCount] = useState(4);
   useEffect(() => {
@@ -152,6 +155,31 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
     setMobileSubIndex(nextGlobal % colCount);
   }
 
+  // Programmatically scroll mobile track when auto-advance fires
+  useEffect(() => {
+    const track = mobileScrollRef.current;
+    if (!track || colCount !== 1) return;
+    isProgrammaticScroll.current = true;
+    track.scrollTo({ left: globalIndex * track.offsetWidth, behavior: "smooth" });
+    const t = setTimeout(() => { isProgrammaticScroll.current = false; }, 800);
+    return () => clearTimeout(t);
+  }, [globalIndex, colCount]);
+
+  function handleMobileScroll() {
+    if (mobileScrollDebounce.current) clearTimeout(mobileScrollDebounce.current);
+    mobileScrollDebounce.current = setTimeout(() => {
+      const track = mobileScrollRef.current;
+      if (!track || isProgrammaticScroll.current) return;
+      const newIndex = Math.round(track.scrollLeft / track.offsetWidth);
+      if (newIndex !== globalIndex && newIndex >= 0 && newIndex < reviews.length) {
+        resetTimer();
+        setPage(newIndex);
+        setMobileSubIndex(0);
+      }
+      isProgrammaticScroll.current = false;
+    }, 100);
+  }
+
   if (reviews.length === 0) return null;
 
   return (
@@ -192,18 +220,19 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
 
       {/* Cards */}
       <div className="mx-auto max-w-7xl">
-        {/* Mobile: CSS slide animation */}
-        <div className="r2:hidden overflow-hidden">
-          <div
-            className="flex transition-transform duration-700 ease-in-out"
-            style={{ transform: `translateX(-${globalIndex * 100}%)` }}
-          >
-            {reviews.map((r) => {
-              const isLong = r.review.length > PREVIEW_LENGTH;
-              const preview = isLong ? r.review.slice(0, PREVIEW_LENGTH).trimEnd() + "…" : r.review;
-              return (
-                <div key={r.id} className="min-w-full px-6">
-                  <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-6 flex flex-col">
+        {/* Mobile: native horizontal scroll snap */}
+        <div
+          ref={mobileScrollRef}
+          onScroll={handleMobileScroll}
+          className="r2:hidden flex overflow-x-auto snap-x snap-mandatory"
+          style={{ scrollbarWidth: "none" }}
+        >
+          {reviews.map((r) => {
+            const isLong = r.review.length > PREVIEW_LENGTH;
+            const preview = isLong ? r.review.slice(0, PREVIEW_LENGTH).trimEnd() + "…" : r.review;
+            return (
+              <div key={r.id} className="min-w-full shrink-0 snap-center px-6">
+                <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-6 flex flex-col">
                     <span className="text-5xl leading-none text-emerald-200 dark:text-emerald-900 font-serif select-none mb-1">&ldquo;</span>
                     <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed flex-1">{preview}</p>
                     {isLong && (
@@ -230,7 +259,6 @@ export function ReviewsCarousel({ dbReviews }: { dbReviews?: CarouselReview[] })
                 </div>
               );
             })}
-          </div>
         </div>
 
         {/* Desktop: grid */}
