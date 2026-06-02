@@ -14,10 +14,12 @@ export function Pagination({
   currentPage,
   totalPages,
   searchString,
+  pathname = "/products",
 }: {
   currentPage: number;
   totalPages: number;
   searchString: string;
+  pathname?: string;
 }) {
   if (totalPages <= 1) return null;
 
@@ -43,7 +45,7 @@ export function Pagination({
       {/* Prev */}
       {currentPage > 1 ? (
         <Link
-          href={pageHref("/products", searchString, currentPage - 1)}
+          href={pageHref(pathname, searchString, currentPage - 1)}
           className={`${btnBase} border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400`}
           aria-label="Previous page"
         >
@@ -68,7 +70,7 @@ export function Pagination({
         ) : (
           <Link
             key={p}
-            href={pageHref("/products", searchString, p)}
+            href={pageHref(pathname, searchString, p)}
             className={`${btnBase} border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400`}
           >
             {p}
@@ -79,7 +81,7 @@ export function Pagination({
       {/* Next */}
       {currentPage < totalPages ? (
         <Link
-          href={pageHref("/products", searchString, currentPage + 1)}
+          href={pageHref(pathname, searchString, currentPage + 1)}
           className={`${btnBase} border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400`}
           aria-label="Next page"
         >

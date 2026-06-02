@@ -1,5 +1,5 @@
-/* eslint-disable @next/next/no-html-link-for-pages */
 import { unstable_cache } from "next/cache";
+import Link from "next/link";
 import { productSlug } from "@/lib/slug";
 import { supabase } from "@/lib/supabase";
 import { requiresInquiry } from "@/lib/price";
@@ -95,6 +95,29 @@ const PRODUCT_CARD_SELECT = `${PRODUCT_LIST_SELECT}, images, description`;
 const PAGE_SIZE = 18;
 const PAGE_WINDOW_SIZE = PAGE_SIZE * 3;
 
+export type ProductSearchParams = {
+  colors?: string;
+  status?: string;
+  category?: string;
+  origins?: string;
+  minSize?: string;
+  maxSize?: string;
+  minPrice?: string;
+  maxPrice?: string;
+  sort?: string;
+  page?: string;
+  shipping?: string;
+  search?: string;
+  clearance?: string;
+};
+
+export type ProductListingIntro = {
+  eyebrow?: string;
+  title: string;
+  description: string;
+  breadcrumbs?: { label: string; href?: string }[];
+};
+
 const getCachedProductList = unstable_cache(
   async (includeDrafts: boolean) => {
     const query = supabase
@@ -140,19 +163,25 @@ const getCachedProductCards = unstable_cache(
   { revalidate: 120 }
 );
 
-export default async function Products({
+export async function ProductListing({
   searchParams,
+  baseParams = {},
+  intro,
+  pathname = "/products",
 }: {
-  searchParams: Promise<{ colors?: string; status?: string; category?: string; origins?: string; minSize?: string; maxSize?: string; minPrice?: string; maxPrice?: string; sort?: string; page?: string; shipping?: string; search?: string; clearance?: string }>;
+  searchParams: Promise<ProductSearchParams>;
+  baseParams?: ProductSearchParams;
+  intro?: ProductListingIntro;
+  pathname?: string;
 }) {
-  const params = await searchParams;
+  const urlParams = await searchParams;
+  const params = { ...baseParams, ...urlParams };
   const selectedColors = params.colors?.split(",").filter(Boolean) ?? [];
   const selectedStatuses = params.status?.split(",").filter(Boolean) ?? [];
   const selectedOrigins = params.origins?.split(",").filter(Boolean) ?? [];
   const selectedShipping = params.shipping?.split(",").filter(Boolean) ?? [];
   const filterClearance = params.clearance === "1";
   const selectedCategories = params.category ? params.category.split(",").filter(Boolean) : [];
-  const selectedCategory = selectedCategories.length === 1 ? selectedCategories[0] : (params.category ?? "");
   const searchQuery = params.search?.trim() ?? "";
   const minSize = params.minSize ? Number(params.minSize) : null;
   const maxSize = params.maxSize ? Number(params.maxSize) : null;
@@ -376,14 +405,38 @@ export default async function Products({
 
   return (
     <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 py-16">
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Our Collection</h1>
+      {intro?.breadcrumbs && (
+        <nav aria-label="Breadcrumb" className="mb-6 flex flex-wrap items-center gap-2 text-[11px] sm:text-xs text-gray-400 dark:text-gray-500">
+          {intro.breadcrumbs.map((crumb, i) => (
+            <span key={`${crumb.label}-${i}`} className="inline-flex items-center gap-2">
+              {crumb.href ? (
+                <Link href={crumb.href} className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
+                  {crumb.label}
+                </Link>
+              ) : (
+                <span className="text-gray-600 dark:text-gray-300">{crumb.label}</span>
+              )}
+              {i < intro.breadcrumbs!.length - 1 && <span className="text-gray-300 dark:text-gray-700">/</span>}
+            </span>
+          ))}
+        </nav>
+      )}
+
+      {intro?.eyebrow && (
+        <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700 dark:text-emerald-400 mb-3">
+          {intro.eyebrow}
+        </p>
+      )}
+      <h1 className="text-3xl sm:text-5xl font-semibold tracking-tight text-gray-950 dark:text-gray-50">
+        {intro?.title ?? "Our Collection"}
+      </h1>
       {searchQuery ? (
         <div className="mt-2 flex items-center gap-2">
           <p className="text-xs sm:text-base text-gray-500 dark:text-gray-400">
             Search results for <span className="font-medium text-gray-800 dark:text-gray-200">&quot;{searchQuery}&quot;</span> · {totalCount} {totalCount === 1 ? "item" : "items"} found
           </p>
           <a
-            href="/products"
+            href={pathname}
             className="inline-flex items-center gap-1 text-xs sm:text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             aria-label="Clear search"
           >
@@ -394,7 +447,9 @@ export default async function Products({
           </a>
         </div>
       ) : (
-        <p className="text-xs sm:text-base mt-2 text-gray-500 dark:text-gray-400">Browse our collection of authentic jade pieces.</p>
+        <p className="text-xs sm:text-base mt-3 max-w-2xl leading-relaxed text-gray-500 dark:text-gray-400">
+          {intro?.description ?? "Browse our collection of authentic jade pieces."}
+        </p>
       )}
 
       <div className="mt-10 flex gap-6">
@@ -662,23 +717,32 @@ export default async function Products({
             totalPages={totalPages}
             searchString={new URLSearchParams(
               Object.entries({
-                ...(params.colors ? { colors: params.colors } : {}),
-                ...(params.status ? { status: params.status } : {}),
-                ...(params.category ? { category: params.category } : {}),
-                ...(params.origins ? { origins: params.origins } : {}),
-                ...(params.clearance ? { clearance: params.clearance } : {}),
-                ...(params.shipping ? { shipping: params.shipping } : {}),
-                ...(params.minSize ? { minSize: params.minSize } : {}),
-                ...(params.maxSize ? { maxSize: params.maxSize } : {}),
-                ...(params.minPrice ? { minPrice: params.minPrice } : {}),
-                ...(params.maxPrice ? { maxPrice: params.maxPrice } : {}),
-                ...(params.sort ? { sort: params.sort } : {}),
-                ...(params.search ? { search: params.search } : {}),
+                ...(urlParams.colors ? { colors: urlParams.colors } : {}),
+                ...(urlParams.status ? { status: urlParams.status } : {}),
+                ...(urlParams.category ? { category: urlParams.category } : {}),
+                ...(urlParams.origins ? { origins: urlParams.origins } : {}),
+                ...(urlParams.clearance ? { clearance: urlParams.clearance } : {}),
+                ...(urlParams.shipping ? { shipping: urlParams.shipping } : {}),
+                ...(urlParams.minSize ? { minSize: urlParams.minSize } : {}),
+                ...(urlParams.maxSize ? { maxSize: urlParams.maxSize } : {}),
+                ...(urlParams.minPrice ? { minPrice: urlParams.minPrice } : {}),
+                ...(urlParams.maxPrice ? { maxPrice: urlParams.maxPrice } : {}),
+                ...(urlParams.sort ? { sort: urlParams.sort } : {}),
+                ...(urlParams.search ? { search: urlParams.search } : {}),
               })
             ).toString()}
+            pathname={pathname}
           />
         </div>
       </div>
     </div>
   );
+}
+
+export default async function Products({
+  searchParams,
+}: {
+  searchParams: Promise<ProductSearchParams>;
+}) {
+  return <ProductListing searchParams={searchParams} />;
 }

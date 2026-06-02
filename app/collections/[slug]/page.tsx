@@ -11,13 +11,36 @@ import { ProductCardImage } from "@/app/products/ProductCardImage";
 import { requiresInquiry } from "@/lib/price";
 import { productSlug } from "@/lib/slug";
 import { getCategoryLabel } from "@/app/products/categories";
+import { ProductListing, type ProductSearchParams } from "@/app/products/page";
+import { COLLECTION_FILTERS, curatedFilterToSearchParams } from "@/lib/curated-routes";
 
 export const revalidate = 120;
 
-type Params = { params: Promise<{ slug: string }> };
+const SITE_URL = "https://bingbingjade.com";
+
+type Params = {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<ProductSearchParams>;
+};
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
+  const curated = COLLECTION_FILTERS[slug];
+  if (curated) {
+    return {
+      title: `${curated.title} — BingBing Jade`,
+      description: curated.description,
+      alternates: { canonical: curated.href },
+      openGraph: {
+        title: `${curated.title} — BingBing Jade`,
+        description: curated.description,
+        url: `${SITE_URL}${curated.href}`,
+        type: "website",
+        images: [{ url: "/og-default.jpg", width: 1200, height: 630, alt: curated.title }],
+      },
+    };
+  }
+
   const { data } = await supabaseAdmin
     .from("collections")
     .select("name, subtitle, status")
@@ -27,11 +50,40 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   return {
     title: `${data.name} — BingBing Jade`,
     description: data.subtitle ?? undefined,
+    alternates: { canonical: `/collections/${slug}` },
+    openGraph: {
+      title: `${data.name} — BingBing Jade`,
+      description: data.subtitle ?? undefined,
+      url: `${SITE_URL}/collections/${slug}`,
+      type: "website",
+      images: [{ url: "/og-default.jpg", width: 1200, height: 630, alt: data.name }],
+    },
   };
 }
 
-export default async function CollectionPage({ params }: Params) {
+export default async function CollectionPage({ params, searchParams = Promise.resolve({}) }: Params) {
   const { slug } = await params;
+  const curated = COLLECTION_FILTERS[slug];
+
+  if (curated) {
+    return (
+      <ProductListing
+        searchParams={searchParams}
+        baseParams={curatedFilterToSearchParams(curated.filters)}
+        pathname={curated.href}
+        intro={{
+          eyebrow: curated.eyebrow,
+          title: curated.title,
+          description: curated.description,
+          breadcrumbs: [
+            { label: "Home", href: "/" },
+            { label: "Collections", href: "/products" },
+            { label: curated.title },
+          ],
+        }}
+      />
+    );
+  }
 
   // Check existence and status first (admin client bypasses RLS so drafts are visible)
   const { data: meta } = await supabaseAdmin
