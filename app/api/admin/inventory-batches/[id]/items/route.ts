@@ -23,10 +23,11 @@ export async function POST(
       batch_id,
       product_id:                   body.product_id || null,
       assigned_inventory_cost_usd:  Number(body.assigned_inventory_cost_usd ?? 0),
+      item_expense_usd:             Number(body.item_expense_usd ?? 0),
       allocation_method:            body.allocation_method || "manual",
       notes:                        (body.notes as string | undefined)?.trim() || null,
     })
-    .select("id, product_id, assigned_inventory_cost_usd, allocation_method, notes, created_at, products(id, name, public_id)")
+    .select("id, product_id, assigned_inventory_cost_usd, item_expense_usd, allocation_method, notes, created_at, products(id, name, public_id)")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

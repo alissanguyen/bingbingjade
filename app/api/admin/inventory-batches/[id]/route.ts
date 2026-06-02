@@ -21,7 +21,7 @@ export async function GET(
       .single(),
     supabaseAdmin
       .from("inventory_batch_items")
-      .select("id, product_id, assigned_inventory_cost_usd, allocation_method, notes, created_at, products(id, name, images)")
+      .select("id, product_id, assigned_inventory_cost_usd, item_expense_usd, allocation_method, notes, created_at, products(id, name, images)")
       .eq("batch_id", id)
       .order("created_at"),
   ]);
@@ -47,14 +47,19 @@ export async function PATCH(
     "name", "batch_code", "vendor", "purchase_date", "received_date", "status",
     "goods_cost_usd", "freight_cost_usd", "insurance_cost_usd", "duties_cost_usd",
     "certification_cost_usd", "misc_cost_usd", "notes",
-    "partner_payment_usd", "payment_to_partner_usd",
+    "partner_payment_usd", "payment_to_partner_usd", "item_count",
   ];
 
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
   for (const key of allowed) {
     if (key in body) {
       const val = body[key];
-      update[key] = typeof val === "string" ? (val.trim() || null) : val;
+      if (key === "item_count") {
+        const n = val != null ? parseInt(String(val), 10) : NaN;
+        update[key] = isNaN(n) || n <= 0 ? null : n;
+      } else {
+        update[key] = typeof val === "string" ? (val.trim() || null) : val;
+      }
     }
   }
 

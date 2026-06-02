@@ -51,6 +51,7 @@ const BLANK_FORM = {
   status: "draft",
   goods_cost_usd: "", freight_cost_usd: "", insurance_cost_usd: "",
   duties_cost_usd: "", certification_cost_usd: "", misc_cost_usd: "",
+  item_count: "",
   notes: "",
 };
 
@@ -71,6 +72,7 @@ export function InventoryBatchesClient({ initialBatches }: { initialBatches: Bat
     try {
       const body: Record<string, unknown> = { ...form };
       for (const { key } of COST_FIELDS) body[key] = parseFloat(form[key] || "0") || 0;
+      body.item_count = form.item_count ? parseInt(form.item_count, 10) || null : null;
       const res = await fetch("/api/admin/inventory-batches", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -148,6 +150,10 @@ export function InventoryBatchesClient({ initialBatches }: { initialBatches: Bat
                   <div>
                     <label className={labelCls}>Received Date</label>
                     <input type="date" value={form.received_date} onChange={set("received_date")} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Item Count <span className="text-gray-400 font-normal">(for avg cost only)</span></label>
+                    <input type="number" min="1" step="1" value={form.item_count} onChange={set("item_count")} placeholder="e.g. 24" className={inputCls} />
                   </div>
                 </div>
 

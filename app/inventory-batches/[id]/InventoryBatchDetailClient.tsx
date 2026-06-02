@@ -8,6 +8,7 @@ interface BatchItem {
   id: string;
   product_id: string | null;
   assigned_inventory_cost_usd: number;
+  item_expense_usd: number;
   allocation_method: string;
   notes: string | null;
   created_at: string;
@@ -31,6 +32,7 @@ interface Batch {
   certification_cost_usd: number;
   misc_cost_usd: number;
   total_batch_cost_usd: number;
+  item_count: number | null;
   partner_payment_usd: number;
   payment_to_partner_usd: number;
   notes: string | null;
@@ -103,10 +105,15 @@ export function InventoryBatchDetailClient({
   const [itemForm, setItemForm] = useState({
     product_id: "",
     assigned_inventory_cost_usd: "",
+    item_expense_usd: "",
     allocation_method: "manual",
     notes: "",
   });
   const [savingItem, setSavingItem] = useState(false);
+
+  // Inline expense editing
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [expenseDraft, setExpenseDraft] = useState("");
 
   // Product search
   const [searchQuery, setSearchQuery] = useState("");
@@ -137,6 +144,7 @@ export function InventoryBatchDetailClient({
       misc_cost_usd:           String(batch.misc_cost_usd),
       partner_payment_usd:     String(batch.partner_payment_usd ?? 0),
       payment_to_partner_usd:  String(batch.payment_to_partner_usd ?? 0),
+      item_count:              batch.item_count != null ? String(batch.item_count) : "",
       notes:                   batch.notes ?? "",
     });
     setEditing(true);
@@ -149,6 +157,7 @@ export function InventoryBatchDetailClient({
       for (const { key } of COST_FIELDS) body[key as string] = parseFloat(editForm[key as string] || "0") || 0;
       body.partner_payment_usd    = parseFloat(editForm.partner_payment_usd    || "0") || 0;
       body.payment_to_partner_usd = parseFloat(editForm.payment_to_partner_usd || "0") || 0;
+      body.item_count             = editForm.item_count ? parseInt(editForm.item_count, 10) || null : null;
       const res = await fetch(`/api/admin/inventory-batches/${batch.id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -219,6 +228,7 @@ export function InventoryBatchDetailClient({
         body: JSON.stringify({
           product_id: itemForm.product_id || null,
           assigned_inventory_cost_usd: parseFloat(itemForm.assigned_inventory_cost_usd || "0") || 0,
+          item_expense_usd: parseFloat(itemForm.item_expense_usd || "0") || 0,
           allocation_method: itemForm.allocation_method,
           notes: itemForm.notes || null,
         }),
@@ -227,12 +237,24 @@ export function InventoryBatchDetailClient({
       if (!res.ok) { showToast("err", data.error ?? "Failed to add item."); return; }
       setItems((prev) => [...prev, data.item]);
       setShowAddItem(false);
-      setItemForm({ product_id: "", assigned_inventory_cost_usd: "", allocation_method: "manual", notes: "" });
+      setItemForm({ product_id: "", assigned_inventory_cost_usd: "", item_expense_usd: "", allocation_method: "manual", notes: "" });
       setSearchQuery("");
       showToast("ok", "Item added.");
     } finally {
       setSavingItem(false);
     }
+  }
+
+  async function handleSaveExpense(item: BatchItem) {
+    const val = parseFloat(expenseDraft || "0") || 0;
+    const res = await fetch(`/api/admin/inventory-batches/${batch.id}/items/${item.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ item_expense_usd: val }),
+    });
+    if (!res.ok) { showToast("err", "Save failed."); return; }
+    setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, item_expense_usd: val } : i));
+    setEditingExpenseId(null);
+    showToast("ok", "Expense saved.");
   }
 
   async function handleRemoveItem(itemId: string) {
@@ -253,12 +275,13 @@ export function InventoryBatchDetailClient({
 
   const allocatedTotal = items.reduce((s, i) => s + Number(i.assigned_inventory_cost_usd), 0);
   const unallocated = Number(batch.total_batch_cost_usd) - allocatedTotal;
+  const totalItemExpenses = items.reduce((s, i) => s + Number(i.item_expense_usd ?? 0), 0);
 
   // Financial summary
   const partnerIn  = Number(batch.partner_payment_usd ?? 0);
   const partnerOut = Number(batch.payment_to_partner_usd ?? 0);
   const totalCost  = Number(batch.total_batch_cost_usd);
-  const grossProfit = revenue - totalCost;
+  const grossProfit = revenue - totalCost - totalItemExpenses;
   const netProfit   = grossProfit + partnerIn - partnerOut;
   const soldPct     = totalCount > 0 ? Math.round((soldCount / totalCount) * 100) : 0;
 
@@ -343,6 +366,10 @@ export function InventoryBatchDetailClient({
                 <label className={labelCls}>Received Date</label>
                 <input type="date" value={editForm.received_date ?? ""} onChange={setEdit("received_date")} className={inputCls} />
               </div>
+              <div>
+                <label className={labelCls}>Item Count <span className="text-gray-400 font-normal">(for avg cost only)</span></label>
+                <input type="number" min="1" step="1" value={editForm.item_count ?? ""} onChange={setEdit("item_count")} placeholder="e.g. 24" className={inputCls} />
+              </div>
             </div>
 
             {/* Cost breakdown */}
@@ -390,7 +417,7 @@ export function InventoryBatchDetailClient({
         )}
 
         {/* Cost summary cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
+        <div className={`grid gap-3 mb-5 ${batch.item_count ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2 sm:grid-cols-3"}`}>
           <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3">
             <p className="text-xs uppercase tracking-widest text-gray-400 mb-1">Total Batch Cost</p>
             <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{fmtUSD(batch.total_batch_cost_usd)}</p>
@@ -399,10 +426,19 @@ export function InventoryBatchDetailClient({
             <p className="text-xs uppercase tracking-widest text-gray-400 mb-1">Allocated</p>
             <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{fmtUSD(allocatedTotal)}</p>
           </div>
-          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 col-span-2 sm:col-span-1">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3">
             <p className="text-xs uppercase tracking-widest text-gray-400 mb-1">Unallocated</p>
             <p className={`text-lg font-bold ${unallocated > 0.01 ? "text-amber-500 dark:text-amber-400" : "text-gray-400"}`}>{fmtUSD(unallocated)}</p>
           </div>
+          {batch.item_count ? (
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3">
+              <p className="text-xs uppercase tracking-widest text-gray-400 mb-1">Avg Cost / Item</p>
+              <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                {fmtUSD(Number(batch.total_batch_cost_usd) / batch.item_count)}
+              </p>
+              <p className="text-[10px] text-gray-400 mt-0.5">{batch.item_count} items</p>
+            </div>
+          ) : null}
         </div>
 
         {/* Cost breakdown */}
@@ -448,6 +484,12 @@ export function InventoryBatchDetailClient({
               <span className="text-gray-500 dark:text-gray-400">Total Batch Cost</span>
               <span className="font-medium text-gray-800 dark:text-gray-200">− {fmtUSD(totalCost)}</span>
             </div>
+            {totalItemExpenses > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500 dark:text-gray-400">Item Expenses (shipping etc.)</span>
+                <span className="font-medium text-gray-800 dark:text-gray-200">− {fmtUSD(totalItemExpenses)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm border-t border-gray-100 dark:border-gray-800 pt-1.5 mt-1.5">
               <span className="text-gray-600 dark:text-gray-300 font-medium">Gross Profit</span>
               <span className={`font-semibold ${grossProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>{fmtUSD(grossProfit)}</span>
@@ -483,7 +525,7 @@ export function InventoryBatchDetailClient({
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
               Products in Batch ({items.length})
             </h2>
-            <button onClick={() => { setShowAddItem(true); setSearchQuery(""); setItemForm({ product_id: "", assigned_inventory_cost_usd: "", allocation_method: "manual", notes: "" }); }} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">+ Add product</button>
+            <button onClick={() => { setShowAddItem(true); setSearchQuery(""); setItemForm({ product_id: "", assigned_inventory_cost_usd: "", item_expense_usd: "", allocation_method: "manual", notes: "" }); }} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">+ Add product</button>
           </div>
 
           {/* Add item form */}
@@ -546,7 +588,7 @@ export function InventoryBatchDetailClient({
                   <label className={labelCls}>Assigned Cost</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
-                    <input required type="number" min="0" step="0.01" value={itemForm.assigned_inventory_cost_usd} onChange={setItem("assigned_inventory_cost_usd")} placeholder="0.00" className={`${inputCls} pl-7`} />
+                    <input required={itemForm.allocation_method === "manual"} type="number" min="0" step="0.01" value={itemForm.assigned_inventory_cost_usd} onChange={setItem("assigned_inventory_cost_usd")} placeholder="0.00" className={`${inputCls} pl-7`} />
                   </div>
                 </div>
                 <div>
@@ -557,6 +599,13 @@ export function InventoryBatchDetailClient({
                     <option value="equal">Equal</option>
                     <option value="legacy">Legacy</option>
                   </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Item Expense <span className="text-gray-400 font-normal">(e.g. shipping absorbed)</span></label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
+                    <input type="number" min="0" step="0.01" value={itemForm.item_expense_usd} onChange={setItem("item_expense_usd")} placeholder="0.00" className={`${inputCls} pl-7`} />
+                  </div>
                 </div>
                 <div className="col-span-2">
                   <label className={labelCls}>Notes</label>
@@ -593,7 +642,33 @@ export function InventoryBatchDetailClient({
                       {item.notes && ` · ${item.notes}`}
                     </p>
                   </div>
-                  <p className="font-semibold text-gray-800 dark:text-gray-200 shrink-0">{fmtUSD(item.assigned_inventory_cost_usd)}</p>
+                  <div className="flex flex-col items-end gap-0.5 shrink-0">
+                    <p className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{fmtUSD(item.assigned_inventory_cost_usd)}</p>
+                    {/* Inline expense editor */}
+                    {editingExpenseId === item.id ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-gray-400">−$</span>
+                        <input
+                          autoFocus
+                          type="number" min="0" step="0.01"
+                          value={expenseDraft}
+                          onChange={(e) => setExpenseDraft(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") handleSaveExpense(item); if (e.key === "Escape") setEditingExpenseId(null); }}
+                          className="w-20 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-1.5 py-0.5 text-xs text-gray-900 dark:text-gray-100 focus:outline-none focus:border-emerald-500"
+                        />
+                        <button onClick={() => handleSaveExpense(item)} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">Save</button>
+                        <button onClick={() => setEditingExpenseId(null)} className="text-xs text-gray-400 hover:text-gray-600">✕</button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => { setEditingExpenseId(item.id); setExpenseDraft(String(item.item_expense_usd ?? 0)); }}
+                        className={`text-xs ${Number(item.item_expense_usd) > 0 ? "text-amber-500 dark:text-amber-400" : "text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400"}`}
+                        title="Edit item expense"
+                      >
+                        {Number(item.item_expense_usd) > 0 ? `−${fmtUSD(item.item_expense_usd)} exp.` : "+ expense"}
+                      </button>
+                    )}
+                  </div>
                   <button onClick={() => handleRemoveItem(item.id)} className="text-xs text-gray-300 dark:text-gray-600 hover:text-red-400 dark:hover:text-red-400 shrink-0 ml-1">✕</button>
                 </div>
               ))}

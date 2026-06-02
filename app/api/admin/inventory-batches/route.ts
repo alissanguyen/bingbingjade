@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
     certification_cost_usd: Number(body.certification_cost_usd ?? 0),
     misc_cost_usd:         Number(body.misc_cost_usd ?? 0),
     notes:                 (body.notes as string | undefined)?.trim() || null,
+    item_count:            body.item_count != null ? (Number(body.item_count) || null) : null,
   };
 
   const { data, error } = await supabaseAdmin

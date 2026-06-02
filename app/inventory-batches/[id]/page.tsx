@@ -19,7 +19,7 @@ export default async function InventoryBatchDetailPage({ params }: { params: Pro
     supabaseAdmin.from("inventory_batches").select("*").eq("id", id).single(),
     supabaseAdmin
       .from("inventory_batch_items")
-      .select("id, product_id, assigned_inventory_cost_usd, allocation_method, notes, created_at, products(id, name, public_id, images)")
+      .select("id, product_id, assigned_inventory_cost_usd, item_expense_usd, allocation_method, notes, created_at, products(id, name, public_id, images)")
       .eq("batch_id", id)
       .order("created_at"),
   ]);
