@@ -114,5 +114,12 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Auto-register vendor/payment_method so they appear in autocomplete next time
+  await Promise.all([
+    vendor?.trim() ? supabaseAdmin.from("expense_vendors").upsert({ name: vendor.trim() }, { onConflict: "name", ignoreDuplicates: true }) : Promise.resolve(),
+    payment_method?.trim() ? supabaseAdmin.from("expense_payment_methods").upsert({ name: payment_method.trim() }, { onConflict: "name", ignoreDuplicates: true }) : Promise.resolve(),
+  ]);
+
   return NextResponse.json({ expense: data });
 }

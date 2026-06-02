@@ -32,6 +32,15 @@ export async function PATCH(
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Auto-register vendor/payment_method so they appear in autocomplete next time
+  const vendor = (updates.vendor as string | null)?.trim();
+  const method = (updates.payment_method as string | null)?.trim();
+  await Promise.all([
+    vendor ? supabaseAdmin.from("expense_vendors").upsert({ name: vendor }, { onConflict: "name", ignoreDuplicates: true }) : Promise.resolve(),
+    method ? supabaseAdmin.from("expense_payment_methods").upsert({ name: method }, { onConflict: "name", ignoreDuplicates: true }) : Promise.resolve(),
+  ]);
+
   return NextResponse.json({ expense: data });
 }
 

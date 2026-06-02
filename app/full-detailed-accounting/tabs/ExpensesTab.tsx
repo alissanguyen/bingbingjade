@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useLayoutEffect } from "react";
 
 interface Expense {
   id: string;
@@ -33,6 +33,83 @@ const EMPTY_FORM = {
 
 const THIS_YEAR = new Date().getFullYear().toString();
 
+function ComboProfile({
+  label,
+  value,
+  onChange,
+  options,
+  onAddOption,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  onAddOption: (v: string) => void;
+  placeholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(value);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => { setQuery(value); }, [value]);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const filtered = query.trim()
+    ? options.filter((o) => o.toLowerCase().includes(query.toLowerCase()))
+    : options;
+
+  const exactMatch = options.some((o) => o.toLowerCase() === query.trim().toLowerCase());
+  const showAdd = query.trim() !== "" && !exactMatch;
+
+  function pick(name: string) {
+    setQuery(name);
+    onChange(name);
+    setOpen(false);
+  }
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{label}</label>
+      <input
+        type="text"
+        value={query}
+        placeholder={placeholder}
+        onFocus={() => setOpen(true)}
+        onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
+        className="w-full text-sm border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+      />
+      {open && (filtered.length > 0 || showAdd) && (
+        <div className="absolute z-30 top-full mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg max-h-52 overflow-y-auto">
+          {filtered.map((o) => (
+            <button key={o} type="button" onMouseDown={() => pick(o)}
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 ${
+                o === value ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-gray-700 dark:text-gray-300"
+              }`}
+            >
+              {o}
+            </button>
+          ))}
+          {showAdd && (
+            <button type="button" onMouseDown={() => { onAddOption(query.trim()); pick(query.trim()); }}
+              className="w-full text-left px-3 py-2 text-sm text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border-t border-gray-100 dark:border-gray-800"
+            >
+              + Add &ldquo;{query.trim()}&rdquo;
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ExpensesTab() {
   const [expenses, setExpenses]         = useState<Expense[]>([]);
   const [total, setTotal]               = useState(0);
@@ -53,6 +130,18 @@ export function ExpensesTab() {
   const fileInputRef              = useRef<HTMLInputElement>(null);
   const formRef                   = useRef<HTMLDivElement>(null);
   const LIMIT = 100;
+
+  const [vendorOptions, setVendorOptions]   = useState<string[]>([]);
+  const [methodOptions, setMethodOptions]   = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch("/api/admin/full-accounting/expense-vendors")
+      .then((r) => r.json())
+      .then((j) => setVendorOptions((j.vendors ?? []).map((v: { name: string }) => v.name)));
+    fetch("/api/admin/full-accounting/expense-payment-methods")
+      .then((r) => r.json())
+      .then((j) => setMethodOptions((j.methods ?? []).map((m: { name: string }) => m.name)));
+  }, []);
 
   const load = useCallback(async (p = 1) => {
     setLoading(true);
@@ -272,16 +361,22 @@ export function ExpensesTab() {
               <input type="number" min="0" max="100" value={form.business_use_percent} onChange={(e) => setForm((p) => ({ ...p, business_use_percent: e.target.value }))}
                 className="w-full text-sm border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Vendor</label>
-              <input type="text" value={form.vendor} onChange={(e) => setForm((p) => ({ ...p, vendor: e.target.value }))} placeholder="e.g. Shopify"
-                className="w-full text-sm border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Payment Method</label>
-              <input type="text" value={form.payment_method} onChange={(e) => setForm((p) => ({ ...p, payment_method: e.target.value }))} placeholder="e.g. Credit Card"
-                className="w-full text-sm border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
-            </div>
+            <ComboProfile
+              label="Vendor"
+              value={form.vendor}
+              onChange={(v) => setForm((p) => ({ ...p, vendor: v }))}
+              options={vendorOptions}
+              onAddOption={(v) => setVendorOptions((prev) => [...prev, v].sort())}
+              placeholder="e.g. Temu"
+            />
+            <ComboProfile
+              label="Payment Method"
+              value={form.payment_method}
+              onChange={(v) => setForm((p) => ({ ...p, payment_method: v }))}
+              options={methodOptions}
+              onAddOption={(v) => setMethodOptions((prev) => [...prev, v].sort())}
+              placeholder="e.g. Business Debit 5344"
+            />
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Invoice / Receipt</label>
               <input
