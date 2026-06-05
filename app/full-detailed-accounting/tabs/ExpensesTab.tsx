@@ -110,6 +110,141 @@ function ComboProfile({
   );
 }
 
+function ManagePanel({
+  vendorOptions, setVendorOptions,
+  methodOptions, setMethodOptions,
+  onExpensesChanged,
+}: {
+  vendorOptions: string[];
+  setVendorOptions: React.Dispatch<React.SetStateAction<string[]>>;
+  methodOptions: string[];
+  setMethodOptions: React.Dispatch<React.SetStateAction<string[]>>;
+  onExpensesChanged: () => void;
+}) {
+  const [mergingVendor, setMergingVendor]   = useState<string | null>(null);
+  const [mergingMethod, setMergingMethod]   = useState<string | null>(null);
+  const [mergeInto, setMergeInto]           = useState("");
+  const [busy, setBusy]                     = useState(false);
+  const [err, setErr]                       = useState<string | null>(null);
+
+  async function doMerge(type: "vendors" | "payment-methods", from: string, into: string) {
+    setBusy(true); setErr(null);
+    const res = await fetch(`/api/admin/full-accounting/expense-${type}/merge`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ from, into }),
+    });
+    if (res.ok) {
+      if (type === "vendors") setVendorOptions((p) => p.filter((v) => v !== from));
+      else setMethodOptions((p) => p.filter((v) => v !== from));
+      onExpensesChanged();
+      setMergingVendor(null); setMergingMethod(null); setMergeInto("");
+    } else {
+      const j = await res.json().catch(() => ({}));
+      setErr(j.error ?? "Merge failed.");
+    }
+    setBusy(false);
+  }
+
+  async function doDelete(type: "vendors" | "payment-methods", name: string) {
+    if (!confirm(`Remove "${name}" from the list? Existing expenses are not changed.`)) return;
+    setBusy(true); setErr(null);
+    const res = await fetch(`/api/admin/full-accounting/expense-${type}/merge?name=${encodeURIComponent(name)}`, { method: "DELETE" });
+    if (res.ok) {
+      if (type === "vendors") setVendorOptions((p) => p.filter((v) => v !== name));
+      else setMethodOptions((p) => p.filter((v) => v !== name));
+    } else {
+      const j = await res.json().catch(() => ({}));
+      setErr(j.error ?? "Delete failed.");
+    }
+    setBusy(false);
+  }
+
+  function ListSection({
+    title, items, type, merging, setMerging,
+  }: {
+    title: string;
+    items: string[];
+    type: "vendors" | "payment-methods";
+    merging: string | null;
+    setMerging: (v: string | null) => void;
+  }) {
+    return (
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
+          {title} <span className="font-normal">({items.length})</span>
+        </p>
+        <div className="space-y-1">
+          {items.length === 0 && <p className="text-xs text-gray-400 italic">No entries yet.</p>}
+          {items.map((name) => (
+            <div key={name}>
+              <div className="flex items-center justify-between gap-2 py-1 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800/50 group">
+                <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{name}</span>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => { setMerging(name); setMergeInto(""); setErr(null); }}
+                    className="text-[11px] px-2 py-0.5 rounded border border-gray-300 dark:border-gray-700 text-gray-500 hover:text-emerald-600 hover:border-emerald-400 transition-colors"
+                  >
+                    Merge →
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => doDelete(type, name)}
+                    className="text-[11px] px-1.5 py-0.5 rounded border border-red-200 dark:border-red-900 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+              {merging === name && (
+                <div className="ml-2 mt-1 mb-2 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 space-y-2">
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    Merge <strong>{name}</strong> into:
+                  </p>
+                  <select
+                    value={mergeInto}
+                    onChange={(e) => setMergeInto(e.target.value)}
+                    className="w-full text-sm border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  >
+                    <option value="">— select canonical name —</option>
+                    {items.filter((v) => v !== name).map((v) => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={!mergeInto || busy}
+                      onClick={() => doMerge(type, name, mergeInto)}
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 transition-colors"
+                    >
+                      {busy ? "Merging…" : "Confirm Merge"}
+                    </button>
+                    <button type="button" onClick={() => setMerging(null)}
+                      className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-500">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 space-y-4">
+      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Manage Vendors &amp; Payment Methods</p>
+      {err && <p className="text-xs text-red-500">{err}</p>}
+      <div className="flex gap-8 flex-wrap">
+        <ListSection title="Business Vendors" items={vendorOptions} type="vendors" merging={mergingVendor} setMerging={setMergingVendor} />
+        <ListSection title="Payment Methods" items={methodOptions} type="payment-methods" merging={mergingMethod} setMerging={setMergingMethod} />
+      </div>
+    </div>
+  );
+}
+
 export function ExpensesTab() {
   const [expenses, setExpenses]         = useState<Expense[]>([]);
   const [total, setTotal]               = useState(0);
@@ -133,6 +268,7 @@ export function ExpensesTab() {
 
   const [vendorOptions, setVendorOptions]   = useState<string[]>([]);
   const [methodOptions, setMethodOptions]   = useState<string[]>([]);
+  const [showManage, setShowManage]         = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/full-accounting/expense-vendors")
@@ -278,6 +414,16 @@ export function ExpensesTab() {
         </button>
         <div className="ml-auto flex items-center gap-3">
           {msg && <span className="text-xs text-gray-500">{msg}</span>}
+          <button
+            onClick={() => setShowManage((v) => !v)}
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
+              showManage
+                ? "border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30"
+                : "border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-400"
+            }`}
+          >
+            Manage Lists
+          </button>
           <button onClick={startAdd}
             className="px-3 py-1.5 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white">
             + Add Expense
@@ -333,6 +479,17 @@ export function ExpensesTab() {
           </div>
         </div>
       </div>
+
+      {/* Manage vendors & payment methods */}
+      {showManage && (
+        <ManagePanel
+          vendorOptions={vendorOptions}
+          setVendorOptions={setVendorOptions}
+          methodOptions={methodOptions}
+          setMethodOptions={setMethodOptions}
+          onExpensesChanged={() => load(1)}
+        />
+      )}
 
       {/* Add/Edit form */}
       {showForm && (
