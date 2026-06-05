@@ -38,6 +38,8 @@ const COLORS: { value: string; label: string; swatch: string; border?: string }[
   { value: "orange", label: "Orange", swatch: "bg-orange-500" },
   { value: "yellow", label: "Yellow", swatch: "bg-yellow-400" },
   { value: "black", label: "Black", swatch: "bg-gray-900" },
+  { value: "gray", label: "Gray", swatch: "bg-gray-400" },
+  { value: "clear", label: "Clear", swatch: "bg-gradient-to-br from-white via-gray-100 to-white", border: "border-gray-300" },
   { value: "marbling", label: "Marbling", swatch: "bg-gradient-to-br from-gray-200 via-white to-gray-400", border: "border-gray-300" },
 ];
 

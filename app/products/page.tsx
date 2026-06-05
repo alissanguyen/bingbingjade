@@ -82,6 +82,8 @@ const COLOR_SWATCHES: Record<string, string> = {
   orange: "bg-orange-500",
   yellow: "bg-yellow-400",
   black: "bg-gray-900",
+  gray: "bg-gray-400",
+  clear: "bg-gradient-to-br from-white via-gray-100 to-white border border-gray-300",
   marbling: "bg-gradient-to-br from-gray-200 via-white to-gray-400 border border-gray-300",
 };
 
