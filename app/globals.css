@@ -46,6 +46,30 @@ body {
   font-weight: 400;
 }
 
+.marbling-swatch {
+  background-color: #ffffff;
+  background-image: linear-gradient(
+    115deg,
+    #f0faf5 0%,
+    #f0faf5 12%,
+    #3d8a5c 13%,
+    #4a9e6e 17%,
+    #f8fefb 18%,
+    #ffffff 30%,
+    #82c4a0 31%,
+    #82c4a0 34%,
+    #f0faf5 35%,
+    #f0faf5 52%,
+    #2e7a50 53%,
+    #3d8a5c 57%,
+    #ffffff 58%,
+    #ffffff 72%,
+    #a8d5bc 73%,
+    #a8d5bc 76%,
+    #f5fdf8 77%
+  );
+}
+
 /* Concierge sourcing card — animated gold conic-gradient border */
 @property --concierge-angle {
   syntax: "<angle>";
