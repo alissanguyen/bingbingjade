@@ -113,6 +113,37 @@ function ComboProfile({
 type SummaryRow = { name: string; total: number; deductible: number; count: number };
 type Summary = { byVendor: SummaryRow[]; byMethod: SummaryRow[]; byCategory: SummaryRow[] };
 
+function exportSummaryCSV(summary: Summary, from: string, to: string) {
+  const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+  const section = (title: string, rows: SummaryRow[]) => [
+    [title],
+    ["Name", "Transactions", "Total USD", "Deductible USD", "% of Total"],
+    ...rows.map((r) => {
+      const grandTotal = rows.reduce((s, x) => s + x.total, 0);
+      const pct = grandTotal > 0 ? ((r.total / grandTotal) * 100).toFixed(1) : "0.0";
+      return [esc(r.name), r.count, r.total.toFixed(2), r.deductible.toFixed(2), pct + "%"];
+    }),
+    ["Total", rows.reduce((s, r) => s + r.count, 0), rows.reduce((s, r) => s + r.total, 0).toFixed(2), rows.reduce((s, r) => s + r.deductible, 0).toFixed(2), "100%"],
+    [],
+  ].map((row) => row.join(",")).join("\n");
+
+  const csv = [
+    `"Expense Summary — ${from} to ${to}"`,
+    "",
+    section("By Vendor", summary.byVendor),
+    section("By Payment Method", summary.byMethod),
+    section("By Category", summary.byCategory),
+  ].join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = `expense-summary-${from}-to-${to}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function SummaryTable({ rows, label }: { rows: SummaryRow[]; label: string }) {
   const grandTotal = rows.reduce((s, r) => s + r.total, 0);
   return (
@@ -678,6 +709,17 @@ export function ExpensesTab() {
           <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
         ) : summary ? (
           <div className="space-y-4">
+            <div className="flex justify-end">
+              <button
+                onClick={() => exportSummaryCSV(summary, from, to)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Export CSV
+              </button>
+            </div>
             <div className="flex gap-4 flex-wrap">
               <SummaryTable rows={summary.byVendor}   label="By Vendor" />
               <SummaryTable rows={summary.byMethod}   label="By Payment Method" />
