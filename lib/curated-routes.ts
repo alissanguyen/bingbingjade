@@ -56,8 +56,8 @@ export const COLLECTION_FILTERS: Record<string, CuratedRoute> = {
   },
   "archive-sale": {
     slug: "archive-sale",
-    label: "Archive Sale",
-    title: "Archive Sale",
+    label: "Clearance & Archive",
+    title: "Clearance & Archive Sale",
     eyebrow: "Limited Selection",
     description: "Last-chance pieces and special markdowns from prior edits of the collection.",
     href: "/collections/archive-sale",

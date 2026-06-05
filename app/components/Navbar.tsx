@@ -73,12 +73,6 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
     if (searchOpen) searchInputRef.current?.focus();
   }, [searchOpen]);
 
-  useEffect(() => {
-    return () => {
-      if (closeDropdownTimer.current) clearTimeout(closeDropdownTimer.current);
-    };
-  }, []);
-
   const fetchResults = useCallback((q: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (q.trim().length < 2) { setSearchResults([]); return; }
@@ -127,19 +121,7 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
   }
 
   function closeShopDropdown() {
-    if (closeDropdownTimer.current) clearTimeout(closeDropdownTimer.current);
-    closeDropdownTimer.current = setTimeout(() => setProductsOpen(false), 250);
-  }
-
-  function closeShopDropdownNow() {
-    if (closeDropdownTimer.current) clearTimeout(closeDropdownTimer.current);
-    setProductsOpen(false);
-  }
-
-  function handleShopBlur(e: React.FocusEvent<HTMLLIElement>) {
-    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-      closeShopDropdown();
-    }
+    closeDropdownTimer.current = setTimeout(() => setProductsOpen(false), 150);
   }
 
 
@@ -310,14 +292,10 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
           className="relative"
           onMouseEnter={openShopDropdown}
           onMouseLeave={closeShopDropdown}
-          onFocus={openShopDropdown}
-          onBlur={handleShopBlur}
         >
           <Link
             href="/products"
-            aria-haspopup="true"
-            aria-expanded={productsOpen}
-            className={`flex items-center gap-1 py-3 -my-3 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors ${pathname.startsWith("/products") || pathname.startsWith("/custom-sourcing") || pathname.startsWith("/collections") || pathname.startsWith("/sizes") ? "text-emerald-700 dark:text-emerald-400 font-semibold" : ""}`}
+            className={`flex items-center gap-1 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors ${pathname.startsWith("/products") || pathname.startsWith("/custom-sourcing") ? "text-emerald-700 dark:text-emerald-400 font-semibold" : ""}`}
           >
             Shop
             <svg
@@ -338,8 +316,6 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
 
           {/* Dropdown */}
           <div
-            onMouseEnter={openShopDropdown}
-            onMouseLeave={closeShopDropdown}
             className={`absolute top-full left-0 pt-3 z-50 transition-all duration-150 ${productsOpen ? "opacity-100 pointer-events-auto translate-y-0" : "opacity-0 pointer-events-none -translate-y-1"
               }`}
           >
@@ -349,7 +325,7 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
                 <p className="px-3 pb-2 text-[12px] font-semibold uppercase tracking-widest text-gray-400">Featured</p>
                 <Link
                   href="/products?shipping=ship_now"
-                  onClick={closeShopDropdownNow}
+                  onClick={() => setProductsOpen(false)}
                   className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
@@ -360,7 +336,7 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
                   <Link
                     key={c.id}
                     href={`/collections/${c.slug}`}
-                    onClick={closeShopDropdownNow}
+                    onClick={() => setProductsOpen(false)}
                     className="block ml-2 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
                   >
                     {c.name}
@@ -378,7 +354,7 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
                   <Link
                     key={href}
                     href={href}
-                    onClick={closeShopDropdownNow}
+                    onClick={() => setProductsOpen(false)}
                     className="block ml-2 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-350 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
                   >
                     {label}
@@ -390,7 +366,7 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
                   <Link
                     key={href}
                     href={href}
-                    onClick={closeShopDropdownNow}
+                    onClick={() => setProductsOpen(false)}
                     className="block ml-2 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-350 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
                   >
                     {label}
@@ -405,7 +381,7 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
                   <Link
                     key={href}
                     href={href}
-                    onClick={closeShopDropdownNow}
+                    onClick={() => setProductsOpen(false)}
                     className="block ml-2 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-350 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
                   >
                     {label}
@@ -417,7 +393,7 @@ export function Navbar({ collections = [] }: { collections?: NavCollection[] }) 
                   <Link
                     key={href}
                     href={href}
-                    onClick={closeShopDropdownNow}
+                    onClick={() => setProductsOpen(false)}
                     className="block ml-2 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-250 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors whitespace-nowrap"
                   >
                     {label}
