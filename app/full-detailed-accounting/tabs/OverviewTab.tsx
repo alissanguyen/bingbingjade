@@ -325,7 +325,7 @@ export function OverviewTab() {
                       Supplies Estimate Accuracy
                     </h2>
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                      Compare per-order supply estimate vs. actual purchases from business expenses (category: supplies)
+                      Compare per-order supply estimate vs. actual spend from business expenses (categories: supplies + shipping)
                     </p>
                   </div>
                   {warn && (
@@ -349,7 +349,7 @@ export function OverviewTab() {
                     <p className="text-lg font-semibold text-amber-600 dark:text-amber-400 tabular-nums">{fmt(estimatedSuppliesCost)}</p>
                   </div>
                   <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Actual purchases</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Actual spend</p>
                     <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 tabular-nums">{fmt(actualSuppliesSpend)}</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500">{fmt(actualAvgSuppliesPerOrder)}/order avg</p>
                   </div>
@@ -392,7 +392,7 @@ export function OverviewTab() {
 
                 {actualSuppliesSpend === 0 && (
                   <p className="mt-3 text-xs text-gray-400 dark:text-gray-500">
-                    No supplies expenses logged yet. Add expenses with category &quot;supplies&quot; in the Expenses tab to enable accuracy tracking.
+                    No shipping or supplies expenses logged yet. Add expenses with category &quot;shipping&quot; or &quot;supplies&quot; in the Expenses tab to enable accuracy tracking.
                   </p>
                 )}
               </div>

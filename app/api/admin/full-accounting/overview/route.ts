@@ -257,7 +257,7 @@ export async function GET(req: NextRequest) {
     expenseTotal += deduct;
     expenseByCategory[cat] = (expenseByCategory[cat] ?? 0) + raw;
 
-    if (cat === "supplies") {
+    if (cat === "supplies" || cat === "shipping") {
       actualSuppliesSpend       += raw;
       actualSuppliesSpendDeduct += deduct;
 
@@ -268,7 +268,7 @@ export async function GET(req: NextRequest) {
     if (year) {
       const q = getQuarter(e.expense_date as string);
       qExpenses[q] += deduct;
-      if (cat === "supplies") qSuppliesActual[q] += deduct;
+      if (cat === "supplies" || cat === "shipping") qSuppliesActual[q] += deduct;
     }
   }
 

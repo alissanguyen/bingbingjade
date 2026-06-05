@@ -167,7 +167,7 @@ export async function POST() {
 
     for (const key of [month, qKey, year]) {
       expByBucket[key] = (expByBucket[key] ?? 0) + deduct;
-      if ((e.category as string) === "supplies") {
+      if ((e.category as string) === "supplies" || (e.category as string) === "shipping") {
         suppliesActualBucket[key] = (suppliesActualBucket[key] ?? 0) + raw;
         // Store actual in bucket
         getBucket(key).supplies_actual += 0; // tracked separately in suppliesActualBucket
@@ -177,7 +177,7 @@ export async function POST() {
 
   // Re-aggregate supplies_actual into buckets cleanly
   for (const e of expenses ?? []) {
-    if ((e.category as string) !== "supplies") continue;
+    if ((e.category as string) !== "supplies" && (e.category as string) !== "shipping") continue;
     const ed    = e.expense_date as string;
     const raw   = Number(e.amount_usd);
     const month = ed.slice(0, 7);
