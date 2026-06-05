@@ -110,6 +110,56 @@ function ComboProfile({
   );
 }
 
+type SummaryRow = { name: string; total: number; deductible: number; count: number };
+type Summary = { byVendor: SummaryRow[]; byMethod: SummaryRow[]; byCategory: SummaryRow[] };
+
+function SummaryTable({ rows, label }: { rows: SummaryRow[]; label: string }) {
+  const grandTotal = rows.reduce((s, r) => s + r.total, 0);
+  return (
+    <div className="flex-1 min-w-0">
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">{label}</p>
+      <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50 dark:bg-gray-800/50 text-[11px] font-medium text-gray-500 uppercase tracking-wide">
+              <th className="pl-3 pr-2 py-2 text-left">Name</th>
+              <th className="px-2 py-2 text-right">Txns</th>
+              <th className="px-2 py-2 text-right">Total</th>
+              <th className="pl-2 pr-3 py-2 text-right">%</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            {rows.map((r) => (
+              <tr key={r.name} className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
+                <td className="pl-3 pr-2 py-2 text-gray-700 dark:text-gray-300 font-medium">{r.name}</td>
+                <td className="px-2 py-2 text-right text-gray-400 tabular-nums">{r.count}</td>
+                <td className="px-2 py-2 text-right tabular-nums font-semibold text-gray-900 dark:text-gray-100">
+                  ${r.total.toFixed(2)}
+                </td>
+                <td className="pl-2 pr-3 py-2 text-right tabular-nums text-gray-400 text-xs">
+                  {grandTotal > 0 ? ((r.total / grandTotal) * 100).toFixed(0) : 0}%
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="bg-gray-50 dark:bg-gray-800/50 font-semibold">
+              <td className="pl-3 pr-2 py-2 text-xs text-gray-500">Total</td>
+              <td className="px-2 py-2 text-right text-xs text-gray-400 tabular-nums">
+                {rows.reduce((s, r) => s + r.count, 0)}
+              </td>
+              <td className="px-2 py-2 text-right tabular-nums text-emerald-700 dark:text-emerald-400">
+                ${grandTotal.toFixed(2)}
+              </td>
+              <td className="pl-2 pr-3 py-2" />
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function ManagePanel({
   vendorOptions, setVendorOptions,
   methodOptions, setMethodOptions,
@@ -269,6 +319,9 @@ export function ExpensesTab() {
   const [vendorOptions, setVendorOptions]   = useState<string[]>([]);
   const [methodOptions, setMethodOptions]   = useState<string[]>([]);
   const [showManage, setShowManage]         = useState(false);
+  const [view, setView]                     = useState<"transactions" | "summary">("transactions");
+  const [summary, setSummary]               = useState<Summary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/full-accounting/expense-vendors")
@@ -300,6 +353,23 @@ export function ExpensesTab() {
   }, [from, to, catFilter]);
 
   useEffect(() => { load(1); }, [load]);
+
+  const loadSummary = useCallback(async () => {
+    setSummaryLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (from)      params.set("from", from);
+      if (to)        params.set("to", to);
+      if (catFilter) params.set("category", catFilter);
+      const res = await fetch(`/api/admin/full-accounting/expenses/summary?${params}`);
+      const json = await res.json();
+      setSummary(json);
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [from, to, catFilter]);
+
+  useEffect(() => { if (view === "summary") loadSummary(); }, [view, loadSummary]);
 
   function openForm() {
     // Slight delay so the form is in the DOM before scrolling
@@ -408,10 +478,23 @@ export function ExpensesTab() {
           <option value="">All categories</option>
           {CATEGORIES.map((c) => <option key={c} value={c}>{c.replace(/_/g, " ")}</option>)}
         </select>
-        <button onClick={() => load(1)}
+        <button onClick={() => { load(1); if (view === "summary") loadSummary(); }}
           className="px-3 py-1.5 text-sm font-medium bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg">
           Apply
         </button>
+        <div className="flex rounded-lg border border-gray-300 dark:border-gray-700 overflow-hidden">
+          {(["transactions", "summary"] as const).map((v) => (
+            <button key={v} onClick={() => setView(v)}
+              className={`px-3 py-1.5 text-sm font-medium transition-colors capitalize ${
+                view === v
+                  ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+              }`}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
         <div className="ml-auto flex items-center gap-3">
           {msg && <span className="text-xs text-gray-500">{msg}</span>}
           <button
@@ -589,8 +672,23 @@ export function ExpensesTab() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+      {/* Summary view */}
+      {view === "summary" && (
+        summaryLoading ? (
+          <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
+        ) : summary ? (
+          <div className="space-y-4">
+            <div className="flex gap-4 flex-wrap">
+              <SummaryTable rows={summary.byVendor}   label="By Vendor" />
+              <SummaryTable rows={summary.byMethod}   label="By Payment Method" />
+            </div>
+            <SummaryTable rows={summary.byCategory} label="By Category" />
+          </div>
+        ) : null
+      )}
+
+      {/* Transactions table */}
+      {view === "transactions" && <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
         {loading ? (
           <div className="py-16 text-center text-sm text-gray-400">Loading…</div>
         ) : expenses.length === 0 ? (
@@ -653,9 +751,9 @@ export function ExpensesTab() {
             </table>
           </div>
         )}
-      </div>
+      </div>}
 
-      {totalPages > 1 && (
+      {view === "transactions" && totalPages > 1 && (
         <div className="flex items-center justify-between text-sm text-gray-500">
           <button onClick={() => load(page - 1)} disabled={page <= 1 || loading}
             className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-40">
