@@ -38,6 +38,8 @@ interface ProductCard {
   status: string;
   slug: string;
   public_id: string;
+  renewed_at: string | null;
+  created_at: string;
 }
 
 interface ProductListRow {
@@ -58,6 +60,8 @@ interface ProductListRow {
   status: string;
   slug: string;
   public_id: string;
+  renewed_at: string | null;
+  created_at: string;
 }
 
 interface OptionPriceRow {

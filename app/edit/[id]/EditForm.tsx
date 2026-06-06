@@ -1392,6 +1392,34 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
         </button>
       </div>
 
+      {/* Renew listing */}
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-4 space-y-2">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Renew Listing</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              Move this listing to the top of &quot;Newest&quot; sort. Original listed date is preserved.
+            </p>
+            {renewedAt && (
+              <p className="text-xs text-amber-500 mt-1">
+                Last renewed {new Date(renewedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={handleRenew}
+            disabled={isRenewing}
+            className="shrink-0 px-4 py-2 rounded-lg border border-amber-300 dark:border-amber-700 text-sm font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 disabled:opacity-50 transition-colors"
+          >
+            {isRenewing ? "Renewing…" : "Renew"}
+          </button>
+        </div>
+        {renewMsg && (
+          <p className="text-xs text-emerald-600 dark:text-emerald-400">{renewMsg}</p>
+        )}
+      </div>
+
       {lightboxSrc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" onClick={() => setLightboxSrc(null)}>
           <button className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors" onClick={() => setLightboxSrc(null)}>
