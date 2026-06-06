@@ -121,7 +121,7 @@ import { Resend } from "resend";
  *
  * Silently skips if RESEND_API_KEY is not set.
  */
-export async function sendOrderConfirmationEmail(params: {
+export type OrderConfirmationEmailParams = {
   orderNumber: string;
   customerName: string;
   customerEmail: string;
@@ -137,15 +137,9 @@ export async function sendOrderConfirmationEmail(params: {
     postal?: string | null;
     country?: string | null;
   } | null;
-}): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.info("[orders] Resend not configured — skipping confirmation email");
-    return;
-  }
+};
 
-  const resend = new Resend(apiKey);
-  const from = process.env.RESEND_FROM_EMAIL_ORDER_CONFIRMATION ?? "BingBing Jade <orders@bingbingjade.com>";
+export function buildOrderConfirmationHtml(params: OrderConfirmationEmailParams): { html: string; subject: string } {
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
 
   const amountFormatted = `$${(params.amountTotalCents / 100).toFixed(2)}`;
@@ -292,12 +286,29 @@ export async function sendOrderConfirmationEmail(params: {
 </body>
 </html>`;
 
+  return {
+    html,
+    subject: `[Order Placed] Your BingBing Jade Order ${params.orderNumber} is Confirmed`,
+  };
+}
+
+export async function sendOrderConfirmationEmail(params: OrderConfirmationEmailParams): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.info("[orders] Resend not configured — skipping confirmation email");
+    return;
+  }
+
+  const resend = new Resend(apiKey);
+  const from = process.env.RESEND_FROM_EMAIL_ORDER_CONFIRMATION ?? "BingBing Jade <orders@bingbingjade.com>";
+  const { html, subject } = buildOrderConfirmationHtml(params);
+
   try {
     const { error } = await resend.emails.send({
       from,
       to: params.customerEmail,
       bcc: "contact@bingbingjade.com",
-      subject: `[Order Placed] Your BingBing Jade Order ${params.orderNumber} is Confirmed`,
+      subject,
       html,
     });
     if (error) {

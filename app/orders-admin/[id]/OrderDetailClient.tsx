@@ -301,6 +301,7 @@ export function OrderDetailClient({
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
 
   // Edit info state
   const [showEditInfo, setShowEditInfo] = useState(false);
@@ -759,6 +760,18 @@ export function OrderDetailClient({
     }
   }
 
+  async function handlePreviewEmail() {
+    setActionLoading("preview");
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/resend-confirmation`);
+      const data = await res.json();
+      if (!res.ok) { showToast("err", data.error ?? "Preview failed"); return; }
+      setPreviewHtml(data.html);
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   const isCancelled = order.order_status === "order_cancelled";
   const total = order.order_items.reduce((s, i) => s + (i.line_total ?? (i.price_usd ?? 0) * i.quantity), 0);
   const displayTotal = (order.amount_total != null ? order.amount_total / 100 : total).toFixed(2);
@@ -1011,13 +1024,22 @@ export function OrderDetailClient({
                 Edit Order Info
               </button>
 
-              <button
-                onClick={handleResend}
-                disabled={actionLoading === "resend"}
-                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60 text-gray-700 dark:text-gray-300 py-2.5 text-sm font-medium transition-colors"
-              >
-                {actionLoading === "resend" ? "Sending…" : "Resend Confirmation Email"}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handlePreviewEmail}
+                  disabled={!!actionLoading}
+                  className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60 text-gray-700 dark:text-gray-300 py-2.5 text-sm font-medium transition-colors"
+                >
+                  {actionLoading === "preview" ? "Loading…" : "Preview Email"}
+                </button>
+                <button
+                  onClick={handleResend}
+                  disabled={!!actionLoading}
+                  className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60 text-gray-700 dark:text-gray-300 py-2.5 text-sm font-medium transition-colors"
+                >
+                  {actionLoading === "resend" ? "Sending…" : "Resend Email"}
+                </button>
+              </div>
 
               {!isCancelled && order.stripe_payment_intent_id && (
                 <button
@@ -1818,6 +1840,40 @@ export function OrderDetailClient({
             </button>
           </div>
         </div>
+      </div>
+    )}
+    {previewHtml && (
+      <div
+        className="fixed inset-0 z-50 flex flex-col bg-black/70"
+        onClick={(e) => { if (e.target === e.currentTarget) setPreviewHtml(null); }}
+      >
+        <div className="flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-700 shrink-0">
+          <p className="text-sm font-medium text-gray-200">Email Preview — {order.customer_email}</p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setPreviewHtml(null);
+                handleResend();
+              }}
+              className="px-4 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium transition-colors"
+            >
+              Send Now
+            </button>
+            <button
+              onClick={() => setPreviewHtml(null)}
+              className="text-gray-400 hover:text-white transition-colors text-xl leading-none"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+        <iframe
+          srcDoc={previewHtml}
+          sandbox="allow-same-origin"
+          className="flex-1 w-full bg-white"
+          title="Email preview"
+        />
       </div>
     )}
     </>
