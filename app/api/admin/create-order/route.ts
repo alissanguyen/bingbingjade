@@ -281,6 +281,43 @@ export async function POST(req: NextRequest) {
     if (prodErr) console.error("[create-order] Failed to mark products as sold:", prodErr);
   }
 
+  // ── Create shipment + timeline events ────────────────────────────────────
+  // All manual orders default to sourced_for_you (Zelle/cash/custom pieces).
+  if (order) {
+    const { data: shipment } = await supabaseAdmin
+      .from("shipments")
+      .insert({
+        order_id: order.id,
+        shipment_number: orderNumber ? `${orderNumber}-S1` : null,
+        fulfillment_type: "sourced_for_you",
+        status: "confirmed",
+      })
+      .select("id")
+      .single();
+
+    if (shipment) {
+      const insertedItems = await supabaseAdmin
+        .from("order_items")
+        .select("id")
+        .eq("order_id", order.id);
+
+      if (insertedItems.data && insertedItems.data.length > 0) {
+        await supabaseAdmin.from("shipment_items").insert(
+          insertedItems.data.map((i) => ({ shipment_id: shipment.id, order_item_id: i.id }))
+        );
+      }
+
+      await supabaseAdmin.from("shipment_events").insert([
+        { shipment_id: shipment.id, event_key: "confirmed",          label: "Order Confirmed",        description: "Order placed and payment received.",                             sort_order: 0, is_current: true,  is_completed: false },
+        { shipment_id: shipment.id, event_key: "quality_inspection", label: "Quality Inspection",     description: "Your piece is being carefully inspected to meet our standards.", sort_order: 1, is_current: false, is_completed: false },
+        { shipment_id: shipment.id, event_key: "certification",      label: "Certification",          description: "Your jade is undergoing authentication and certification.",      sort_order: 2, is_current: false, is_completed: false },
+        { shipment_id: shipment.id, event_key: "arriving_at_studio", label: "Arriving at Our Studio", description: "Your piece is on its way to our studio for final handling.",    sort_order: 3, is_current: false, is_completed: false },
+        { shipment_id: shipment.id, event_key: "shipped",            label: "Shipped",                description: "Your order has been carefully packaged and shipped.",            sort_order: 4, is_current: false, is_completed: false },
+        { shipment_id: shipment.id, event_key: "delivered",          label: "Delivered",              description: "Your piece has arrived. We hope it brings you lasting beauty.",  sort_order: 5, is_current: false, is_completed: false },
+      ]);
+    }
+  }
+
   // ── Send confirmation email ───────────────────────────────────────────────
   const emailRecipient = body.customerEmail?.trim().toLowerCase();
   const emailName = body.customerName?.trim();
