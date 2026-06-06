@@ -1,10 +1,13 @@
 -- Migration 092: Backfill missing shipments + events for manual (Zelle/cash/admin) orders
 --
 -- Paste this into the Supabase SQL editor. Change the order number on line 12
--- to target a specific order, or comment out the WHERE clause to fix ALL manual
--- orders that are missing shipment events.
---
+-- to target a specific order, or set to NULL to fix ALL manual orders.
 -- Safe to run multiple times — skips shipments that already have events.
+--
+-- Also:
+--  • Backfills event_time on 'confirmed' events that are missing it (sets to order.created_at)
+--  • Fixes the advance-time bug: clears event_time from wrongly-stamped completed events
+--    on orders that were advanced before this fix, so you can re-set them manually.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 DO $$
@@ -105,5 +108,33 @@ BEGIN
 
   END LOOP;
 
-  RAISE NOTICE 'Done.';
+  RAISE NOTICE 'Done backfilling shipments/events.';
 END $$;
+
+-- ── Fix 1: Stamp event_time on confirmed events that are missing it ───────────
+-- Sets event_time = order.created_at for any 'confirmed' shipment event where
+-- event_time is currently NULL.
+UPDATE public.shipment_events se
+SET    event_time = o.created_at
+FROM   public.shipments s
+JOIN   public.orders    o ON o.id = s.order_id
+WHERE  se.shipment_id = s.id
+  AND  se.event_key   = 'confirmed'
+  AND  se.event_time  IS NULL;
+
+-- ── Fix 2: Clear wrongly-stamped event_time from completed non-confirmed events
+-- Before this fix, Advance was stamping event_time on the step being completed
+-- rather than the step becoming current.  For any completed event whose time
+-- equals its *next* event's time (meaning it was stamped by the same Advance
+-- click), clear it so the admin can set the correct date manually.
+-- (This is a best-effort heuristic — review dates in the UI after running.)
+UPDATE public.shipment_events se
+SET    event_time = NULL
+FROM   public.shipment_events se_next
+WHERE  se_next.shipment_id = se.shipment_id
+  AND  se_next.sort_order  = se.sort_order + 1
+  AND  se.is_completed     = true
+  AND  se.event_key       <> 'confirmed'
+  AND  se.event_time      IS NOT NULL
+  AND  se_next.event_time IS NOT NULL
+  AND  se.event_time      = se_next.event_time;

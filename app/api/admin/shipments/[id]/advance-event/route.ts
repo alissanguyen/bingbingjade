@@ -53,16 +53,16 @@ export async function POST(
 
   const now = new Date().toISOString();
 
-  // Mark current as completed
+  // Mark current as completed — preserve its event_time (set when it became current)
   await supabaseAdmin
     .from("shipment_events")
-    .update({ is_current: false, is_completed: true, event_time: now })
+    .update({ is_current: false, is_completed: true })
     .eq("id", currentEvent.id);
 
-  // Mark next as current
+  // Mark next as current and stamp the moment it becomes active
   await supabaseAdmin
     .from("shipment_events")
-    .update({ is_current: true })
+    .update({ is_current: true, event_time: now })
     .eq("id", nextEvent.id);
 
   // Update shipment status + timestamps

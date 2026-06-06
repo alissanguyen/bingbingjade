@@ -302,6 +302,8 @@ export function OrderDetailClient({
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [editingEventDate, setEditingEventDate] = useState("");
 
   // Edit info state
   const [showEditInfo, setShowEditInfo] = useState(false);
@@ -758,6 +760,23 @@ export function OrderDetailClient({
     } finally {
       setActionLoading(null);
     }
+  }
+
+  async function handleSaveEventDate(eventId: string, dateValue: string) {
+    setEditingEventId(null);
+    const event_time = dateValue ? new Date(dateValue + "T12:00:00").toISOString() : null;
+    const res = await fetch(`/api/admin/shipments/events/${eventId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_time }),
+    });
+    if (!res.ok) { showToast("err", "Failed to update date"); return; }
+    setShipments((prev) => prev.map((s) => ({
+      ...s,
+      shipment_events: s.shipment_events.map((e) =>
+        e.id === eventId ? { ...e, event_time: event_time } : e
+      ),
+    })));
   }
 
   async function handlePreviewEmail() {
@@ -1416,7 +1435,7 @@ export function OrderDetailClient({
                                 ev.is_current   ? "bg-amber-400 animate-pulse" :
                                 "bg-gray-200 dark:bg-gray-700"
                               }`} />
-                              <div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
                                 <p className={`text-xs font-medium ${
                                   ev.is_current   ? "text-amber-700 dark:text-amber-300" :
                                   ev.is_completed ? "text-gray-500 dark:text-gray-400" :
@@ -1424,12 +1443,37 @@ export function OrderDetailClient({
                                 }`}>
                                   {ev.label}
                                   {ev.is_current && <span className="ml-1.5 text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full">Current</span>}
-                                  {ev.event_time && (
-                                    <span className="ml-1.5 text-[10px] text-gray-400 font-normal">
-                                      {new Date(ev.event_time).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                                    </span>
-                                  )}
                                 </p>
+                                {(ev.is_completed || ev.is_current) && (
+                                  editingEventId === ev.id ? (
+                                    <input
+                                      type="date"
+                                      autoFocus
+                                      defaultValue={ev.event_time ? new Date(ev.event_time).toISOString().slice(0, 10) : ""}
+                                      className="text-[11px] bg-white dark:bg-gray-800 border border-emerald-400 rounded px-1 py-0.5 text-gray-700 dark:text-gray-200 focus:outline-none"
+                                      onChange={(e) => setEditingEventDate(e.target.value)}
+                                      onBlur={() => handleSaveEventDate(ev.id, editingEventDate || (ev.event_time ? new Date(ev.event_time).toISOString().slice(0, 10) : ""))}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                                        if (e.key === "Escape") setEditingEventId(null);
+                                      }}
+                                    />
+                                  ) : (
+                                    <button
+                                      onClick={() => {
+                                        setEditingEventDate(ev.event_time ? new Date(ev.event_time).toISOString().slice(0, 10) : "");
+                                        setEditingEventId(ev.id);
+                                      }}
+                                      className="text-[10px] text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 font-normal hover:underline"
+                                      title="Click to edit date"
+                                    >
+                                      {ev.event_time
+                                        ? new Date(ev.event_time).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                                        : <span className="italic opacity-60">set date</span>
+                                      }
+                                    </button>
+                                  )
+                                )}
                               </div>
                             </li>
                           ))}
