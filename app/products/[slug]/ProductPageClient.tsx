@@ -580,7 +580,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
               <span className="font-bold">Natural jadeite, always clearly disclosed. </span>
-               Every piece is backed by our lifetime authenticity guarantee and certification, so you know exactly what you’re buying.
+              Every piece is backed by our lifetime authenticity guarantee and certification, so you know exactly what you’re buying.
             </p>
           </div>
           <div className="spacer-div h-4"></div>
@@ -668,9 +668,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                 We encourage clients to review all provided media carefully prior to purchase. Our team is always available to provide additional photos, videos, or guidance to ensure you feel confident in your selection.
               </p>
               <p>
-                Due to the nature of these pieces, purchases are considered final unless otherwise stated. In certain cases, requests for return or exchange may be reviewed if submitted within 24–48 hours of confirmed delivery, in accordance with our shop terms. Items must remain in original condition, unworn and unaltered.
-              </p>
-
+                Due to the nature of natural jadeite, purchase terms may vary by item type. <span className="font-semibold">Ship Now</span> pieces may be eligible for return or exchange in accordance with our shop policy, while <span className="font-semibold">Sourced for You</span> and <span className="font-semibold">Clearance</span> pieces are considered final sale unless materially different from the photos, videos, or description provided.</p>
               <p>
                 If a piece becomes unavailable, or if you are searching for something more specific, we offer access to a wider private inventory through our custom sourcing service. Each request is handled with care, sourcing pieces that are closely aligned with your preferences.
               </p>
