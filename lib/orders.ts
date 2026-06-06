@@ -152,19 +152,23 @@ export function buildOrderConfirmationHtml(params: OrderConfirmationEmailParams)
   const firstName = params.customerName.split(" ")[0];
 
   const sa = params.shippingAddress;
-  const shippingBlock = sa?.line1 ? (() => {
-    const addrName = sa.name ?? params.customerName;
-    const line2 = sa.line2 ? `<br>${sa.line2}` : "";
-    const cityLine = [sa.city, sa.state, sa.postal].filter(Boolean).join(", ");
-    const country = sa.country && sa.country !== "US" ? `<br>${sa.country}` : "";
-    return `
+  const addrName = sa?.name ?? params.customerName;
+  const hasAddress = !!sa?.line1;
+  const line2 = sa?.line2 ? `<br>${sa.line2}` : "";
+  const cityLine = [sa?.city, sa?.state, sa?.postal].filter(Boolean).join(", ");
+  const country = sa?.country && sa.country !== "US" ? `<br>${sa.country}` : "";
+
+  const shippingBlock = `
     <!-- Shipping address -->
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;margin-bottom:20px;">
       <tr>
         <td style="padding:14px 20px;">
           <p style="margin:0 0 6px;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#0369a1;">Shipping To</p>
           <p style="margin:0;font-size:14px;font-weight:600;color:#0c4a6e;">${addrName}</p>
-          <p style="margin:4px 0 0;font-size:13px;color:#374151;line-height:1.6;">${sa.line1}${line2}<br>${cityLine}${country}</p>
+          ${hasAddress
+            ? `<p style="margin:4px 0 0;font-size:13px;color:#374151;line-height:1.6;">${sa!.line1}${line2}<br>${cityLine}${country}</p>`
+            : `<p style="margin:4px 0 0;font-size:13px;color:#6b7280;font-style:italic;">Your shipping address will be confirmed with you directly.</p>`
+          }
         </td>
       </tr>
     </table>
@@ -173,15 +177,14 @@ export function buildOrderConfirmationHtml(params: OrderConfirmationEmailParams)
       <tr>
         <td style="padding:12px 18px;">
           <p style="margin:0;font-size:13px;color:#92400e;line-height:1.6;">
-            <strong>Please review your name and shipping address above.</strong>
-            If anything looks incorrect, reply to this email or contact us immediately at
+            <strong>Please verify your name and shipping address above.</strong>
+            If anything is incorrect, reply to this email or contact us at
             <a href="mailto:contact@bingbingjade.com" style="color:#b45309;text-decoration:none;">contact@bingbingjade.com</a>
             before your order ships — we cannot redirect a package once it is in transit.
           </p>
         </td>
       </tr>
     </table>`;
-  })() : "";
 
   const itemRows = buildItemRowsHtml(params.items);
 
