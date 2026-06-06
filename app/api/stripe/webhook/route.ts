@@ -706,6 +706,7 @@ export async function POST(req: NextRequest) {
         customerEmail,
         amountTotalCents: session.amount_total ?? 0,
         items: emailItems,
+        shippingAddress: resolvedAddr ?? null,
       });
     } catch (err) {
       console.error("[webhook] Confirmation email failed (non-fatal):", err);

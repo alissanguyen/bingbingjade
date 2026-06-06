@@ -297,6 +297,17 @@ export async function POST(req: NextRequest) {
         quantity: i.quantity ?? 1,
       })),
       estimatedDelivery: body.estimatedDeliveryDate ?? null,
+      shippingAddress: body.shippingAddress
+        ? {
+            name: body.shippingAddress.recipientName ?? null,
+            line1: body.shippingAddress.line1,
+            line2: body.shippingAddress.line2 ?? null,
+            city: body.shippingAddress.city,
+            state: body.shippingAddress.state,
+            postal: body.shippingAddress.postal,
+            country: body.shippingAddress.country ?? null,
+          }
+        : null,
     });
   }
 
