@@ -31,7 +31,7 @@ const COLORS: { value: string; label: string; swatch: string; border?: string }[
   { value: "orange", label: "Orange", swatch: "bg-orange-500" },
   { value: "yellow", label: "Yellow", swatch: "bg-yellow-400" },
   { value: "black", label: "Black", swatch: "bg-gray-900" },
-  { value: "marbling", label: "Marbling", swatch: "bg-gradient-to-br from-gray-200 via-white to-gray-400", border: "border-gray-300" },
+  { value: "marbling", label: "Marbling", swatch: "marbling-swatch", border: "border-emerald-200/80" },
 ];
 
 const PLATFORM_COLORS: Record<string, string> = {
@@ -171,6 +171,7 @@ interface ProductData {
   is_published: boolean;
   quick_ship: boolean;
   status: "available" | "sold" | "on_sale" | "archived";
+  renewed_at: string | null;
 }
 
 interface InitialOption {
@@ -363,6 +364,9 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [result, setResult] = useState<{ success?: boolean; error?: string; pendingApproval?: boolean } | null>(null);
+  const [renewedAt, setRenewedAt] = useState<string | null>(product.renewed_at ?? null);
+  const [isRenewing, setIsRenewing] = useState(false);
+  const [renewMsg, setRenewMsg] = useState<string | null>(null);
 
   const [vendorId, setVendorId] = useState(product.vendor_id);
   const [selectedColors, setSelectedColors] = useState<string[]>(product.color ?? []);
@@ -551,6 +555,20 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       videoUrls.push(path);
     }
     return { orderedImageUrls, videoUrls };
+  };
+
+  const handleRenew = async () => {
+    setIsRenewing(true);
+    setRenewMsg(null);
+    try {
+      const res = await fetch(`/api/admin/products/${product.id}/renew`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { setRenewMsg(data.error ?? "Renew failed."); return; }
+      setRenewedAt(data.renewed_at);
+      setRenewMsg("Listing renewed — it will now appear first.");
+    } finally {
+      setIsRenewing(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

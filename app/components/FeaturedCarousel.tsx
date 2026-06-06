@@ -48,7 +48,7 @@ const COLOR_SWATCHES: Record<string, string> = {
   orange: "bg-orange-500",
   yellow: "bg-yellow-400",
   black: "bg-gray-900",
-  marbling: "bg-gradient-to-br from-gray-200 via-white to-gray-400 border border-gray-300",
+  marbling: "marbling-swatch border border-emerald-200/80",
 };
 
 function ArrowBtn({

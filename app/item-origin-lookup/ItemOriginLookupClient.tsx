@@ -25,6 +25,7 @@ interface LookupResult {
     public_id: string;
     category: string;
     created_at: string;
+    renewed_at: string | null;
   } | null;
 }
 
@@ -204,6 +205,24 @@ export function ItemOriginLookupClient() {
                         minute: "2-digit",
                       })}
                     </p>
+                    {result.product.renewed_at && (
+                      <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-500 mb-0.5">Renewed</p>
+                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                          {new Date(result.product.renewed_at).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {new Date(result.product.renewed_at).toLocaleTimeString("en-US", {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (

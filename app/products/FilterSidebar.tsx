@@ -15,7 +15,7 @@ const ALL_COLORS = [
   { value: "black",    label: "Black",    swatch: "bg-gray-900" },
   { value: "gray",     label: "Gray",     swatch: "bg-gray-400" },
   { value: "clear",    label: "Clear",    swatch: "bg-gradient-to-br from-white via-gray-100 to-white border border-gray-300" },
-  { value: "marbling", label: "Marbling", swatch: "bg-gradient-to-br from-gray-200 via-white to-gray-400 border border-gray-300" },
+  { value: "marbling", label: "Marbling", swatch: "marbling-swatch border border-emerald-200/80" },
 ];
 
 const ALL_STATUSES = [

@@ -92,7 +92,7 @@ import { ProductCardLink } from "./ProductCardLink";
 
 export const revalidate = 120;
 
-const PRODUCT_LIST_SELECT = "id, name, category, origin, color, tier, size, price_display_usd, sale_price_usd, show_price, is_featured, is_clearance, status, slug, public_id, is_published, quick_ship";
+const PRODUCT_LIST_SELECT = "id, name, category, origin, color, tier, size, price_display_usd, sale_price_usd, show_price, is_featured, is_clearance, status, slug, public_id, is_published, quick_ship, renewed_at, created_at";
 const PRODUCT_CARD_SELECT = `${PRODUCT_LIST_SELECT}, images, description`;
 const PAGE_SIZE = 18;
 const PAGE_WINDOW_SIZE = PAGE_SIZE * 3;
@@ -287,6 +287,13 @@ export async function ProductListing({
       }
     }
     return true;
+  });
+
+  // Re-sort by effective listing date: renewed_at takes priority over created_at
+  products.sort((a, b) => {
+    const da = new Date((a.renewed_at ?? a.created_at) as string).getTime();
+    const db = new Date((b.renewed_at ?? b.created_at) as string).getTime();
+    return db - da;
   });
 
   // Sort / arrange into the final display order
