@@ -246,7 +246,7 @@ export async function POST(req: NextRequest) {
   const metadataEmail = session.metadata?.cust_email ?? null;
   const stripeEmail = session.customer_details?.email ?? null;
   const customerEmail = metadataEmail ?? (stripeEmail ? normalizeEmail(stripeEmail) : null);
-  const customerName = session.customer_details?.name ?? null;
+  const customerName = session.customer_details?.name ?? session.metadata?.ship_name ?? null;
   const customerPhone = session.customer_details?.phone ?? null;
   const stripeCustomerId =
     typeof session.customer === "string" ? session.customer : null;
