@@ -386,7 +386,7 @@ export async function POST(req: NextRequest) {
       } else if (name === "Sales Tax" || name === "Tax") {
         // Custom tax line items (not Stripe Tax) — amount_total is what was charged
         taxLineCents += li.amount_total ?? 0;
-      } else if (name.startsWith("Transaction Fee")) {
+      } else if (name.startsWith("Transaction Fee") || name.startsWith("Installment Fee")) {
         txFeeCents += li.amount_total ?? 0;
       }
     }
@@ -398,7 +398,10 @@ export async function POST(req: NextRequest) {
     const fees: Record<string, number | string> = {};
     if (shippingCents  > 0) fees.shipping  = shippingCents  / 100;
     if (insuranceCents > 0) fees.insurance = insuranceCents / 100;
-    if (txFeeCents     > 0) fees.paypal    = txFeeCents     / 100;
+    if (txFeeCents     > 0) {
+      const isBnpl = session.metadata?.payment_method === "bnpl";
+      fees[isBnpl ? "bnpl" : "paypal"] = txFeeCents / 100;
+    }
     if (discountCents  > 0) fees.discount  = discountCents  / 100;
     if (finalTaxCents  > 0) fees.tax       = finalTaxCents  / 100;
     if (Object.keys(fees).length > 0) feeBreakdown = fees;
