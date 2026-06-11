@@ -180,7 +180,8 @@ export async function PATCH(
   }
 
   const hasItemChanges = (orderItems && orderItems.length > 0) || (newItems && newItems.length > 0) || (deleteItemIds && deleteItemIds.length > 0);
-  if (Object.keys(updates).length === 0 && !hasItemChanges) {
+  const hasAddressChange = !!(shippingAddress?.line1?.trim());
+  if (Object.keys(updates).length === 0 && !hasItemChanges && !hasAddressChange) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });
   }
 
@@ -195,15 +196,30 @@ export async function PATCH(
     previousDeliveryDate = current?.estimated_delivery_date ?? null;
   }
 
-  const { data: order, error } = await supabaseAdmin
-    .from("orders")
-    .update(updates)
-    .eq("id", id)
-    .select("*, order_items(*)")
-    .single();
-
-  if (error || !order) {
-    return NextResponse.json({ error: error?.message ?? "Update failed" }, { status: 500 });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let order: any;
+  if (Object.keys(updates).length > 0 || hasItemChanges) {
+    const { data, error } = await supabaseAdmin
+      .from("orders")
+      .update(updates)
+      .eq("id", id)
+      .select("*, order_items(*)")
+      .single();
+    if (error || !data) {
+      return NextResponse.json({ error: error?.message ?? "Update failed" }, { status: 500 });
+    }
+    order = data;
+  } else {
+    // Address-only change — fetch the current order for downstream logic
+    const { data, error } = await supabaseAdmin
+      .from("orders")
+      .select("*, order_items(*)")
+      .eq("id", id)
+      .single();
+    if (error || !data) {
+      return NextResponse.json({ error: error?.message ?? "Order not found" }, { status: 500 });
+    }
+    order = data;
   }
 
   // Update or create shipping address
