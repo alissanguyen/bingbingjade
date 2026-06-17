@@ -395,6 +395,11 @@ export function OrderDetailClient({
   const [cancelReason, setCancelReason] = useState<"piece_unavailable" | "customer_cancelled">("customer_cancelled");
   const [restoreItems, setRestoreItems] = useState(false);
 
+  // Delete modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
   function getShipmentDraft(id: string, shipment: Shipment) {
     return shipmentDrafts[id] ?? {
       carrier: shipment.carrier ?? "",
@@ -750,6 +755,21 @@ export function OrderDetailClient({
     }
   }
 
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json();
+        showToast("err", data.error ?? "Delete failed");
+        return;
+      }
+      router.push("/orders-admin");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function handleResend() {
     setActionLoading("resend");
     try {
@@ -1079,6 +1099,15 @@ export function OrderDetailClient({
                   {actionLoading === "cancel" ? "Cancelling…" : "Cancel Order"}
                 </button>
               )}
+
+              <div className="pt-1 border-t border-gray-100 dark:border-gray-800">
+                <button
+                  onClick={() => { setDeleteConfirmText(""); setShowDeleteModal(true); }}
+                  className="w-full rounded-lg border border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-700 dark:text-red-400 py-2.5 text-sm font-medium transition-colors"
+                >
+                  Delete Order
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1881,6 +1910,60 @@ export function OrderDetailClient({
               className="flex-1 rounded-xl bg-red-600 hover:bg-red-700 text-white py-2.5 text-sm font-semibold transition-colors"
             >
               Confirm Cancellation
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    {showDeleteModal && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+        onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteModal(false); }}
+      >
+        <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Delete Order</h2>
+            <button
+              onClick={() => setShowDeleteModal(false)}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="px-5 py-5 space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              This will permanently delete order <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">{order.order_number ?? order.id}</span> and all its items, shipments, and tracking events. This cannot be undone.
+            </p>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+                Type <span className="font-mono font-semibold text-gray-700 dark:text-gray-300">DELETE</span> to confirm
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="DELETE"
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2.5 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-red-400 font-mono"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 px-5 py-4 border-t border-gray-100 dark:border-gray-800">
+            <button
+              onClick={() => setShowDeleteModal(false)}
+              className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 py-2.5 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleteConfirmText !== "DELETE" || deleting}
+              className="flex-1 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-2.5 text-sm font-semibold transition-colors"
+            >
+              {deleting ? "Deleting…" : "Delete Permanently"}
             </button>
           </div>
         </div>

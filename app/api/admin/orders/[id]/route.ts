@@ -367,3 +367,32 @@ export async function PATCH(
   const { cogs_cents: _cogs, imported_price_vnd: _vnd, ...safeOrder } = order as typeof order & { cogs_cents?: unknown; imported_price_vnd?: unknown };
   return NextResponse.json({ order: safeOrder });
 }
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSessionUser();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdmin(session)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+
+  // Delete child rows first to avoid FK constraint failures
+  await supabaseAdmin.from("order_items").delete().eq("order_id", id);
+
+  const { data: shipmentRows } = await supabaseAdmin
+    .from("shipments")
+    .select("id")
+    .eq("order_id", id);
+  for (const s of shipmentRows ?? []) {
+    await supabaseAdmin.from("shipment_events").delete().eq("shipment_id", s.id);
+    await supabaseAdmin.from("shipment_items").delete().eq("shipment_id", s.id);
+  }
+  await supabaseAdmin.from("shipments").delete().eq("order_id", id);
+
+  const { error } = await supabaseAdmin.from("orders").delete().eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ ok: true });
+}
