@@ -20,6 +20,20 @@ export const maxDuration = 60;
 
 import type { MetaItem } from "@/lib/stripe-metadata";
 
+function cleanText(value: string | null | undefined): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function firstNonEmpty(...values: Array<string | null | undefined>): string | null {
+  for (const value of values) {
+    const cleaned = cleanText(value);
+    if (cleaned) return cleaned;
+  }
+  return null;
+}
+
 // ── Shared helper: mark product options + parent products as sold ─────────────
 async function markItemsAsSold(
   supabase: typeof supabaseAdmin,
@@ -243,19 +257,50 @@ export async function POST(req: NextRequest) {
   // ── Customer & address ────────────────────────────────────────────────────────
   // Prefer the email we stored in metadata (normalized, from our cart UI),
   // falling back to whatever Stripe collected.
-  const metadataEmail = session.metadata?.cust_email ?? null;
+  const metadataEmail = cleanText(session.metadata?.cust_email) ?? null;
   const stripeEmail = session.customer_details?.email ?? null;
   const customerEmail = metadataEmail ?? (stripeEmail ? normalizeEmail(stripeEmail) : null);
-  const customerName = session.customer_details?.name ?? session.metadata?.ship_name ?? null;
+  const customerName = firstNonEmpty(
+    session.customer_details?.name,
+    session.customer_details?.individual_name,
+    session.metadata?.ship_name,
+    session.collected_information?.shipping_details?.name
+  );
   const customerPhone = session.customer_details?.phone ?? null;
   const stripeCustomerId =
     typeof session.customer === "string" ? session.customer : null;
 
+  // Prefer address from our metadata (collected pre-Stripe); fall back to Stripe-collected shipping.
+  const metaAddrLine1 = cleanText(session.metadata?.ship_line1);
+  const metaAddr = metaAddrLine1 ? {
+    name: firstNonEmpty(session.metadata?.ship_name, session.customer_details?.name, session.customer_details?.individual_name),
+    line1: metaAddrLine1,
+    line2: cleanText(session.metadata?.ship_line2),
+    city: cleanText(session.metadata?.ship_city),
+    state: cleanText(session.metadata?.ship_state),
+    postal: cleanText(session.metadata?.ship_postal),
+    country: cleanText(session.metadata?.ship_country),
+  } : null;
+
+  const stripeShipping = session.collected_information?.shipping_details ?? null;
+  const resolvedAddr = metaAddr ?? (stripeShipping?.address ? {
+    name: firstNonEmpty(stripeShipping.name, session.customer_details?.name, session.customer_details?.individual_name),
+    line1: cleanText(stripeShipping.address.line1),
+    line2: cleanText(stripeShipping.address.line2),
+    city: cleanText(stripeShipping.address.city),
+    state: cleanText(stripeShipping.address.state),
+    postal: cleanText(stripeShipping.address.postal_code),
+    country: cleanText(stripeShipping.address.country),
+  } : null);
+
+  const resolvedCustomerName =
+    customerName ??
+    firstNonEmpty(resolvedAddr?.name, session.metadata?.ship_name);
   let customerId: string | null = null;
-  if (customerEmail && customerName) {
+  if (customerEmail && resolvedCustomerName) {
     try {
       customerId = await upsertCustomer({
-        name: customerName,
+        name: resolvedCustomerName,
         email: customerEmail,
         phone: customerPhone,
         stripeCustomerId,
@@ -317,28 +362,6 @@ export async function POST(req: NextRequest) {
   }
 
   let shippingAddressId: string | null = null;
-
-  // Prefer address from our metadata (collected pre-Stripe); fall back to Stripe-collected shipping.
-  const metaAddr = session.metadata?.ship_line1 ? {
-    name: session.metadata.ship_name ?? null,
-    line1: session.metadata.ship_line1,
-    line2: session.metadata.ship_line2 ?? null,
-    city: session.metadata.ship_city ?? null,
-    state: session.metadata.ship_state ?? null,
-    postal: session.metadata.ship_postal ?? null,
-    country: session.metadata.ship_country ?? null,
-  } : null;
-
-  const stripeShipping = session.collected_information?.shipping_details ?? null;
-  const resolvedAddr = metaAddr ?? (stripeShipping?.address ? {
-    name: stripeShipping.name ?? null,
-    line1: stripeShipping.address.line1 ?? null,
-    line2: stripeShipping.address.line2 ?? null,
-    city: stripeShipping.address.city ?? null,
-    state: stripeShipping.address.state ?? null,
-    postal: stripeShipping.address.postal_code ?? null,
-    country: stripeShipping.address.country ?? null,
-  } : null);
 
   if (customerId && resolvedAddr?.line1 && resolvedAddr.city && resolvedAddr.postal && resolvedAddr.country) {
     try {
@@ -419,7 +442,7 @@ export async function POST(req: NextRequest) {
       order_number: orderNumber,
       customer_id: customerId,
       customer_email: customerEmail,
-      customer_name: customerName,
+      customer_name: resolvedCustomerName,
       customer_phone_snapshot: customerPhone,
       amount_total: session.amount_total ?? null,
       currency: session.currency ?? "usd",
@@ -701,12 +724,12 @@ export async function POST(req: NextRequest) {
   );
 
   // ── Send branded confirmation email ───────────────────────────────────────────
-  if (orderNumber && customerName && customerEmail) {
+  if (orderNumber && resolvedCustomerName && customerEmail) {
     try {
       const emailItems = await fetchEmailItems(order.id);
       await sendOrderConfirmationEmail({
         orderNumber,
-        customerName,
+        customerName: resolvedCustomerName,
         customerEmail,
         amountTotalCents: session.amount_total ?? 0,
         items: emailItems,

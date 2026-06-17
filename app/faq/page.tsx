@@ -107,7 +107,7 @@ const faqs = [
     id: "returns-exchanges",
     question: "Can I return or exchange an item if I change my mind?",
     answer:
-      "Return eligibility depends on the order type. Eligible Ship Now pieces may be considered for return or exchange within 24–48 hours of confirmed delivery if they are unworn, unaltered, and in original condition. A restocking fee, original shipping, payment processing fees, and return shipping costs may apply. Sourced for You, custom, resized, altered, final sale, and specially requested pieces are not eligible for change-of-mind returns.",
+      "Return eligibility depends on the order type. Eligible Ship Now pieces may be considered for return or exchange within 24–48 hours of confirmed delivery if they are unworn, unaltered, and in original condition. A restocking fee, original shipping, payment processing fees, and return shipping costs may apply. Sourced for You, custom, resized, altered, final sal (clearance), and specially requested pieces are not eligible for change-of-mind returns.",
   },
   {
     id: "sourced-for-you-returns",

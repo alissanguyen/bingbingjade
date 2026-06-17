@@ -44,7 +44,7 @@ const sections = [
   {
     id: "returns-exchanges",
     title: "Returns & Exchanges",
-    body: `Return eligibility depends on the order type. Ship Now pieces may be considered for return or exchange within 24–48 hours of confirmed delivery if they are unworn, unaltered, and in original condition. Sourced For You, custom, resized, altered, final sale, and specially requested pieces are not eligible for change-of-mind returns. If your order was damaged, or not as shown, please refer to our "Item Representation" section below. All requests are reviewed with care to ensure the process remains fair for both the client and BingBing Jade.`,
+    body: `Return eligibility depends on the order type. Ship Now pieces may be considered for return or exchange within 24–48 hours of confirmed delivery if they are unworn, unaltered, and in original condition. Sourced For You, custom, resized, altered, final sale/clearance items, and specially requested pieces are not eligible for change-of-mind returns. If your order was damaged, or not as shown, please refer to our "Item Representation" section below. All requests are reviewed with care to ensure the process remains fair for both the client and BingBing Jade.`,
   },
   {
     id: "damage-claims",
