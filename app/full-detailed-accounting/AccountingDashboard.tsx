@@ -5,7 +5,6 @@ import { OverviewTab } from "./tabs/OverviewTab";
 import { OrdersTab } from "./tabs/OrdersTab";
 import { ProductCostsTab } from "./tabs/ProductCostsTab";
 import { VendorsTab } from "./tabs/VendorsTab";
-import { FulfillmentTab } from "./tabs/FulfillmentTab";
 import { ExpensesTab } from "./tabs/ExpensesTab";
 import { ExportsTab } from "./tabs/ExportsTab";
 import { PaymentsTab } from "./tabs/PaymentsTab";
@@ -18,7 +17,6 @@ const TABS = [
   { id: "orders",        label: "Orders" },
   { id: "product-costs", label: "Product Costs" },
   { id: "vendors",       label: "Vendors" },
-  { id: "fulfillment",   label: "Fulfillment" },
   { id: "expenses",      label: "Expenses" },
   { id: "exports",       label: "Exports" },
 ] as const;
@@ -135,7 +133,6 @@ export function AccountingDashboard() {
         {tab === "orders"        && <OrdersTab />}
         {tab === "product-costs" && <ProductCostsTab />}
         {tab === "vendors"       && <VendorsTab />}
-        {tab === "fulfillment"   && <FulfillmentTab />}
         {tab === "expenses"      && <ExpensesTab />}
         {tab === "exports"       && <ExportsTab />}
       </div>
