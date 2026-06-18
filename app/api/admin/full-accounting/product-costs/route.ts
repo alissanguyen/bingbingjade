@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
       exchange_rate_to_usd, purchase_price_usd, import_cost_usd,
       certification_cost_usd, inbound_shipping_cost_usd, other_cost_usd,
       label_cost_usd, total_cogs_usd, cost_last_updated_at, notes, updated_at,
+      receipt_storage_path,
       acct_vendors(id, vendor_code, vendor_display_name)
     `);
 
@@ -107,20 +108,28 @@ export async function POST(req: NextRequest) {
   if (!product_id) return NextResponse.json({ error: "product_id required" }, { status: 400 });
 
   const now = new Date().toISOString();
+  const purchaseUsd   = purchase_price_usd ?? 0;
+  const importUsd     = import_cost_usd ?? 0;
+  const certUsd       = certification_cost_usd ?? 0;
+  const inboundUsd    = inbound_shipping_cost_usd ?? 0;
+  const otherUsd      = other_cost_usd ?? 0;
+  const computedCogs  = purchaseUsd + importUsd + certUsd + inboundUsd + otherUsd;
+
   const { data, error } = await supabaseAdmin
     .from("product_costs")
     .upsert({
       product_id,
       vendor_id:                vendor_id ?? null,
-      purchase_price_original:  purchase_price_original ?? purchase_price_usd,
+      purchase_price_original:  purchase_price_original ?? purchaseUsd,
       purchase_currency:        purchase_currency ?? "USD",
       exchange_rate_to_usd:     exchange_rate_to_usd ?? 1,
-      purchase_price_usd:       purchase_price_usd ?? 0,
-      import_cost_usd:          import_cost_usd ?? 0,
-      certification_cost_usd:   certification_cost_usd ?? 0,
-      inbound_shipping_cost_usd:inbound_shipping_cost_usd ?? 0,
-      other_cost_usd:           other_cost_usd ?? 0,
+      purchase_price_usd:       purchaseUsd,
+      import_cost_usd:          importUsd,
+      certification_cost_usd:   certUsd,
+      inbound_shipping_cost_usd:inboundUsd,
+      other_cost_usd:           otherUsd,
       label_cost_usd:           label_cost_usd ?? 0,
+      total_cogs_usd:           computedCogs,
       cost_last_updated_at:     now,
       notes:                    notes ?? null,
       updated_at:               now,

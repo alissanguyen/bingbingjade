@@ -27,6 +27,15 @@ export async function PATCH(
     if (f in body) updates[f] = body[f] ?? null;
   }
 
+  // Recompute total_cogs_usd from component fields
+  const get = (k: string, fallback = 0) => Number(updates[k] ?? body[k] ?? fallback);
+  updates.total_cogs_usd =
+    get("purchase_price_usd") +
+    get("import_cost_usd") +
+    get("certification_cost_usd") +
+    get("inbound_shipping_cost_usd") +
+    get("other_cost_usd");
+
   const { data, error } = await supabaseAdmin
     .from("product_costs")
     .update(updates)

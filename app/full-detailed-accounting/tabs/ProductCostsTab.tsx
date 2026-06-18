@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { supabase } from "@/lib/supabase";
+import { IMAGE_BUCKET } from "@/lib/storage";
 
 interface ProductRow {
   product_id: string;
@@ -23,6 +25,7 @@ interface ProductRow {
     label_cost_usd: number;
     total_cogs_usd: number;
     notes: string | null;
+    receipt_storage_path: string | null;
   } | null;
 }
 
@@ -71,6 +74,9 @@ export function ProductCostsTab() {
   const [editState, setEditState] = useState<EditState | null>(null);
   const [saving, setSaving]     = useState(false);
   const [msg, setMsg]           = useState<string | null>(null);
+  const [uploadingReceiptId, setUploadingReceiptId] = useState<string | null>(null);
+  const [deletingReceiptId, setDeletingReceiptId]   = useState<string | null>(null);
+  const fileInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -93,6 +99,43 @@ export function ProductCostsTab() {
   }
 
   function cancelEdit() { setEditing(null); setEditState(null); }
+
+  function receiptPublicUrl(path: string) {
+    const { data } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(path);
+    return data.publicUrl;
+  }
+
+  async function handleReceiptUpload(costId: string, e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingReceiptId(costId);
+    const formData = new FormData();
+    formData.append("receipt", file);
+    const res = await fetch(`/api/admin/full-accounting/product-costs/${costId}/receipt`, {
+      method: "POST", body: formData,
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setRows((prev) => prev.map((r) =>
+        r.cost?.id === costId ? { ...r, cost: { ...r.cost!, receipt_storage_path: data.receipt_storage_path } } : r
+      ));
+      setMsg("Receipt uploaded.");
+    } else {
+      setMsg("Upload failed.");
+    }
+    setUploadingReceiptId(null);
+    e.target.value = "";
+  }
+
+  async function handleDeleteReceipt(costId: string) {
+    if (!confirm("Remove this receipt?")) return;
+    setDeletingReceiptId(costId);
+    await fetch(`/api/admin/full-accounting/product-costs/${costId}/receipt`, { method: "DELETE" });
+    setRows((prev) => prev.map((r) =>
+      r.cost?.id === costId ? { ...r, cost: { ...r.cost!, receipt_storage_path: null } } : r
+    ));
+    setDeletingReceiptId(null);
+  }
 
   function updateField(field: keyof EditState, value: string) {
     setEditState((prev) => prev ? { ...prev, [field]: value } : prev);
@@ -175,14 +218,14 @@ export function ProductCostsTab() {
         {msg && <span className="text-xs text-gray-500 ml-auto">{msg}</span>}
       </div>
 
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
         {loading ? (
           <div className="py-16 text-center text-sm text-gray-400">Loading…</div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-auto max-h-[65vh] rounded-xl">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+              <thead className="sticky top-0 z-10">
+                <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                   <th className="pl-4 pr-3 py-3"></th>
                   <th className="px-3 py-3 text-left">Product</th>
                   <th className="px-3 py-3 text-left">Cat.</th>
@@ -198,7 +241,8 @@ export function ProductCostsTab() {
                   <th className="px-3 py-3 text-right">Label</th>
                   <th className="px-3 py-3 text-right font-semibold">Total COGS</th>
                   <th className="px-3 py-3 text-left">Vendor</th>
-                  <th className="pr-4 pl-3 py-3 text-left">Notes</th>
+                  <th className="px-3 py-3 text-left">Notes</th>
+                  <th className="pr-4 pl-3 py-3 text-left">Receipt</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
@@ -264,7 +308,7 @@ export function ProductCostsTab() {
                             onChange={(e) => updateField("notes", e.target.value)}
                             className="w-32 text-xs border border-gray-300 dark:border-gray-700 rounded px-2 py-1 bg-white dark:bg-gray-800" />
                         </td>
-                        <td className="pr-4 pl-2 py-1.5">
+                        <td className="pr-4 pl-2 py-1.5" colSpan={2}>
                           <div className="flex gap-1.5">
                             <button onClick={() => save(row.product_id)} disabled={saving}
                               className="px-2.5 py-1 text-xs font-medium rounded bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50">
@@ -310,9 +354,43 @@ export function ProductCostsTab() {
                               {(row.cost as { acct_vendors?: { vendor_code: string } }).acct_vendors?.vendor_code ?? "—"}
                             </td>
                             <td className="pr-4 pl-3 py-2.5 text-gray-400 text-xs max-w-[120px] truncate">{row.cost.notes ?? "—"}</td>
+                            {/* Receipt column */}
+                            <td className="pr-4 pl-3 py-2.5">
+                              {row.cost.receipt_storage_path ? (
+                                <div className="flex items-center gap-1.5">
+                                  <a
+                                    href={receiptPublicUrl(row.cost.receipt_storage_path)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline"
+                                  >
+                                    View
+                                  </a>
+                                  <button
+                                    onClick={() => handleDeleteReceipt(row.cost!.id)}
+                                    disabled={deletingReceiptId === row.cost.id}
+                                    className="text-xs text-red-400 hover:text-red-600 disabled:opacity-40"
+                                  >
+                                    {deletingReceiptId === row.cost.id ? "…" : "✕"}
+                                  </button>
+                                </div>
+                              ) : (
+                                <label className={`cursor-pointer text-xs ${uploadingReceiptId === row.cost.id ? "text-gray-400" : "text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400"}`}>
+                                  {uploadingReceiptId === row.cost.id ? "Uploading…" : "Upload"}
+                                  <input
+                                    type="file"
+                                    accept="*/*"
+                                    className="hidden"
+                                    disabled={uploadingReceiptId === row.cost.id}
+                                    ref={(el) => { if (el) fileInputRefs.current.set(row.cost!.id, el); }}
+                                    onChange={(e) => handleReceiptUpload(row.cost!.id, e)}
+                                  />
+                                </label>
+                              )}
+                            </td>
                           </>
                         ) : (
-                          <td colSpan={12} className="px-3 py-2.5">
+                          <td colSpan={13} className="px-3 py-2.5">
                             <span className="text-xs text-amber-600 dark:text-amber-400">⚠ No cost data — click Edit</span>
                           </td>
                         )}
