@@ -36,7 +36,7 @@ export default async function ProductsAdminPage() {
   const [{ data: rows }, { data: pendingRows }] = await Promise.all([
     supabaseAdmin
       .from("products")
-      .select("id, name, category, status, is_published, is_clearance, quick_ship, price_display_usd, public_id, slug, images")
+      .select("id, name, category, status, is_published, is_clearance, quick_ship, price_display_usd, public_id, slug, images, created_at, renewed_at")
       .eq("pending_approval", false)
       .order("created_at", { ascending: false }),
     supabaseAdmin
@@ -60,6 +60,12 @@ export default async function ProductsAdminPage() {
       .in("id", approvedIds);
     (users ?? []).forEach((u) => { nameMap[u.id] = u.full_name; });
   }
+
+  (rows ?? []).sort((a, b) => {
+    const da = new Date((a.renewed_at ?? a.created_at) as string).getTime();
+    const db = new Date((b.renewed_at ?? b.created_at) as string).getTime();
+    return db - da;
+  });
 
   const [products, pendingProducts] = await Promise.all([
     Promise.all(

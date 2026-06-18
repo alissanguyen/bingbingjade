@@ -9,7 +9,7 @@ export default async function CampaignEmailPage() {
   const [{ data: raw }, { data: subs }, { count }, { data: campaignEvents }] = await Promise.all([
     supabaseAdmin
       .from("products")
-      .select("id, name, category, slug, public_id, price_display_usd, sale_price_usd, status, images, created_at")
+      .select("id, name, category, slug, public_id, price_display_usd, sale_price_usd, status, images, created_at, renewed_at")
       .eq("is_published", true)
       .neq("status", "sold")
       .order("created_at", { ascending: false })
@@ -30,8 +30,14 @@ export default async function CampaignEmailPage() {
       .order("created_at", { ascending: false }),
   ]);
 
+  const sorted = (raw ?? []).slice().sort((a, b) => {
+    const da = new Date((a.renewed_at ?? a.created_at) as string).getTime();
+    const db = new Date((b.renewed_at ?? b.created_at) as string).getTime();
+    return db - da;
+  });
+
   const products: CampaignProduct[] = await Promise.all(
-    (raw ?? []).map(async (p) => ({
+    sorted.map(async (p) => ({
       id: p.id,
       name: p.name,
       category: p.category,

@@ -47,13 +47,19 @@ const getCachedFeaturedProducts = unstable_cache(
   async () => {
     const { data } = await supabase
       .from("products")
-      .select("id, name, category, images, tier, price_display_usd, sale_price_usd, is_clearance, status, slug, public_id, size, origin")
+      .select("id, name, category, images, tier, price_display_usd, sale_price_usd, is_clearance, status, slug, public_id, size, origin, renewed_at, created_at")
       .eq("is_featured", true)
       .order("created_at", { ascending: false });
 
-    return data ?? [];
+    const rows = data ?? [];
+    rows.sort((a, b) => {
+      const da = new Date((a.renewed_at ?? a.created_at) as string).getTime();
+      const db = new Date((b.renewed_at ?? b.created_at) as string).getTime();
+      return db - da;
+    });
+    return rows;
   },
-  ["home-featured-products-v1"],
+  ["home-featured-products-v2"],
   { revalidate: 120 }
 );
 

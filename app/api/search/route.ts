@@ -8,13 +8,20 @@ export async function GET(req: NextRequest) {
 
   const { data } = await supabase
     .from("products")
-    .select("id, name, slug, public_id, category, price_display_usd, sale_price_usd, show_price, status, images")
+    .select("id, name, slug, public_id, category, price_display_usd, sale_price_usd, show_price, status, images, renewed_at, created_at")
     .eq("is_published", true)
     .ilike("name", `%${q}%`)
     .order("created_at", { ascending: false })
     .limit(6);
 
-  const results = (data ?? []).map((p) => {
+  const rows = (data ?? []);
+  rows.sort((a, b) => {
+    const da = new Date((a.renewed_at ?? a.created_at) as string).getTime();
+    const db = new Date((b.renewed_at ?? b.created_at) as string).getTime();
+    return db - da;
+  });
+
+  const results = rows.map((p) => {
     const rawImage = Array.isArray(p.images) ? (p.images[0] ?? null) : null;
     const image = rawImage ? productMicroUrl(rawImage) : null;
     return {
