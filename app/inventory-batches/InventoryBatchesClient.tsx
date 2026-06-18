@@ -12,6 +12,7 @@ interface Batch {
   purchase_date: string | null;
   received_date: string | null;
   total_batch_cost_usd: number | null;
+  item_count: number | null;
   created_at: string;
 }
 
@@ -327,6 +328,9 @@ export function InventoryBatchesClient({ initialBatches }: { initialBatches: Bat
                   <div className="text-right shrink-0">
                     <p className="font-bold text-gray-900 dark:text-gray-100">{fmtUSD(b.total_batch_cost_usd)}</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500">total cost</p>
+                    {b.item_count != null && (
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{b.item_count} items</p>
+                    )}
                   </div>
                 </div>
               </Link>

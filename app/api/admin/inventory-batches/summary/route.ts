@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
   const { data: allBatches } = await supabaseAdmin
     .from("inventory_batches")
-    .select("id, total_batch_cost_usd, purchase_date, created_at");
+    .select("id, total_batch_cost_usd, item_count, purchase_date, created_at");
 
   const batches = (allBatches ?? []).filter((b) => {
     if (!cutoff) return true;
@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
   });
 
   const totalSpent = batches.reduce((s, b) => s + Number(b.total_batch_cost_usd ?? 0), 0);
+  const productCount = batches.reduce((s, b) => s + (Number(b.item_count) || 0), 0);
   const batchIds = batches.map((b) => b.id);
 
   if (batchIds.length === 0) {
@@ -46,8 +47,6 @@ export async function GET(req: NextRequest) {
     .from("inventory_batch_items")
     .select("product_id, item_expense_usd")
     .in("batch_id", batchIds);
-
-  const productCount = (batchItems ?? []).length;
   const linkedProductIds = [
     ...new Set((batchItems ?? []).map((i) => i.product_id).filter((id): id is string => !!id)),
   ];

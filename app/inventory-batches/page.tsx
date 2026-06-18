@@ -8,7 +8,7 @@ export const metadata = { title: "Inventory Batches — Admin" };
 export default async function InventoryBatchesPage() {
   const { data } = await supabaseAdmin
     .from("inventory_batches")
-    .select("id, name, batch_code, vendor, status, purchase_date, received_date, total_batch_cost_usd, created_at")
+    .select("id, name, batch_code, vendor, status, purchase_date, received_date, total_batch_cost_usd, item_count, created_at")
     .order("created_at", { ascending: false });
 
   return (
