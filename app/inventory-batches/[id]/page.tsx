@@ -47,6 +47,7 @@ export default async function InventoryBatchDetailPage({ params }: { params: Pro
 
   let revenue = 0;
   let soldCount = 0;
+  let soldProductIds = new Set<string>();
 
   if (productIds.length > 0) {
     // Fetch order items for these products
@@ -60,6 +61,11 @@ export default async function InventoryBatchDetailPage({ params }: { params: Pro
         .select("id, status")
         .in("id", productIds),
     ]);
+
+    soldProductIds = new Set(
+      (productStatusData ?? []).filter((p) => p.status === "sold").map((p) => p.id)
+    );
+    soldCount = soldProductIds.size;
 
     // Filter to non-cancelled orders
     const orderIds = [...new Set((orderItemsData ?? []).map((i) => i.order_id).filter(Boolean))];
@@ -75,16 +81,19 @@ export default async function InventoryBatchDetailPage({ params }: { params: Pro
         .filter((i) => i.order_id && validOrderIds.has(i.order_id))
         .reduce((sum, i) => sum + (Number(i.price_usd) ?? 0) * (Number(i.quantity) ?? 1), 0);
     }
-
-    soldCount = (productStatusData ?? []).filter((p) => p.status === "sold").length;
   }
+
+  const finalItems = resolvedItems.map((item) => ({
+    ...item,
+    isSold: item.product_id ? soldProductIds.has(item.product_id) : false,
+  }));
 
   return (
     <>
       <AdminBarServer />
       <InventoryBatchDetailClient
         batch={batch}
-        items={resolvedItems}
+        items={finalItems}
         revenue={revenue}
         soldCount={soldCount}
         totalCount={productIds.length}

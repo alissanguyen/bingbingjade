@@ -15,6 +15,7 @@ interface BatchItem {
   productName: string | null;
   productPublicId: string | null;
   productImageUrl: string | null;
+  isSold: boolean;
 }
 
 interface Batch {
@@ -114,6 +115,9 @@ export function InventoryBatchDetailClient({
   // Inline expense editing
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [expenseDraft, setExpenseDraft] = useState("");
+
+  // Proportional cost allocation
+  const [isCalculating, setIsCalculating] = useState(false);
 
   // Product search
   const [searchQuery, setSearchQuery] = useState("");
@@ -257,6 +261,26 @@ export function InventoryBatchDetailClient({
     showToast("ok", "Expense saved.");
   }
 
+  async function handleCalculateAllocated() {
+    setIsCalculating(true);
+    try {
+      const res = await fetch(`/api/admin/inventory-batches/${batch.id}/allocate`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { showToast("err", data.error ?? "Allocation failed."); return; }
+      const updatedMap = new Map<string, number>(
+        (data.items ?? []).map((i: { id: string; assigned_inventory_cost_usd: number }) => [i.id, i.assigned_inventory_cost_usd])
+      );
+      setItems((prev) =>
+        prev.map((item) =>
+          updatedMap.has(item.id) ? { ...item, assigned_inventory_cost_usd: updatedMap.get(item.id)! } : item
+        )
+      );
+      showToast("ok", `Allocated costs for ${data.items?.length ?? 0} proportional item${data.items?.length === 1 ? "" : "s"}.`);
+    } finally {
+      setIsCalculating(false);
+    }
+  }
+
   async function handleRemoveItem(itemId: string) {
     if (!confirm("Remove this item from the batch?")) return;
     const res = await fetch(`/api/admin/inventory-batches/${batch.id}/items/${itemId}`, { method: "DELETE" });
@@ -275,7 +299,14 @@ export function InventoryBatchDetailClient({
 
   const allocatedTotal = items.reduce((s, i) => s + Number(i.assigned_inventory_cost_usd), 0);
   const unallocated = Number(batch.total_batch_cost_usd) - allocatedTotal;
-  const totalItemExpenses = items.reduce((s, i) => s + Number(i.item_expense_usd ?? 0), 0);
+
+  // Only count item expenses for sold items (shipping absorbed only when item ships)
+  const totalItemExpenses = items
+    .filter((i) => i.isSold)
+    .reduce((s, i) => s + Number(i.item_expense_usd ?? 0), 0);
+  const pendingItemExpenses = items
+    .filter((i) => !i.isSold && Number(i.item_expense_usd) > 0)
+    .reduce((s, i) => s + Number(i.item_expense_usd ?? 0), 0);
 
   // Financial summary
   const partnerIn  = Number(batch.partner_payment_usd ?? 0);
@@ -284,6 +315,9 @@ export function InventoryBatchDetailClient({
   const grossProfit = revenue - totalCost - totalItemExpenses;
   const netProfit   = grossProfit + partnerIn - partnerOut;
   const soldPct     = totalCount > 0 ? Math.round((soldCount / totalCount) * 100) : 0;
+
+  const hasProportionalItems = items.some((i) => i.allocation_method === "proportional");
+  const missingItemCount = batch.item_count && items.length < batch.item_count ? batch.item_count - items.length : 0;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -486,8 +520,14 @@ export function InventoryBatchDetailClient({
             </div>
             {totalItemExpenses > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500 dark:text-gray-400">Item Expenses (shipping etc.)</span>
+                <span className="text-gray-500 dark:text-gray-400">Item Expenses (sold items)</span>
                 <span className="font-medium text-gray-800 dark:text-gray-200">− {fmtUSD(totalItemExpenses)}</span>
+              </div>
+            )}
+            {pendingItemExpenses > 0 && (
+              <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500">
+                <span>Pending expenses (unsold items)</span>
+                <span>− {fmtUSD(pendingItemExpenses)}</span>
               </div>
             )}
             <div className="flex justify-between text-sm border-t border-gray-100 dark:border-gray-800 pt-1.5 mt-1.5">
@@ -519,13 +559,36 @@ export function InventoryBatchDetailClient({
           </div>
         </div>
 
+        {/* Missing items banner */}
+        {missingItemCount > 0 && (
+          <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 mb-5 flex items-start gap-3">
+            <svg className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <p className="text-sm text-amber-700 dark:text-amber-400">
+              <span className="font-semibold">{missingItemCount} product{missingItemCount === 1 ? "" : "s"} not yet added</span>
+              {" "}— batch was set to {batch.item_count} items but only {items.length} {items.length === 1 ? "has" : "have"} been linked.
+            </p>
+          </div>
+        )}
+
         {/* Batch items */}
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
-          <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+          <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3 flex-wrap">
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
               Products in Batch ({items.length})
             </h2>
-            <button onClick={() => { setShowAddItem(true); setSearchQuery(""); setItemForm({ product_id: "", assigned_inventory_cost_usd: "", item_expense_usd: "", allocation_method: "manual", notes: "" }); }} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">+ Add product</button>
+            <div className="flex items-center gap-3 flex-wrap">
+              {hasProportionalItems && (
+                <button
+                  type="button"
+                  onClick={handleCalculateAllocated}
+                  disabled={isCalculating}
+                  className="text-xs font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 disabled:opacity-50 transition-colors"
+                >
+                  {isCalculating ? "Calculating…" : "Calculate Allocated Cost"}
+                </button>
+              )}
+              <button onClick={() => { setShowAddItem(true); setSearchQuery(""); setItemForm({ product_id: "", assigned_inventory_cost_usd: "", item_expense_usd: "", allocation_method: "manual", notes: "" }); }} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">+ Add product</button>
+            </div>
           </div>
 
           {/* Add item form */}
@@ -662,10 +725,18 @@ export function InventoryBatchDetailClient({
                     ) : (
                       <button
                         onClick={() => { setEditingExpenseId(item.id); setExpenseDraft(String(item.item_expense_usd ?? 0)); }}
-                        className={`text-xs ${Number(item.item_expense_usd) > 0 ? "text-amber-500 dark:text-amber-400" : "text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400"}`}
-                        title="Edit item expense"
+                        className={`text-xs ${
+                          Number(item.item_expense_usd) > 0
+                            ? item.isSold
+                              ? "text-amber-500 dark:text-amber-400"
+                              : "text-gray-400 dark:text-gray-500"
+                            : "text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400"
+                        }`}
+                        title={Number(item.item_expense_usd) > 0 && !item.isSold ? "Will be counted when sold" : "Edit item expense"}
                       >
-                        {Number(item.item_expense_usd) > 0 ? `−${fmtUSD(item.item_expense_usd)} exp.` : "+ expense"}
+                        {Number(item.item_expense_usd) > 0
+                          ? `−${fmtUSD(item.item_expense_usd)} exp.${!item.isSold ? " (pending)" : ""}`
+                          : "+ expense"}
                       </button>
                     )}
                   </div>

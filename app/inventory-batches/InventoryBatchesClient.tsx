@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 interface Batch {
@@ -55,12 +55,54 @@ const BLANK_FORM = {
   notes: "",
 };
 
+type Period = "all" | "1m" | "3m" | "6m" | "1y";
+const PERIOD_LABELS: Record<Period, string> = {
+  all: "All time", "1m": "Last month", "3m": "Last 3 months", "6m": "Last 6 months", "1y": "Last year",
+};
+
+interface BatchSummary {
+  total_spent: number;
+  product_count: number;
+  sold_count: number;
+  revenue: number;
+  net_profit: number;
+}
+
 export function InventoryBatchesClient({ initialBatches }: { initialBatches: Batch[] }) {
   const [batches, setBatches] = useState<Batch[]>(initialBatches);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ ...BLANK_FORM });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [period, setPeriod] = useState<Period>("all");
+  const [summary, setSummary] = useState<BatchSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+
+  useEffect(() => {
+    setSummaryLoading(true);
+    fetch(`/api/admin/inventory-batches/summary?period=${period}`)
+      .then((r) => r.json())
+      .then((d) => setSummary(d))
+      .finally(() => setSummaryLoading(false));
+  }, [period]);
+
+  const cutoff = (() => {
+    if (period === "all") return null;
+    const d = new Date();
+    if (period === "1m") d.setMonth(d.getMonth() - 1);
+    if (period === "3m") d.setMonth(d.getMonth() - 3);
+    if (period === "6m") d.setMonth(d.getMonth() - 6);
+    if (period === "1y") d.setFullYear(d.getFullYear() - 1);
+    return d;
+  })();
+
+  const filteredBatches = cutoff
+    ? batches.filter((b) => {
+        const ds = b.purchase_date ?? b.created_at;
+        return ds ? new Date(ds) >= cutoff : false;
+      })
+    : batches;
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -95,7 +137,7 @@ export function InventoryBatchesClient({ initialBatches }: { initialBatches: Bat
       <div className="mx-auto max-w-4xl px-4 sm:px-6 py-8">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Inventory Batches</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
@@ -108,6 +150,57 @@ export function InventoryBatchesClient({ initialBatches }: { initialBatches: Bat
           >
             + New Batch
           </button>
+        </div>
+
+        {/* Period filter + summary */}
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-5 py-4 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Portfolio Summary</p>
+            <select
+              value={period}
+              onChange={(e) => setPeriod(e.target.value as Period)}
+              className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-xs text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            >
+              {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
+                <option key={p} value={p}>{PERIOD_LABELS[p]}</option>
+              ))}
+            </select>
+          </div>
+          {summaryLoading ? (
+            <div className="h-10 flex items-center text-sm text-gray-400 dark:text-gray-500">Loading…</div>
+          ) : summary ? (
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <div>
+                <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-0.5">Total Spent</p>
+                <p className="text-base font-bold text-gray-900 dark:text-gray-100">{fmtUSD(summary.total_spent)}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-0.5">Products</p>
+                <p className="text-base font-bold text-gray-900 dark:text-gray-100">{summary.product_count}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-0.5">Sold</p>
+                <p className="text-base font-bold text-gray-900 dark:text-gray-100">
+                  {summary.sold_count}
+                  {summary.product_count > 0 && (
+                    <span className="text-xs font-normal text-gray-400 ml-1">
+                      ({Math.round((summary.sold_count / summary.product_count) * 100)}%)
+                    </span>
+                  )}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-0.5">Revenue</p>
+                <p className="text-base font-bold text-emerald-700 dark:text-emerald-400">{fmtUSD(summary.revenue)}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-0.5">Net Profit</p>
+                <p className={`text-base font-bold ${summary.net_profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+                  {fmtUSD(summary.net_profit)}
+                </p>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {/* Create modal */}
@@ -198,15 +291,17 @@ export function InventoryBatchesClient({ initialBatches }: { initialBatches: Bat
         )}
 
         {/* Batch list */}
-        {batches.length === 0 ? (
+        {filteredBatches.length === 0 ? (
           <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-8 py-16 text-center">
             <p className="text-4xl mb-3">📦</p>
-            <p className="text-gray-500 dark:text-gray-400 text-sm">No inventory batches yet.</p>
-            <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">Create your first batch to start tracking inventory costs.</p>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              {batches.length === 0 ? "No inventory batches yet." : `No batches in ${PERIOD_LABELS[period].toLowerCase()}.`}
+            </p>
+            {batches.length === 0 && <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">Create your first batch to start tracking inventory costs.</p>}
           </div>
         ) : (
           <div className="space-y-3">
-            {batches.map((b) => (
+            {filteredBatches.map((b) => (
               <Link
                 key={b.id}
                 href={`/inventory-batches/${b.id}`}
