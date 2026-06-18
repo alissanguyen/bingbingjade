@@ -744,12 +744,35 @@ export function OrderDetailClient({
     if (!confirm("Issue a full Stripe refund?")) return;
     setActionLoading("refund");
     try {
-      const res = await fetch(`/api/admin/orders/${order.id}/refund`, { method: "POST" });
+      const res = await fetch(`/api/admin/orders/${order.id}/refund`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
       const data = await res.json();
       if (!res.ok) { showToast("err", data.error ?? "Refund failed"); return; }
       setOrder((prev) => ({ ...prev, ...data.order }));
       setEditStatus("order_cancelled");
       showToast("ok", "Refund issued via Stripe");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleMarkRefunded() {
+    if (!confirm("Mark this order as refunded in the database? Only use this if the refund was already issued outside of this admin panel.")) return;
+    setActionLoading("mark-refunded");
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/refund`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ manual: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast("err", data.error ?? "Failed"); return; }
+      setOrder((prev) => ({ ...prev, ...data.order }));
+      setEditStatus("order_cancelled");
+      showToast("ok", "Order marked as refunded");
     } finally {
       setActionLoading(null);
     }
@@ -1080,13 +1103,23 @@ export function OrderDetailClient({
                 </button>
               </div>
 
-              {!isCancelled && order.stripe_payment_intent_id && (
+              {order.status !== "refunded" && order.stripe_payment_intent_id && (
                 <button
                   onClick={handleRefund}
-                  disabled={actionLoading === "refund" || order.status === "refunded"}
+                  disabled={!!actionLoading}
                   className="w-full rounded-lg border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-60 text-red-600 dark:text-red-400 py-2.5 text-sm font-medium transition-colors"
                 >
-                  {actionLoading === "refund" ? "Refunding…" : order.status === "refunded" ? "Already Refunded" : "Refund via Stripe"}
+                  {actionLoading === "refund" ? "Refunding…" : "Refund via Stripe"}
+                </button>
+              )}
+
+              {order.status !== "refunded" && (
+                <button
+                  onClick={handleMarkRefunded}
+                  disabled={!!actionLoading}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60 text-gray-600 dark:text-gray-400 py-2.5 text-sm font-medium transition-colors"
+                >
+                  {actionLoading === "mark-refunded" ? "Saving…" : "Mark as Refunded"}
                 </button>
               )}
 

@@ -10,7 +10,7 @@ async function isAdmin(): Promise<boolean> {
 }
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   if (!(await isAdmin())) {
@@ -18,6 +18,7 @@ export async function POST(
   }
 
   const { id } = await params;
+  const { manual } = (await req.json().catch(() => ({}))) as { manual?: boolean };
 
   const { data: order, error: fetchErr } = await supabaseAdmin
     .from("orders")
@@ -33,18 +34,19 @@ export async function POST(
     return NextResponse.json({ error: "Order is already refunded" }, { status: 409 });
   }
 
-  if (!order.stripe_payment_intent_id) {
-    return NextResponse.json(
-      { error: "No Stripe payment intent on this order — issue refund manually." },
-      { status: 400 }
-    );
-  }
-
-  try {
-    await stripe.refunds.create({ payment_intent: order.stripe_payment_intent_id });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Stripe refund failed";
-    return NextResponse.json({ error: msg }, { status: 500 });
+  if (!manual) {
+    if (!order.stripe_payment_intent_id) {
+      return NextResponse.json(
+        { error: "No Stripe payment intent on this order — issue refund manually." },
+        { status: 400 }
+      );
+    }
+    try {
+      await stripe.refunds.create({ payment_intent: order.stripe_payment_intent_id });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Stripe refund failed";
+      return NextResponse.json({ error: msg }, { status: 500 });
+    }
   }
 
   const { data: updated, error: updateErr } = await supabaseAdmin
@@ -56,7 +58,7 @@ export async function POST(
 
   if (updateErr || !updated) {
     return NextResponse.json(
-      { error: "Stripe refund issued but DB update failed — check manually." },
+      { error: manual ? "DB update failed." : "Stripe refund issued but DB update failed — check manually." },
       { status: 500 }
     );
   }

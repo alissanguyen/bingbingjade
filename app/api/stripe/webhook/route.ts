@@ -123,6 +123,32 @@ export async function POST(req: NextRequest) {
 
   const supabase = supabaseAdmin;
 
+  // ── charge.refunded — sync refunds issued directly in the Stripe dashboard ────
+  if (event.type === "charge.refunded") {
+    const charge = event.data.object as Stripe.Charge;
+    const paymentIntentId =
+      typeof charge.payment_intent === "string"
+        ? charge.payment_intent
+        : (charge.payment_intent as { id?: string } | null)?.id ?? null;
+
+    if (paymentIntentId) {
+      const { data: existingOrder } = await supabase
+        .from("orders")
+        .select("id, status")
+        .eq("stripe_payment_intent_id", paymentIntentId)
+        .maybeSingle();
+
+      if (existingOrder && existingOrder.status !== "refunded") {
+        await supabase
+          .from("orders")
+          .update({ status: "refunded", order_status: "order_cancelled" })
+          .eq("id", existingOrder.id);
+        console.info("[webhook] Marked order", existingOrder.id, "as refunded via charge.refunded event");
+      }
+    }
+    return NextResponse.json({ received: true });
+  }
+
   // ── checkout.session.expired ──────────────────────────────────────────────────
   if (event.type === "checkout.session.expired") {
     const expired = event.data.object as Stripe.Checkout.Session;
