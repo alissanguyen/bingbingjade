@@ -107,7 +107,7 @@ export function OrdersTab() {
                     "Order #", "Date", "Customer", "Source",
                     "Listed Sub", "Discount", "Item Rev",
                     "Shipping", "Insurance", "Tax",
-                    "Total Paid", "Amt Due", "Providers",
+                    "Billed", "Total Paid", "Amt Due", "Providers",
                     "Pay Fee", "Net Rcvd",
                     "Inv. Expense", "Label", "Insur.", "Supplies",
                     "Est. Profit",
