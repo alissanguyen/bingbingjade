@@ -43,6 +43,8 @@ interface ProductClient {
   slug: string;
   public_id: string;
   sku: string | null;
+  reserved_until?: string | null;
+  reserved_for_handle?: string | null;
 }
 
 const ORIGIN_BADGE: Record<string, string> = {
@@ -115,6 +117,9 @@ export function ProductPageClient({ product, productImages, productVideos, optio
 
   const isOptionSold = selectedOption?.status === "sold";
   const isProductSold = product.status === "sold";
+  const isReserved = product.status === "reserved" &&
+    product.reserved_until != null &&
+    new Date(product.reserved_until) > new Date();
   const isEffectivelySold = isProductSold || isOptionSold;
 
   // Per-option sale_price_usd takes priority over product-level sale_price_usd.
@@ -459,8 +464,22 @@ export function ProductPageClient({ product, productImages, productVideos, optio
             ))}
           </div>
 
+          {/* Reservation notice */}
+          {isReserved && product.reserved_until && (
+            <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+              <p className="font-semibold">Currently Reserved</p>
+              <p className="text-xs mt-0.5 text-amber-700 dark:text-amber-400">
+                This piece is held for another buyer until{" "}
+                {new Date(product.reserved_until).toLocaleString("en-US", {
+                  month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short",
+                })}
+                . If the checkout is not completed by then, it will become available again.
+              </p>
+            </div>
+          )}
+
           {/* Add to Cart / Inquire to Purchase */}
-          {!isEffectivelySold && checkoutPrice != null ? (
+          {!isEffectivelySold && !isReserved && checkoutPrice != null ? (
             needsInquiry ? (
               <Link
                 href={`/contact?product=${product.public_id}`}
@@ -479,7 +498,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                 {isInCart ? "✓ Added to Cart" : addedToCart ? "✓ Added!" : "Add to Cart"}
               </button>
             )
-          ) : (
+          ) : isReserved ? null : (
             <div className="block w-full rounded-full py-3 text-center text-sm font-medium text-white bg-gray-400 dark:bg-gray-600 cursor-not-allowed">
               {isEffectivelySold ? "This item has been sold" : "Available via consultation"}
             </div>
@@ -487,7 +506,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
 
           <div className="flex flex-col sm:flex-row sm:gap-4">
             {/* Contact to Purchase */}
-            {!isEffectivelySold && (
+            {!isEffectivelySold && !isReserved && (
               <Link
                 href={`/contact?product=${product.public_id}`}
                 className="mt-3 block w-full rounded-full border border-gray-300 dark:border-gray-700 hover:border-emerald-400 dark:hover:border-emerald-600 py-3 text-center text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors"
@@ -496,7 +515,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
               </Link>
             )}
 
-            {!isEffectivelySold && (
+            {!isEffectivelySold && !isReserved && (
               <a
                 href={buildWhatsAppLink([{ name: product.name, public_id: product.public_id, slug: product.slug }])}
                 target="_blank"

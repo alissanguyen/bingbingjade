@@ -35,6 +35,8 @@ interface Product {
   slug: string;
   public_id: string;
   sku: string | null;
+  reserved_until: string | null;
+  reserved_for_handle: string | null;
 }
 
 interface RelatedProduct {
@@ -73,13 +75,13 @@ const getCachedProductByPublicId = unstable_cache(
   async (publicId: string) => {
     const { data } = await supabase
       .from("products")
-      .select("id, name, category, origin, images, videos, color, tier, size, size_detailed, price_display_usd, sale_price_usd, show_price, description, blemishes, is_featured, is_clearance, is_published, quick_ship, status, slug, public_id, sku")
+      .select("id, name, category, origin, images, videos, color, tier, size, size_detailed, price_display_usd, sale_price_usd, show_price, description, blemishes, is_featured, is_clearance, is_published, quick_ship, status, slug, public_id, sku, reserved_until, reserved_for_handle")
       .eq("public_id", publicId)
       .single<Product>();
 
     return data;
   },
-  ["product-detail-by-public-id-v1"],
+  ["product-detail-by-public-id-v3"],
   { revalidate: 120 }
 );
 

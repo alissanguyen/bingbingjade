@@ -210,6 +210,10 @@ export async function POST(req: NextRequest) {
     return handleSourcingPrivateCheckout(session, supabase);
   }
 
+  if (session.metadata?.is_livestream_checkout === "true") {
+    return handleLivestreamCheckout(session, supabase);
+  }
+
   // ── Resolve payment intent ID early (needed for idempotency + insert) ──────────
   const paymentIntentId =
     typeof session.payment_intent === "string"
@@ -773,6 +777,181 @@ export async function POST(req: NextRequest) {
     await fetch(`${siteUrl}/api/revalidate?secret=${secret}`, { method: "POST" }).catch(() => {});
   }
 
+  return NextResponse.json({ received: true });
+}
+
+// ── Livestream checkout handler ───────────────────────────────────────────────
+async function handleLivestreamCheckout(
+  session: Stripe.Checkout.Session,
+  supabase: typeof supabaseAdmin
+): Promise<NextResponse> {
+  const itemId = session.metadata?.livestream_item_id;
+  if (!itemId) {
+    console.error("[webhook/livestream] Missing livestream_item_id", session.id);
+    return NextResponse.json({ error: "Missing livestream_item_id." }, { status: 400 });
+  }
+
+  const { data: item } = await supabase
+    .from("livestream_items")
+    .select("*, livestream:livestreams(title)")
+    .eq("id", itemId)
+    .maybeSingle();
+
+  if (!item) {
+    console.error("[webhook/livestream] Item not found:", itemId);
+    return NextResponse.json({ error: "Livestream item not found." }, { status: 404 });
+  }
+
+  if (item.status === "paid") {
+    return NextResponse.json({ received: true }); // idempotent
+  }
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : (session.payment_intent as { id?: string } | null)?.id ?? null;
+
+  const customerEmail = session.customer_details?.email ?? null;
+  const customerName = session.customer_details?.name ?? session.collected_information?.shipping_details?.name ?? null;
+  const customerPhone = session.customer_details?.phone ?? null;
+  const stripeCustomerId = typeof session.customer === "string" ? session.customer : null;
+  const now = new Date().toISOString();
+
+  // Upsert customer
+  let customerId: string | null = null;
+  if (customerEmail && customerName) {
+    try {
+      customerId = await upsertCustomer({ name: customerName, email: customerEmail, phone: customerPhone, stripeCustomerId });
+    } catch { /* non-fatal */ }
+  }
+
+  // Save shipping address
+  let shippingAddressId: string | null = null;
+  const stripeShipping = session.collected_information?.shipping_details ?? null;
+  if (customerId && stripeShipping?.address?.line1) {
+    try {
+      shippingAddressId = await saveShippingAddress({
+        customerId,
+        recipientName: stripeShipping.name ?? null,
+        line1: stripeShipping.address.line1,
+        line2: stripeShipping.address.line2 ?? null,
+        city: stripeShipping.address.city ?? "",
+        state: stripeShipping.address.state ?? "",
+        postal: stripeShipping.address.postal_code ?? "",
+        country: stripeShipping.address.country ?? "",
+      });
+    } catch { /* non-fatal */ }
+  }
+
+  // Generate order number
+  let orderNumber: string | null = null;
+  try { orderNumber = await generateOrderNumber(); } catch { /* non-fatal */ }
+
+  // Create order
+  const { data: order, error: orderErr } = await supabase
+    .from("orders")
+    .insert({
+      stripe_session_id: session.id,
+      stripe_payment_intent_id: paymentIntentId,
+      stripe_customer_id: stripeCustomerId,
+      order_number: orderNumber,
+      customer_id: customerId,
+      customer_email: customerEmail,
+      customer_name: customerName,
+      customer_phone_snapshot: customerPhone,
+      amount_total: session.amount_total ?? null,
+      currency: session.currency ?? "usd",
+      status: "paid",
+      order_status: "order_confirmed",
+      source: "livestream",
+      shipping_address_id: shippingAddressId,
+      notes: `Livestream item ${item.code} — buyer @${item.buyer_handle}`,
+    })
+    .select("id")
+    .single();
+
+  if (orderErr || !order) {
+    if ((orderErr as { code?: string })?.code === "23505") {
+      return NextResponse.json({ received: true });
+    }
+    console.error("[webhook/livestream] Failed to create order:", orderErr);
+    return NextResponse.json({ error: "Failed to create order." }, { status: 500 });
+  }
+
+  // Create order item
+  await supabase.from("order_items").insert({
+    order_id: order.id,
+    product_id: item.product_id ?? null,
+    product_name: item.title_snapshot,
+    price_usd: item.checkout_price ?? item.price,
+    quantity: 1,
+    line_total: item.checkout_price ?? item.price,
+    inventory_type: "available_now",
+  });
+
+  // Record payment
+  if (paymentIntentId && session.amount_total) {
+    try {
+      const { data: existingPayment } = await supabase
+        .from("order_payments")
+        .select("id")
+        .eq("payment_provider", "stripe")
+        .eq("provider_transaction_id", paymentIntentId)
+        .maybeSingle();
+
+      if (!existingPayment) {
+        await supabase.from("order_payments").insert({
+          order_id: order.id,
+          bbj_order_code: orderNumber,
+          payment_provider: "stripe",
+          payment_type: "checkout",
+          provider_transaction_id: paymentIntentId,
+          amount_paid_usd: session.amount_total / 100,
+          currency: (session.currency ?? "usd").toUpperCase(),
+          payment_date: new Date(session.created * 1000).toISOString(),
+          payment_status: "paid",
+          notes: `Livestream checkout ${session.id}`,
+        });
+      }
+    } catch { /* non-fatal */ }
+  }
+
+  // Mark item paid
+  await supabase.from("livestream_items").update({
+    status: "paid",
+    checkout_active: false,
+    order_id: order.id,
+    updated_at: now,
+  }).eq("id", itemId);
+
+  // Mark linked product sold
+  if (item.product_id) {
+    await supabase.from("products").update({
+      status: "sold",
+      reserved_until: null,
+      reserved_for_handle: null,
+      reserved_livestream_item_id: null,
+    }).eq("id", item.product_id);
+  }
+
+  // Log event
+  await supabase.from("livestream_item_events").insert({
+    livestream_item_id: itemId,
+    event_type: "paid",
+    message: `Payment received — order ${orderNumber ?? order.id}`,
+    buyer_handle: item.buyer_handle,
+    metadata: { order_id: order.id, order_number: orderNumber, session_id: session.id },
+    created_by: "system",
+  });
+
+  // Revalidate cache
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
+  const secret = process.env.REVALIDATE_SECRET;
+  if (secret) {
+    await fetch(`${siteUrl}/api/revalidate?secret=${secret}`, { method: "POST" }).catch(() => {});
+  }
+
+  console.info("[webhook/livestream] Order created", order.id, "for livestream item", itemId);
   return NextResponse.json({ received: true });
 }
 

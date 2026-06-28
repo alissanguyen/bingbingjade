@@ -99,7 +99,15 @@
       "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/inventory-batches/[id]\")",
       "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/api/admin/inventory-batches/[id]/items/[itemId]\")",
       "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/api/admin/inventory-batches/[id]/items\")",
-      "Bash(xargs cat)"
+      "Bash(xargs cat)",
+      "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/api/admin/livestreams/[id]\")",
+      "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/api/admin/livestreams/[id]/items/[itemId]\")",
+      "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/api/admin/livestreams/[id]/items/[itemId]/claim\")",
+      "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/api/admin/livestreams/[id]/items/[itemId]/release\")",
+      "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/api/admin/livestreams/[id]/items/[itemId]/extend\")",
+      "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/livestreams-admin/[id]\")",
+      "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/livestreams-admin/[id]/live\")",
+      "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/livestream-checkout/[token]\")"
     ]
   }
 }
