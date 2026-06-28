@@ -13,16 +13,19 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "50")));
   const status = searchParams.get("status") ?? "";
   const search = (searchParams.get("search") ?? "").trim();
+  const fulfillment = searchParams.get("fulfillment") ?? "";
   const from = (page - 1) * limit;
+
+  const validFulfillment = fulfillment === "available_now" || fulfillment === "sourced_for_you"
+    ? fulfillment : "";
+
+  const selectFields = `id, order_number, customer_name, customer_email, customer_phone_snapshot,
+     amount_total, currency, status, order_status, source, created_at, notes,
+     order_items(id, price_usd, quantity)${validFulfillment ? ", shipments!inner(fulfillment_type)" : ""}`;
 
   let query = supabaseAdmin
     .from("orders")
-    .select(
-      `id, order_number, customer_name, customer_email, customer_phone_snapshot,
-       amount_total, currency, status, order_status, source, created_at, notes,
-       order_items(id, price_usd, quantity)`,
-      { count: "exact" }
-    )
+    .select(selectFields, { count: "exact" })
     .order("order_number", { ascending: false, nullsFirst: false })
     .range(from, from + limit - 1);
 
@@ -32,6 +35,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (status) query = query.eq("order_status", status);
+  if (validFulfillment) query = query.eq("shipments.fulfillment_type", validFulfillment);
 
   if (search) {
     query = query.or(
@@ -45,9 +49,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const orders = (data ?? []).map((o) => {
+  type RawOrder = {
+    order_items: { id: string; price_usd: number; quantity: number }[];
+    [key: string]: unknown;
+  };
+  const orders = ((data ?? []) as unknown as RawOrder[]).map((o) => {
     const items = Array.isArray(o.order_items)
-      ? (o.order_items as { id: string; price_usd: number; quantity: number }[])
+      ? o.order_items
       : [];
     const item_subtotal = items.reduce((s, i) => s + (i.price_usd ?? 0) * (i.quantity ?? 1), 0);
     return {
@@ -55,6 +63,7 @@ export async function GET(req: NextRequest) {
       item_count: items.length,
       item_subtotal,
       order_items: undefined,
+      shipments: undefined,
     };
   });
 

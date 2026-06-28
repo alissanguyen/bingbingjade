@@ -58,6 +58,7 @@ const SOURCE_LABELS: Record<OrderSource, string> = {
   zelle: "Zelle",
   custom: "Custom",
   admin: "Admin",
+  livestream: "Livestream",
 };
 
 const SOURCE_COLORS: Record<OrderSource, string> = {
@@ -69,6 +70,7 @@ const SOURCE_COLORS: Record<OrderSource, string> = {
   zelle: "bg-violet-50 text-violet-600 dark:bg-violet-900/20 dark:text-violet-400",
   custom: "bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400",
   admin: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
+  livestream: "bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400",
 };
 
 const PAID_STATUS_COLORS: Record<string, string> = {
@@ -198,6 +200,7 @@ export function OrdersAdminClient() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [fulfillmentFilter, setFulfillmentFilter] = useState("");
   const [listLoading, setListLoading] = useState(true);
 
   const [showCreate, setShowCreate] = useState(false);
@@ -232,13 +235,14 @@ export function OrdersAdminClient() {
   const LIMIT = 50;
 
   // ── Fetch list ──────────────────────────────────────────────────────────────
-  const fetchOrders = useCallback(async (p: number, q: string, s: string) => {
+  const fetchOrders = useCallback(async (p: number, q: string, s: string, f: string) => {
     setListLoading(true);
     try {
       const params = new URLSearchParams({
         page: String(p), limit: String(LIMIT),
         ...(q ? { search: q } : {}),
         ...(s ? { status: s } : {}),
+        ...(f ? { fulfillment: f } : {}),
       });
       const res = await fetch(`/api/admin/orders?${params}`);
       const data = await res.json();
@@ -251,10 +255,10 @@ export function OrdersAdminClient() {
 
   useEffect(() => {
     if (searchRef.current) clearTimeout(searchRef.current);
-    searchRef.current = setTimeout(() => { setPage(1); fetchOrders(1, search, statusFilter); }, 300);
-  }, [search, statusFilter, fetchOrders]);
+    searchRef.current = setTimeout(() => { setPage(1); fetchOrders(1, search, statusFilter, fulfillmentFilter); }, 300);
+  }, [search, statusFilter, fulfillmentFilter, fetchOrders]);
 
-  useEffect(() => { fetchOrders(page, search, statusFilter); }, [page]); // eslint-disable-line
+  useEffect(() => { fetchOrders(page, search, statusFilter, fulfillmentFilter); }, [page]); // eslint-disable-line
 
   const totalPages = Math.ceil(total / LIMIT);
 
@@ -490,7 +494,7 @@ export function OrdersAdminClient() {
             <option value="">All statuses</option>
             {ALL_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
           </select>
-          {/* Quick-filter pills */}
+          {/* Quick-filter pills — status */}
           <button
             onClick={() => { setStatusFilter(statusFilter === "delivered" ? "" : "delivered"); setPage(1); }}
             className={`rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
@@ -511,8 +515,31 @@ export function OrdersAdminClient() {
           >
             Cancelled
           </button>
+
+          {/* Quick-filter pills — fulfillment type */}
           <button
-            onClick={() => fetchOrders(page, search, statusFilter)}
+            onClick={() => { setFulfillmentFilter(fulfillmentFilter === "available_now" ? "" : "available_now"); setPage(1); }}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
+              fulfillmentFilter === "available_now"
+                ? "bg-sky-600 text-white border-sky-600"
+                : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+            }`}
+          >
+            Ship Now
+          </button>
+          <button
+            onClick={() => { setFulfillmentFilter(fulfillmentFilter === "sourced_for_you" ? "" : "sourced_for_you"); setPage(1); }}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
+              fulfillmentFilter === "sourced_for_you"
+                ? "bg-violet-600 text-white border-violet-600"
+                : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+            }`}
+          >
+            Sourced for You
+          </button>
+
+          <button
+            onClick={() => fetchOrders(page, search, statusFilter, fulfillmentFilter)}
             className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-3 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             Refresh
