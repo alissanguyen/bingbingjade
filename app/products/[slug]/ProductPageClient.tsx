@@ -31,6 +31,8 @@ interface ProductClient {
   tier: string[];
   size: number;
   size_detailed: (number | null)[] | null;
+  is_oval: boolean;
+  wrist_size: string | null;
   price_display_usd: number | null;
   sale_price_usd: number | null;
   description: string | null;
@@ -411,7 +413,19 @@ export function ProductPageClient({ product, productImages, productVideos, optio
                   </span>
                 ))} mm
               </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">size × width × thickness</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                {product.is_oval
+                  ? "long dia × short dia × width × thickness"
+                  : "size × width × thickness"}
+              </p>
+            </div>
+          )}
+
+          {/* Wrist size (oval bangles only) */}
+          {product.wrist_size && (
+            <div className="IndividualProduct_WristSize">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">Suitable Wrist Size</p>
+              <p className="text-sm text-gray-700 dark:text-gray-300">{product.wrist_size}</p>
             </div>
           )}
 
