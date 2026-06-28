@@ -567,7 +567,9 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
     imported_price_vnd: "",
   });
   const [selectedTiers, setSelectedTiers] = useState<string[]>([]);
-  const [sizeDetailed, setSizeDetailed] = useState<[string, string, string]>(["", "", ""]);
+  const [sizeDetailed, setSizeDetailed] = useState<string[]>(["", "", ""]);
+  const [isOval, setIsOval] = useState(false);
+  const [wristSize, setWristSize] = useState("");
   const [priceHint, setPriceHint] = useState<string | null>(null);
 
   function suggestPrice() {
@@ -705,6 +707,8 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
       if (inventoryType) fd.append("inventory_type", inventoryType);
       fd.append("sku", sku);
       sizeDetailed.forEach((v, i) => fd.append(`size_detailed_${i}`, v));
+      fd.append("is_oval", String(isOval));
+      if (wristSize) fd.append("wrist_size", wristSize);
       imageUrls.forEach((url) => fd.append("imageUrls", url));
       videoUrls.forEach((url) => fd.append("videoUrls", url));
 
@@ -736,6 +740,8 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
         setVideos([]);
         setIsFeatured(false);
         setSizeDetailed(["", "", ""]);
+        setIsOval(false);
+        setWristSize("");
         setHasVariants(false);
         setOptionRows([blankRow()]);
       }
@@ -844,30 +850,78 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
             </div>
           </div>
           <div>
-            <label className={labelClass}>Size <span className="text-red-400">*</span></label>
-            <input required type="number" step="0.1" value={form.size} onChange={set("size")} placeholder="e.g. 54" className={inputClass} />
+            <label className={labelClass}>Size</label>
+            <input
+              type="text"
+              value={form.size}
+              onChange={set("size")}
+              placeholder="e.g. 54, 7.2–7.5, Varies"
+              className={inputClass}
+            />
           </div>
+
+          {form.category === "bangle" && (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !isOval;
+                  setIsOval(next);
+                  setSizeDetailed(next ? ["", "", "", ""] : ["", "", ""]);
+                }}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${isOval ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600"}`}
+                aria-pressed={isOval}
+              >
+                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${isOval ? "translate-x-4" : "translate-x-1"}`} />
+              </button>
+              <span className="text-sm text-gray-700 dark:text-gray-300">Oval bangle</span>
+            </div>
+          )}
+
           <div>
             <label className={labelClass}>
               Detailed Dimensions
-              <span className="ml-2 font-normal text-gray-400 dark:text-gray-500">size × width × thickness (mm)</span>
+              <span className="ml-2 font-normal text-gray-400 dark:text-gray-500">
+                {isOval && form.category === "bangle"
+                  ? "long dia × short dia × width × thickness (mm)"
+                  : "size × width × thickness (mm)"}
+              </span>
             </label>
-            <div className="grid grid-cols-3 gap-3">
-              {(["Size", "Width", "Thickness"] as const).map((label, i) => (
-                <div key={i} className="relative">
+            <div className={`grid gap-3 ${isOval && form.category === "bangle" ? "grid-cols-4" : "grid-cols-3"}`}>
+              {(isOval && form.category === "bangle"
+                ? ["Long Dia", "Short Dia", "Width", "Thickness"]
+                : ["Size", "Width", "Thickness"]
+              ).map((label, i) => (
+                <div key={i}>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
                     placeholder={label}
-                    value={sizeDetailed[i]}
-                    onChange={(e) => setSizeDetailed((prev) => { const next = [...prev] as [string, string, string]; next[i] = e.target.value; return next; })}
+                    value={sizeDetailed[i] ?? ""}
+                    onChange={(e) => setSizeDetailed((prev) => { const next = [...prev]; next[i] = e.target.value; return next; })}
                     className={inputClass}
                   />
                 </div>
               ))}
             </div>
           </div>
+
+          {isOval && form.category === "bangle" && (
+            <div>
+              <label className={labelClass}>
+                Suitable for wrist size
+                <span className="ml-2 font-normal text-gray-400 dark:text-gray-500">text, e.g. up to 53mm</span>
+              </label>
+              <input
+                type="text"
+                value={wristSize}
+                onChange={(e) => setWristSize(e.target.value)}
+                placeholder="e.g. up to 53mm, fits wrist 14–16cm"
+                className={inputClass}
+              />
+            </div>
+          )}
         </div>
       </section>
 

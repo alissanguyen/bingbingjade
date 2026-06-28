@@ -157,8 +157,10 @@ interface ProductData {
   videos: string[];
   color: string[];
   tier: string[];
-  size: number;
+  size: string | null;
   size_detailed: (number | null)[] | null;
+  is_oval: boolean;
+  wrist_size: string | null;
   description: string | null;
   blemishes: string | null;
   price_display_usd: number | null;
@@ -378,22 +380,28 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
   const [showPrice, setShowPrice] = useState(product.show_price ?? true);
   const [status, setStatus] = useState<"available" | "sold" | "on_sale" | "archived">(product.status ?? "available");
 
+  const [isOval, setIsOval] = useState(product.is_oval ?? false);
+  const [wristSize, setWristSize] = useState(product.wrist_size ?? "");
+
   const [form, setForm] = useState({
     name: product.name,
     category: product.category,
     origin: product.origin,
-    size: String(product.size),
+    size: product.size ?? "",
     description: product.description ?? "",
     blemishes: product.blemishes ?? "",
     price_display_usd: product.price_display_usd != null ? String(product.price_display_usd) : "",
     sale_price_usd: product.sale_price_usd != null ? String(product.sale_price_usd) : "",
     imported_price_vnd: String(product.imported_price_vnd),
   });
-  const [sizeDetailed, setSizeDetailed] = useState<[string, string, string]>([
-    product.size_detailed?.[0] != null ? String(product.size_detailed[0]) : "",
-    product.size_detailed?.[1] != null ? String(product.size_detailed[1]) : "",
-    product.size_detailed?.[2] != null ? String(product.size_detailed[2]) : "",
-  ]);
+  const initSizeDetailed = (): string[] => {
+    const sd = product.size_detailed;
+    if ((product.is_oval ?? false) && sd && sd.length >= 4) {
+      return [0, 1, 2, 3].map((i) => (sd[i] != null ? String(sd[i]) : ""));
+    }
+    return [0, 1, 2].map((i) => (sd?.[i] != null ? String(sd[i]) : ""));
+  };
+  const [sizeDetailed, setSizeDetailed] = useState<string[]>(initSizeDetailed);
   const [priceHint, setPriceHint] = useState<string | null>(null);
 
   function suggestPrice() {
@@ -590,6 +598,8 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       fd.append("is_clearance", String(isIsClearance));
       fd.append("show_price", String(showPrice));
       fd.append("status", status);
+      fd.append("is_oval", String(isOval));
+      fd.append("wrist_size", wristSize);
       sizeDetailed.forEach((v, i) => fd.append(`size_detailed_${i}`, v));
       selectedColors.forEach((c) => fd.append("color", c));
       selectedTiers.forEach((t) => fd.append("tier", t));
@@ -720,32 +730,69 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
               })}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>Size <span className="text-red-400">*</span></label>
-              <input required type="number" step="0.1" value={form.size} onChange={set("size")} className={inputClass} />
-            </div>
+          <div>
+            <label className={labelClass}>Size</label>
+            <input type="text" value={form.size} onChange={set("size")} placeholder="e.g. 54, 7.2–7.5, Varies" className={inputClass} />
           </div>
+
+          {form.category === "bangle" && (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !isOval;
+                  setIsOval(next);
+                  setSizeDetailed(next ? ["", "", "", ""] : ["", "", ""]);
+                }}
+                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${isOval ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600"}`}
+              >
+                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${isOval ? "translate-x-4" : "translate-x-1"}`} />
+              </button>
+              <span className="text-sm text-gray-700 dark:text-gray-300">Oval bangle</span>
+            </div>
+          )}
+
           <div>
             <label className={labelClass}>
               Detailed Dimensions
-              <span className="ml-2 font-normal text-gray-400 dark:text-gray-500">size × width × thickness (mm)</span>
+              <span className="ml-2 font-normal text-gray-400 dark:text-gray-500">
+                {isOval && form.category === "bangle" ? "long dia × short dia × width × thickness" : "size × width × thickness"} (mm)
+              </span>
             </label>
-            <div className="grid grid-cols-3 gap-3">
-              {(["Size", "Width", "Thickness"] as const).map((label, i) => (
+            <div className={`grid gap-3 ${isOval && form.category === "bangle" ? "grid-cols-4" : "grid-cols-3"}`}>
+              {(isOval && form.category === "bangle"
+                ? ["Long Dia", "Short Dia", "Width", "Thickness"]
+                : ["Size", "Width", "Thickness"]
+              ).map((label, i) => (
                 <input
                   key={i}
                   type="number"
                   step="0.01"
                   min="0"
                   placeholder={label}
-                  value={sizeDetailed[i]}
-                  onChange={(e) => setSizeDetailed((prev) => { const next = [...prev] as [string, string, string]; next[i] = e.target.value; return next; })}
+                  value={sizeDetailed[i] ?? ""}
+                  onChange={(e) => setSizeDetailed((prev) => { const next = [...prev]; next[i] = e.target.value; return next; })}
                   className={inputClass}
                 />
               ))}
             </div>
           </div>
+
+          {isOval && form.category === "bangle" && (
+            <div>
+              <label className={labelClass}>
+                Suitable for wrist size
+                <span className="ml-2 font-normal text-gray-400 dark:text-gray-500">text, e.g. up to 53mm</span>
+              </label>
+              <input
+                type="text"
+                value={wristSize}
+                onChange={(e) => setWristSize(e.target.value)}
+                placeholder="e.g. up to 53mm, fits wrist 14–16cm"
+                className={inputClass}
+              />
+            </div>
+          )}
         </div>
       </section>
 

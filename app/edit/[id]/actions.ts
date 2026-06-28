@@ -84,13 +84,15 @@ export async function updateProduct(
           origin: (formData.get("origin") as string) || "Myanmar",
           color: formData.getAll("color") as string[],
           tier: formData.getAll("tier") as string[],
-          size: Number(formData.get("size")),
+          size: (formData.get("size") as string) || null,
           size_detailed: (() => {
-            const vals = ["size_detailed_0", "size_detailed_1", "size_detailed_2"].map(k => {
-              const v = formData.get(k); return v !== "" && v !== null ? Number(v) : null;
-            });
+            const keys = ["size_detailed_0", "size_detailed_1", "size_detailed_2", "size_detailed_3"];
+            const vals = keys.map(k => { const v = formData.get(k); return v !== "" && v !== null ? Number(v) : null; });
+            while (vals.length > 3 && vals[vals.length - 1] === null) vals.pop();
             return vals.some(v => v !== null) ? vals : null;
           })(),
+          is_oval: formData.get("is_oval") === "true",
+          wrist_size: (formData.get("wrist_size") as string) || null,
           description: (formData.get("description") as string) || null,
           blemishes: (formData.get("blemishes") as string) || null,
           price_display_usd: formData.get("price_display_usd") ? Number(formData.get("price_display_usd")) : null,
@@ -122,13 +124,15 @@ export async function updateProduct(
         origin: (formData.get("origin") as string) || "Myanmar",
         color: formData.getAll("color"),
         tier: formData.getAll("tier"),
-        size: Number(formData.get("size")),
+        size: (formData.get("size") as string) || null,
         size_detailed: (() => {
-          const vals = ["size_detailed_0", "size_detailed_1", "size_detailed_2"].map(k => {
-            const v = formData.get(k); return v !== "" && v !== null ? Number(v) : null;
-          });
+          const keys = ["size_detailed_0", "size_detailed_1", "size_detailed_2", "size_detailed_3"];
+          const vals = keys.map(k => { const v = formData.get(k); return v !== "" && v !== null ? Number(v) : null; });
+          while (vals.length > 3 && vals[vals.length - 1] === null) vals.pop();
           return vals.some(v => v !== null) ? vals : null;
         })(),
+        is_oval: formData.get("is_oval") === "true",
+        wrist_size: (formData.get("wrist_size") as string) || null,
         description: (formData.get("description") as string) || null,
         blemishes: (formData.get("blemishes") as string) || null,
         price_display_usd: formData.get("price_display_usd") ? Number(formData.get("price_display_usd")) : null,
@@ -162,13 +166,15 @@ export async function updateProduct(
       origin: (formData.get("origin") as string) || "Myanmar",
       color: formData.getAll("color") as string[],
       tier: formData.getAll("tier") as string[],
-      size: Number(formData.get("size")),
+      size: (formData.get("size") as string) || null,
       size_detailed: (() => {
-        const vals = ["size_detailed_0", "size_detailed_1", "size_detailed_2"].map(k => {
-          const v = formData.get(k); return v !== "" && v !== null ? Number(v) : null;
-        });
+        const keys = ["size_detailed_0", "size_detailed_1", "size_detailed_2", "size_detailed_3"];
+        const vals = keys.map(k => { const v = formData.get(k); return v !== "" && v !== null ? Number(v) : null; });
+        while (vals.length > 3 && vals[vals.length - 1] === null) vals.pop();
         return vals.some(v => v !== null) ? vals : null;
       })(),
+      is_oval: formData.get("is_oval") === "true",
+      wrist_size: (formData.get("wrist_size") as string) || null,
       description: (formData.get("description") as string) || null,
       blemishes: (formData.get("blemishes") as string) || null,
       price_display_usd: formData.get("price_display_usd") ? Number(formData.get("price_display_usd")) : null,
