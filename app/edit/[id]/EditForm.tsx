@@ -1024,12 +1024,12 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
         <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Pricing</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>Listing Price (USD) <span className="text-red-400">*</span></label>
+            <label className={labelClass}>Listing Price (USD)</label>
             <div className="flex flex-wrap gap-2">
               <div className="relative flex-1">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
                 <input
-                  required type="number" step="0.01" min="0"
+                  type="number" step="0.01" min="0"
                   value={form.price_display_usd}
                   onChange={e => { set("price_display_usd")(e); setPriceHint(null); }}
                   placeholder="0.00"
@@ -1049,7 +1049,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
             {priceHint ? (
               <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500 leading-snug">{priceHint}</p>
             ) : (
-              <p className="mt-1 text-xs text-gray-400">Always required. Control visibility with the toggle below.</p>
+              <p className="mt-1 text-xs text-gray-400">Control visibility with the toggle below.</p>
             )}
           </div>
           {!isApprovedUser && (
@@ -1083,10 +1083,10 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
           </div>
           {!isApprovedUser && (
             <div>
-              <label className={labelClass}>Imported Price (VND) <span className="text-red-400">*</span></label>
+              <label className={labelClass}>Imported Price (VND)</label>
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">₫</span>
-                <input required type="number" min="0" value={form.imported_price_vnd} onChange={set("imported_price_vnd")} className={`${inputClass} pl-7`} />
+                <input type="number" min="0" value={form.imported_price_vnd} onChange={set("imported_price_vnd")} className={`${inputClass} pl-7`} />
               </div>
             </div>
           )}
