@@ -759,6 +759,23 @@ export function OrderDetailClient({
     }
   }
 
+  async function handleMarkPaid() {
+    setActionLoading("mark-paid");
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paidStatus: "paid" }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast("err", data.error ?? "Failed"); return; }
+      setOrder((prev) => ({ ...prev, status: "paid" }));
+      showToast("ok", "Order marked as paid");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   async function handleMarkRefunded() {
     if (!confirm("Mark this order as refunded in the database? Only use this if the refund was already issued outside of this admin panel.")) return;
     setActionLoading("mark-refunded");
@@ -1102,6 +1119,16 @@ export function OrderDetailClient({
                   {actionLoading === "resend" ? "Sending…" : "Resend Email"}
                 </button>
               </div>
+
+              {order.status === "unpaid" && !isCancelled && (
+                <button
+                  onClick={handleMarkPaid}
+                  disabled={!!actionLoading}
+                  className="w-full rounded-lg border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 disabled:opacity-60 text-emerald-700 dark:text-emerald-400 py-2.5 text-sm font-medium transition-colors"
+                >
+                  {actionLoading === "mark-paid" ? "Saving…" : "Mark as Paid"}
+                </button>
+              )}
 
               {order.status !== "refunded" && order.stripe_payment_intent_id && (
                 <button

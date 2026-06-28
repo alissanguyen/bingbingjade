@@ -71,12 +71,13 @@ export async function PATCH(
   const body = await req.json();
 
   const {
-    orderStatus, estimatedDeliveryDate, notes, sendEmail, orderType,
+    orderStatus, paidStatus, estimatedDeliveryDate, notes, sendEmail, orderType,
     customerName, customerEmail, customerPhone, orderNumber, createdAt,
     shippingAddress, feeBreakdown, orderItems, newItems, deleteItemIds,
     inventoryExpenseSource, inventoryExpenseAmount, inventoryExpenseNotes,
   } = body as {
     orderStatus?: string;
+    paidStatus?: "paid" | "unpaid";
     estimatedDeliveryDate?: string | null;
     notes?: string | null;
     sendEmail?: boolean;
@@ -146,6 +147,7 @@ export async function PATCH(
 
   const updates: Record<string, unknown> = {};
   if (orderStatus !== undefined) updates.order_status = orderStatus;
+  if (paidStatus !== undefined) updates.status = paidStatus;
   if (estimatedDeliveryDate !== undefined) updates.estimated_delivery_date = estimatedDeliveryDate || null;
   if (notes !== undefined) updates.notes = notes || null;
   if (orderType !== undefined) updates.order_type = orderType;
