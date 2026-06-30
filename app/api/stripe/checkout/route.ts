@@ -340,7 +340,7 @@ export async function POST(req: NextRequest) {
   // ── Validate shipping address ─────────────────────────────────────────────────
   const addr = body.shippingAddress;
   const allowedCountryCodes = new Set(ALLOWED_COUNTRIES.map((c) => c.code));
-  if (!addr || !addr.name || !addr.line1 || !addr.city || !addr.postal || !addr.country) {
+  if (!addr || !addr.name || !addr.line1 || !addr.postal || !addr.country) {
     return NextResponse.json({ error: "Shipping address is required." }, { status: 400 });
   }
   if (!allowedCountryCodes.has(addr.country)) {
