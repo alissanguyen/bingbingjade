@@ -795,7 +795,7 @@ export function CheckoutClient() {
                       <p className="text-[10px] sm:text-[15px] text-stone-400 dark:text-gray-500 mt-0.5">
                         5% of item value
                       </p>
-                      {subtotal > 1500 && (
+                      {subtotal > 5000 && (
                         <p className="text-[10px] sm:text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5 tracking-wide font-medium">
                           Advised for orders of this value
                         </p>
