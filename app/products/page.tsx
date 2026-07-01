@@ -42,26 +42,13 @@ interface ProductCard {
   created_at: string;
 }
 
-interface ProductListRow {
-  id: string;
-  name: string;
+interface CountRow {
   category: string;
-  origin: string;
-  color: string[] | null;
-  tier: string[];
-  size: number;
-  price_display_usd: number | null;
-  sale_price_usd: number | null;
-  show_price: boolean;
-  is_featured: boolean;
-  is_clearance: boolean;
-  is_published: boolean;
-  quick_ship: boolean;
   status: string;
-  slug: string;
-  public_id: string;
-  renewed_at: string | null;
-  created_at: string;
+  is_clearance: boolean;
+  origin: string | null;
+  color: string[] | null;
+  quick_ship: boolean;
 }
 
 interface OptionPriceRow {
@@ -99,7 +86,6 @@ export const revalidate = 120;
 const PRODUCT_LIST_SELECT = "id, name, category, origin, color, tier, size, price_display_usd, sale_price_usd, show_price, is_featured, is_clearance, status, slug, public_id, is_published, quick_ship, renewed_at, created_at";
 const PRODUCT_CARD_SELECT = `${PRODUCT_LIST_SELECT}, images, description`;
 const PAGE_SIZE = 18;
-const PAGE_WINDOW_SIZE = PAGE_SIZE * 3;
 
 export type ProductSearchParams = {
   colors?: string;
@@ -124,50 +110,17 @@ export type ProductListingIntro = {
   breadcrumbs?: { label: string; href?: string }[];
 };
 
-const getCachedProductList = unstable_cache(
-  async (includeDrafts: boolean) => {
-    const query = supabase
-      .from("products")
-      .select(PRODUCT_LIST_SELECT)
-      .order("created_at", { ascending: false })
-      .limit(10000);
-
-    if (!includeDrafts) query.eq("is_published", true);
-
-    const { data, error } = await query.returns<ProductListRow[]>();
-    return { products: data ?? [], errorMessage: error?.message ?? null };
-  },
-  ["public-products-list-v2"],
-  { revalidate: 120 }
-);
-
-const getCachedProductOptions = unstable_cache(
-  async (productIds: string[] | "all") => {
-    const query = supabase
-      .from("product_options")
-      .select("product_id, price_usd, sale_price_usd, status");
-
-    if (Array.isArray(productIds)) query.in("product_id", productIds);
-    else query.limit(10000);
-
-    const { data } = await query.returns<OptionPriceRow[]>();
-    return data ?? [];
-  },
-  ["public-product-options-v2"],
-  { revalidate: 120 }
-);
-
-const getCachedProductCards = unstable_cache(
-  async (productIds: string[]) => {
-    if (productIds.length === 0) return [] as ProductCard[];
+const getCachedCountData = unstable_cache(
+  async () => {
     const { data } = await supabase
       .from("products")
-      .select(PRODUCT_CARD_SELECT)
-      .in("id", productIds)
-      .returns<ProductCard[]>();
+      .select("category, status, is_clearance, origin, color, quick_ship")
+      .eq("is_published", true)
+      .limit(10000)
+      .returns<CountRow[]>();
     return data ?? [];
   },
-  ["public-product-card-window-v1"],
+  ["products-count-data-v1"],
   { revalidate: 120 }
 );
 
@@ -200,152 +153,13 @@ export async function ProductListing({
 
   const isDev = process.env.NODE_ENV === "development";
 
-  const { products: allProductsList, errorMessage } = await getCachedProductList(isDev);
+  // Query A — sidebar counts (lightweight, cached)
+  const countData = await getCachedCountData();
 
-  const priceSensitive = sort === "price_asc" || sort === "price_desc" || minPrice !== null || maxPrice !== null;
-  const allOptions = priceSensitive ? await getCachedProductOptions("all") : [];
-
-  const allProductIds = allProductsList.map((p) => p.id);
-  const allEventPrices = priceSensitive ? await getActiveEventPrices(allProductIds) : new Map();
-
-  if (errorMessage) {
-    console.error("Failed to load products:", errorMessage);
-  }
-
-  // Build option map: productId → options[]
-  const optionMap = new Map<string, OptionPriceRow[]>();
-  for (const opt of allOptions) {
-    const arr = optionMap.get(opt.product_id) ?? [];
-    arr.push(opt);
-    optionMap.set(opt.product_id, arr);
-  }
-
-  // Get effective available-option prices for a product.
-  // Uses sale_price_usd when set, otherwise price_usd, falling back to product.price_display_usd.
-  function getVariantPrices(p: ProductCard): number[] {
-    const opts = optionMap.get(p.id) ?? [];
-    const available = opts.filter((o) => o.status !== "sold");
-    const pool = available.length > 0 ? available : opts; // if all sold, still compute range
-    return pool
-      .map((o) => o.sale_price_usd ?? o.price_usd ?? p.price_display_usd)
-      .filter((v): v is number => v != null);
-  }
-
-  // Effective sort price: event price → sale price → min variant → display price
-  function effectiveSortPrice(p: ProductCard): number {
-    const ep = allEventPrices.get(p.id)?.computedBasePrice ?? null;
-    if (ep != null) return ep;
-    if ((p.status === "on_sale" || p.is_clearance) && p.sale_price_usd != null) return p.sale_price_usd;
-    const vp = getVariantPrices(p);
-    return vp.length > 0 ? Math.min(...vp) : (p.price_display_usd ?? Infinity);
-  }
-
-  const products = allProductsList.map((p): ProductCard => ({
-    ...p,
-    images: [],
-    description: null,
-  })).filter((p) => {
-    // Search filter
-    if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    // Category filter (supports comma-separated multi-category, e.g. ring,earring)
-    if (selectedCategories.length > 0 && !selectedCategories.includes(p.category)) return false;
-    // Shipping filter
-    if (selectedShipping.length > 0) {
-      const matchesShipNow = selectedShipping.includes("ship_now") && p.quick_ship;
-      const matchesStandard = selectedShipping.includes("standard") && !p.quick_ship;
-      if (!matchesShipNow && !matchesStandard) return false;
-    }
-    // Clearance filter — independent of status
-    if (filterClearance && !p.is_clearance) return false;
-    // Status filter — "available" also matches "on_sale" products
-    if (selectedStatuses.length > 0) {
-      const effectiveStatus = selectedStatuses.includes("available") && p.status === "on_sale"
-        ? "available"
-        : p.status;
-      if (!selectedStatuses.includes(effectiveStatus)) return false;
-    }
-    // Origin filter
-    if (selectedOrigins.length > 0 && !selectedOrigins.includes(p.origin)) return false;
-    // Color filter — product must have at least one of the selected colors
-    if (selectedColors.length > 0) {
-      const productColors = p.color ?? [];
-      if (!selectedColors.some((c) => productColors.includes(c))) return false;
-    }
-    // Size filter
-    if (minSize !== null && (p.size == null || p.size < minSize)) return false;
-    if (maxSize !== null && (p.size == null || p.size > maxSize)) return false;
-    // Price filter — match if any available variant price overlaps the filter range
-    if (minPrice !== null || maxPrice !== null) {
-      const effectivePrice =
-        (p.status === "on_sale" || p.is_clearance) && p.sale_price_usd != null ? p.sale_price_usd : null;
-      const vPrices = getVariantPrices(p);
-      if (vPrices.length > 0) {
-        const vMin = Math.min(...vPrices);
-        const vMax = Math.max(...vPrices);
-        const checkMin = effectivePrice ?? vMin;
-        const checkMax = effectivePrice ?? vMax;
-        if (minPrice !== null && checkMax < minPrice) return false;
-        if (maxPrice !== null && checkMin > maxPrice) return false;
-      } else {
-        const ep = (p.status === "on_sale" || p.is_clearance) && p.sale_price_usd != null ? p.sale_price_usd : p.price_display_usd;
-        if (minPrice !== null && (ep == null || ep < minPrice)) return false;
-        if (maxPrice !== null && (ep == null || ep > maxPrice)) return false;
-      }
-    }
-    return true;
-  });
-
-  // Re-sort by effective listing date: renewed_at takes priority over created_at
-  products.sort((a, b) => {
-    const da = new Date((a.renewed_at ?? a.created_at) as string).getTime();
-    const db = new Date((b.renewed_at ?? b.created_at) as string).getTime();
-    return db - da;
-  });
-
-  // Sort / arrange into the final display order
-  let sorted: ProductCard[];
-  if (sort === "" || sort === "newest") {
-    // Keep sold at the end
-    const unsold = products.filter((p) => p.status !== "sold");
-    const sold = products.filter((p) => p.status === "sold");
-
-    sorted = [...unsold, ...sold];
-  } else if (sort === "price_asc" || sort === "price_desc") {
-    sorted = [...products].sort((a, b) => {
-      const pa = effectiveSortPrice(a);
-      const pb = effectiveSortPrice(b);
-      return sort === "price_asc" ? pa - pb : pb - pa;
-    });
-  } else if (sort === "size_asc" || sort === "size_desc") {
-    sorted = [...products].sort((a, b) => {
-      const sa = a.size ?? Infinity;
-      const sb = b.size ?? Infinity;
-      return sort === "size_asc" ? sa - sb : sb - sa;
-    });
-  } else {
-    // "Featured": round-robin interleave across categories so a bulk upload of
-    // one type doesn't flood the first page. Within each group, newest-first
-    // order is preserved (DB returns created_at DESC).
-    const groups = new Map<string, ProductCard[]>();
-    for (const p of products) {
-      const key = p.category ?? "other";
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key)!.push(p);
-    }
-    const queues = [...groups.values()];
-    sorted = [];
-    while (queues.some((q) => q.length > 0)) {
-      for (const q of queues) {
-        if (q.length > 0) sorted.push(q.shift()!);
-      }
-    }
-  }
-
-  // Compute counts from the lightweight product list scoped to the selected category.
-  // The image-bearing card rows are loaded later only for a 3-page window.
+  // Compute counts from the lightweight rows scoped to the selected category.
   const countBase = selectedCategories.length > 0
-    ? allProductsList.filter((p) => selectedCategories.includes(p.category))
-    : allProductsList;
+    ? countData.filter((p) => selectedCategories.includes(p.category))
+    : countData;
   const statusCounts: Record<string, number> = {};
   const originCounts: Record<string, number> = {};
   const colorCounts: Record<string, number> = {};
@@ -362,39 +176,138 @@ export async function ProductListing({
     shippingCounts[shipKey] = (shippingCounts[shipKey] ?? 0) + 1;
   }
 
-  const totalCount = sorted.length;
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
-  const safePage = Math.min(currentPage, Math.max(1, totalPages));
-  const pageWindowStart = Math.floor((safePage - 1) / 3) * PAGE_WINDOW_SIZE;
-  const pageWindowEnd = Math.min(pageWindowStart + PAGE_WINDOW_SIZE, totalCount);
-  const windowProducts = sorted.slice(pageWindowStart, pageWindowEnd);
-  const windowIds = windowProducts.map((p) => p.id);
+  // Query B — paginated product display with all filters pushed to the DB
+  let q: any = supabase.from("products").select(PRODUCT_CARD_SELECT, { count: "exact" });
 
-  const [cardRows, visibleOptions, visibleEventPrices] = windowIds.length > 0
-    ? await Promise.all([
-        getCachedProductCards(windowIds),
-        priceSensitive
-          ? Promise.resolve(allOptions.filter((o) => windowIds.includes(o.product_id)))
-          : getCachedProductOptions(windowIds),
-        getActiveEventPrices(windowIds),
-      ])
-    : [[] as ProductCard[], [] as OptionPriceRow[], new Map()];
-
-  if (!priceSensitive) {
-    for (const opt of visibleOptions) {
-      const arr = optionMap.get(opt.product_id) ?? [];
-      arr.push(opt);
-      optionMap.set(opt.product_id, arr);
-    }
+  // Published filter
+  if (!isDev) {
+    q = q.eq("is_published", true);
   }
 
-  const cardRowMap = new Map(cardRows.map((p) => [p.id, p]));
-  const windowProductsWithCards = windowProducts.map((p) => cardRowMap.get(p.id) ?? p);
-  const pageOffsetInWindow = (safePage - 1) * PAGE_SIZE - pageWindowStart;
-  const paginated = windowProductsWithCards.slice(pageOffsetInWindow, pageOffsetInWindow + PAGE_SIZE);
-  const eventPrices = priceSensitive ? allEventPrices : visibleEventPrices;
+  // Category filter
+  if (selectedCategories.length > 0) {
+    q = q.in("category", selectedCategories);
+  }
 
-  const paginatedWithImages = paginated.map((p) => ({
+  // Status filter — "available" also includes "on_sale"
+  if (selectedStatuses.length > 0) {
+    const dbStatuses = [...selectedStatuses];
+    if (selectedStatuses.includes("available") && !dbStatuses.includes("on_sale")) {
+      dbStatuses.push("on_sale");
+    }
+    q = q.in("status", dbStatuses);
+  }
+
+  // Shipping filter
+  if (selectedShipping.length === 1) {
+    if (selectedShipping[0] === "ship_now") {
+      q = q.eq("quick_ship", true);
+    } else if (selectedShipping[0] === "standard") {
+      q = q.eq("quick_ship", false);
+    }
+  }
+  // if both or neither are selected — no filter
+
+  // Clearance filter
+  if (filterClearance) {
+    q = q.eq("is_clearance", true);
+  }
+
+  // Origin filter
+  if (selectedOrigins.length > 0) {
+    q = q.in("origin", selectedOrigins);
+  }
+
+  // Color filter — product must overlap with selected colors
+  if (selectedColors.length > 0) {
+    q = q.overlaps("color", selectedColors);
+  }
+
+  // Size filter
+  if (minSize !== null) {
+    q = q.gte("size", minSize);
+  }
+  if (maxSize !== null) {
+    q = q.lte("size", maxSize);
+  }
+
+  // Search filter
+  if (searchQuery) {
+    q = q.ilike("name", `%${searchQuery}%`);
+  }
+
+  // Price filter
+  if (minPrice !== null) {
+    q = q.or(`price_display_usd.gte.${minPrice},sale_price_usd.gte.${minPrice}`);
+  }
+  if (maxPrice !== null) {
+    q = q.or(`price_display_usd.lte.${maxPrice},sale_price_usd.lte.${maxPrice}`);
+  }
+
+  // Sort
+  if (sort === "price_asc") {
+    q = q.order("price_display_usd", { ascending: true, nullsFirst: false });
+  } else if (sort === "price_desc") {
+    q = q.order("price_display_usd", { ascending: false, nullsFirst: false });
+  } else if (sort === "size_asc") {
+    q = q.order("size", { ascending: true, nullsFirst: false });
+  } else if (sort === "size_desc") {
+    q = q.order("size", { ascending: false, nullsFirst: true });
+  } else {
+    // "newest", "featured", or default
+    q = q
+      .order("renewed_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false });
+  }
+
+  // Pagination range
+  const from = (currentPage - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+  q = q.range(from, to);
+
+  const { data: rawData, count: rawCount, error } = await q;
+  const pageProducts = (rawData ?? []) as unknown as ProductCard[];
+  const totalCount = rawCount ?? 0;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const safePage = Math.min(currentPage, Math.max(1, totalPages));
+
+  if (error) {
+    console.error("Failed to load products:", error);
+  }
+
+  // Options and event prices — only for the current page's products
+  const pageIds = pageProducts.map((p) => p.id);
+  const [visOptResult, pageEventPrices] = pageIds.length > 0
+    ? await Promise.all([
+        supabase
+          .from("product_options")
+          .select("product_id, price_usd, sale_price_usd, status")
+          .in("product_id", pageIds),
+        getActiveEventPrices(pageIds),
+      ])
+    : [{ data: [] as OptionPriceRow[] }, new Map<string, { computedBasePrice: number; campaignName: string }>()];
+
+  const optionMap = new Map<string, OptionPriceRow[]>();
+  for (const opt of (visOptResult.data ?? []) as OptionPriceRow[]) {
+    const arr = optionMap.get(opt.product_id) ?? [];
+    arr.push(opt);
+    optionMap.set(opt.product_id, arr);
+  }
+
+  const eventPrices = pageEventPrices;
+
+  // Get effective available-option prices for a product.
+  // Uses sale_price_usd when set, otherwise price_usd, falling back to product.price_display_usd.
+  function getVariantPrices(p: ProductCard): number[] {
+    const opts = optionMap.get(p.id) ?? [];
+    const available = opts.filter((o) => o.status !== "sold");
+    const pool = available.length > 0 ? available : opts; // if all sold, still compute range
+    return pool
+      .map((o) => o.sale_price_usd ?? o.price_usd ?? p.price_display_usd)
+      .filter((v): v is number => v != null);
+  }
+
+  const paginatedWithImages = pageProducts.map((p) => ({
     ...p,
     images: (p.images ?? []).slice(0, 2).filter(Boolean),
   }));
@@ -476,7 +389,7 @@ export async function ProductListing({
             </p>
             <SortSelect initialSort={sort} />
           </div>
-          {sorted.length === 0 ? (
+          {totalCount === 0 ? (
             <p className="text-gray-400 dark:text-gray-600">
               No products match your filters.
             </p>
