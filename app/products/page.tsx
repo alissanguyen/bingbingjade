@@ -254,10 +254,8 @@ export async function ProductListing({
   } else if (sort === "size_desc") {
     q = q.order("size", { ascending: false, nullsFirst: true });
   } else {
-    // "newest", "featured", or default
-    q = q
-      .order("renewed_at", { ascending: false, nullsFirst: false })
-      .order("created_at", { ascending: false });
+    // "newest", "featured", or default — sort by COALESCE(renewed_at, created_at)
+    q = q.order("effective_date", { ascending: false });
   }
 
   // Pagination range
