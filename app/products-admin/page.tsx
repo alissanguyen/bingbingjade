@@ -38,7 +38,8 @@ export default async function ProductsAdminPage() {
       .from("products")
       .select("id, name, category, status, is_published, is_clearance, quick_ship, price_display_usd, public_id, slug, images, created_at, renewed_at")
       .eq("pending_approval", false)
-      .order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })
+      .limit(10000),
     supabaseAdmin
       .from("products")
       .select("id, name, category, images, pending_data, created_by")
