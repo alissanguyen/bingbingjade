@@ -129,14 +129,15 @@ const getCachedProductList = unstable_cache(
     const query = supabase
       .from("products")
       .select(PRODUCT_LIST_SELECT)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(10000);
 
     if (!includeDrafts) query.eq("is_published", true);
 
     const { data, error } = await query.returns<ProductListRow[]>();
     return { products: data ?? [], errorMessage: error?.message ?? null };
   },
-  ["public-products-list-v1"],
+  ["public-products-list-v2"],
   { revalidate: 120 }
 );
 
@@ -147,11 +148,12 @@ const getCachedProductOptions = unstable_cache(
       .select("product_id, price_usd, sale_price_usd, status");
 
     if (Array.isArray(productIds)) query.in("product_id", productIds);
+    else query.limit(10000);
 
     const { data } = await query.returns<OptionPriceRow[]>();
     return data ?? [];
   },
-  ["public-product-options-v1"],
+  ["public-product-options-v2"],
   { revalidate: 120 }
 );
 
