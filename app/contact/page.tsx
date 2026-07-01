@@ -16,7 +16,8 @@ export default async function Contact({
   const { data: rawProducts } = await supabase
     .from("products")
     .select("id, name, category, status, price_display_usd, sale_price_usd, public_id, slug, images")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(10000);
 
   const raw = rawProducts ?? [];
   const firstImages = raw.map((p) => p.images?.[0] ?? "");

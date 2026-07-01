@@ -8,7 +8,8 @@ export default async function EditPage() {
   const { data: products } = await supabaseAdmin
     .from("products")
     .select("id, name, category, status, is_published, images")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(10000);
 
   const raw = products ?? [];
   const firstImages = raw.map((p) => p.images?.[0] ?? "");

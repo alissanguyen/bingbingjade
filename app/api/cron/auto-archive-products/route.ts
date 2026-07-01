@@ -27,7 +27,8 @@ export async function GET(req: NextRequest) {
     .eq("is_published", true)
     .not("status", "in", '("sold","archived")')
     .not("published_at", "is", null)
-    .lte("published_at", cutoff);
+    .lte("published_at", cutoff)
+    .limit(10000);
 
   if (fetchError) {
     console.error("[auto-archive] Fetch error:", fetchError.message);
