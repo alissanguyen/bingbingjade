@@ -51,6 +51,7 @@ export function ProductsAdminClient({
   const [catFilter, setCatFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [shipFilter, setShipFilter] = useState<"standard" | "ship_now" | null>(null);
+  const [clearanceFilter, setClearanceFilter] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -63,6 +64,7 @@ export function ProductsAdminClient({
     if (statusFilter && p.status !== statusFilter) return false;
     if (shipFilter === "ship_now" && !p.quick_ship) return false;
     if (shipFilter === "standard" && p.quick_ship) return false;
+    if (clearanceFilter && !p.is_clearance) return false;
     return true;
   });
 
@@ -347,6 +349,21 @@ export function ProductsAdminClient({
               </button>
             ))}
           </div>
+
+          <div className="w-px bg-gray-200 dark:bg-gray-700 self-stretch mx-1" />
+
+          {/* Clearance pill */}
+          <button
+            type="button"
+            onClick={() => setClearanceFilter((prev) => !prev)}
+            className={`rounded-full px-3 py-1 text-xs font-medium border transition-all ${
+              clearanceFilter
+                ? "border-orange-400 bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400"
+                : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
+            }`}
+          >
+            Clearance
+          </button>
         </div>
 
         {/* Bulk action bar */}
@@ -472,7 +489,7 @@ export function ProductsAdminClient({
         <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           {filtered.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-12">
-              {query || catFilter || statusFilter || shipFilter ? "No products match your filters." : "No products yet."}
+              {query || catFilter || statusFilter || shipFilter || clearanceFilter ? "No products match your filters." : "No products yet."}
             </p>
           ) : (
             <>
