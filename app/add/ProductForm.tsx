@@ -26,7 +26,7 @@ interface Props {
 
 const CATEGORIES: ProductCategory[] = ["bracelet", "bangle", "ring", "pendant", "necklace", "set", "earring", "raw_material"];
 
-const TIERS = ["Been", "Glutinous", "Fine Glutinous", "Very Fine Glutinous", "Icy Glutinous", "Icy", "High Icy", "Glassy", "Longshi"];
+const TIERS = ["Bean", "Glutinous", "Fine Glutinous", "Very Fine Glutinous", "Icy Glutinous", "Icy", "High Icy", "Glassy", "Longshi"];
 
 const COLORS: { value: string; label: string; swatch: string; border?: string }[] = [
   { value: "white", label: "White", swatch: "bg-white", border: "border-gray-300" },
