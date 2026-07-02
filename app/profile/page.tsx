@@ -63,7 +63,8 @@ export default async function ProfilePage() {
       .from("products")
       .select("id, name, category, images, pending_approval, pending_data, rejected_at, rejection_note, created_at")
       .eq("created_by", createdBy)
-      .order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })
+      .limit(500),
     supabaseAdmin
       .from("approved_users")
       .select("generation_tokens")

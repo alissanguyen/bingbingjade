@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { fetchAllRows } from "@/lib/supabase-fetch-all";
 import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
@@ -21,21 +22,25 @@ export async function GET(req: NextRequest) {
 
   const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  const { data: toArchive, error: fetchError } = await supabaseAdmin
-    .from("products")
-    .select("id, name, published_at")
-    .eq("is_published", true)
-    .not("status", "in", '("sold","archived")')
-    .not("published_at", "is", null)
-    .lte("published_at", cutoff)
-    .limit(10000);
-
-  if (fetchError) {
-    console.error("[auto-archive] Fetch error:", fetchError.message);
-    return NextResponse.json({ error: fetchError.message }, { status: 500 });
+  let toArchive: { id: string; name: string; published_at: string }[];
+  try {
+    toArchive = await fetchAllRows((from, to) =>
+      supabaseAdmin
+        .from("products")
+        .select("id, name, published_at")
+        .eq("is_published", true)
+        .not("status", "in", '("sold","archived")')
+        .not("published_at", "is", null)
+        .lte("published_at", cutoff)
+        .range(from, to)
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[auto-archive] Fetch error:", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 
-  if (!toArchive || toArchive.length === 0) {
+  if (toArchive.length === 0) {
     return NextResponse.json({ archived: 0 });
   }
 

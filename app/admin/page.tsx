@@ -18,7 +18,8 @@ export default async function AdminProfilePage() {
       .from("products")
       .select("id, name, category, images, pending_data, created_by")
       .eq("pending_approval", true)
-      .order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })
+      .limit(500),
     supabaseAdmin
       .from("token_requests")
       .select("id, message, requested_amount, created_at, user_id, approved_users(id, full_name, email, generation_tokens)")

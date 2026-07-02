@@ -2,6 +2,7 @@ import { AdminBarServer } from "@/app/components/AdminBarServer";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { resolveFirstImageUrl } from "@/lib/storage";
 import { getSessionUser, isAdmin } from "@/lib/approved-auth";
+import { fetchAllRows } from "@/lib/supabase-fetch-all";
 import { ProductsAdminClient } from "./ProductsAdminClient";
 
 export const dynamic = "force-dynamic";
@@ -33,23 +34,29 @@ export default async function ProductsAdminPage() {
   const session = await getSessionUser();
   const adminUser = isAdmin(session);
 
-  const [{ data: rows }, { data: pendingRows }] = await Promise.all([
-    supabaseAdmin
-      .from("products")
-      .select("id, name, category, status, is_published, is_clearance, quick_ship, price_display_usd, public_id, slug, images, created_at, renewed_at")
-      .eq("pending_approval", false)
-      .order("created_at", { ascending: false })
-      .limit(10000),
-    supabaseAdmin
-      .from("products")
-      .select("id, name, category, images, pending_data, created_by")
-      .eq("pending_approval", true)
-      .order("created_at", { ascending: false }),
+  // admin table — batched fetch so the 1000-row Supabase cap is never hit
+  const [rows, pendingRows] = await Promise.all([
+    fetchAllRows((from, to) =>
+      supabaseAdmin
+        .from("products")
+        .select("id, name, category, status, is_published, is_clearance, quick_ship, price_display_usd, public_id, slug, images, created_at, renewed_at")
+        .eq("pending_approval", false)
+        .order("created_at", { ascending: false })
+        .range(from, to)
+    ),
+    fetchAllRows((from, to) =>
+      supabaseAdmin
+        .from("products")
+        .select("id, name, category, images, pending_data, created_by")
+        .eq("pending_approval", true)
+        .order("created_at", { ascending: false })
+        .range(from, to)
+    ),
   ]);
 
   // Resolve approved-user names for pending queue
   const approvedIds = [...new Set(
-    (pendingRows ?? [])
+    pendingRows
       .map((p) => p.created_by?.startsWith("approved:") ? p.created_by.replace("approved:", "") : null)
       .filter(Boolean) as string[]
   )];
@@ -62,7 +69,7 @@ export default async function ProductsAdminPage() {
     (users ?? []).forEach((u) => { nameMap[u.id] = u.full_name; });
   }
 
-  (rows ?? []).sort((a, b) => {
+  rows.sort((a, b) => {
     const da = new Date((a.renewed_at ?? a.created_at) as string).getTime();
     const db = new Date((b.renewed_at ?? b.created_at) as string).getTime();
     return db - da;
@@ -70,7 +77,7 @@ export default async function ProductsAdminPage() {
 
   const [products, pendingProducts] = await Promise.all([
     Promise.all(
-      (rows ?? []).map(async (p) => ({
+      rows.map(async (p) => ({
         id: p.id,
         name: p.name,
         category: p.category,
@@ -85,7 +92,7 @@ export default async function ProductsAdminPage() {
       } satisfies AdminProduct))
     ),
     Promise.all(
-      (pendingRows ?? []).map(async (p) => {
+      pendingRows.map(async (p) => {
         const uid = p.created_by?.startsWith("approved:") ? p.created_by.replace("approved:", "") : null;
         return {
           id: p.id,

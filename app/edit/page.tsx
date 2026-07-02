@@ -1,17 +1,19 @@
 export const dynamic = "force-dynamic";
 
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { fetchAllRows } from "@/lib/supabase-fetch-all";
 import { resolveImageUrls, isStoragePath } from "@/lib/storage";
 import { ProductSearch } from "./ProductSearch";
 
 export default async function EditPage() {
-  const { data: products } = await supabaseAdmin
-    .from("products")
-    .select("id, name, category, status, is_published, images")
-    .order("created_at", { ascending: false })
-    .limit(10000);
-
-  const raw = products ?? [];
+  // admin product picker — batched fetch so the Supabase 1000-row cap is never hit
+  const raw = await fetchAllRows((from, to) =>
+    supabaseAdmin
+      .from("products")
+      .select("id, name, category, status, is_published, images")
+      .order("created_at", { ascending: false })
+      .range(from, to)
+  );
   const firstImages = raw.map((p) => p.images?.[0] ?? "");
   const resolvedFirstImages = firstImages.some(isStoragePath)
     ? await resolveImageUrls(firstImages)

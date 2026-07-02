@@ -3,6 +3,7 @@ export const revalidate = 120;
 import Image from "next/image";
 import { ContactForm } from "./ContactForm";
 import { supabase } from "@/lib/supabase";
+import { fetchAllRows } from "@/lib/supabase-fetch-all";
 import { resolveImageUrls, isStoragePath } from "@/lib/storage";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 
@@ -13,13 +14,14 @@ export default async function Contact({
 }) {
   const { product: preselectedProductId } = await searchParams;
 
-  const { data: rawProducts } = await supabase
-    .from("products")
-    .select("id, name, category, status, price_display_usd, sale_price_usd, public_id, slug, images")
-    .order("created_at", { ascending: false })
-    .limit(10000);
-
-  const raw = rawProducts ?? [];
+  // contact product selector — batched fetch so the Supabase 1000-row cap is never hit
+  const raw = await fetchAllRows((from, to) =>
+    supabase
+      .from("products")
+      .select("id, name, category, status, price_display_usd, sale_price_usd, public_id, slug, images")
+      .order("created_at", { ascending: false })
+      .range(from, to)
+  );
   const firstImages = raw.map((p) => p.images?.[0] ?? "");
   const resolvedFirstImages = firstImages.some(isStoragePath)
     ? await resolveImageUrls(firstImages)

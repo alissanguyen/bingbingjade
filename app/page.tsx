@@ -49,7 +49,8 @@ const getCachedFeaturedProducts = unstable_cache(
       .from("products")
       .select("id, name, category, images, tier, price_display_usd, sale_price_usd, is_clearance, status, slug, public_id, size, origin, renewed_at, created_at")
       .eq("is_featured", true)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(50);
 
     const rows = data ?? [];
     rows.sort((a, b) => {
