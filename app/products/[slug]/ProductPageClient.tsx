@@ -105,6 +105,38 @@ export function ProductPageClient({ product, productImages, productVideos, optio
   const { addToCart, items: cartItems } = useCart();
   const [addedToCart, setAddedToCart] = useState(false);
 
+  // Reservation unlock state
+  const [reservationCode, setReservationCode] = useState("");
+  const [reservationUnlocked, setReservationUnlocked] = useState(false);
+  const [reservationId, setReservationId] = useState<string | null>(null);
+  const [unlockError, setUnlockError] = useState<string | null>(null);
+  const [unlocking, setUnlocking] = useState(false);
+
+  async function handleUnlock(e: React.FormEvent) {
+    e.preventDefault();
+    if (!reservationCode.trim()) return;
+    setUnlocking(true);
+    setUnlockError(null);
+    try {
+      const res = await fetch(`/api/products/${product.public_id}/unlock-reservation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: reservationCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setUnlockError(data.error ?? "Incorrect code. Please try again.");
+      } else {
+        setReservationId(data.reservationId);
+        setReservationUnlocked(true);
+      }
+    } catch {
+      setUnlockError("Something went wrong. Please try again.");
+    } finally {
+      setUnlocking(false);
+    }
+  }
+
   // Show selector if there are multiple options or the single option has a label or size
   const hasSelector = options.length > 1 || (options.length === 1 && (options[0].label !== null || options[0].size !== null));
   // Default to the first non-sold option
@@ -179,6 +211,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
       quickShip: product.quick_ship,
       fulfillmentType: product.quick_ship ? "available_now" : "sourced_for_you",
       campaignEventId: campaignEventId ?? null,
+      reservationId: reservationId ?? null,
     };
     addToCart(cartItem);
     setAddedToCart(true);
@@ -439,7 +472,11 @@ export function ProductPageClient({ product, productImages, productVideos, optio
               <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 dark:bg-red-950/50 border border-red-200 dark:border-red-800 px-3 py-1 text-sm font-semibold text-red-600 dark:text-red-400">
                 <span className="w-2 h-2 rounded-full bg-red-500" />
                 Sold
-
+              </span>
+            ) : isReserved ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800 px-3 py-1 text-sm font-semibold text-amber-700 dark:text-amber-400">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                Reserved
               </span>
             ) : isOnSale ? (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-300/30 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 px-3 py-1 text-sm font-semibold text-amber-700 dark:text-amber-400">
@@ -453,13 +490,19 @@ export function ProductPageClient({ product, productImages, productVideos, optio
               </span>
             )}
           </div>
-          {isEffectivelySold ? (<p className="text-sm text-gray-500 dark:text-gray-400 mt-6 mb-2">
-            Interested in this piece? We can find you another one. <a href="/contact" target="_blank" className="hover:underline hover:transition-all duration-200 ease-in text-emerald-600 dark:text-emerald-500">Reach out to us</a>.
-          </p>) : (<p className="text-sm text-gray-500 dark:text-gray-400 mt-6 mb-2">
-            Interested in this piece? Add to cart to purchase, or reach out directly.
-          </p>)
-
-          }
+          {isEffectivelySold ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-6 mb-2">
+              Interested in this piece? We can find you another one. <a href="/contact" target="_blank" className="hover:underline hover:transition-all duration-200 ease-in text-emerald-600 dark:text-emerald-500">Reach out to us</a>.
+            </p>
+          ) : isReserved && !reservationUnlocked ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-6 mb-2">
+              This piece is currently held. Enter your code to access checkout, or <a href="/contact" target="_blank" className="text-emerald-600 dark:text-emerald-500 hover:underline">contact us</a> to join the waitlist.
+            </p>
+          ) : (
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-6 mb-2">
+              Interested in this piece? Add to cart to purchase, or reach out directly.
+            </p>
+          )}
 
 
           {/* Buy with confidence */}
@@ -478,17 +521,58 @@ export function ProductPageClient({ product, productImages, productVideos, optio
             ))}
           </div>
 
-          {/* Reservation notice */}
-          {isReserved && product.reserved_until && (
-            <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
-              <p className="font-semibold">Currently Reserved</p>
-              <p className="text-xs mt-0.5 text-amber-700 dark:text-amber-400">
-                This piece is held for another buyer until{" "}
-                {new Date(product.reserved_until).toLocaleString("en-US", {
-                  month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short",
-                })}
-                . If the checkout is not completed by then, it will become available again.
-              </p>
+          {/* Reservation unlock panel — shown when reserved and not yet unlocked */}
+          {isReserved && !reservationUnlocked && (
+            <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-4 space-y-3">
+              <div>
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">This piece is currently reserved</p>
+                <p className="text-xs mt-0.5 text-amber-700 dark:text-amber-400">
+                  Reserved until{" "}
+                  {new Date(product.reserved_until!).toLocaleString("en-US", {
+                    month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short",
+                  })}
+                  . If you have a reservation code, enter it below to proceed.
+                </p>
+              </div>
+              <form onSubmit={handleUnlock} className="flex gap-2">
+                <input
+                  type="text"
+                  value={reservationCode}
+                  onChange={(e) => setReservationCode(e.target.value)}
+                  placeholder="Enter reservation code"
+                  className="flex-1 rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+                <button
+                  type="submit"
+                  disabled={unlocking || !reservationCode.trim()}
+                  className="shrink-0 rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-50 px-4 py-2 text-sm font-medium text-white transition-colors"
+                >
+                  {unlocking ? "…" : "Unlock"}
+                </button>
+              </form>
+              {unlockError && (
+                <p className="text-xs text-red-600 dark:text-red-400">{unlockError}</p>
+              )}
+            </div>
+          )}
+
+          {/* Unlocked reservation: show Add to Cart */}
+          {isReserved && reservationUnlocked && (
+            <div className="space-y-3">
+              <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
+                <p className="font-semibold">Reservation verified ✓</p>
+                <p className="text-xs mt-0.5">This piece is held for you. Complete your purchase below.</p>
+              </div>
+              {checkoutPrice != null && (
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  disabled={isInCart}
+                  className={`block w-full rounded-full py-3 text-center text-sm font-medium text-white transition-colors ${isInCart ? "bg-emerald-500 cursor-default" : addedToCart ? "bg-emerald-600" : "bg-emerald-700 hover:bg-emerald-800"}`}
+                >
+                  {isInCart ? "✓ Added to Cart" : addedToCart ? "✓ Added!" : "Add to Cart"}
+                </button>
+              )}
             </div>
           )}
 

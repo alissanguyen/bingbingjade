@@ -172,8 +172,10 @@ interface ProductData {
   is_clearance: boolean;
   is_published: boolean;
   quick_ship: boolean;
-  status: "available" | "sold" | "on_sale" | "archived";
+  status: "available" | "sold" | "on_sale" | "archived" | "reserved";
   renewed_at: string | null;
+  reserved_until: string | null;
+  reserved_for_handle: string | null;
 }
 
 interface InitialOption {
@@ -378,7 +380,28 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
   const [isQuickShip, setIsQuickShip] = useState(product.quick_ship ?? false);
   const [isIsClearance, setIsIsClearance] = useState(product.is_clearance ?? false);
   const [showPrice, setShowPrice] = useState(product.show_price ?? true);
-  const [status, setStatus] = useState<"available" | "sold" | "on_sale" | "archived">(product.status ?? "available");
+  const [status, setStatus] = useState<"available" | "sold" | "on_sale" | "archived" | "reserved">(product.status ?? "available");
+
+  // Reservation state
+  const [reservationCode, setReservationCode] = useState("");
+  const [reservationCustomerName, setReservationCustomerName] = useState(product.reserved_for_handle ?? "");
+  const [reservationCustomerEmail, setReservationCustomerEmail] = useState("");
+  const [reservationCustomerNote, setReservationCustomerNote] = useState("");
+  const [reservationDeposit, setReservationDeposit] = useState("");
+  const [reservationExpiresAt, setReservationExpiresAt] = useState(
+    product.reserved_until
+      ? new Date(product.reserved_until).toISOString().slice(0, 16)
+      : (() => {
+          const d = new Date();
+          d.setDate(d.getDate() + 7);
+          return d.toISOString().slice(0, 16);
+        })()
+  );
+  const [reservationId, setReservationId] = useState<string | null>(null);
+  const [reservationSaving, setReservationSaving] = useState(false);
+  const [reservationMsg, setReservationMsg] = useState<string | null>(null);
+  const [reservationError, setReservationError] = useState<string | null>(null);
+  const [depositLinkLoading, setDepositLinkLoading] = useState(false);
 
   const [isOval, setIsOval] = useState(product.is_oval ?? false);
   const [wristSize, setWristSize] = useState(product.wrist_size ?? "");
@@ -451,6 +474,25 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       }))
       : [blankRow()]
   );
+
+  // Load existing reservation on mount (admin only)
+  useEffect(() => {
+    if (isApprovedUser || product.status !== "reserved") return;
+    fetch(`/api/admin/reservations?productId=${product.id}`)
+      .then((r) => r.json())
+      .then(({ reservation }) => {
+        if (reservation) {
+          setReservationId(reservation.id);
+          if (reservation.customer_name) setReservationCustomerName(reservation.customer_name);
+          if (reservation.customer_email) setReservationCustomerEmail(reservation.customer_email);
+          if (reservation.customer_note) setReservationCustomerNote(reservation.customer_note);
+          if (reservation.deposit_amount_usd) setReservationDeposit(String(reservation.deposit_amount_usd));
+          if (reservation.expires_at) setReservationExpiresAt(new Date(reservation.expires_at).toISOString().slice(0, 16));
+        }
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const updateOptionRow = (i: number, field: keyof OptionRow, value: string) =>
     setOptionRows((prev) => {
@@ -563,6 +605,96 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       videoUrls.push(path);
     }
     return { orderedImageUrls, videoUrls };
+  };
+
+  const handleSetReservation = async () => {
+    if (!reservationCode.trim() || !reservationExpiresAt) {
+      setReservationError("Reservation code and expiry date are required.");
+      return;
+    }
+    setReservationSaving(true);
+    setReservationMsg(null);
+    setReservationError(null);
+    try {
+      const res = await fetch("/api/admin/reservations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: product.id,
+          code: reservationCode,
+          customerName: reservationCustomerName || undefined,
+          customerEmail: reservationCustomerEmail || undefined,
+          customerNote: reservationCustomerNote || undefined,
+          depositAmountUsd: reservationDeposit ? parseFloat(reservationDeposit) : 0,
+          expiresAt: new Date(reservationExpiresAt).toISOString(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setReservationError(data.error ?? "Failed to save reservation.");
+      } else {
+        setReservationId(data.reservationId);
+        setStatus("reserved");
+        setReservationMsg("Reservation saved. Product is now reserved.");
+      }
+    } catch {
+      setReservationError("Unexpected error. Please try again.");
+    } finally {
+      setReservationSaving(false);
+    }
+  };
+
+  const handleCancelReservation = async () => {
+    const rid = reservationId;
+    if (!rid) return;
+    setReservationSaving(true);
+    setReservationMsg(null);
+    setReservationError(null);
+    try {
+      const res = await fetch(`/api/admin/reservations/${rid}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) {
+        setReservationError(data.error ?? "Failed to cancel reservation.");
+      } else {
+        setReservationId(null);
+        setStatus("available");
+        setReservationCode("");
+        setReservationMsg("Reservation cancelled. Product is now available.");
+      }
+    } catch {
+      setReservationError("Unexpected error. Please try again.");
+    } finally {
+      setReservationSaving(false);
+    }
+  };
+
+  const handleGenerateDepositLink = async () => {
+    const rid = reservationId;
+    if (!rid) {
+      setReservationError("Save the reservation first before generating a deposit link.");
+      return;
+    }
+    setDepositLinkLoading(true);
+    setReservationMsg(null);
+    setReservationError(null);
+    try {
+      const res = await fetch(`/api/admin/reservations/${rid}/deposit-checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerEmail: reservationCustomerEmail || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setReservationError(data.error ?? "Failed to generate deposit link.");
+      } else if (data.url) {
+        await navigator.clipboard.writeText(data.url).catch(() => {});
+        setReservationMsg(`Deposit link copied to clipboard: ${data.url}`);
+      }
+    } catch {
+      setReservationError("Unexpected error. Please try again.");
+    } finally {
+      setDepositLinkLoading(false);
+    }
   };
 
   const handleRenew = async () => {
@@ -1366,6 +1498,11 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
                 </button>
               ))}
             </div>
+            {status === "reserved" && (
+              <p className="mt-2 text-xs text-purple-600 dark:text-purple-400">
+                Status is Reserved — managed via the Reservation panel below.
+              </p>
+            )}
             {hasVariants && status === "sold" && optionRows.some((r) => r.status !== "sold") && (
               <p className="mt-2 text-xs text-red-500 dark:text-red-400">
                 {optionRows.filter((r) => r.status !== "sold").length} variant(s) still marked as available — mark all variants Sold first.
@@ -1466,6 +1603,126 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
           <p className="text-xs text-emerald-600 dark:text-emerald-400">{renewMsg}</p>
         )}
       </div>
+
+      {/* Reservation — admin only */}
+      {!isApprovedUser && (
+        <div className="rounded-xl border border-purple-200 dark:border-purple-800 px-4 py-4 space-y-4">
+          <div>
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Reservation</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              Reserve this piece for a specific buyer with a private code.
+              {status === "reserved" && product.reserved_until && (
+                <span className="ml-1 text-amber-500">
+                  Currently reserved until {new Date(product.reserved_until).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}.
+                </span>
+              )}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">Reservation Code *</label>
+              <input
+                type="text"
+                value={reservationCode}
+                onChange={(e) => setReservationCode(e.target.value)}
+                placeholder="e.g. JADE2024"
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">Expires At *</label>
+              <input
+                type="datetime-local"
+                value={reservationExpiresAt}
+                onChange={(e) => setReservationExpiresAt(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">Customer Name</label>
+              <input
+                type="text"
+                value={reservationCustomerName}
+                onChange={(e) => setReservationCustomerName(e.target.value)}
+                placeholder="Optional"
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">Customer Email</label>
+              <input
+                type="email"
+                value={reservationCustomerEmail}
+                onChange={(e) => setReservationCustomerEmail(e.target.value)}
+                placeholder="Optional — for deposit link"
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">Deposit Amount (USD)</label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={reservationDeposit}
+                onChange={(e) => setReservationDeposit(e.target.value)}
+                placeholder="0 = no deposit"
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">Internal Note</label>
+              <input
+                type="text"
+                value={reservationCustomerNote}
+                onChange={(e) => setReservationCustomerNote(e.target.value)}
+                placeholder="Optional"
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-400"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleSetReservation}
+              disabled={reservationSaving || !reservationCode.trim()}
+              className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-sm font-medium text-white transition-colors"
+            >
+              {reservationSaving ? "Saving…" : "Set Reservation"}
+            </button>
+
+            {reservationId && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleGenerateDepositLink}
+                  disabled={depositLinkLoading || !reservationDeposit || parseFloat(reservationDeposit) <= 0}
+                  className="px-4 py-2 rounded-lg border border-purple-300 dark:border-purple-700 text-sm font-medium text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30 disabled:opacity-50 transition-colors"
+                >
+                  {depositLinkLoading ? "Generating…" : "Copy Deposit Link"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelReservation}
+                  disabled={reservationSaving}
+                  className="px-4 py-2 rounded-lg border border-red-200 dark:border-red-800 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50 transition-colors"
+                >
+                  Cancel Reservation
+                </button>
+              </>
+            )}
+          </div>
+
+          {reservationMsg && (
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 break-all">{reservationMsg}</p>
+          )}
+          {reservationError && (
+            <p className="text-xs text-red-600 dark:text-red-400">{reservationError}</p>
+          )}
+        </div>
+      )}
 
       {lightboxSrc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" onClick={() => setLightboxSrc(null)}>

@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
 
     const { data: product, error: pErr } = await supabase
       .from("products")
-      .select("id, name, status, price_display_usd, sale_price_usd, public_id, slug, quick_ship")
+      .select("id, name, status, price_display_usd, sale_price_usd, public_id, slug, quick_ship, reserved_until")
       .eq("id", item.productId)
       .single();
 
@@ -102,6 +102,35 @@ export async function POST(req: NextRequest) {
 
     if (product.status === "sold") {
       return NextResponse.json({ error: `"${product.name}" has already been sold.` }, { status: 409 });
+    }
+
+    // Reserved product: verify unlock token
+    if (
+      product.status === "reserved" &&
+      product.reserved_until &&
+      new Date(product.reserved_until as string) > new Date()
+    ) {
+      const reservationId = item.reservationId ?? null;
+      if (!reservationId) {
+        return NextResponse.json(
+          { error: `"${product.name}" is currently reserved. Please enter your reservation code to continue.` },
+          { status: 409 }
+        );
+      }
+      const { data: res } = await supabase
+        .from("product_reservations")
+        .select("id, expires_at")
+        .eq("id", reservationId)
+        .eq("product_id", item.productId)
+        .is("cancelled_at", null)
+        .maybeSingle();
+
+      if (!res || new Date(res.expires_at as string) <= new Date()) {
+        return NextResponse.json(
+          { error: `"${product.name}" is currently reserved. Please enter your reservation code to continue.` },
+          { status: 409 }
+        );
+      }
     }
 
     let serverPrice: number | null = null;

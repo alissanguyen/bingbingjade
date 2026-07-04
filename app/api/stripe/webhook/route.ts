@@ -198,6 +198,10 @@ export async function POST(req: NextRequest) {
   const session = event.data.object as Stripe.Checkout.Session;
 
   // ── Route: sourcing deposit vs offer checkout vs legacy private checkout vs product order ──
+  if (session.metadata?.is_reservation_deposit === "true") {
+    return handleReservationDeposit(session, supabase);
+  }
+
   if (session.metadata?.is_sourcing_deposit === "true") {
     return handleSourcingDeposit(session, supabase);
   }
@@ -1114,6 +1118,49 @@ async function handleSourcingPrivateCheckout(
 }
 
 // ── Sourcing deposit handler ───────────────────────────────────────────────────
+async function handleReservationDeposit(
+  session: Stripe.Checkout.Session,
+  supabase: typeof supabaseAdmin
+): Promise<NextResponse> {
+  const reservationId = session.metadata?.reservation_id;
+  if (!reservationId) {
+    console.error("[webhook/reservation] Missing reservation_id in metadata", session.id);
+    return NextResponse.json({ error: "Missing reservation_id." }, { status: 400 });
+  }
+
+  const { data: reservation } = await supabase
+    .from("product_reservations")
+    .select("id, deposit_paid")
+    .eq("id", reservationId)
+    .maybeSingle();
+
+  if (!reservation) {
+    console.error("[webhook/reservation] Reservation not found:", reservationId);
+    return NextResponse.json({ error: "Reservation not found." }, { status: 404 });
+  }
+
+  if (reservation.deposit_paid) {
+    return NextResponse.json({ received: true });
+  }
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : (session.payment_intent as { id?: string } | null)?.id ?? null;
+
+  await supabase
+    .from("product_reservations")
+    .update({
+      deposit_paid: true,
+      deposit_paid_at: new Date().toISOString(),
+      deposit_payment_intent_id: paymentIntentId,
+    })
+    .eq("id", reservationId);
+
+  console.info("[webhook/reservation] Deposit confirmed for reservation", reservationId);
+  return NextResponse.json({ received: true });
+}
+
 async function handleSourcingDeposit(
   session: Stripe.Checkout.Session,
   supabase: typeof supabaseAdmin

@@ -13,4 +13,5 @@ export interface CartItem {
   quickShip?: boolean;
   fulfillmentType?: FulfillmentType;
   campaignEventId?: string | null;
+  reservationId?: string | null;
 }
