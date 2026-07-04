@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { productSlug } from "@/lib/slug";
 import { supabase } from "@/lib/supabase";
@@ -268,6 +269,16 @@ export async function ProductListing({
   const totalCount = rawCount ?? 0;
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
   const safePage = Math.min(currentPage, Math.max(1, totalPages));
+
+  // Defensive: clamp an out-of-range page to the last valid page
+  if (totalCount > 0 && totalPages > 0 && currentPage > totalPages) {
+    const redirectParams = new URLSearchParams(
+      Object.entries(urlParams).filter((e): e is [string, string] => e[1] != null)
+    );
+    if (totalPages <= 1) redirectParams.delete("page");
+    else redirectParams.set("page", String(totalPages));
+    redirect(`${pathname}?${redirectParams.toString()}`);
+  }
 
   if (error) {
     console.error("Failed to load products:", error);

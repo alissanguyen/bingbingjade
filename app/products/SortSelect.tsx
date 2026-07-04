@@ -33,6 +33,7 @@ export function SortSelect({ initialSort = "" }: { initialSort?: string }) {
     );
     if (val) params.set("sort", val);
     else params.delete("sort");
+    params.delete("page");
     const qs = params.toString();
     router.push(qs ? `${pathname}?${qs}` : pathname);
   }

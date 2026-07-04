@@ -48,9 +48,10 @@ function CategoryBarInner() {
             const params = new URLSearchParams(searchParams.toString());
             if (value) params.set("category", value);
             else params.delete("category");
-            // Clear price tabs when switching to a category tab
+            // Clear price tabs and page when switching to a category tab
             params.delete("maxPrice");
             params.delete("minPrice");
+            params.delete("page");
             const href = params.size > 0 ? `/products?${params.toString()}` : "/products";
 
             return (

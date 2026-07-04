@@ -192,6 +192,8 @@ export function FilterSidebar({
         if (val === null || val === "") params.delete(key);
         else params.set(key, val);
       }
+      // Any filter change resets to page 1
+      params.delete("page");
       const qs = params.toString();
       const href = qs ? `${pathname}?${qs}` : pathname;
       if (method === "replace") router.replace(href);
