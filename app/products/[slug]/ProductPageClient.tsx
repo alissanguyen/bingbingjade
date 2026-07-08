@@ -109,6 +109,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
   const [reservationCode, setReservationCode] = useState("");
   const [reservationUnlocked, setReservationUnlocked] = useState(false);
   const [reservationId, setReservationId] = useState<string | null>(null);
+  const [depositPaidAmountUsd, setDepositPaidAmountUsd] = useState<number | null>(null);
   const [unlockError, setUnlockError] = useState<string | null>(null);
   const [unlocking, setUnlocking] = useState(false);
 
@@ -128,6 +129,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
         setUnlockError(data.error ?? "Incorrect code. Please try again.");
       } else {
         setReservationId(data.reservationId);
+        setDepositPaidAmountUsd(data.depositPaid && data.depositAmountUsd > 0 ? data.depositAmountUsd : null);
         setReservationUnlocked(true);
       }
     } catch {
@@ -212,6 +214,7 @@ export function ProductPageClient({ product, productImages, productVideos, optio
       fulfillmentType: product.quick_ship ? "available_now" : "sourced_for_you",
       campaignEventId: campaignEventId ?? null,
       reservationId: reservationId ?? null,
+      depositPaidAmountUsd: depositPaidAmountUsd ?? null,
     };
     addToCart(cartItem);
     setAddedToCart(true);
@@ -561,7 +564,12 @@ export function ProductPageClient({ product, productImages, productVideos, optio
             <div className="space-y-3">
               <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
                 <p className="font-semibold">Reservation verified ✓</p>
-                <p className="text-xs mt-0.5">This piece is held for you. Complete your purchase below.</p>
+                <p className="text-xs mt-0.5">
+                  This piece is held for you. Complete your purchase below.
+                  {depositPaidAmountUsd != null && depositPaidAmountUsd > 0 && (
+                    <span className="ml-1 font-medium">Your ${depositPaidAmountUsd.toLocaleString()} deposit will be applied at checkout.</span>
+                  )}
+                </p>
               </div>
               {checkoutPrice != null && (
                 <button

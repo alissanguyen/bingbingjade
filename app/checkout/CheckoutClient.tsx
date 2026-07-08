@@ -212,6 +212,11 @@ export function CheckoutClient() {
     ? Math.round(subtotal * 0.05 * 100) / 100
     : 0;
   const taxAmount = taxAmountCents / 100;
+
+  // Reservation deposit: collected separately, applied as a credit here.
+  // Fee is intentionally calculated on the PRE-deposit subtotal.
+  const reservationDepositTotal = availableItems.reduce((s, i) => s + (i.depositPaidAmountUsd ?? 0), 0);
+
   const subtotalForFeeCents = shipping != null
     ? Math.round((discountedSubtotal + insuranceFee + shipping + taxAmount) * 100)
     : null;
@@ -220,7 +225,7 @@ export function CheckoutClient() {
     : null;
   const txFee = txFeeCents != null ? txFeeCents / 100 : null;
   const grandTotal = shipping != null && txFee != null
-    ? Math.round((discountedSubtotal + insuranceFee + shipping + taxAmount + txFee) * 100) / 100
+    ? Math.round((discountedSubtotal - reservationDepositTotal + insuranceFee + shipping + taxAmount + txFee) * 100) / 100
     : null;
 
   const addressComplete = addressValue !== null;
@@ -378,6 +383,7 @@ export function CheckoutClient() {
           taxAmountCents: taxAmountCents > 0 ? taxAmountCents : undefined,
           taxCalculationId: taxCalculationId || undefined,
           paymentMethod: paymentMethod ?? "standard",
+          reservationDepositAmountCents: reservationDepositTotal > 0 ? Math.round(reservationDepositTotal * 100) : undefined,
           shippingAddress: {
             name: shippingAddress.name.trim(),
             line1: shippingAddress.line1.trim(),
@@ -974,6 +980,13 @@ export function CheckoutClient() {
                     <div className="flex justify-between text-sm">
                       <span className="text-[14px] sm:text-sm text-emerald-700 dark:text-emerald-400">Discount applied</span>
                       <span className="font-medium text-emerald-700 dark:text-emerald-400">−{fmtPrice(discountDollars)}</span>
+                    </div>
+                  )}
+
+                  {reservationDepositTotal > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-[14px] sm:text-sm text-purple-700 dark:text-purple-400">Deposit paid</span>
+                      <span className="font-medium text-purple-700 dark:text-purple-400">−{fmtPrice(reservationDepositTotal)}</span>
                     </div>
                   )}
 

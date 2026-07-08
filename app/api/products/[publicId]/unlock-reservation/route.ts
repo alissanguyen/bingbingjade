@@ -39,7 +39,7 @@ export async function POST(
 
   const { data: reservation } = await supabaseAdmin
     .from("product_reservations")
-    .select("id")
+    .select("id, deposit_paid, deposit_amount_usd")
     .eq("product_id", product.id)
     .eq("reservation_code_hash", codeHash)
     .is("cancelled_at", null)
@@ -49,5 +49,9 @@ export async function POST(
     return NextResponse.json({ error: "Incorrect reservation code." }, { status: 403 });
   }
 
-  return NextResponse.json({ reservationId: reservation.id });
+  return NextResponse.json({
+    reservationId: reservation.id,
+    depositPaid: reservation.deposit_paid,
+    depositAmountUsd: reservation.deposit_paid ? Number(reservation.deposit_amount_usd ?? 0) : 0,
+  });
 }

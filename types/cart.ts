@@ -14,4 +14,5 @@ export interface CartItem {
   fulfillmentType?: FulfillmentType;
   campaignEventId?: string | null;
   reservationId?: string | null;
+  depositPaidAmountUsd?: number | null;
 }

@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
       country: string;
     };
     paymentMethod?: "standard" | "bnpl";
+    reservationDepositAmountCents?: number;
   };
   try {
     body = await req.json();
@@ -471,6 +472,12 @@ export async function POST(req: NextRequest) {
   // Domestic (US): 2.9% + $0.30 | International: 4.4% + $0.30
   const discountedItemsCents = Math.max(0, itemsSubtotalCents - discountAmountCents);
 
+  // Reservation deposit credit — applied as a coupon but does NOT reduce the fee base.
+  // Fee is calculated on the full (pre-deposit) discounted subtotal so the seller is made whole.
+  const reservationDepositCents = typeof body.reservationDepositAmountCents === "number"
+    ? Math.max(0, body.reservationDepositAmountCents)
+    : 0;
+
   // Tax (WA state only, pre-calculated via stripe.tax.calculations)
   const taxAmountCents = typeof body.taxAmountCents === "number" ? body.taxAmountCents : 0;
   if (taxAmountCents > 0) {
@@ -485,6 +492,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // Fee base excludes the deposit — deposit reduces payment but not the fee.
   const subtotalForFeeCents = discountedItemsCents + insuranceFeeCents + shippingFee * 100 + taxAmountCents;
   const transactionFeeAmount = paymentMethod === "bnpl"
     ? calculateBnplFee(subtotalForFeeCents)
@@ -572,18 +580,24 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Create Stripe coupon for discount + sourcing credit combined ──────────────
-  // Stripe doesn't allow negative line items; combine all discounts into one coupon.
+  // ── Create Stripe coupon for discount + sourcing credit + reservation deposit ──
+  // Stripe doesn't allow negative line items; combine all credits into one coupon.
   let stripeCouponId: string | null = null;
-  const totalCouponCents = discountAmountCents + sourcingCreditApplied;
+  const totalCouponCents = discountAmountCents + sourcingCreditApplied + reservationDepositCents;
   if (totalCouponCents > 0) {
+    const hasDeposit = reservationDepositCents > 0;
+    const hasDiscount = discountAmountCents > 0;
+    const hasSourceCredit = sourcingCreditApplied > 0;
+    const couponName = hasDeposit
+      ? (hasDiscount || hasSourceCredit) ? "Discount + Deposit" : "Reservation Deposit"
+      : hasSourceCredit
+        ? hasDiscount ? "Discount + Sourcing Credit" : "Sourcing Credit"
+        : "Discount";
     const coupon = await stripe.coupons.create({
       amount_off: totalCouponCents,
       currency: "usd",
       duration: "once",
-      name: sourcingCreditApplied > 0
-        ? discountAmountCents > 0 ? "Discount + Sourcing Credit" : "Sourcing Credit"
-        : "Discount",
+      name: couponName,
     });
     stripeCouponId = coupon.id;
   }
