@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
     items: CartItem[];
     expedited?: boolean;
     shippingInsurance?: boolean;
+    shippingInsuranceDeclinedAcknowledged?: boolean;
     customerEmail?: string;
     discountCode?: string;
     sourcingRequestId?: string;
@@ -619,6 +620,14 @@ export async function POST(req: NextRequest) {
     sourcingMetadata.sourcing_credit_applied_cents = String(sourcingCreditApplied);
   }
 
+  // Insurance acknowledgement metadata (for webhook → orders table)
+  const insuranceMeta: Record<string, string> = {};
+  if (body.shippingInsurance) {
+    insuranceMeta.ins_accepted = "1";
+  } else if (body.shippingInsuranceDeclinedAcknowledged) {
+    insuranceMeta.ins_declined_ack = "1";
+  }
+
   // Shipping address metadata (for webhook — customer won't re-enter on Stripe)
   const addrMetadata: Record<string, string> = {
     ship_name: addr.name,
@@ -663,6 +672,7 @@ export async function POST(req: NextRequest) {
         ...addrMetadata,
         ...taxMeta,
         ...campaignEventMetadata,
+        ...insuranceMeta,
         payment_method: paymentMethod,
       },
     });

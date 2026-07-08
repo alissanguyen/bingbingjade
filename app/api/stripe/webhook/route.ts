@@ -466,6 +466,9 @@ export async function POST(req: NextRequest) {
     console.error("[webhook] Failed to fetch line items for fee breakdown (non-fatal):", err);
   }
 
+  const shippingInsuranceAccepted = session.metadata?.ins_accepted === "1";
+  const shippingInsuranceDeclinedAcknowledged = session.metadata?.ins_declined_ack === "1";
+
   // ── Create order record ───────────────────────────────────────────────────────
   const { data: order, error: orderErr } = await supabase
     .from("orders")
@@ -496,6 +499,8 @@ export async function POST(req: NextRequest) {
       sourcing_request_id: session.metadata?.sourcing_request_id ?? null,
       // COGS: imported cost converted from VND at fixed rate (server-side only)
       cogs_cents: cogsCents > 0 ? cogsCents : null,
+      shipping_insurance_accepted: shippingInsuranceAccepted,
+      shipping_insurance_declined_acknowledged: shippingInsuranceDeclinedAcknowledged,
     })
     .select("id")
     .single();

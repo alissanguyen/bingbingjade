@@ -42,6 +42,8 @@ export function CheckoutClient() {
 
   // Shipping insurance (5% of item subtotal)
   const [shippingInsurance, setShippingInsurance] = useState(false);
+  const [insuranceDeclinedAcknowledged, setInsuranceDeclinedAcknowledged] = useState(false);
+  const [insuranceAckError, setInsuranceAckError] = useState(false);
 
   // Payment method selection
   const [paymentMethod, setPaymentMethod] = useState<"standard" | "bnpl" | null>(null);
@@ -350,6 +352,11 @@ export function CheckoutClient() {
 
   async function handleCheckout() {
     if (!canCheckout) return;
+    if (!shippingInsurance && !insuranceDeclinedAcknowledged) {
+      setInsuranceAckError(true);
+      return;
+    }
+    setInsuranceAckError(false);
     setLoading(true);
     setError(null);
     try {
@@ -363,6 +370,7 @@ export function CheckoutClient() {
           items: availableItems,
           expedited: prioritySourcing && hasSourcingItems,
           shippingInsurance,
+          shippingInsuranceDeclinedAcknowledged: !shippingInsurance && insuranceDeclinedAcknowledged,
           customerEmail: customerEmail.trim(),
           discountCode: discountCode.trim() || undefined,
           taxAmountCents: taxAmountCents > 0 ? taxAmountCents : undefined,
@@ -803,13 +811,45 @@ export function CheckoutClient() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => setShippingInsurance((v) => !v)}
+                      onClick={() => {
+                        const next = !shippingInsurance;
+                        setShippingInsurance(next);
+                        if (next) {
+                          setInsuranceDeclinedAcknowledged(false);
+                          setInsuranceAckError(false);
+                        }
+                      }}
                       role="switch"
                       aria-checked={shippingInsurance}
                       className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${shippingInsurance ? "bg-emerald-600" : "bg-stone-200 dark:bg-gray-700"}`}
                     >
                       <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${shippingInsurance ? "translate-x-4" : "translate-x-0"}`} />
                     </button>
+                  </div>
+                )}
+
+                {/* ── Insurance declined acknowledgement ──────────── */}
+                {!shippingInsurance && availableItems.length > 0 && (
+                  <div className={`rounded-lg border px-3 py-2.5 space-y-2 transition-colors ${insuranceAckError ? "border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/30" : "border-amber-200 dark:border-amber-800/60 bg-amber-50/60 dark:bg-amber-950/20"}`}>
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={insuranceDeclinedAcknowledged}
+                        onChange={(e) => {
+                          setInsuranceDeclinedAcknowledged(e.target.checked);
+                          if (e.target.checked) setInsuranceAckError(false);
+                        }}
+                        className="mt-0.5 shrink-0 accent-amber-600"
+                      />
+                      <span className="text-[11px] sm:text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                        I understand I am declining shipping insurance. If my package is lost, stolen, misdelivered, or damaged during transit, any recovery or compensation may be limited to what is available from the shipping carrier.
+                      </span>
+                    </label>
+                    {insuranceAckError && (
+                      <p className="text-[11px] sm:text-xs text-amber-700 dark:text-amber-400 font-medium pl-[22px]">
+                        Please acknowledge that you are declining shipping insurance.
+                      </p>
+                    )}
                   </div>
                 )}
 

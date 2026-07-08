@@ -46,6 +46,8 @@ export interface Order {
   estimated_delivery_date: string | null;
   shipping_address_id: string | null;
   notes: string | null;
+  shipping_insurance_accepted: boolean | null;
+  shipping_insurance_declined_acknowledged: boolean | null;
   created_at: string;
 }
 
