@@ -30,6 +30,7 @@ export function CheckoutClient() {
   const { items, removeFromCart, clearCart, drawerOpen } = useCart();
   const router = useRouter();
   const ctaRef = useRef<HTMLElement>(null);
+  const insuranceAckRef = useRef<HTMLDivElement>(null);
 
   // Availability
   const [soldKeys, setSoldKeys] = useState<Set<string>>(new Set());
@@ -354,6 +355,7 @@ export function CheckoutClient() {
     if (!canCheckout) return;
     if (!shippingInsurance && !insuranceDeclinedAcknowledged) {
       setInsuranceAckError(true);
+      insuranceAckRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
     setInsuranceAckError(false);
@@ -830,7 +832,7 @@ export function CheckoutClient() {
 
                 {/* ── Insurance declined acknowledgement ──────────── */}
                 {!shippingInsurance && availableItems.length > 0 && (
-                  <div className={`rounded-lg border px-3 py-2.5 space-y-2 transition-colors ${insuranceAckError ? "border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/30" : "border-amber-200 dark:border-amber-800/60 bg-amber-50/60 dark:bg-amber-950/20"}`}>
+                  <div ref={insuranceAckRef} className={`rounded-lg border px-3 py-2.5 space-y-2 transition-colors ${insuranceAckError ? "border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/30" : "border-amber-200 dark:border-amber-800/60 bg-amber-50/60 dark:bg-amber-950/20"}`}>
                     <label className="flex items-start gap-2.5 cursor-pointer">
                       <input
                         type="checkbox"
@@ -846,8 +848,8 @@ export function CheckoutClient() {
                       </span>
                     </label>
                     {insuranceAckError && (
-                      <p className="text-[11px] sm:text-xs text-amber-700 dark:text-amber-400 font-medium pl-[22px]">
-                        Please acknowledge that you are declining shipping insurance.
+                      <p className="text-[11px] sm:text-xs text-amber-700 dark:text-amber-400 font-semibold pl-[22px]">
+                        Required
                       </p>
                     )}
                   </div>
