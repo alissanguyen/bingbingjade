@@ -49,7 +49,7 @@ const sections = [
   {
     id: "damage-claims",
     title: "Damage, Incorrect Item & Not-As-Described Claims",
-    body: "If your item arrives damaged, incorrect, or materially different from what was shown and approved, please contact us within 24 hours of confirmed delivery. Clear photos of the item, packaging, and shipping label are required for review. An unboxing video is strongly recommended, especially for shipping damage or missing-item concerns, but each case is reviewed based on the available evidence.",
+    body: "If your item arrives damaged, incorrect, or materially different from what was shown and approved, please contact us within 24 hours of confirmed delivery. Clear photos of the item, packaging, and shipping label are required for review. An unboxing video is strongly recommended, especially for shipping damage or missing-item concerns, but each case is reviewed based on the available evidence. Claims cannot be approved where the available evidence does not establish that the damage existed upon delivery or occurred during transit.",
   },
   {
     id: "claim-review",

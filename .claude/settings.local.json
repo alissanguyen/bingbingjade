@@ -107,7 +107,9 @@
       "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/api/admin/livestreams/[id]/items/[itemId]/extend\")",
       "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/livestreams-admin/[id]\")",
       "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/livestreams-admin/[id]/live\")",
-      "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/livestream-checkout/[token]\")"
+      "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/livestream-checkout/[token]\")",
+      "Bash(xargs -0 ls -lh)",
+      "Bash(xargs -I {} basename {})"
     ]
   }
 }
