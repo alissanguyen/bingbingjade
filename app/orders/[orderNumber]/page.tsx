@@ -157,6 +157,7 @@ async function getOrder(orderNumber: string) {
       estimated_delivery_date,
       customer_name,
       fee_breakdown,
+      review_window_closed,
       order_items (
         id,
         product_id,
@@ -675,8 +676,8 @@ export default async function TrackOrderPage({
         </div>
       )}
 
-      {/* Review form — delivered orders only */}
-      {isDelivered && (
+      {/* Review form — delivered orders only, unless admin closed the review window */}
+      {isDelivered && !order.review_window_closed && (
         <div id="review">
           <ReviewForm
             orderNumber={order.order_number}

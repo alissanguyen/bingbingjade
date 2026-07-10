@@ -75,6 +75,7 @@ export async function PATCH(
     customerName, customerEmail, customerPhone, orderNumber, createdAt,
     shippingAddress, feeBreakdown, orderItems, newItems, deleteItemIds,
     inventoryExpenseSource, inventoryExpenseAmount, inventoryExpenseNotes,
+    reviewWindowClosed,
   } = body as {
     orderStatus?: string;
     paidStatus?: "paid" | "unpaid";
@@ -103,6 +104,7 @@ export async function PATCH(
     inventoryExpenseSource?: string | null;
     inventoryExpenseAmount?: number | null;
     inventoryExpenseNotes?: string | null;
+    reviewWindowClosed?: boolean;
   };
 
   if (orderStatus && !VALID_STATUSES.includes(orderStatus as OrderStatus)) {
@@ -160,6 +162,7 @@ export async function PATCH(
   if (inventoryExpenseSource !== undefined) updates.inventory_expense_source = inventoryExpenseSource;
   if (inventoryExpenseAmount !== undefined) updates.inventory_expense_amount = inventoryExpenseAmount;
   if (inventoryExpenseNotes !== undefined) updates.inventory_expense_notes = inventoryExpenseNotes || null;
+  if (reviewWindowClosed !== undefined) updates.review_window_closed = reviewWindowClosed;
 
   // Recalculate amount_total whenever items or fees change
   if (orderItems || newItems || deleteItemIds || feeBreakdown !== undefined) {

@@ -48,6 +48,7 @@ export interface Order {
   notes: string | null;
   shipping_insurance_accepted: boolean | null;
   shipping_insurance_declined_acknowledged: boolean | null;
+  review_window_closed: boolean;
   created_at: string;
 }
 

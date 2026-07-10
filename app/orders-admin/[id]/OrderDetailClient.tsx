@@ -123,6 +123,7 @@ interface Order {
   shipping_address: ShippingAddress | null;
   shipping_address_json: ShippingAddress | null;
   shipments?: Shipment[];
+  review_window_closed: boolean;
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -810,6 +811,25 @@ export function OrderDetailClient({
     }
   }
 
+  async function handleToggleReviewWindow() {
+    setActionLoading("review-window");
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviewWindowClosed: !order.review_window_closed }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast("err", data.error ?? "Update failed"); return; }
+      setOrder(data.order);
+      showToast("ok", order.review_window_closed ? "Review window reopened" : "Review window closed");
+    } catch {
+      showToast("err", "Something went wrong");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   async function handleResend() {
     setActionLoading("resend");
     try {
@@ -1157,6 +1177,16 @@ export function OrderDetailClient({
                   className="w-full rounded-lg border border-red-200 dark:border-red-800/50 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-60 text-red-600 dark:text-red-400 py-2.5 text-sm font-medium transition-colors"
                 >
                   {actionLoading === "cancel" ? "Cancelling…" : "Cancel Order"}
+                </button>
+              )}
+
+              {order.order_status === "delivered" && (
+                <button
+                  onClick={handleToggleReviewWindow}
+                  disabled={!!actionLoading}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60 text-gray-600 dark:text-gray-400 py-2.5 text-sm font-medium transition-colors"
+                >
+                  {actionLoading === "review-window" ? "Saving…" : order.review_window_closed ? "Reopen Review Window" : "Close Review Window"}
                 </button>
               )}
 
