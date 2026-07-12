@@ -68,6 +68,18 @@ const faqs = [
     ),
   },
   {
+    id: "care-warranty",
+    question: "What guarantee and lifetime care do you provide?",
+    answer:
+      "We stand behind the authenticity and accurate representation of every piece we sell. Each jadeite piece is personally inspected and documented prior to shipment. While damage resulting from impact, accidental drops, improper handling, wear, alteration, or events occurring after delivery is not covered, we are committed to supporting our clients long after their purchase through our lifetime authenticity (grade A) guarantee and available care services such as polishing, restringing, repair (applicable fees may apply). Every claim is individually reviewed based on our order records, pre-shipment documentation, delivery information, and customer-provided evidence.",
+  },
+  {
+    id: "jewelry-care-services",
+    question: "Do you offer polishing, repair, or restringing services?",
+    answer:
+      "Yes. We proudly offer complimentary restringing for eligible jade bead bracelets purchased from BingBing Jade. Clients simply ship the bracelet to us, and we will restring it at no labor charge (return shipping may apply). We also offer polishing and repair services for eligible BingBing Jade pieces. Because every jade item is unique, repair availability depends on the type and extent of the damage. Please contact us with photos for an evaluation before shipping your item.",
+  },
+  {
     id: "inventory-types",
     question: `What is the difference between "Ship Now" and "Sourced for You"?`,
     answer:

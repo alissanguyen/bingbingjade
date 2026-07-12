@@ -17,6 +17,16 @@ const sections = [
     body: "We offer certification from trusted independent gemological laboratories, and every piece is backed by our lifetime authenticity guarantee. GIA or NGTC certification may also be requested at additional cost when available. Pieces above $5,000 may include NGTC or GIA certification as part of the purchase. Certification timelines may vary depending on the piece and lab availability.",
   },
   {
+    id: "care-warranty",
+    title: "Care, Warranty & Lifetime Services",
+    body: "Jadeite is a natural gemstone treasured for generations. While highly durable for everyday wear, it is not indestructible. Like any fine jewelry or gemstone, jadeite may be damaged by significant impact, accidental drops, improper handling, excessive force, or other events occurring after delivery. BingBing Jade's responsibility is to ensure that every piece matches its approved description and leaves our studio in the documented condition shown prior to shipment. For high-value pieces, we strongly recommend obtaining personal jewelry insurance after delivery. Many homeowners, renters, or specialty jewelry insurance policies can provide coverage for accidental damage, loss, or theft that occurs after delivery. Because every policy is different, we recommend speaking with your insurance provider to determine the coverage that best fits your needs.",
+  },
+  {
+    id: "lifetime-care-services",
+    title: "Lifetime Care Services",
+    body: "We are committed to supporting our clients long after their purchase. Eligible jade bead bracelets purchased from BingBing Jade include complimentary restringing service. Clients are responsible for shipping the bracelet to us, while restringing labor is provided at no charge; return shipping charges may apply. We also offer polishing and repair services for eligible BingBing Jade pieces. Repair availability depends on the condition of the item and whether the work can be completed without compromising the integrity of the jade. Please contact us with photos for an evaluation before shipping your piece.",
+  },
+  {
     id: "ship-now-orders",
     title: "Ship Now Orders",
     body: "Items labeled “Ship Now” are held in our U.S. inventory and are ready for domestic fulfillment. Eligible Ship Now pieces may be considered for return or exchange if requested within 24–48 hours of confirmed delivery. Approved returns must be unworn, unaltered, and returned in the same condition received with all included packaging, certificates, and accessories. A restocking fee, original shipping, payment processing fees, and return shipping costs may apply.",
@@ -49,7 +59,7 @@ const sections = [
   {
     id: "damage-claims",
     title: "Damage, Incorrect Item & Not-As-Described Claims",
-    body: "If your item arrives damaged, incorrect, or materially different from what was shown and approved, please contact us within 24 hours of confirmed delivery. Clear photos of the item, packaging, and shipping label are required for review. An unboxing video is strongly recommended, especially for shipping damage or missing-item concerns, but each case is reviewed based on the available evidence. Claims cannot be approved where the available evidence does not establish that the damage existed upon delivery or occurred during transit.",
+    body: "If your item arrives damaged, incorrect, or materially different from what was shown and approved, please contact us within 24 hours of confirmed delivery. Clear photos of the item, packaging, and shipping label are required for review. An unboxing video is strongly recommended, especially for shipping damage or missing-item concerns, but each case is reviewed based on the available evidence. Damage occurring after delivery that cannot be established as a shipping or fulfillment issue is not covered. Claims are reviewed individually using available order records, pre-shipment documentation, delivery information, and customer-provided evidence. Claims cannot be approved where the available evidence does not establish that the damage existed upon delivery or occurred during transit.",
   },
   {
     id: "claim-review",
