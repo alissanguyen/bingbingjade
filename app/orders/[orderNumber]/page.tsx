@@ -154,6 +154,8 @@ async function getOrder(orderNumber: string) {
       order_status,
       order_type,
       cancellation_reason,
+      capture_status,
+      authorized_amount,
       estimated_delivery_date,
       customer_name,
       fee_breakdown,
@@ -259,7 +261,11 @@ export default async function TrackOrderPage({
   const currentIdx = statusIndex(currentStatus, isCustom);
   const isDelivered = currentStatus === "delivered";
   const isPreConfirm = currentStatus === "order_created";
+  const isAwaitingVendorConfirmation = currentStatus === "awaiting_vendor_confirmation";
   const isCancelled = currentStatus === "order_cancelled";
+  const captureStatus = (order as Record<string, unknown>).capture_status as string | null;
+  const authorizedAmount = (order as Record<string, unknown>).authorized_amount as number | null;
+  const isAuthorizedNotCaptured = captureStatus === "authorized" || captureStatus === "authorization_pending";
   const statusSteps = getSteps(isCustom);
 
   const orderDate = new Date(order.created_at).toLocaleDateString("en-US", {
@@ -320,6 +326,21 @@ export default async function TrackOrderPage({
         </p>
       </div>
 
+      {/* Availability confirmation in progress (Sourced for You, authorized not yet captured) */}
+      {isAwaitingVendorConfirmation && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-5 py-4 mb-10 flex items-start gap-3">
+          <div className="mt-0.5 w-2.5 h-2.5 rounded-full shrink-0 bg-amber-400 animate-pulse" />
+          <div>
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Availability Confirmation in Progress</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
+              We&apos;re confirming availability with our overseas sourcing partner. Your payment method has been
+              authorized{authorizedAmount != null ? ` for $${(authorizedAmount / 100).toFixed(2)}` : ""} but has
+              not been charged — it will only be finalized once the piece has been secured.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Pre-confirmation notice (no timeline yet) */}
       {isPreConfirm && (
         <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-5 py-4 mb-10 flex items-start gap-3">
@@ -336,6 +357,7 @@ export default async function TrackOrderPage({
       {/* Cancelled notice */}
       {isCancelled && (() => {
         const isPieceUnavailable = (order as Record<string, unknown>).cancellation_reason === "piece_unavailable";
+        const isAuthorizationReleased = captureStatus === "authorization_canceled";
         return (
           <div className="rounded-xl border border-[#7c2d3e]/30 dark:border-[#9b3a50]/40 bg-[#fdf2f4] dark:bg-[#2a1018]/50 px-5 py-5 mb-10">
             <div className="flex items-start gap-3">
@@ -348,7 +370,11 @@ export default async function TrackOrderPage({
                 {isPieceUnavailable ? (
                   <>
                     <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mb-1.5">
-                      We&apos;re truly sorry — this piece became unavailable before we were able to fulfill your order. We’ve processed your refund and should return to your original payment method within a few business days.
+                      We&apos;re truly sorry — our overseas sourcing partner confirmed this piece became unavailable
+                      before we were able to fulfill your order.{" "}
+                      {isAuthorizationReleased
+                        ? "No payment was finalized — your card was only ever authorized, never charged, and that authorization has now been released. Depending on your bank, the pending hold may take a few business days to fully disappear from your statement."
+                        : "We’ve processed your refund and it should return to your original payment method within a few business days."}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
                       If you still love this style, we&apos;d be happy to help source a similar piece for you, with photos and videos reviewed before purchase.
@@ -387,7 +413,7 @@ export default async function TrackOrderPage({
       })()}
 
       {/* Per-shipment timeline cards */}
-      {!isPreConfirm && !isCancelled && shipments.length > 0 && (
+      {!isPreConfirm && !isAwaitingVendorConfirmation && !isCancelled && shipments.length > 0 && (
         <div className="mb-10 space-y-6">
           {shipments.map((shipment) => {
             const sortedEvents = [...shipment.shipment_events].sort((a, b) => a.sort_order - b.sort_order);
@@ -528,7 +554,7 @@ export default async function TrackOrderPage({
       )}
 
       {/* Fallback: old single timeline (when no shipments yet) */}
-      {!isPreConfirm && !isCancelled && shipments.length === 0 && (
+      {!isPreConfirm && !isAwaitingVendorConfirmation && !isCancelled && shipments.length === 0 && (
         <div className="mb-10">
           <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-5">
             Progress
@@ -646,7 +672,9 @@ export default async function TrackOrderPage({
                       </div>
                     )}
                     <div className={`flex justify-between items-center ${hasFees ? "pt-1 border-t border-gray-200 dark:border-gray-700" : ""}`}>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Total paid</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {isAuthorizedNotCaptured ? "Total (Authorized, Not Yet Charged)" : "Total paid"}
+                      </p>
                       <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{totalFormatted}</p>
                     </div>
                   </>

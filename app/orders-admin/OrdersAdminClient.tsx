@@ -26,6 +26,7 @@ interface OrderListItem {
 const STATUS_LABELS: Record<OrderStatus, string> = {
   order_created: "Order Created",
   order_confirmed: "Confirmed",
+  awaiting_vendor_confirmation: "Awaiting Vendor Confirmation",
   in_production: "In Production",
   polishing: "Finishing & Polishing",
   quality_control: "Quality Control",
@@ -39,6 +40,7 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
 const STATUS_COLORS: Record<OrderStatus, string> = {
   order_created: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
   order_confirmed: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  awaiting_vendor_confirmation: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
   in_production: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
   polishing: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400",
   quality_control: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
@@ -80,7 +82,7 @@ const PAID_STATUS_COLORS: Record<string, string> = {
 };
 
 const ALL_STATUSES: OrderStatus[] = [
-  "order_created", "order_confirmed", "in_production", "polishing",
+  "order_created", "order_confirmed", "awaiting_vendor_confirmation", "in_production", "polishing",
   "quality_control", "certifying", "inbound_shipping", "outbound_shipping",
   "delivered", "order_cancelled",
 ];

@@ -9,6 +9,7 @@ import type { OrderStatus } from "@/types/orders";
 const VALID_STATUSES: OrderStatus[] = [
   "order_created",
   "order_confirmed",
+  "awaiting_vendor_confirmation",
   "in_production",
   "polishing",
   "quality_control",

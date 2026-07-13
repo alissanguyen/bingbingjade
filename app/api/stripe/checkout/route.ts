@@ -285,6 +285,28 @@ export async function POST(req: NextRequest) {
     validatedItems.push({ ...item, price: serverPrice, fulfillmentType });
   }
 
+  // ── Ship Now / Sourced for You cannot be mixed in one checkout ───────────────
+  // Sourced for You items use Stripe manual-capture (authorize now, capture only
+  // once the vendor confirms) — capture_method is set once per PaymentIntent, so
+  // a single checkout can't auto-capture some items and hold others.
+  const presentFulfillmentTypes = new Set(validatedItems.map((i) => i.fulfillmentType));
+  const isSourcedOnlyCart = presentFulfillmentTypes.size === 1 && presentFulfillmentTypes.has("sourced_for_you");
+  if (presentFulfillmentTypes.size > 1) {
+    return NextResponse.json(
+      { error: "Ship Now and Sourced for You items require separate checkout because sourced items must first be confirmed with our overseas partner." },
+      { status: 400 }
+    );
+  }
+
+  // BNPL settlement windows (Klarna/Afterpay/Affirm) don't support the multi-day
+  // manual-capture hold Sourced for You items need — card only for those.
+  if (isSourcedOnlyCart && body.paymentMethod === "bnpl") {
+    return NextResponse.json(
+      { error: "Installment payment methods aren't available for Sourced for You items — your card will be authorized while we confirm availability with our overseas partner." },
+      { status: 400 }
+    );
+  }
+
   // ── Campaign event: coupon eligibility + stacking checks ─────────────────────
   if (body.discountCode) {
     const upperCode = body.discountCode.trim().toUpperCase();
@@ -663,9 +685,13 @@ export async function POST(req: NextRequest) {
     session = await stripe.checkout.sessions.create({
       mode: "payment",
       currency: "usd",
-      payment_method_types: paymentMethod === "bnpl"
-        ? ACTIVE_BNPL_METHODS
-        : ["card"],
+      // Sourced for You is authorize-then-capture and card-only (see BNPL guard above)
+      payment_method_types: isSourcedOnlyCart
+        ? ["card"]
+        : paymentMethod === "bnpl"
+          ? ACTIVE_BNPL_METHODS
+          : ["card"],
+      ...(isSourcedOnlyCart ? { payment_intent_data: { capture_method: "manual" } } : {}),
       ...(body.customerEmail ? { customer_email: normalizeEmail(body.customerEmail) } : {}),
       line_items: lineItems,
       success_url: `${SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
@@ -688,6 +714,7 @@ export async function POST(req: NextRequest) {
         ...campaignEventMetadata,
         ...insuranceMeta,
         payment_method: paymentMethod,
+        ...(isSourcedOnlyCart ? { capture_mode: "manual" } : {}),
       },
     });
   } catch (err) {

@@ -190,8 +190,10 @@ export function CheckoutClient() {
       }
     : { name: "", country: "", line1: "", line2: "", city: "", state: "", postal: "" };
 
-  // BNPL eligibility (US-only); if user changes country away from US, reset to standard
-  const bnplEligible = shippingAddress.country === "US";
+  // BNPL eligibility: US-only, and unavailable for Sourced for You items — Klarna/
+  // Afterpay/Affirm settlement windows don't support the multi-day manual-capture
+  // hold those items need while we confirm availability with our overseas partner.
+  const bnplEligible = shippingAddress.country === "US" && !hasSourcingItems;
   useEffect(() => {
     if (paymentMethod === "bnpl" && !bnplEligible) setPaymentMethod("standard");
   }, [bnplEligible, paymentMethod]);
@@ -231,7 +233,7 @@ export function CheckoutClient() {
   const addressComplete = addressValue !== null;
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail.trim());
-  const canCheckout = availableItems.length > 0 && adminUnlocked && emailValid && addressComplete && paymentMethod !== null;
+  const canCheckout = availableItems.length > 0 && !isMixedCart && adminUnlocked && emailValid && addressComplete && paymentMethod !== null;
 
   // Stable key — only changes when the address or item prices genuinely differ.
   // Avoids the re-render loop caused by availableItems being a new array ref each render.
@@ -472,10 +474,17 @@ export function CheckoutClient() {
               )}
             </div>
 
-            {/* Mixed cart notice */}
+            {/* Mixed cart — blocked */}
             {isMixedCart && (
+              <div className="mb-4 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-[12px] sm:text-sm text-red-700 dark:text-red-300 leading-relaxed">
+                <strong>Ship Now</strong> and <strong>Sourced for You</strong> items require separate checkout because sourced items must first be confirmed with our overseas partner. Please remove one group from your cart to continue.
+              </div>
+            )}
+
+            {/* Sourced for You — authorization disclosure */}
+            {!isMixedCart && hasSourcingItems && (
               <div className="mb-4 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/30 px-4 py-3 text-[12px] sm:text-sm text-indigo-700 dark:text-indigo-300 leading-relaxed">
-                This order contains both <strong>Ship Now</strong> and <strong>Sourced for You</strong> pieces. They will ship separately at their respective timelines.
+                For one-of-a-kind <strong>Sourced for You</strong> pieces, your payment method will be authorized while we confirm availability. Your payment will only be finalized once the piece has been secured.
               </div>
             )}
 
@@ -967,7 +976,11 @@ export function CheckoutClient() {
                         <input type="radio" disabled className="mt-0.5" />
                         <div>
                           <p className="text-[13px] sm:text-sm font-semibold text-stone-500 dark:text-gray-500">Pay in installments</p>
-                          <p className="text-[11px] sm:text-[13px] text-stone-400 dark:text-gray-600 mt-0.5">Only available for US shipping addresses</p>
+                          <p className="text-[11px] sm:text-[13px] text-stone-400 dark:text-gray-600 mt-0.5">
+                            {hasSourcingItems
+                              ? "Not available for Sourced for You items — card payment only while we confirm availability"
+                              : "Only available for US shipping addresses"}
+                          </p>
                         </div>
                       </div>
                     )}
@@ -1155,7 +1168,7 @@ export function CheckoutClient() {
             <button
               type="button"
               onClick={handleCheckout}
-              disabled={loading}
+              disabled={loading || !canCheckout}
               className="rounded-full bg-emerald-800 hover:bg-emerald-700 active:bg-emerald-900 disabled:opacity-50 text-white px-6 py-3 text-sm font-semibold transition-colors shadow-md shadow-emerald-900/20 shrink-0"
             >
               {loading ? "Processing…" : "Complete Purchase"}

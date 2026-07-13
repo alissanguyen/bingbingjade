@@ -8,6 +8,9 @@ import {
   generateOrderNumber,
   sendOrderConfirmationEmail,
   fetchEmailItems,
+  createShipmentsForOrder,
+  recordOrderPayment,
+  sendAvailabilityConfirmationEmail,
 } from "@/lib/orders";
 import { commitDiscount, normalizeEmail, buildShippingFingerprint } from "@/lib/discount";
 import { CREDIT_VALIDITY_DAYS } from "@/lib/sourcing-classification";
@@ -134,7 +137,7 @@ export async function POST(req: NextRequest) {
     if (paymentIntentId) {
       const { data: existingOrder } = await supabase
         .from("orders")
-        .select("id, status")
+        .select("id, status, capture_status")
         .eq("stripe_payment_intent_id", paymentIntentId)
         .maybeSingle();
 
@@ -144,6 +147,105 @@ export async function POST(req: NextRequest) {
           .update({ status: "refunded", order_status: "order_cancelled" })
           .eq("id", existingOrder.id);
         console.info("[webhook] Marked order", existingOrder.id, "as refunded via charge.refunded event");
+      }
+
+      // Manual-capture orders: track partial vs full refund on capture_status,
+      // separately from the legacy `status` field above.
+      if (existingOrder?.capture_status && existingOrder.capture_status !== "refunded") {
+        const isPartial = charge.amount_refunded < charge.amount;
+        await supabase
+          .from("orders")
+          .update({ capture_status: isPartial ? "partially_refunded" : "refunded" })
+          .eq("id", existingOrder.id);
+      }
+    }
+    return NextResponse.json({ received: true });
+  }
+
+  // ── payment_intent.canceled — either an admin-triggered release (already
+  // handled synchronously by /api/admin/orders/[id]/release-authorization) or
+  // a Stripe-side auto-expiry of an uncaptured manual-capture authorization.
+  if (event.type === "payment_intent.canceled") {
+    const pi = event.data.object as Stripe.PaymentIntent;
+    const { data: existingOrder } = await supabase
+      .from("orders")
+      .select("id, capture_status")
+      .eq("stripe_payment_intent_id", pi.id)
+      .maybeSingle();
+
+    if (existingOrder && existingOrder.capture_status === "authorized") {
+      // Not already handled by the admin route — this is Stripe auto-expiring
+      // the hold. Flag it for admin attention; do NOT touch order_status or
+      // email the customer, since we don't know why it was cancelled.
+      await supabase
+        .from("orders")
+        .update({ capture_status: "authorization_expired", latest_stripe_status: pi.status })
+        .eq("id", existingOrder.id);
+      console.info("[webhook] Authorization expired for order", existingOrder.id);
+    }
+    return NextResponse.json({ received: true });
+  }
+
+  // ── payment_intent.payment_failed — defensive: mark and log only, no email ───
+  if (event.type === "payment_intent.payment_failed") {
+    const pi = event.data.object as Stripe.PaymentIntent;
+    const { data: existingOrder } = await supabase
+      .from("orders")
+      .select("id, capture_status")
+      .eq("stripe_payment_intent_id", pi.id)
+      .maybeSingle();
+
+    if (existingOrder?.capture_status && existingOrder.capture_status !== "captured") {
+      await supabase
+        .from("orders")
+        .update({ capture_status: "payment_failed", latest_stripe_status: pi.status })
+        .eq("id", existingOrder.id);
+      console.info("[webhook] Payment failed for order", existingOrder.id);
+    }
+    return NextResponse.json({ received: true });
+  }
+
+  // ── payment_intent.succeeded — reconciliation safety net for manual capture.
+  // The admin capture-payment route already updates the order synchronously;
+  // this only catches the rare case where that write didn't land (e.g. a
+  // serverless timeout after the Stripe call succeeded). Idempotent no-op if
+  // the order is already marked captured.
+  if (event.type === "payment_intent.succeeded") {
+    const pi = event.data.object as Stripe.PaymentIntent;
+    const { data: existingOrder } = await supabase
+      .from("orders")
+      .select("id, order_number, capture_status")
+      .eq("stripe_payment_intent_id", pi.id)
+      .maybeSingle();
+
+    if (existingOrder && existingOrder.capture_status && existingOrder.capture_status !== "captured") {
+      const { data: updated } = await supabase
+        .from("orders")
+        .update({
+          capture_status: "captured",
+          captured_amount: pi.amount_received,
+          captured_at: new Date().toISOString(),
+          latest_stripe_status: pi.status,
+          status: "paid",
+          order_status: "order_confirmed",
+        })
+        .eq("id", existingOrder.id)
+        .eq("capture_status", "authorized")
+        .select("id")
+        .maybeSingle();
+
+      if (updated) {
+        await createShipmentsForOrder(existingOrder.id, existingOrder.order_number ?? null);
+        await recordOrderPayment({
+          orderId: existingOrder.id,
+          orderNumber: existingOrder.order_number ?? null,
+          paymentIntentId: pi.id,
+          amountTotalCents: pi.amount_received,
+          currency: pi.currency,
+          createdAtIso: new Date().toISOString(),
+          notes: `Stripe manual capture (webhook reconciliation) ${pi.id}`,
+        });
+        console.info("[webhook] Reconciled capture for order", existingOrder.id, "via payment_intent.succeeded");
       }
     }
     return NextResponse.json({ received: true });
@@ -469,6 +571,15 @@ export async function POST(req: NextRequest) {
   const shippingInsuranceAccepted = session.metadata?.ins_accepted === "1";
   const shippingInsuranceDeclinedAcknowledged = session.metadata?.ins_declined_ack === "1";
 
+  // Sourced for You uses Stripe manual capture — the checkout route flags this
+  // via metadata.capture_mode. At this point (checkout.session.completed) the
+  // card has been authorized but NOT charged: session.payment_status is
+  // "unpaid" until an admin captures it, so this order must NOT be treated as
+  // paid/confirmed/fulfillment-started yet.
+  const isManualCapture = session.metadata?.capture_mode === "manual";
+  const nowIso = new Date().toISOString();
+  const authorizationExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
   // ── Create order record ───────────────────────────────────────────────────────
   const { data: order, error: orderErr } = await supabase
     .from("orders")
@@ -483,11 +594,20 @@ export async function POST(req: NextRequest) {
       customer_phone_snapshot: customerPhone,
       amount_total: session.amount_total ?? null,
       currency: session.currency ?? "usd",
-      status: "paid",
-      order_status: "order_confirmed",
+      status: isManualCapture ? "unpaid" : "paid",
+      order_status: isManualCapture ? "awaiting_vendor_confirmation" : "order_confirmed",
       source: "stripe",
       shipping_address_id: shippingAddressId,
       fee_breakdown: feeBreakdown,
+      // Manual-capture (Sourced for You) authorization tracking — null for
+      // Ship Now / legacy auto-capture orders.
+      ...(isManualCapture ? {
+        capture_status: "authorized",
+        authorized_amount: session.amount_total ?? null,
+        authorized_at: nowIso,
+        authorization_expires_at: authorizationExpiresAt,
+        latest_stripe_status: "requires_capture",
+      } : {}),
       // Discount fields
       discount_source: discountMeta?.source ?? null,
       discount_amount_cents: discountMeta?.amountCents ?? 0,
@@ -522,71 +642,19 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Record payment in order_payments ledger ──────────────────────────────────
-  // Fetch the real Stripe fee from the balance transaction — this is the exact
-  // amount Stripe charged (accounts for card type, international, Pay Later, etc.)
-  if (paymentIntentId && session.amount_total && session.payment_status === "paid") {
-    try {
-      const amountUsd = session.amount_total / 100;
-      let feeUsd      = 0;
-      let netUsd      = amountUsd;
-      let receiptUrl: string | null = null;
-
-      // Retrieve the PI with charge + balance transaction to get exact fee
-      try {
-        const pi = await stripe.paymentIntents.retrieve(paymentIntentId, {
-          expand: ["latest_charge.balance_transaction"],
-        });
-        const charge = pi.latest_charge as import("stripe").Stripe.Charge | null;
-        const balTxn = charge?.balance_transaction as import("stripe").Stripe.BalanceTransaction | null;
-        if (balTxn) {
-          feeUsd = balTxn.fee / 100;
-          netUsd = balTxn.net / 100;
-        }
-        receiptUrl = charge?.receipt_url ?? null;
-      } catch {
-        // Balance transaction may not be settled yet at webhook time; sync will fix it later
-      }
-
-      const paymentRow = {
-        order_id:                order.id,
-        bbj_order_code:          orderNumber,
-        payment_provider:        "stripe" as const,
-        payment_type:            "checkout",
-        provider_transaction_id: paymentIntentId,
-        provider_receipt_id:     receiptUrl,
-        provider_invoice_id:     null as string | null,
-        amount_paid_usd:         amountUsd,
-        currency:                (session.currency ?? "usd").toUpperCase(),
-        payment_fee_usd:         feeUsd,
-        net_received_usd:        netUsd,
-        payment_date:            new Date(session.created * 1000).toISOString(),
-        payment_status:          "paid",
-        proof_url:               null as string | null,
-        notes:                   `Stripe Checkout ${session.id}`,
-      };
-
-      // Idempotent: only insert if no row exists for this payment intent
-      const { data: existingPayment } = await supabase
-        .from("order_payments")
-        .select("id")
-        .eq("payment_provider", "stripe")
-        .eq("provider_transaction_id", paymentIntentId)
-        .maybeSingle();
-
-      if (!existingPayment) {
-        await supabase.from("order_payments").insert(paymentRow);
-      } else {
-        // Update fee/net in case a prior insert had fee=0 (balance txn not settled yet)
-        if (feeUsd > 0) {
-          await supabase
-            .from("order_payments")
-            .update({ payment_fee_usd: feeUsd, net_received_usd: netUsd, provider_receipt_id: receiptUrl })
-            .eq("id", existingPayment.id);
-        }
-      }
-    } catch (err) {
-      console.error("[webhook] order_payments insert failed (non-fatal):", err);
-    }
+  // Skipped for manual-capture (Sourced for You) orders — no money has moved
+  // yet, so nothing belongs in the accounting ledger until an admin captures
+  // the payment (see /api/admin/orders/[id]/capture-payment).
+  if (!isManualCapture && paymentIntentId && session.amount_total && session.payment_status === "paid") {
+    await recordOrderPayment({
+      orderId: order.id,
+      orderNumber,
+      paymentIntentId,
+      amountTotalCents: session.amount_total,
+      currency: session.currency ?? "usd",
+      createdAtIso: new Date(session.created * 1000).toISOString(),
+      notes: `Stripe Checkout ${session.id}`,
+    });
   }
 
   // ── Commit discount ───────────────────────────────────────────────────────────
@@ -678,7 +746,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Create order items ────────────────────────────────────────────────────────
-  const { data: insertedItems } = await supabase.from("order_items").insert(
+  await supabase.from("order_items").insert(
     metaItems.map((item) => {
       const productName = productNameMap.get(item.productId) ?? item.productId;
       const optionLabel = item.optionId ? (optionLabelMap.get(item.optionId) ?? null) : null;
@@ -694,61 +762,19 @@ export async function POST(req: NextRequest) {
         inventory_type: item.fulfillmentType ?? "sourced_for_you",
       };
     })
-  ).select("id, inventory_type");
+  );
 
   // ── Create shipments grouped by inventory_type ────────────────────────────────
-  if (insertedItems && insertedItems.length > 0) {
-    const groups = new Map<string, string[]>();
-    for (const row of insertedItems) {
-      const t = (row.inventory_type as string) ?? "sourced_for_you";
-      if (!groups.has(t)) groups.set(t, []);
-      groups.get(t)!.push(row.id as string);
-    }
-
-    let shipmentIndex = 1;
-    for (const [inventoryType, itemIds] of groups) {
-      const { data: shipment } = await supabase
-        .from("shipments")
-        .insert({
-          order_id: order.id,
-          shipment_number: orderNumber ? `${orderNumber}-S${shipmentIndex}` : null,
-          fulfillment_type: inventoryType,
-          status: "confirmed",
-        })
-        .select("id")
-        .single();
-
-      if (shipment) {
-        await supabase.from("shipment_items").insert(
-          itemIds.map((oid) => ({ shipment_id: shipment.id, order_item_id: oid }))
-        );
-
-        const confirmedAt = new Date().toISOString();
-        const EVENTS_AVAILABLE_NOW = [
-          { event_key: "confirmed",  label: "Order Confirmed", description: "Order placed and payment received.",        sort_order: 0, is_current: true,  is_completed: false, event_time: confirmedAt },
-          { event_key: "packing",    label: "Packing",         description: "Your piece is being carefully packaged.",   sort_order: 1, is_current: false, is_completed: false },
-          { event_key: "shipped",    label: "Shipped",          description: "Your order is on its way to you.",          sort_order: 2, is_current: false, is_completed: false },
-          { event_key: "delivered",  label: "Delivered",        description: "Your piece has arrived.",                  sort_order: 3, is_current: false, is_completed: false },
-        ];
-        const EVENTS_SOURCED = [
-          { event_key: "confirmed",          label: "Order Confirmed",        description: "Order placed and payment received.",                             sort_order: 0, is_current: true,  is_completed: false, event_time: confirmedAt },
-          { event_key: "quality_inspection", label: "Quality Inspection",     description: "Your piece is being carefully inspected to meet our standards.", sort_order: 1, is_current: false, is_completed: false },
-          { event_key: "certification",      label: "Certification",          description: "Your jade is undergoing authentication and certification.",      sort_order: 2, is_current: false, is_completed: false },
-          { event_key: "arriving_at_studio", label: "Arriving at Our Studio", description: "Your piece is on its way to our studio for final handling.",    sort_order: 3, is_current: false, is_completed: false },
-          { event_key: "shipped",            label: "Shipped",                description: "Your order has been carefully packaged and shipped.",            sort_order: 4, is_current: false, is_completed: false },
-          { event_key: "delivered",          label: "Delivered",              description: "Your piece has arrived. We hope it brings you lasting beauty.",  sort_order: 5, is_current: false, is_completed: false },
-        ];
-
-        await supabase.from("shipment_events").insert(
-          (inventoryType === "available_now" ? EVENTS_AVAILABLE_NOW : EVENTS_SOURCED)
-            .map((e) => ({ ...e, shipment_id: shipment.id }))
-        );
-      }
-      shipmentIndex++;
-    }
+  // Skipped for manual-capture orders — no fulfillment begins until the vendor
+  // is confirmed and an admin captures payment (see createShipmentsForOrder call
+  // in /api/admin/orders/[id]/capture-payment).
+  if (!isManualCapture) {
+    await createShipmentsForOrder(order.id, orderNumber);
   }
 
   // ── Mark options and products as sold ─────────────────────────────────────────
+  // Reserves the piece against double-selling as soon as payment is authorized,
+  // same as today — released back to available if the authorization is cancelled.
   await markItemsAsSold(supabase, metaItems);
 
   console.info(
@@ -759,6 +785,7 @@ export async function POST(req: NextRequest) {
     session.id,
     "— items:",
     metaItems.length,
+    isManualCapture ? "— manual capture (awaiting vendor confirmation)" : "",
     discountMeta ? `— discount: ${discountMeta.source} $${(discountMeta.amountCents / 100).toFixed(2)}` : ""
   );
 
@@ -766,14 +793,24 @@ export async function POST(req: NextRequest) {
   if (orderNumber && resolvedCustomerName && customerEmail) {
     try {
       const emailItems = await fetchEmailItems(order.id);
-      await sendOrderConfirmationEmail({
-        orderNumber,
-        customerName: resolvedCustomerName,
-        customerEmail,
-        amountTotalCents: session.amount_total ?? 0,
-        items: emailItems,
-        shippingAddress: resolvedAddr ?? null,
-      });
+      if (isManualCapture) {
+        await sendAvailabilityConfirmationEmail({
+          orderNumber,
+          customerName: resolvedCustomerName,
+          customerEmail,
+          authorizedAmountCents: session.amount_total ?? 0,
+          items: emailItems,
+        });
+      } else {
+        await sendOrderConfirmationEmail({
+          orderNumber,
+          customerName: resolvedCustomerName,
+          customerEmail,
+          amountTotalCents: session.amount_total ?? 0,
+          items: emailItems,
+          shippingAddress: resolvedAddr ?? null,
+        });
+      }
     } catch (err) {
       console.error("[webhook] Confirmation email failed (non-fatal):", err);
     }

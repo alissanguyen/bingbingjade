@@ -61,7 +61,7 @@ import type { OrderStatus, OrderSource } from "@/types/orders";
 
 const VALID_SOURCES: OrderSource[] = ["stripe", "paypal", "zelle", "cash", "custom", "admin"];
 const VALID_ORDER_STATUSES: OrderStatus[] = [
-  "order_created", "order_confirmed", "in_production", "polishing",
+  "order_created", "order_confirmed", "awaiting_vendor_confirmation", "in_production", "polishing",
   "quality_control", "certifying", "inbound_shipping", "outbound_shipping", "delivered",
 ];
 

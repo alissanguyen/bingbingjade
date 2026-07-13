@@ -14,21 +14,23 @@ const BANNER_IMG = "https://images.unsplash.com/photo-1705931396849-93822983c1dc
 
 type OrderData = {
   order_number: string;
-  total_price_usd: number | null;
+  amount_total: number | null; // cents
   order_items: { product_name: string | null; price_usd: number; quantity: number }[];
+  capture_status: string | null;
 };
 
 async function getOrderData(sessionId: string): Promise<OrderData | null> {
   const { data } = await supabaseAdmin
     .from("orders")
-    .select("order_number, total_price_usd, order_items(product_name, price_usd, quantity)")
+    .select("order_number, amount_total, capture_status, order_items(product_name, price_usd, quantity)")
     .eq("stripe_session_id", sessionId)
     .maybeSingle();
   if (!data) return null;
   return {
     order_number: data.order_number,
-    total_price_usd: data.total_price_usd ?? null,
+    amount_total: data.amount_total ?? null,
     order_items: Array.isArray(data.order_items) ? (data.order_items as OrderData["order_items"]) : [],
+    capture_status: data.capture_status ?? null,
   };
 }
 
@@ -48,13 +50,18 @@ export default async function CheckoutSuccessPage({
     orderNumber = orderData?.order_number ?? null;
   }
 
+  // Sourced for You orders are authorized, not charged, at this point — the
+  // headline shouldn't claim the piece is "secured" until an admin confirms
+  // availability with the vendor and captures payment.
+  const isAwaitingCapture = orderData?.capture_status === "authorized" || orderData?.capture_status === "authorization_pending";
+
   return (
     <div>
       <ClearCartOnSuccess />
-      {orderData && orderData.total_price_usd != null && orderData.order_items.length > 0 && (
+      {orderData && orderData.amount_total != null && orderData.order_items.length > 0 && (
         <TrackPurchaseOnSuccess
           orderId={orderData.order_number}
-          value={orderData.total_price_usd}
+          value={orderData.amount_total / 100}
           items={orderData.order_items.map((item, i) => ({
             itemId: `${orderData!.order_number}-${i}`,
             itemName: item.product_name ?? "Jade Piece",
@@ -95,14 +102,17 @@ export default async function CheckoutSuccessPage({
           </div>
 
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-300 mb-4">
-            Purchase Confirmed ✓
+            {isAwaitingCapture ? "Order Received ✓" : "Purchase Confirmed ✓"}
           </p>
           <h1 className="text-4xl sm:text-5xl font-bold text-white leading-tight tracking-tight drop-shadow-lg max-w-2xl">
-            Thank you — your piece has been secured.
+            {isAwaitingCapture
+              ? "Thank you — we're confirming availability."
+              : "Thank you — your piece has been secured."}
           </h1>
           <p className="mt-5 text-base text-white/75 max-w-md leading-relaxed">
-            Each piece is carefully prepared and verified before shipment. Our team will personally
-            reach out within 24–48 hours to confirm your order details and arrange shipping.
+            {isAwaitingCapture
+              ? "Your payment method has been authorized but not charged. We're confirming availability with our overseas sourcing partner and will only finalize payment once the piece is secured."
+              : "Each piece is carefully prepared and verified before shipment. Our team will personally reach out within 24–48 hours to confirm your order details and arrange shipping."}
           </p>
 
           <div className="mt-8 flex flex-wrap justify-center gap-4">

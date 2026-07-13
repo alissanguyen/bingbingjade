@@ -124,6 +124,16 @@ interface Order {
   shipping_address_json: ShippingAddress | null;
   shipments?: Shipment[];
   review_window_closed: boolean;
+  // Manual-capture (Sourced for You authorization) fields — null for Ship Now
+  // / legacy auto-capture orders.
+  capture_status: string | null;
+  authorized_amount: number | null;
+  captured_amount: number | null;
+  authorized_at: string | null;
+  authorization_expires_at: string | null;
+  captured_at: string | null;
+  authorization_canceled_at: string | null;
+  latest_stripe_status: string | null;
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -131,6 +141,7 @@ interface Order {
 const STATUS_LABELS: Record<OrderStatus, string> = {
   order_created: "Order Created",
   order_confirmed: "Confirmed",
+  awaiting_vendor_confirmation: "Awaiting Vendor Confirmation",
   in_production: "In Production",
   polishing: "Finishing & Polishing",
   quality_control: "Quality Control",
@@ -144,6 +155,7 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
 const STATUS_COLORS: Record<OrderStatus, string> = {
   order_created: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
   order_confirmed: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  awaiting_vendor_confirmation: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
   in_production: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
   polishing: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400",
   quality_control: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
@@ -155,7 +167,7 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
 };
 
 const ALL_STATUSES: OrderStatus[] = [
-  "order_created", "order_confirmed", "in_production", "polishing",
+  "order_created", "order_confirmed", "awaiting_vendor_confirmation", "in_production", "polishing",
   "quality_control", "certifying", "inbound_shipping", "outbound_shipping",
   "delivered", "order_cancelled",
 ];
@@ -164,6 +176,46 @@ const EMAILABLE_STATUSES = new Set<OrderStatus>([
   "order_confirmed", "in_production", "polishing", "quality_control", "certifying",
   "inbound_shipping", "outbound_shipping", "delivered", "order_cancelled",
 ]);
+
+// ── Manual-capture payment status (Sourced for You) ────────────────────────────
+
+const CAPTURE_STATUS_LABELS: Record<string, string> = {
+  authorization_pending: "Authorization Pending",
+  authorized: "Authorized",
+  captured: "Captured",
+  authorization_canceled: "Authorization Released",
+  authorization_expired: "Authorization Expired",
+  capture_failed: "Capture Failed",
+  payment_failed: "Payment Failed",
+  refunded: "Refunded",
+  partially_refunded: "Partially Refunded",
+};
+
+const CAPTURE_STATUS_COLORS: Record<string, string> = {
+  authorization_pending: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  authorized: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  captured: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+  authorization_canceled: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  authorization_expired: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  capture_failed: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  payment_failed: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  refunded: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  partially_refunded: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+};
+
+// Deadline badge tier for a manual-capture authorization. Returns null when
+// there's no deadline to show (already captured/released/etc).
+function captureDeadlineBadge(
+  expiresAt: string | null,
+  captureStatus: string | null
+): { label: string; color: string } | null {
+  if (!expiresAt || captureStatus !== "authorized") return null;
+  const hoursLeft = (new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60);
+  if (hoursLeft <= 0) return { label: "Expired", color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" };
+  if (hoursLeft < 24) return { label: "Urgent (<24h)", color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" };
+  if (hoursLeft < 48) return { label: "Warning (<48h)", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" };
+  return { label: "Normal", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" };
+}
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -798,6 +850,36 @@ export function OrderDetailClient({
     }
   }
 
+  async function handleCapturePayment() {
+    if (!confirm("Capture payment now? This charges the customer's authorized card and begins fulfillment.")) return;
+    setActionLoading("capture-payment");
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/capture-payment`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { showToast("err", data.error ?? "Capture failed"); return; }
+      setOrder((prev) => ({ ...prev, ...data.order }));
+      setEditStatus(data.order?.order_status ?? "order_confirmed");
+      showToast("ok", data.alreadyCaptured ? "Payment was already captured" : "Payment captured — fulfillment started");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleReleaseAuthorization() {
+    if (!confirm("Release this authorization? The order will be cancelled and the customer notified — no refund is issued since nothing was charged.")) return;
+    setActionLoading("release-authorization");
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/release-authorization`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { showToast("err", data.error ?? "Release failed"); return; }
+      setOrder((prev) => ({ ...prev, ...data.order }));
+      setEditStatus("order_cancelled");
+      showToast("ok", data.alreadyReleased ? "Authorization was already released" : "Authorization released — customer notified");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   async function handleDelete() {
     setDeleting(true);
     try {
@@ -1081,6 +1163,80 @@ export function OrderDetailClient({
               </button>
             </div>
 
+            {/* Payment — manual-capture (Sourced for You) orders only */}
+            {order.capture_status && (() => {
+              const deadlineBadge = captureDeadlineBadge(order.authorization_expires_at, order.capture_status);
+              const isExpired = order.capture_status === "authorization_expired" || deadlineBadge?.label === "Expired";
+              const canCapture = order.capture_status === "authorized" && !isExpired;
+              const canRelease = order.capture_status === "authorized" || order.capture_status === "authorization_expired";
+              return (
+                <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Payment</h2>
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${CAPTURE_STATUS_COLORS[order.capture_status] ?? "bg-gray-100 text-gray-600"}`}>
+                      {CAPTURE_STATUS_LABELS[order.capture_status] ?? order.capture_status}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 dark:text-gray-400">Authorized amount</span>
+                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                        {order.authorized_amount != null ? `$${(order.authorized_amount / 100).toFixed(2)}` : "—"}
+                      </span>
+                    </div>
+                    {order.captured_amount != null && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500 dark:text-gray-400">Captured amount</span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100">${(order.captured_amount / 100).toFixed(2)}</span>
+                      </div>
+                    )}
+                    {order.authorization_expires_at && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-500 dark:text-gray-400">Capture deadline</span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="font-medium text-gray-900 dark:text-gray-100">{fmtDate(order.authorization_expires_at)}</span>
+                          {deadlineBadge && (
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${deadlineBadge.color}`}>
+                              {deadlineBadge.label}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    {order.latest_stripe_status && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500 dark:text-gray-400">PaymentIntent status</span>
+                        <span className="font-mono text-xs text-gray-700 dark:text-gray-300">{order.latest_stripe_status}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={handleCapturePayment}
+                    disabled={!!actionLoading || !canCapture}
+                    className="w-full rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2.5 text-sm font-medium transition-colors"
+                  >
+                    {actionLoading === "capture-payment" ? "Capturing…" : "Confirm Available & Capture Payment"}
+                  </button>
+
+                  <button
+                    onClick={handleReleaseAuthorization}
+                    disabled={!!actionLoading || !canRelease}
+                    className="w-full rounded-lg border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 disabled:cursor-not-allowed text-red-600 dark:text-red-400 py-2.5 text-sm font-medium transition-colors"
+                  >
+                    {actionLoading === "release-authorization" ? "Releasing…" : "Piece Unavailable — Release Authorization"}
+                  </button>
+
+                  {isExpired && order.capture_status === "authorized" && (
+                    <p className="text-xs text-red-600 dark:text-red-400">
+                      This authorization has passed its estimated expiration — capture is disabled. Verify status on Stripe or release the authorization.
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Actions */}
             <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-4 space-y-2">
               <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Actions</h2>
@@ -1142,7 +1298,9 @@ export function OrderDetailClient({
                 </button>
               </div>
 
-              {order.status === "unpaid" && !isCancelled && (
+              {/* Legacy paid/refund controls — hidden for manual-capture orders, which
+                  use the dedicated Payment section's Capture/Release buttons instead. */}
+              {!order.capture_status && order.status === "unpaid" && !isCancelled && (
                 <button
                   onClick={handleMarkPaid}
                   disabled={!!actionLoading}
@@ -1152,7 +1310,7 @@ export function OrderDetailClient({
                 </button>
               )}
 
-              {order.status !== "refunded" && order.stripe_payment_intent_id && (
+              {!order.capture_status && order.status !== "refunded" && order.stripe_payment_intent_id && (
                 <button
                   onClick={handleRefund}
                   disabled={!!actionLoading}
@@ -1162,13 +1320,25 @@ export function OrderDetailClient({
                 </button>
               )}
 
-              {order.status !== "refunded" && (
+              {!order.capture_status && order.status !== "refunded" && (
                 <button
                   onClick={handleMarkRefunded}
                   disabled={!!actionLoading}
                   className="w-full rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60 text-gray-600 dark:text-gray-400 py-2.5 text-sm font-medium transition-colors"
                 >
                   {actionLoading === "mark-refunded" ? "Saving…" : "Mark as Refunded"}
+                </button>
+              )}
+
+              {/* Manual-capture orders that HAVE been captured can still be refunded
+                  via the standard Stripe refund flow. */}
+              {order.capture_status === "captured" && (
+                <button
+                  onClick={handleRefund}
+                  disabled={!!actionLoading}
+                  className="w-full rounded-lg border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-60 text-red-600 dark:text-red-400 py-2.5 text-sm font-medium transition-colors"
+                >
+                  {actionLoading === "refund" ? "Refunding…" : "Refund via Stripe"}
                 </button>
               )}
 

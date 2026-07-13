@@ -7,6 +7,8 @@
 
 import { supabaseAdmin } from "./supabase-admin";
 import { resolveFirstImageUrl } from "./storage";
+import { stripe } from "./stripe";
+import type Stripe from "stripe";
 
 // ── Customer ──────────────────────────────────────────────────────────────────
 
@@ -106,6 +108,164 @@ export async function generateOrderNumber(): Promise<string> {
   const { data, error } = await supabaseAdmin.rpc("next_order_number");
   if (error || !data) throw new Error(`generateOrderNumber failed: ${error?.message}`);
   return data as string;
+}
+
+// ── Shipments (fulfillment) ───────────────────────────────────────────────────
+
+/**
+ * Create shipments (grouped by inventory_type) + their event timelines for an
+ * order. Used both by the auto-capture webhook path (Ship Now / legacy orders,
+ * immediately after order_items are inserted) and by the manual-capture admin
+ * capture route (once a Sourced for You authorization is captured).
+ *
+ * Idempotent: no-ops if shipments already exist for this order, so it's safe
+ * to call from both the admin capture route and the payment_intent.succeeded
+ * webhook reconciliation without double-creating fulfillment records.
+ */
+export async function createShipmentsForOrder(orderId: string, orderNumber: string | null): Promise<void> {
+  const { data: existingShipments } = await supabaseAdmin
+    .from("shipments")
+    .select("id")
+    .eq("order_id", orderId)
+    .limit(1);
+  if (existingShipments && existingShipments.length > 0) return;
+
+  const { data: items } = await supabaseAdmin
+    .from("order_items")
+    .select("id, inventory_type")
+    .eq("order_id", orderId);
+  if (!items || items.length === 0) return;
+
+  const groups = new Map<string, string[]>();
+  for (const row of items) {
+    const t = (row.inventory_type as string) ?? "sourced_for_you";
+    if (!groups.has(t)) groups.set(t, []);
+    groups.get(t)!.push(row.id as string);
+  }
+
+  let shipmentIndex = 1;
+  for (const [inventoryType, itemIds] of groups) {
+    const { data: shipment } = await supabaseAdmin
+      .from("shipments")
+      .insert({
+        order_id: orderId,
+        shipment_number: orderNumber ? `${orderNumber}-S${shipmentIndex}` : null,
+        fulfillment_type: inventoryType,
+        status: "confirmed",
+      })
+      .select("id")
+      .single();
+
+    if (shipment) {
+      await supabaseAdmin.from("shipment_items").insert(
+        itemIds.map((oid) => ({ shipment_id: shipment.id, order_item_id: oid }))
+      );
+
+      const confirmedAt = new Date().toISOString();
+      const EVENTS_AVAILABLE_NOW = [
+        { event_key: "confirmed",  label: "Order Confirmed", description: "Order placed and payment received.",        sort_order: 0, is_current: true,  is_completed: false, event_time: confirmedAt },
+        { event_key: "packing",    label: "Packing",         description: "Your piece is being carefully packaged.",   sort_order: 1, is_current: false, is_completed: false },
+        { event_key: "shipped",    label: "Shipped",          description: "Your order is on its way to you.",          sort_order: 2, is_current: false, is_completed: false },
+        { event_key: "delivered",  label: "Delivered",        description: "Your piece has arrived.",                  sort_order: 3, is_current: false, is_completed: false },
+      ];
+      const EVENTS_SOURCED = [
+        { event_key: "confirmed",          label: "Order Confirmed",        description: "Order placed and payment received.",                             sort_order: 0, is_current: true,  is_completed: false, event_time: confirmedAt },
+        { event_key: "quality_inspection", label: "Quality Inspection",     description: "Your piece is being carefully inspected to meet our standards.", sort_order: 1, is_current: false, is_completed: false },
+        { event_key: "certification",      label: "Certification",          description: "Your jade is undergoing authentication and certification.",      sort_order: 2, is_current: false, is_completed: false },
+        { event_key: "arriving_at_studio", label: "Arriving at Our Studio", description: "Your piece is on its way to our studio for final handling.",    sort_order: 3, is_current: false, is_completed: false },
+        { event_key: "shipped",            label: "Shipped",                description: "Your order has been carefully packaged and shipped.",            sort_order: 4, is_current: false, is_completed: false },
+        { event_key: "delivered",          label: "Delivered",              description: "Your piece has arrived. We hope it brings you lasting beauty.",  sort_order: 5, is_current: false, is_completed: false },
+      ];
+
+      await supabaseAdmin.from("shipment_events").insert(
+        (inventoryType === "available_now" ? EVENTS_AVAILABLE_NOW : EVENTS_SOURCED)
+          .map((e) => ({ ...e, shipment_id: shipment.id }))
+      );
+    }
+    shipmentIndex++;
+  }
+}
+
+// ── order_payments ledger ──────────────────────────────────────────────────────
+
+/**
+ * Record the realized payment in the order_payments accounting ledger.
+ * Fetches the real Stripe fee from the balance transaction (exact amount
+ * Stripe charged — accounts for card type, international, etc).
+ *
+ * Only call this once money has actually moved (auto-capture completion, or
+ * a manual-capture order's capture) — full-accounting revenue reporting reads
+ * order_payments.payment_status, not orders.status, so authorized-but-not-yet-
+ * captured orders correctly stay out of revenue until this runs.
+ *
+ * Idempotent: only inserts if no row exists yet for this payment intent.
+ */
+export async function recordOrderPayment(params: {
+  orderId: string;
+  orderNumber: string | null;
+  paymentIntentId: string;
+  amountTotalCents: number;
+  currency: string;
+  createdAtIso: string;
+  notes: string;
+}): Promise<void> {
+  try {
+    const amountUsd = params.amountTotalCents / 100;
+    let feeUsd = 0;
+    let netUsd = amountUsd;
+    let receiptUrl: string | null = null;
+
+    try {
+      const pi = await stripe.paymentIntents.retrieve(params.paymentIntentId, {
+        expand: ["latest_charge.balance_transaction"],
+      });
+      const charge = pi.latest_charge as Stripe.Charge | null;
+      const balTxn = charge?.balance_transaction as Stripe.BalanceTransaction | null;
+      if (balTxn) {
+        feeUsd = balTxn.fee / 100;
+        netUsd = balTxn.net / 100;
+      }
+      receiptUrl = charge?.receipt_url ?? null;
+    } catch {
+      // Balance transaction may not be settled yet; a later sync will fix it
+    }
+
+    const paymentRow = {
+      order_id:                params.orderId,
+      bbj_order_code:          params.orderNumber,
+      payment_provider:        "stripe" as const,
+      payment_type:            "checkout",
+      provider_transaction_id: params.paymentIntentId,
+      provider_receipt_id:     receiptUrl,
+      provider_invoice_id:     null as string | null,
+      amount_paid_usd:         amountUsd,
+      currency:                params.currency.toUpperCase(),
+      payment_fee_usd:         feeUsd,
+      net_received_usd:        netUsd,
+      payment_date:            params.createdAtIso,
+      payment_status:          "paid",
+      proof_url:               null as string | null,
+      notes:                   params.notes,
+    };
+
+    const { data: existingPayment } = await supabaseAdmin
+      .from("order_payments")
+      .select("id")
+      .eq("payment_provider", "stripe")
+      .eq("provider_transaction_id", params.paymentIntentId)
+      .maybeSingle();
+
+    if (!existingPayment) {
+      await supabaseAdmin.from("order_payments").insert(paymentRow);
+    } else if (feeUsd > 0) {
+      await supabaseAdmin
+        .from("order_payments")
+        .update({ payment_fee_usd: feeUsd, net_received_usd: netUsd, provider_receipt_id: receiptUrl })
+        .eq("id", existingPayment.id);
+    }
+  } catch (err) {
+    console.error("[orders] recordOrderPayment failed (non-fatal):", err);
+  }
 }
 
 // ── Confirmation email (Resend) ───────────────────────────────────────────────
@@ -331,6 +491,9 @@ const STATUS_META: Record<
   { subject: string; headline: string; badge: string; body: string } | null
 > = {
   order_created: null,
+  // No generic status email for this state — sendAvailabilityConfirmationEmail
+  // is sent directly by the checkout webhook when the order is created.
+  awaiting_vendor_confirmation: null,
   in_production: null,
   polishing: null,
   order_confirmed: {
@@ -706,5 +869,255 @@ export async function sendDeliveryDateEmail(params: {
     if (error) console.error("[orders] Resend delivery email error:", error);
   } catch (err) {
     console.error("[orders] Failed to send delivery date email:", err);
+  }
+}
+
+// ── Manual-capture (Sourced for You authorization) emails ────────────────────
+
+/**
+ * Sent instead of sendOrderConfirmationEmail when an order is created with a
+ * manual-capture (Sourced for You) authorization — payment is authorized but
+ * NOT yet charged. Makes that explicit so the customer never thinks they've
+ * been billed before the vendor confirms availability.
+ */
+export async function sendAvailabilityConfirmationEmail(params: {
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  authorizedAmountCents: number;
+  items: EmailItem[];
+}): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.info("[orders] Resend not configured — skipping availability confirmation email");
+    return;
+  }
+
+  const resend = new Resend(apiKey);
+  const from = process.env.RESEND_FROM_EMAIL_ORDER_CONFIRMATION ?? "BingBing Jade <orders@bingbingjade.com>";
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
+  const trackUrl = `${siteUrl}/orders/${params.orderNumber}`;
+  const firstName = params.customerName.split(" ")[0];
+  const amountFormatted = `$${(params.authorizedAmountCents / 100).toFixed(2)}`;
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:#065f46;padding:32px 40px;text-align:center;">
+            <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:#6ee7b7;">Order Received</p>
+            <h1 style="margin:8px 0 0;font-size:26px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">BingBing Jade</h1>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:36px 40px;">
+            <p style="margin:0 0 20px;font-size:16px;color:#111827;">Hi ${firstName},</p>
+            <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
+              Thank you for your order. Because this piece is <strong>Sourced for You</strong>, we're now confirming
+              availability with our overseas sourcing partner before anything is finalized.
+            </p>
+
+            <!-- Order number callout -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:20px;">
+              <tr>
+                <td style="padding:16px 20px;">
+                  <p style="margin:0 0 2px;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#059669;">Your Order Number</p>
+                  <p style="margin:0;font-size:22px;font-weight:700;color:#065f46;letter-spacing:0.04em;">${params.orderNumber}</p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Authorization notice -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;margin-bottom:28px;">
+              <tr>
+                <td style="padding:14px 20px;">
+                  <p style="margin:0 0 2px;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#92400e;">Payment Status</p>
+                  <p style="margin:0;font-size:16px;font-weight:700;color:#78350f;">Authorized — Not Yet Charged</p>
+                  <p style="margin:6px 0 0;font-size:13px;color:#78350f;line-height:1.6;">
+                    ${amountFormatted} has been authorized on your payment method. Nothing has been charged.
+                    Your payment will only be finalized once the piece has been secured with our sourcing partner.
+                  </p>
+                </td>
+              </tr>
+            </table>
+
+            ${buildItemRowsHtml(params.items)}
+
+            <!-- CTA -->
+            <table cellpadding="0" cellspacing="0" style="margin:20px 0 28px;">
+              <tr>
+                <td style="background:#065f46;border-radius:999px;">
+                  <a href="${trackUrl}" style="display:inline-block;padding:13px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.01em;">
+                    Track Your Order &rarr;
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:0;font-size:14px;color:#374151;line-height:1.6;">
+              Questions? Reply to this email or reach out via <a href="${siteUrl}/contact" style="color:#059669;text-decoration:none;">our contact page</a> or WhatsApp — we&rsquo;re always happy to give a personal update.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding:20px 40px 28px;border-top:1px solid #f3f4f6;text-align:center;">
+            <p style="margin:0;font-size:12px;color:#9ca3af;">
+              &copy; ${new Date().getFullYear()} BingBing Jade &middot;
+              <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
+            </p>
+            <p style="margin:6px 0 0;font-size:10px;color:#9ca3af;">This is a no-reply address. For inquiries, contact <a href="mailto:contact@bingbingjade.com" style="color:#9ca3af;text-decoration:none;">contact@bingbingjade.com</a>.</p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  try {
+    const { error } = await resend.emails.send({
+      from,
+      to: params.customerEmail,
+      bcc: "contact@bingbingjade.com",
+      subject: `[Order Received] Confirming Availability for Your Order ${params.orderNumber}`,
+      html,
+    });
+    if (error) console.error("[orders] Resend availability-confirmation email error:", error);
+  } catch (err) {
+    console.error("[orders] Failed to send availability confirmation email:", err);
+  }
+}
+
+/**
+ * Sent when an admin releases a manual-capture authorization because the
+ * vendor confirmed the piece is unavailable. No refund is issued (and none is
+ * needed) because payment was never captured — this email makes that explicit,
+ * since customers otherwise reasonably expect refund language after a
+ * cancellation.
+ */
+export async function sendAuthorizationReleasedEmail(params: {
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  items?: EmailItem[];
+}): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return;
+
+  const resend = new Resend(apiKey);
+  const from = "BingBing Jade <notification@bingbingjade.com>";
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
+  const firstName = params.customerName.split(" ")[0];
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:#991b1b;padding:32px 40px;text-align:center;">
+            <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:#fca5a5;">Order Update</p>
+            <h1 style="margin:8px 0 0;font-size:26px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">BingBing Jade</h1>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:36px 40px;">
+            <p style="margin:0 0 20px;font-size:16px;color:#111827;">Hi ${firstName},</p>
+            <p style="margin:0 0 20px;font-size:15px;color:#374151;line-height:1.6;">
+              Unfortunately, our overseas sourcing partner has confirmed that this piece is no longer available.
+              We're sorry for the disappointment — this happens rarely, but we wanted to let you know right away.
+            </p>
+
+            <!-- Order number callout -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;margin-bottom:20px;">
+              <tr>
+                <td style="padding:16px 20px;">
+                  <p style="margin:0 0 2px;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#991b1b;">Cancelled</p>
+                  <p style="margin:0;font-size:22px;font-weight:700;color:#7f1d1d;letter-spacing:0.04em;">${params.orderNumber}</p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- No payment finalized notice -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:28px;">
+              <tr>
+                <td style="padding:14px 20px;">
+                  <p style="margin:0 0 2px;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#059669;">No Payment Was Finalized</p>
+                  <p style="margin:6px 0 0;font-size:13px;color:#065f46;line-height:1.6;">
+                    Your card was only ever authorized, never charged. That authorization has now been released.
+                    Depending on your bank, the pending hold may take a few business days to fully disappear from
+                    your statement — this is normal and not a charge.
+                  </p>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:0 0 20px;font-size:14px;color:#374151;line-height:1.6;">
+              If you&rsquo;d still like a piece like this one, we&rsquo;d be glad to help source something similar for
+              you directly.
+            </p>
+
+            <!-- CTA -->
+            <table cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+              <tr>
+                <td style="background:#7c2d3e;border-radius:999px;">
+                  <a href="${siteUrl}/custom-sourcing" style="display:inline-block;padding:13px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.01em;">
+                    Help Me Find a Similar Piece &rarr;
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:0;font-size:14px;color:#374151;line-height:1.6;">
+              Questions? Reply to this email or reach out via <a href="${siteUrl}/contact" style="color:#059669;text-decoration:none;">our contact page</a> or WhatsApp — we&rsquo;re always happy to help.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding:20px 40px 28px;border-top:1px solid #f3f4f6;text-align:center;">
+            <p style="margin:0;font-size:12px;color:#9ca3af;">
+              &copy; ${new Date().getFullYear()} BingBing Jade &middot;
+              <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
+            </p>
+            <p style="margin:6px 0 0;font-size:10px;color:#9ca3af;">This is a no-reply address. For inquiries, contact <a href="mailto:contact@bingbingjade.com" style="color:#9ca3af;text-decoration:none;">contact@bingbingjade.com</a>.</p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  try {
+    const { error } = await resend.emails.send({
+      from,
+      to: params.customerEmail,
+      bcc: "contact@bingbingjade.com",
+      subject: `[Order Update] Piece Unavailable — Authorization Released for ${params.orderNumber}`,
+      html,
+    });
+    if (error) console.error("[orders] Resend authorization-released email error:", error);
+  } catch (err) {
+    console.error("[orders] Failed to send authorization-released email:", err);
   }
 }

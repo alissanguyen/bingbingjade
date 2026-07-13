@@ -1,6 +1,7 @@
 export type OrderStatus =
   | "order_created"
   | "order_confirmed"
+  | "awaiting_vendor_confirmation"
   | "in_production"
   | "polishing"
   | "quality_control"
@@ -13,6 +14,20 @@ export type OrderStatus =
 export type OrderSource = "stripe" | "whatsapp" | "cash" | "paypal" | "wire" | "zelle" | "custom" | "admin" | "livestream";
 
 export type PaidStatus = "paid" | "unpaid" | "refunded";
+
+// Manual-capture (authorize-then-capture) payment lifecycle for "Sourced for
+// You" orders. NULL on the order row means "legacy / auto-capture order" —
+// use the existing PaidStatus field for those instead.
+export type CaptureStatus =
+  | "authorization_pending"
+  | "authorized"
+  | "captured"
+  | "authorization_canceled"
+  | "authorization_expired"
+  | "capture_failed"
+  | "payment_failed"
+  | "refunded"
+  | "partially_refunded";
 
 export interface OrderItem {
   id: string;

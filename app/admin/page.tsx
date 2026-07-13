@@ -6,6 +6,7 @@ import { resolveFirstImageUrl } from "@/lib/storage";
 import type { PendingProduct, TokenRequestItem } from "./AdminProfileClient";
 import { AdminProfileClient } from "./AdminProfileClient";
 import { BannerManager } from "./BannerManager";
+import { VendorConfirmationsWidget } from "./VendorConfirmationsWidget";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export default async function AdminProfilePage() {
   const session = await getSessionUser();
   if (!isAdmin(session)) redirect("/admin-login");
 
-  const [{ data: pendingRows }, { data: tokenRequestRows }] = await Promise.all([
+  const [{ data: pendingRows }, { data: tokenRequestRows }, { data: vendorConfirmationRows }] = await Promise.all([
     supabaseAdmin
       .from("products")
       .select("id, name, category, images, pending_data, created_by")
@@ -25,6 +26,11 @@ export default async function AdminProfilePage() {
       .select("id, message, requested_amount, created_at, user_id, approved_users(id, full_name, email, generation_tokens)")
       .eq("status", "pending")
       .order("created_at", { ascending: false }),
+    supabaseAdmin
+      .from("orders")
+      .select("id, order_number, customer_name, authorized_amount, authorization_expires_at")
+      .eq("capture_status", "authorized")
+      .order("authorization_expires_at", { ascending: true }),
   ]);
 
   // Resolve approved-user names for pending products
@@ -79,6 +85,7 @@ export default async function AdminProfilePage() {
       <div className="mx-auto max-w-3xl px-6 pb-6">
         <BannerManager />
       </div>
+      <VendorConfirmationsWidget orders={vendorConfirmationRows ?? []} />
       <AdminProfileClient
         pendingProducts={pendingProducts}
         tokenRequests={tokenRequests}
