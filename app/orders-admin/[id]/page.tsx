@@ -57,9 +57,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   let productImages: Record<string, string> = {};
   let productCogs: Record<string, number> = {};
+  let productLinks: Record<string, string> = {};
   if (productIds.length > 0) {
     const [{ data: products }, { data: costs }] = await Promise.all([
-      supabaseAdmin.from("products").select("id, images").in("id", productIds),
+      supabaseAdmin.from("products").select("id, images, slug, public_id").in("id", productIds),
       supabaseAdmin.from("product_costs").select("product_id, total_cogs_usd").in("product_id", productIds),
     ]);
 
@@ -74,12 +75,17 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     productCogs = Object.fromEntries(
       (costs ?? []).map((c) => [c.product_id, Number(c.total_cogs_usd)])
     );
+    productLinks = Object.fromEntries(
+      (products ?? [])
+        .filter((p) => p.slug && p.public_id)
+        .map((p) => [p.id, `/products/${p.slug}-${p.public_id}`])
+    );
   }
 
   return (
     <>
       <AdminBarServer />
-      <OrderDetailClient order={{ ...orderForClient, shipments }} productImages={productImages} productCogs={productCogs} />
+      <OrderDetailClient order={{ ...orderForClient, shipments }} productImages={productImages} productCogs={productCogs} productLinks={productLinks} />
     </>
   );
 }

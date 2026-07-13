@@ -285,10 +285,12 @@ export function OrderDetailClient({
   order: initialOrder,
   productImages,
   productCogs,
+  productLinks = {},
 }: {
   order: Order;
   productImages: Record<string, string>;
   productCogs: Record<string, number>;
+  productLinks?: Record<string, string>;
 }) {
   const router = useRouter();
   const [order, setOrder] = useState(initialOrder);
@@ -1250,6 +1252,7 @@ export function OrderDetailClient({
                   const item = order.order_items.find((i) => i.id === draft.id);
                   const productId = draft.productId ?? item?.product_id ?? null;
                   const imgSrc = productId ? itemImages[productId] : "";
+                  const productHref = productId ? (productLinks[productId] ?? null) : null;
                   const cogs = productId ? productCogs[productId] : undefined;
                   const lineTotal = ((parseFloat(draft.price) || 0) * (parseInt(draft.quantity) || 1)).toFixed(2);
                   return (
@@ -1257,7 +1260,13 @@ export function OrderDetailClient({
                       {!editingItems && (
                         <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0 mt-0.5">
                           {imgSrc ? (
-                            <Image src={imgSrc} alt={draft.productName} width={56} height={56} className="w-full h-full object-cover" unoptimized />
+                            productHref ? (
+                              <a href={productHref} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
+                                <Image src={imgSrc} alt={draft.productName} width={56} height={56} className="w-full h-full object-cover hover:opacity-80 transition-opacity" unoptimized />
+                              </a>
+                            ) : (
+                              <Image src={imgSrc} alt={draft.productName} width={56} height={56} className="w-full h-full object-cover" unoptimized />
+                            )
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
                               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
