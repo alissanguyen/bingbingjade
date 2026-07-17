@@ -15,6 +15,7 @@ import {
 import { commitDiscount, normalizeEmail, buildShippingFingerprint } from "@/lib/discount";
 import { CREDIT_VALIDITY_DAYS } from "@/lib/sourcing-classification";
 import { sendDepositConfirmationEmail } from "@/lib/sourcing-emails";
+import { MANUAL_CAPTURE_WINDOW_DAYS } from "@/lib/shipping";
 import type Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -578,7 +579,27 @@ export async function POST(req: NextRequest) {
   // paid/confirmed/fulfillment-started yet.
   const isManualCapture = session.metadata?.capture_mode === "manual";
   const nowIso = new Date().toISOString();
-  const authorizationExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  // Card, Klarna, Afterpay/Clearpay, and Affirm all support manual capture, but
+  // each has a different authorization window, and the session may have offered
+  // several BNPL methods at once (the customer picks one on Stripe's hosted
+  // page). Retrieve the confirmed PaymentIntent to see which one was actually
+  // used, so authorization_expires_at reflects the real window, not a guess.
+  let capturePaymentMethod: string | null = null;
+  let latestStripeStatus: string | null = null;
+  if (isManualCapture && paymentIntentId) {
+    try {
+      const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+      capturePaymentMethod = pi.payment_method_types?.[0] ?? null;
+      latestStripeStatus = pi.status;
+    } catch (err) {
+      console.error("[webhook] Failed to retrieve PaymentIntent for manual-capture order (non-fatal):", err);
+    }
+  }
+  const captureWindowDays = capturePaymentMethod && capturePaymentMethod in MANUAL_CAPTURE_WINDOW_DAYS
+    ? MANUAL_CAPTURE_WINDOW_DAYS[capturePaymentMethod as keyof typeof MANUAL_CAPTURE_WINDOW_DAYS]
+    : 7; // fallback if the method is unrecognized — should not happen in practice
+  const authorizationExpiresAt = new Date(Date.now() + captureWindowDays * 24 * 60 * 60 * 1000).toISOString();
 
   // ── Create order record ───────────────────────────────────────────────────────
   const { data: order, error: orderErr } = await supabase
@@ -606,7 +627,8 @@ export async function POST(req: NextRequest) {
         authorized_amount: session.amount_total ?? null,
         authorized_at: nowIso,
         authorization_expires_at: authorizationExpiresAt,
-        latest_stripe_status: "requires_capture",
+        latest_stripe_status: latestStripeStatus ?? "requires_capture",
+        capture_payment_method: capturePaymentMethod,
       } : {}),
       // Discount fields
       discount_source: discountMeta?.source ?? null,

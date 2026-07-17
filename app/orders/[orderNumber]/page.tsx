@@ -266,6 +266,11 @@ export default async function TrackOrderPage({
   const captureStatus = (order as Record<string, unknown>).capture_status as string | null;
   const authorizedAmount = (order as Record<string, unknown>).authorized_amount as number | null;
   const isAuthorizedNotCaptured = captureStatus === "authorized" || captureStatus === "authorization_pending";
+  // True whenever the order has a manual-capture status AND money never actually
+  // moved — covers not just the in-progress "authorized" state but also
+  // authorization_canceled/expired/payment_failed/capture_failed, so a
+  // cancelled-before-capture order never shows "Total paid" either.
+  const wasNeverCharged = !!captureStatus && !["captured", "refunded", "partially_refunded"].includes(captureStatus);
   const statusSteps = getSteps(isCustom);
 
   const orderDate = new Date(order.created_at).toLocaleDateString("en-US", {
@@ -673,7 +678,11 @@ export default async function TrackOrderPage({
                     )}
                     <div className={`flex justify-between items-center ${hasFees ? "pt-1 border-t border-gray-200 dark:border-gray-700" : ""}`}>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {isAuthorizedNotCaptured ? "Total (Authorized, Not Yet Charged)" : "Total paid"}
+                        {isAuthorizedNotCaptured
+                          ? "Total (Authorized, Not Yet Charged)"
+                          : wasNeverCharged
+                            ? "Total (Not Charged)"
+                            : "Total paid"}
                       </p>
                       <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{totalFormatted}</p>
                     </div>

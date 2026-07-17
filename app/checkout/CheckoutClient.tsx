@@ -190,10 +190,10 @@ export function CheckoutClient() {
       }
     : { name: "", country: "", line1: "", line2: "", city: "", state: "", postal: "" };
 
-  // BNPL eligibility: US-only, and unavailable for Sourced for You items — Klarna/
-  // Afterpay/Affirm settlement windows don't support the multi-day manual-capture
-  // hold those items need while we confirm availability with our overseas partner.
-  const bnplEligible = shippingAddress.country === "US" && !hasSourcingItems;
+  // BNPL eligibility: US-only. Klarna/Afterpay/Affirm all support Stripe's
+  // manual-capture authorize-then-capture flow, so this applies equally to
+  // Ship Now and Sourced for You — no special-casing needed here.
+  const bnplEligible = shippingAddress.country === "US";
   useEffect(() => {
     if (paymentMethod === "bnpl" && !bnplEligible) setPaymentMethod("standard");
   }, [bnplEligible, paymentMethod]);
@@ -977,9 +977,7 @@ export function CheckoutClient() {
                         <div>
                           <p className="text-[13px] sm:text-sm font-semibold text-stone-500 dark:text-gray-500">Pay in installments</p>
                           <p className="text-[11px] sm:text-[13px] text-stone-400 dark:text-gray-600 mt-0.5">
-                            {hasSourcingItems
-                              ? "Not available for Sourced for You items — card payment only while we confirm availability"
-                              : "Only available for US shipping addresses"}
+                            Only available for US shipping addresses
                           </p>
                         </div>
                       </div>

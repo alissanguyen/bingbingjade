@@ -298,14 +298,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // BNPL settlement windows (Klarna/Afterpay/Affirm) don't support the multi-day
-  // manual-capture hold Sourced for You items need — card only for those.
-  if (isSourcedOnlyCart && body.paymentMethod === "bnpl") {
-    return NextResponse.json(
-      { error: "Installment payment methods aren't available for Sourced for You items — your card will be authorized while we confirm availability with our overseas partner." },
-      { status: 400 }
-    );
-  }
+  // Note: Klarna, Afterpay/Clearpay, and Affirm all support Stripe manual capture
+  // in this integration (verified end-to-end in test mode — authorize, capture,
+  // AND cancel-without-refund all confirmed for every method below), so BNPL is
+  // allowed for Sourced for You the same as Ship Now. Stripe itself rejects
+  // capture_method: "manual" outright for any payment method that doesn't
+  // support it (fails loud at session creation, never silently falls back to
+  // auto-capture) — see the try/catch around session creation below.
 
   // ── Campaign event: coupon eligibility + stacking checks ─────────────────────
   if (body.discountCode) {
@@ -685,12 +684,9 @@ export async function POST(req: NextRequest) {
     session = await stripe.checkout.sessions.create({
       mode: "payment",
       currency: "usd",
-      // Sourced for You is authorize-then-capture and card-only (see BNPL guard above)
-      payment_method_types: isSourcedOnlyCart
-        ? ["card"]
-        : paymentMethod === "bnpl"
-          ? ACTIVE_BNPL_METHODS
-          : ["card"],
+      // Sourced for You uses the same payment method selection as Ship Now — card
+      // or BNPL are both authorize-then-capture capable (verified per-method).
+      payment_method_types: paymentMethod === "bnpl" ? ACTIVE_BNPL_METHODS : ["card"],
       ...(isSourcedOnlyCart ? { payment_intent_data: { capture_method: "manual" } } : {}),
       ...(body.customerEmail ? { customer_email: normalizeEmail(body.customerEmail) } : {}),
       line_items: lineItems,

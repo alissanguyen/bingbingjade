@@ -134,6 +134,7 @@ interface Order {
   captured_at: string | null;
   authorization_canceled_at: string | null;
   latest_stripe_status: string | null;
+  capture_payment_method: string | null;
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -201,6 +202,14 @@ const CAPTURE_STATUS_COLORS: Record<string, string> = {
   payment_failed: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   refunded: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   partially_refunded: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+};
+
+const CAPTURE_PAYMENT_METHOD_LABELS: Record<string, string> = {
+  card: "Card",
+  klarna: "Klarna",
+  afterpay_clearpay: "Afterpay/Clearpay",
+  affirm: "Affirm",
+  zip: "Zip",
 };
 
 // Deadline badge tier for a manual-capture authorization. Returns null when
@@ -1179,6 +1188,14 @@ export function OrderDetailClient({
                   </div>
 
                   <div className="space-y-1.5 text-sm">
+                    {order.capture_payment_method && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500 dark:text-gray-400">Payment method</span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100">
+                          {CAPTURE_PAYMENT_METHOD_LABELS[order.capture_payment_method] ?? order.capture_payment_method}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-gray-500 dark:text-gray-400">Authorized amount</span>
                       <span className="font-medium text-gray-900 dark:text-gray-100">

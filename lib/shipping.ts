@@ -99,3 +99,21 @@ export type BnplMethod = typeof BNPL_METHODS[number];
 // Currently active BNPL methods sent to Stripe.
 // zip: disabled — not yet integrated
 export const ACTIVE_BNPL_METHODS: BnplMethod[] = ["klarna", "afterpay_clearpay", "affirm"];
+
+// Manual-capture authorization window per payment method, in days, per Stripe's
+// documented hold periods (docs.stripe.com/payments/place-a-hold-on-a-payment-method,
+// verified empirically end-to-end for each method in Stripe test mode — see
+// capture-payment / release-authorization admin routes). Card uses the online
+// card-not-present window; actual card-network holds can vary slightly by brand.
+//
+// IMPORTANT: this is only ever used to compute a dashboard/UI estimate
+// (authorization_expires_at). The live PaymentIntent status from Stripe is
+// always the source of truth for whether a capture/release is actually
+// possible — never gate a capture/cancel decision on this table alone.
+export const MANUAL_CAPTURE_WINDOW_DAYS: Record<"card" | BnplMethod, number> = {
+  card: 7,
+  klarna: 28,
+  afterpay_clearpay: 13,
+  affirm: 30,
+  zip: 7, // not yet integrated — placeholder if enabled later
+};
