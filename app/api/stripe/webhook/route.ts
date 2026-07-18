@@ -822,6 +822,7 @@ export async function POST(req: NextRequest) {
           customerEmail,
           authorizedAmountCents: session.amount_total ?? 0,
           items: emailItems,
+          shippingAddress: resolvedAddr ?? null,
         });
       } else {
         await sendOrderConfirmationEmail({

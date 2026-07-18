@@ -1890,7 +1890,7 @@ export function OrderDetailClient({
             </div>
 
             {/* Shipping address */}
-            {effectiveAddress && (
+            {effectiveAddress ? (
               <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-4">
                 <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Shipping Address</h2>
                 <address className="not-italic text-sm text-gray-600 dark:text-gray-300 space-y-0.5">
@@ -1903,7 +1903,18 @@ export function OrderDetailClient({
                   <p>{effectiveAddress.country}</p>
                 </address>
               </div>
-            )}
+            ) : order.capture_status ? (
+              // Manual-capture (Sourced for You) order with no address on file —
+              // flag it so the team catches this before confirming/capturing,
+              // since fulfillment can't proceed without a shipping address.
+              <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 px-4 py-4">
+                <h2 className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-1">⚠ Missing Shipping Address</h2>
+                <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+                  This order has no shipping address on file. Resolve this — via Edit Order Info or by contacting the
+                  customer — before confirming availability and capturing payment.
+                </p>
+              </div>
+            ) : null}
 
             {/* Public track page link */}
             {order.order_number && (

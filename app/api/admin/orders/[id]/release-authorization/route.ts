@@ -3,7 +3,7 @@ import type Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { stripe } from "@/lib/stripe";
 import { getSessionUser, isAdmin } from "@/lib/approved-auth";
-import { sendAuthorizationReleasedEmail } from "@/lib/orders";
+import { sendAuthorizationReleasedEmail, getOrderShippingAddress } from "@/lib/orders";
 
 // Statuses from which an authorization can still be released. 'authorized' is
 // the normal case; 'authorization_expired' means Stripe already auto-cancelled
@@ -144,10 +144,12 @@ export async function POST(
 
   if (order.order_number && order.customer_name && order.customer_email) {
     try {
+      const shippingAddress = await getOrderShippingAddress(order.id);
       await sendAuthorizationReleasedEmail({
         orderNumber: order.order_number,
         customerName: order.customer_name,
         customerEmail: order.customer_email,
+        shippingAddress,
       });
     } catch (err) {
       console.error("[release-authorization] Email failed (non-fatal):", err);

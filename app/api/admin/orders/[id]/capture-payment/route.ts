@@ -3,7 +3,7 @@ import type Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { stripe } from "@/lib/stripe";
 import { getSessionUser, isAdmin } from "@/lib/approved-auth";
-import { createShipmentsForOrder, recordOrderPayment, sendOrderConfirmationEmail, fetchEmailItems } from "@/lib/orders";
+import { createShipmentsForOrder, recordOrderPayment, sendOrderConfirmationEmail, fetchEmailItems, getOrderShippingAddress } from "@/lib/orders";
 
 type OrderRow = {
   id: string;
@@ -142,13 +142,17 @@ async function finalizeCapture(order: OrderRow, pi: Stripe.PaymentIntent) {
 
   if (order.order_number && order.customer_name && order.customer_email) {
     try {
-      const items = await fetchEmailItems(order.id);
+      const [items, shippingAddress] = await Promise.all([
+        fetchEmailItems(order.id),
+        getOrderShippingAddress(order.id),
+      ]);
       await sendOrderConfirmationEmail({
         orderNumber: order.order_number,
         customerName: order.customer_name,
         customerEmail: order.customer_email,
         amountTotalCents: pi.amount_received,
         items,
+        shippingAddress,
       });
     } catch (err) {
       console.error("[capture-payment] Confirmation email failed (non-fatal):", err);

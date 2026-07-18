@@ -98,6 +98,156 @@ export async function saveShippingAddress(params: {
   return data.id as string;
 }
 
+/**
+ * Resolve an order's shipping address for use in transactional emails / admin
+ * display. The local order record is always the primary source — Stripe is
+ * only consulted as a fallback when nothing is on file locally (e.g. an older
+ * order, or a webhook run that didn't complete address persistence).
+ *
+ * When a fallback recovery from Stripe succeeds, the result is written back
+ * to the order (linked customer_addresses row, or shipping_address_json for
+ * orders with no linked customer) so subsequent calls read from the DB again.
+ *
+ * Returns null — and logs a warning — if no address can be found or
+ * recovered. Callers should never treat that as a fatal error.
+ */
+export async function getOrderShippingAddress(orderId: string): Promise<EmailShippingAddress> {
+  // Fetched separately from shipping_address_json below — split so a
+  // schema issue with one optional column (e.g. an unapplied migration in a
+  // given environment) can't take down the whole lookup for the common,
+  // guaranteed-present shipping_address_id path.
+  const { data: order } = await supabaseAdmin
+    .from("orders")
+    .select("id, order_number, shipping_address_id, stripe_session_id, customer_id")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (!order) return null;
+
+  // 1. Linked customer_addresses record — the common case.
+  if (order.shipping_address_id) {
+    const { data: addr } = await supabaseAdmin
+      .from("customer_addresses")
+      .select("recipient_name, address_line1, address_line2, city, state_or_region, postal_code, country")
+      .eq("id", order.shipping_address_id)
+      .maybeSingle();
+    if (addr?.address_line1) {
+      return {
+        name: addr.recipient_name ?? null,
+        line1: addr.address_line1,
+        line2: addr.address_line2 ?? null,
+        city: addr.city ?? null,
+        state: addr.state_or_region ?? null,
+        postal: addr.postal_code ?? null,
+        country: addr.country ?? null,
+      };
+    }
+  }
+
+  // 2. JSON fallback — orders placed without a linked customer record.
+  // Queried defensively: some environments haven't applied migration_052
+  // (which added this column) yet, and a missing column would otherwise
+  // fail the whole query rather than just this one field.
+  try {
+    const { data: jsonRow, error } = await supabaseAdmin
+      .from("orders")
+      .select("shipping_address_json")
+      .eq("id", orderId)
+      .maybeSingle();
+    if (error) throw error;
+    const json = jsonRow?.shipping_address_json as Record<string, unknown> | null;
+    if (json?.address_line1) {
+      return {
+        name: (json.recipient_name as string | null) ?? null,
+        line1: json.address_line1 as string,
+        line2: (json.address_line2 as string | null) ?? null,
+        city: (json.city as string | null) ?? null,
+        state: (json.state_or_region as string | null) ?? null,
+        postal: (json.postal_code as string | null) ?? null,
+        country: (json.country as string | null) ?? null,
+      };
+    }
+  } catch (err) {
+    console.error("[orders] shipping_address_json lookup failed (non-fatal — falling through to Stripe recovery):", err);
+  }
+
+  // 3. Recovery from Stripe — only reached when the local record has nothing.
+  if (order.stripe_session_id) {
+    try {
+      const checkoutSession = await stripe.checkout.sessions.retrieve(order.stripe_session_id, {
+        expand: ["customer_details"],
+      });
+      const shipping = checkoutSession.collected_information?.shipping_details;
+      const md = checkoutSession.metadata ?? {};
+
+      const recovered: EmailShippingAddress = shipping?.address?.line1
+        ? {
+            name: shipping.name ?? checkoutSession.customer_details?.name ?? null,
+            line1: shipping.address.line1,
+            line2: shipping.address.line2 ?? null,
+            city: shipping.address.city ?? null,
+            state: shipping.address.state ?? null,
+            postal: shipping.address.postal_code ?? null,
+            country: shipping.address.country ?? null,
+          }
+        : md.ship_line1
+          ? {
+              name: md.ship_name ?? null,
+              line1: md.ship_line1,
+              line2: md.ship_line2 ?? null,
+              city: md.ship_city ?? null,
+              state: md.ship_state ?? null,
+              postal: md.ship_postal ?? null,
+              country: md.ship_country ?? null,
+            }
+          : null;
+
+      if (recovered?.line1) {
+        // Persist so future reads (and future emails) hit the fast path.
+        // Failure to persist is non-fatal — still return the recovered
+        // address for THIS request even if we couldn't save it for next time.
+        try {
+          if (order.customer_id) {
+            const newId = await saveShippingAddress({
+              customerId: order.customer_id,
+              recipientName: recovered.name,
+              line1: recovered.line1,
+              line2: recovered.line2,
+              city: recovered.city ?? "",
+              state: recovered.state ?? "",
+              postal: recovered.postal ?? "",
+              country: recovered.country ?? "",
+            });
+            await supabaseAdmin.from("orders").update({ shipping_address_id: newId }).eq("id", orderId);
+          } else {
+            const { error: jsonWriteErr } = await supabaseAdmin.from("orders").update({
+              shipping_address_json: {
+                recipient_name: recovered.name,
+                address_line1: recovered.line1,
+                address_line2: recovered.line2,
+                city: recovered.city,
+                state_or_region: recovered.state,
+                postal_code: recovered.postal,
+                country: recovered.country,
+              },
+            }).eq("id", orderId);
+            if (jsonWriteErr) throw jsonWriteErr;
+          }
+          console.info("[orders] Recovered shipping address from Stripe for order", order.order_number ?? orderId);
+        } catch (persistErr) {
+          console.error("[orders] Recovered address from Stripe but failed to persist it (non-fatal):", persistErr);
+        }
+        return recovered;
+      }
+    } catch (err) {
+      console.error("[orders] Stripe address recovery failed (non-fatal):", err);
+    }
+  }
+
+  console.warn("[orders] No shipping address on file or recoverable from Stripe for order", order.order_number ?? orderId);
+  return null;
+}
+
 // ── Order number ──────────────────────────────────────────────────────────────
 
 /**
@@ -299,26 +449,33 @@ export type OrderConfirmationEmailParams = {
   } | null;
 };
 
-export function buildOrderConfirmationHtml(params: OrderConfirmationEmailParams): { html: string; subject: string } {
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
+// ── Shared shipping-address HTML block ────────────────────────────────────────
+// Used by every transactional email that needs to show the customer's address,
+// so all of them stay visually/behaviorally consistent — including the
+// "never render a blank row or the literal null/undefined" guarantee, handled
+// once here via the hasAddress fallback message.
+export type EmailShippingAddress = {
+  name?: string | null;
+  line1?: string | null;
+  line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal?: string | null;
+  country?: string | null;
+} | null | undefined;
 
-  const amountFormatted = `$${(params.amountTotalCents / 100).toFixed(2)}`;
-  const trackUrl = `${siteUrl}/orders/${params.orderNumber}`;
-  const orderDate = new Date().toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-  const firstName = params.customerName.split(" ")[0];
-
-  const sa = params.shippingAddress;
-  const addrName = sa?.name ?? params.customerName;
+function renderShippingAddressBlock(
+  sa: EmailShippingAddress,
+  fallbackName: string,
+  opts: { includeVerifyNotice?: boolean } = {}
+): string {
+  const addrName = sa?.name ?? fallbackName;
   const hasAddress = !!sa?.line1;
   const line2 = sa?.line2 ? `<br>${sa.line2}` : "";
   const cityLine = [sa?.city, sa?.state, sa?.postal].filter(Boolean).join(", ");
   const country = sa?.country && sa.country !== "US" ? `<br>${sa.country}` : "";
 
-  const shippingBlock = `
+  const addressBox = `
     <!-- Shipping address -->
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;margin-bottom:20px;">
       <tr>
@@ -331,7 +488,11 @@ export function buildOrderConfirmationHtml(params: OrderConfirmationEmailParams)
           }
         </td>
       </tr>
-    </table>
+    </table>`;
+
+  if (opts.includeVerifyNotice === false) return addressBox;
+
+  const verifyNotice = `
     <!-- Incorrect info notice -->
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;margin-bottom:28px;">
       <tr>
@@ -345,6 +506,23 @@ export function buildOrderConfirmationHtml(params: OrderConfirmationEmailParams)
         </td>
       </tr>
     </table>`;
+
+  return addressBox + verifyNotice;
+}
+
+export function buildOrderConfirmationHtml(params: OrderConfirmationEmailParams): { html: string; subject: string } {
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
+
+  const amountFormatted = `$${(params.amountTotalCents / 100).toFixed(2)}`;
+  const trackUrl = `${siteUrl}/orders/${params.orderNumber}`;
+  const orderDate = new Date().toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  const firstName = params.customerName.split(" ")[0];
+
+  const shippingBlock = renderShippingAddressBlock(params.shippingAddress, params.customerName);
 
   const itemRows = buildItemRowsHtml(params.items);
 
@@ -886,6 +1064,7 @@ export async function sendAvailabilityConfirmationEmail(params: {
   customerEmail: string;
   authorizedAmountCents: number;
   items: EmailItem[];
+  shippingAddress?: EmailShippingAddress;
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -899,6 +1078,7 @@ export async function sendAvailabilityConfirmationEmail(params: {
   const trackUrl = `${siteUrl}/orders/${params.orderNumber}`;
   const firstName = params.customerName.split(" ")[0];
   const amountFormatted = `$${(params.authorizedAmountCents / 100).toFixed(2)}`;
+  const shippingBlock = renderShippingAddressBlock(params.shippingAddress, params.customerName);
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -920,9 +1100,16 @@ export async function sendAvailabilityConfirmationEmail(params: {
         <tr>
           <td style="padding:36px 40px;">
             <p style="margin:0 0 20px;font-size:16px;color:#111827;">Hi ${firstName},</p>
+            <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">
+              Thank you for your order with BingBing Jade.
+            </p>
+            <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">
+              Because this is a one-of-a-kind <strong>Sourced for You</strong> piece, your payment method has been
+              authorized while we confirm availability with our overseas sourcing partner. Your payment has not yet
+              been finalized.
+            </p>
             <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
-              Thank you for your order. Because this piece is <strong>Sourced for You</strong>, we're now confirming
-              availability with our overseas sourcing partner before anything is finalized.
+              We will notify you as soon as the piece has been secured and your order is confirmed.
             </p>
 
             <!-- Order number callout -->
@@ -936,7 +1123,7 @@ export async function sendAvailabilityConfirmationEmail(params: {
             </table>
 
             <!-- Authorization notice -->
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;margin-bottom:28px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;margin-bottom:20px;">
               <tr>
                 <td style="padding:14px 20px;">
                   <p style="margin:0 0 2px;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#92400e;">Payment Status</p>
@@ -949,10 +1136,29 @@ export async function sendAvailabilityConfirmationEmail(params: {
               </tr>
             </table>
 
+            <!-- Change-of-mind window -->
+            <p style="margin:0 0 28px;font-size:14px;color:#374151;line-height:1.6;">
+              If you change your mind, please contact us as soon as possible and
+              <strong>before the order is confirmed</strong>. Once the piece has been secured and payment has been
+              finalized, the order will be subject to the applicable
+              <a href="${siteUrl}/policy" style="color:#059669;text-decoration:none;">Sourced for You cancellation and return policy</a>.
+            </p>
+
+            <!-- Order Summary -->
             ${buildItemRowsHtml(params.items)}
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+              <tr>
+                <td style="padding:10px 0 0;font-size:14px;font-weight:600;color:#111827;">Total authorized</td>
+                <td style="padding:10px 0 0;font-size:15px;font-weight:700;color:#065f46;text-align:right;">${amountFormatted}</td>
+              </tr>
+            </table>
+
+            <div style="margin-top:24px;">
+              ${shippingBlock}
+            </div>
 
             <!-- CTA -->
-            <table cellpadding="0" cellspacing="0" style="margin:20px 0 28px;">
+            <table cellpadding="0" cellspacing="0" style="margin:4px 0 28px;">
               <tr>
                 <td style="background:#065f46;border-radius:999px;">
                   <a href="${trackUrl}" style="display:inline-block;padding:13px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.01em;">
@@ -962,8 +1168,14 @@ export async function sendAvailabilityConfirmationEmail(params: {
               </tr>
             </table>
 
-            <p style="margin:0;font-size:14px;color:#374151;line-height:1.6;">
+            <p style="margin:0 0 24px;font-size:14px;color:#374151;line-height:1.6;">
               Questions? Reply to this email or reach out via <a href="${siteUrl}/contact" style="color:#059669;text-decoration:none;">our contact page</a> or WhatsApp — we&rsquo;re always happy to give a personal update.
+            </p>
+
+            <p style="margin:0;font-size:14px;color:#374151;line-height:1.6;">
+              Warmly,<br>
+              The BingBing Jade Team<br>
+              <span style="color:#6b7280;">Natural, always.</span>
             </p>
           </td>
         </tr>
@@ -990,7 +1202,7 @@ export async function sendAvailabilityConfirmationEmail(params: {
       from,
       to: params.customerEmail,
       bcc: "contact@bingbingjade.com",
-      subject: `[Order Received] Confirming Availability for Your Order ${params.orderNumber}`,
+      subject: `We're Confirming Your BingBing Jade Piece — Order ${params.orderNumber}`,
       html,
     });
     if (error) console.error("[orders] Resend availability-confirmation email error:", error);
@@ -1011,6 +1223,7 @@ export async function sendAuthorizationReleasedEmail(params: {
   customerName: string;
   customerEmail: string;
   items?: EmailItem[];
+  shippingAddress?: EmailShippingAddress;
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return;
@@ -1019,6 +1232,9 @@ export async function sendAuthorizationReleasedEmail(params: {
   const from = "BingBing Jade <notification@bingbingjade.com>";
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
   const firstName = params.customerName.split(" ")[0];
+  const shippingBlock = params.shippingAddress
+    ? renderShippingAddressBlock(params.shippingAddress, params.customerName, { includeVerifyNotice: false })
+    : "";
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -1068,6 +1284,8 @@ export async function sendAuthorizationReleasedEmail(params: {
                 </td>
               </tr>
             </table>
+
+            ${shippingBlock}
 
             <p style="margin:0 0 20px;font-size:14px;color:#374151;line-height:1.6;">
               If you&rsquo;d still like a piece like this one, we&rsquo;d be glad to help source something similar for
