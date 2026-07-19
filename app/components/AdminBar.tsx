@@ -92,6 +92,7 @@ export function AdminBar({
     { href: "/accounting-admin", label: "Finance Snapshot" },
     { href: "/full-detailed-accounting", label: "Full Accounting" },
     { href: "/inventory-batches", label: "Inventory Batches" },
+    { href: "/store-credits-admin", label: "Store Credits" },
     ...(showUsersLink ? [
       { href: "/approved-users", label: "Users" },
       { href: "/coupons-admin", label: "Coupons" },
@@ -140,6 +141,7 @@ export function AdminBar({
                 { href: "/accounting-admin", label: "Finance Snapshot" },
                 { href: "/full-detailed-accounting", label: "Full Accounting Details" },
                 { href: "/inventory-batches", label: "Inventory Batches" },
+                { href: "/store-credits-admin", label: "Store Credits" },
               ]}
             />
 

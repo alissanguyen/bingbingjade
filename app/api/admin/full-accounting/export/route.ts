@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
         id, order_number, created_at, customer_name, customer_email, source,
         order_status, amount_total, discount_amount_cents,
         inventory_expense_amount, inventory_expense_source, fee_breakdown,
+        store_credit_used_cents, stripe_amount_cents,
         stripe_session_id, stripe_payment_intent_id,
         order_items(price_usd, quantity, line_total, product_id),
         stripe_accounting_snapshots(stripe_fee_cents, stripe_net_cents, refunded_amount_cents),
@@ -84,6 +85,7 @@ export async function GET(req: NextRequest) {
       "Inv. Expense", "Uncosted",
       "Label Cost", "Insurance Cost", "Supplies Cost", "Dropoff Cost",
       "Total Fulfillment", "Estimated Profit",
+      "Store Credit Used", "Paid Through Stripe",
       "Stripe Session ID", "Stripe PI ID",
     ];
     const csvRows = [headers.join(",")];
@@ -141,6 +143,8 @@ export async function GET(req: NextRequest) {
         cogs.toFixed(2), missingCogs ? "YES" : "no",
         labelCost.toFixed(2), insCost.toFixed(2), supCost.toFixed(2), dropCost.toFixed(2),
         totalFulfill.toFixed(2), missingCogs ? "" : profit.toFixed(2),
+        (((o.store_credit_used_cents as number | null) ?? 0) / 100).toFixed(2),
+        o.stripe_amount_cents != null ? ((o.stripe_amount_cents as number) / 100).toFixed(2) : "",
         o.stripe_session_id ?? "", o.stripe_payment_intent_id ?? "",
       ]));
     }

@@ -994,3 +994,171 @@ export async function sendReferralRewardEmail(params: {
     );
   }
 }
+
+// ── Store credit issuance / resend email ──────────────────────────────────────
+// Conditions are always sourced from getStoreCreditDisplayConditions() (lib/
+// store-credit.ts) — never hand-typed here — so the email can never drift
+// from what checkout actually enforces.
+
+import type { StoreCreditRow } from "./store-credit";
+
+export async function sendStoreCreditIssuedEmail(params: {
+  storeCredit: StoreCreditRow;
+  customerName: string | null;
+  sourceOrderNumber: string | null;
+  conditions: string[];
+  isResend?: boolean;
+}): Promise<void> {
+  const resend = getResend();
+  if (!resend) return;
+
+  const { storeCredit, customerName, sourceOrderNumber, conditions, isResend } = params;
+  const siteUrl = getSiteUrl();
+  const from = "BingBing Jade <notification@bingbingjade.com>";
+  const amountDollars = (storeCredit.original_amount_cents / 100).toFixed(2);
+  const remainingDollars = (storeCredit.remaining_amount_cents / 100).toFixed(2);
+  const greetingName = customerName?.split(" ")[0] ?? "there";
+
+  const expiresLine = storeCredit.expires_at
+    ? `<p style="margin:0 0 24px;font-size:13px;color:#92400e;line-height:1.6;">Expires on ${new Date(storeCredit.expires_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}.</p>`
+    : "";
+
+  const conditionsHtml = conditions.length > 0
+    ? conditions.map((c) => `<p style="margin:0 0 6px;font-size:13px;color:#78350f;line-height:1.6;">${c}</p>`).join("")
+    : "";
+
+  const customerMessageHtml = storeCredit.customer_message
+    ? `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;margin-bottom:24px;">
+        <tr><td style="padding:16px 20px;">
+          <p style="margin:0;font-size:14px;color:#0c4a6e;line-height:1.6;font-style:italic;">"${storeCredit.customer_message}"</p>
+        </td></tr>
+      </table>`
+    : "";
+
+  const orderReferenceHtml = sourceOrderNumber
+    ? `<p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">This credit relates to your order <strong>${sourceOrderNumber}</strong>.</p>`
+    : "";
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:#065f46;padding:32px 40px;text-align:center;">
+            <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:#6ee7b7;">${isResend ? "Store Credit" : "You've Received Store Credit"}</p>
+            <h1 style="margin:8px 0 0;font-size:26px;font-weight:700;color:#ffffff;">BingBing Jade</h1>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:36px 40px;">
+            <p style="margin:0 0 20px;font-size:16px;color:#111827;">Hi ${greetingName},</p>
+
+            <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
+              ${isResend
+                ? "Here's your store credit code again, along with its current balance and terms."
+                : "We've issued you a BingBing Jade store credit."}
+            </p>
+
+            ${orderReferenceHtml}
+
+            <!-- Credit Highlight -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:20px;">
+              <tr>
+                <td style="padding:24px;text-align:center;">
+                  <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:#059669;">
+                    ${isResend ? "Remaining Balance" : "Store Credit"}
+                  </p>
+                  <p style="margin:0 0 12px;font-size:34px;font-weight:800;color:#065f46;">
+                    $${isResend ? remainingDollars : amountDollars}
+                  </p>
+                  <p style="margin:0;font-size:16px;font-weight:700;letter-spacing:0.06em;color:#065f46;font-family:monospace;">
+                    ${storeCredit.code}
+                  </p>
+                </td>
+              </tr>
+            </table>
+
+            ${customerMessageHtml}
+
+            <!-- How to use -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;margin-bottom:20px;">
+              <tr>
+                <td style="padding:16px 20px;">
+                  <p style="margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#0369a1;">How To Use Your Credit</p>
+                  <p style="margin:0 0 4px;font-size:13px;color:#0c4a6e;line-height:1.6;">1. Shop using the email address associated with the credit.</p>
+                  <p style="margin:0 0 4px;font-size:13px;color:#0c4a6e;line-height:1.6;">2. Enter the store-credit code during checkout.</p>
+                  <p style="margin:0;font-size:13px;color:#0c4a6e;line-height:1.6;">3. The eligible amount will be deducted before the remaining payment is processed.</p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Conditions -->
+            ${conditionsHtml ? `<table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;margin-bottom:20px;">
+              <tr>
+                <td style="padding:16px 20px;">
+                  <p style="margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#92400e;">Conditions</p>
+                  ${conditionsHtml}
+                </td>
+              </tr>
+            </table>` : ""}
+            ${expiresLine}
+
+            <!-- CTA -->
+            <table cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+              <tr>
+                <td style="background:#065f46;border-radius:999px;">
+                  <a href="${siteUrl}/products" style="display:inline-block;padding:13px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">
+                    Shop Now &rarr;
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:0 0 14px;font-size:13px;color:#6b7280;line-height:1.6;">
+              This credit has no cash value and cannot be redeemed for cash, except where required by law.
+            </p>
+
+            <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.6;">
+              Questions? Reach us anytime at <a href="mailto:contact@bingbingjade.com" style="color:#065f46;">contact@bingbingjade.com</a>.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding:20px 40px 28px;border-top:1px solid #f3f4f6;text-align:center;">
+            <p style="margin:0;font-size:12px;color:#9ca3af;">
+              &copy; ${new Date().getFullYear()} BingBing Jade &middot;
+              <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
+            </p>
+            <p style="margin:6px 0 0;font-size:10px;color:#9ca3af;">This is a no-reply address. For inquiries, contact <a href="mailto:contact@bingbingjade.com" style="color:#9ca3af;text-decoration:none;">contact@bingbingjade.com</a>.</p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  try {
+    await resend.emails.send({
+      from,
+      to: storeCredit.customer_email,
+      bcc: "contact@bingbingjade.com",
+      subject: isResend
+        ? `Your BingBing Jade store credit — ${storeCredit.code}`
+        : `You have received a $${amountDollars} BingBing Jade store credit`,
+      html,
+    });
+  } catch (err) {
+    console.error("[discount-emails] Failed to send store credit email:", err);
+  }
+}

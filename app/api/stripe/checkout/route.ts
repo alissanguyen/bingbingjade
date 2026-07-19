@@ -8,6 +8,9 @@ import type { LedgerRow } from "@/lib/sourcing-classification";
 import type { CartItem } from "@/types/cart";
 import { getShippingZone, calculateShipping, calculateStripeFee, calculateBnplFee, ALLOWED_COUNTRIES, ACTIVE_BNPL_METHODS } from "@/lib/shipping";
 import { checkCustomerRestriction, logBlockedAttempt } from "@/lib/customer-restrictions";
+import { validateStoreCredit, reserveStoreCredit, releaseStoreCreditReservation } from "@/lib/store-credit";
+import { finalizeProductOrder } from "@/lib/orders";
+import crypto from "crypto";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
 
@@ -27,6 +30,7 @@ export async function POST(req: NextRequest) {
     shippingInsuranceDeclinedAcknowledged?: boolean;
     customerEmail?: string;
     discountCode?: string;
+    storeCreditCode?: string;
     sourcingRequestId?: string;
     taxAmountCents?: number;
     taxCalculationId?: string;
@@ -601,26 +605,204 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Create Stripe coupon for discount + sourcing credit + reservation deposit ──
+  // ── Apply store credit (payment method, not a promotional discount) ──────────
+  // Reduces only the amount sent to Stripe (steps 1-6 above are already fully
+  // computed and unaffected). Never folded into discountAmountCents/discount_
+  // source — tracked separately end to end, per the store-credit spec.
+  let storeCreditAppliedCents = 0;
+  let storeCreditRowId: string | null = null;
+  let storeCreditReservationRef: string | null = null;
+
+  if (body.storeCreditCode) {
+    if (!body.customerEmail) {
+      return NextResponse.json({ error: "Enter your email before applying a store credit code." }, { status: 400 });
+    }
+
+    const grandTotalBeforeStoreCreditCents = Math.max(
+      0,
+      discountedItemsCents + insuranceFeeCents + shippingFee * 100 + taxAmountCents + transactionFeeAmount
+        - sourcingCreditApplied - reservationDepositCents
+    );
+
+    const validation = await validateStoreCredit({
+      code: body.storeCreditCode,
+      email: body.customerEmail,
+      merchandiseSubtotalCents: discountedItemsCents,
+      orderTotalCents: grandTotalBeforeStoreCreditCents,
+      items: validatedItems.map((i) => ({
+        productId: i.productId,
+        fulfillmentType: i.fulfillmentType ?? "sourced_for_you",
+      })),
+      discountCodeApplied: discountAmountCents > 0,
+      otherStoreCreditApplied: false,
+    });
+
+    if (!validation.valid) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
+
+    storeCreditReservationRef = crypto.randomUUID();
+    const reservation = await reserveStoreCredit({
+      storeCreditId: validation.storeCredit.id,
+      amountCents: validation.eligibleAmountCents,
+      checkoutReference: storeCreditReservationRef,
+    });
+
+    if (!reservation.reserved) {
+      return NextResponse.json(
+        { error: "This credit is currently reserved by another checkout. Please try again shortly." },
+        { status: 409 }
+      );
+    }
+
+    storeCreditAppliedCents = validation.eligibleAmountCents;
+    storeCreditRowId = validation.storeCredit.id;
+  }
+
+  // ── Zero-balance order: store credit covers the full remaining amount ────────
+  // No Stripe Checkout Session is created — order creation runs synchronously
+  // through the same shared logic the webhook uses (finalizeProductOrder),
+  // including inventory reservation, shipments, and the confirmation email.
+  const grandTotalBeforeStoreCreditCents = Math.max(
+    0,
+    discountedItemsCents + insuranceFeeCents + shippingFee * 100 + taxAmountCents + transactionFeeAmount
+      - sourcingCreditApplied - reservationDepositCents
+  );
+  const remainingAfterStoreCreditCents = grandTotalBeforeStoreCreditCents - storeCreditAppliedCents;
+
+  if (storeCreditAppliedCents > 0 && remainingAfterStoreCreditCents <= 0) {
+    const isBnplFee = paymentMethod === "bnpl";
+    const fees: Record<string, number | string> = {};
+    if (shippingFee > 0) fees.shipping = shippingFee;
+    if (insuranceFeeCents > 0) fees.insurance = insuranceFeeCents / 100;
+    if (transactionFeeAmount > 0) fees[isBnplFee ? "bnpl" : "paypal"] = transactionFeeAmount / 100;
+    if (discountAmountCents > 0) fees.discount = discountAmountCents / 100;
+    if (taxAmountCents > 0) fees.tax = taxAmountCents / 100;
+
+    const productNameMap = new Map(validatedItems.map((i) => [i.productId, i.productName]));
+    const optionLabelMap = new Map(
+      validatedItems.filter((i) => i.optionId).map((i) => [i.optionId as string, i.optionLabel ?? null])
+    );
+
+    // COGS for accounting — this path skips the normal checkout price fetch,
+    // which doesn't select imported_price_vnd, so fetch it here.
+    let cogsCents = 0;
+    try {
+      const { data: cogsRows } = await supabaseAdmin
+        .from("products")
+        .select("id, imported_price_vnd")
+        .in("id", validatedItems.map((i) => i.productId));
+      const VND_PER_USD = 26000;
+      const costMap = new Map((cogsRows ?? []).map((p) => [p.id, (p.imported_price_vnd as number) ?? 0]));
+      cogsCents = validatedItems.reduce((sum, i) => sum + Math.round(((costMap.get(i.productId) ?? 0) / VND_PER_USD) * 100), 0);
+    } catch (err) {
+      console.error("[stripe/checkout] Zero-balance COGS lookup failed (non-fatal):", err);
+    }
+
+    let finalizeResult: Awaited<ReturnType<typeof finalizeProductOrder>>;
+    try {
+      finalizeResult = await finalizeProductOrder({
+        stripeSessionId: null,
+        stripePaymentIntentId: null,
+        stripeCustomerId: null,
+        amountTotalCents: grandTotalBeforeStoreCreditCents,
+        currency: "usd",
+        paymentIsPaid: false,
+        customerEmail: normalizeEmail(body.customerEmail!),
+        resolvedCustomerName: addr.name,
+        customerPhone: null,
+        resolvedAddr: {
+          name: addr.name, line1: addr.line1, line2: addr.line2 ?? null,
+          city: addr.city, state: addr.state ?? null, postal: addr.postal, country: addr.country,
+        },
+        metaItems: validatedItems.map((i) => ({
+          productId: i.productId,
+          optionId: i.optionId ?? null,
+          price: i.price!,
+          fulfillmentType: i.fulfillmentType,
+        })),
+        productNameMap,
+        optionLabelMap,
+        cogsCents,
+        feeBreakdown: Object.keys(fees).length > 0 ? fees : null,
+        discountMeta: discountAmountCents > 0 ? {
+          source: (discountMetadata.disc ? JSON.parse(discountMetadata.disc).source : "campaign") as string,
+          amountCents: discountAmountCents,
+          subtotalBeforeCents: itemsSubtotalCents,
+        } : null,
+        shippingInsuranceAccepted: !!body.shippingInsurance,
+        shippingInsuranceDeclinedAcknowledged: !!body.shippingInsuranceDeclinedAcknowledged,
+        merchandiseSubtotalCents: itemsSubtotalCents,
+        isManualCapture: false, // zero-balance orders are fully settled at creation — never a pending authorization
+        capturePaymentMethod: null,
+        latestStripeStatus: null,
+        authorizationExpiresAt: null,
+        sourcingRequestId,
+        sourcingCreditAppliedCents: sourcingCreditApplied,
+        storeCreditId: storeCreditRowId,
+        storeCreditUsedCents: storeCreditAppliedCents,
+        storeCreditReservationRef,
+        stripeAmountCents: 0,
+      });
+    } catch (err) {
+      // No Stripe session exists for this path, so there's no expiry event to
+      // ever release the reservation otherwise — release it explicitly here.
+      if (storeCreditReservationRef) await releaseStoreCreditReservation(storeCreditReservationRef);
+      console.error("[stripe/checkout] Zero-balance order finalization failed:", err);
+      return NextResponse.json({ error: "This order could not be completed. Please try again." }, { status: 500 });
+    }
+
+    if (!finalizeResult) {
+      if (storeCreditReservationRef) await releaseStoreCreditReservation(storeCreditReservationRef);
+      return NextResponse.json({ error: "This order could not be completed. Please try again." }, { status: 500 });
+    }
+
+    if (sourcingRequestId && sourcingCreditApplied > 0) {
+      await supabaseAdmin
+        .from("sourcing_requests")
+        .update({ credit_claimed_session_id: `zero-balance-${finalizeResult.orderId}`, updated_at: new Date().toISOString() })
+        .eq("id", sourcingRequestId);
+    }
+
+    return NextResponse.json({
+      zeroBalance: true,
+      orderNumber: finalizeResult.orderNumber,
+      redirectUrl: `${SITE_URL}/checkout/success?order_number=${encodeURIComponent(finalizeResult.orderNumber ?? "")}`,
+    });
+  }
+
+  // ── Create Stripe coupon for discount + sourcing credit + reservation deposit + store credit ──
   // Stripe doesn't allow negative line items; combine all credits into one coupon.
   let stripeCouponId: string | null = null;
-  const totalCouponCents = discountAmountCents + sourcingCreditApplied + reservationDepositCents;
+  const totalCouponCents = discountAmountCents + sourcingCreditApplied + reservationDepositCents + storeCreditAppliedCents;
   if (totalCouponCents > 0) {
     const hasDeposit = reservationDepositCents > 0;
     const hasDiscount = discountAmountCents > 0;
     const hasSourceCredit = sourcingCreditApplied > 0;
-    const couponName = hasDeposit
-      ? (hasDiscount || hasSourceCredit) ? "Discount + Deposit" : "Reservation Deposit"
-      : hasSourceCredit
-        ? hasDiscount ? "Discount + Sourcing Credit" : "Sourcing Credit"
-        : "Discount";
-    const coupon = await stripe.coupons.create({
-      amount_off: totalCouponCents,
-      currency: "usd",
-      duration: "once",
-      name: couponName,
-    });
-    stripeCouponId = coupon.id;
+    const hasStoreCredit = storeCreditAppliedCents > 0;
+    const parts = [
+      hasDiscount ? "Discount" : null,
+      hasSourceCredit ? "Sourcing Credit" : null,
+      hasStoreCredit ? "Store Credit" : null,
+      hasDeposit ? "Deposit" : null,
+    ].filter(Boolean);
+    const couponName = parts.length > 0 ? parts.join(" + ") : "Discount";
+    try {
+      const coupon = await stripe.coupons.create({
+        amount_off: totalCouponCents,
+        currency: "usd",
+        duration: "once",
+        name: couponName,
+      });
+      stripeCouponId = coupon.id;
+    } catch (err) {
+      // Release the store-credit reservation before failing — otherwise the
+      // balance stays locked with no checkout session to ever redeem or expire it.
+      if (storeCreditReservationRef) await releaseStoreCreditReservation(storeCreditReservationRef);
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("[stripe/checkout] coupon creation failed:", message);
+      return NextResponse.json({ error: `Stripe error: ${message}` }, { status: 500 });
+    }
   }
 
   // ── Build metadata ────────────────────────────────────────────────────────────
@@ -674,6 +856,15 @@ export async function POST(req: NextRequest) {
     ...(addr.state ? { ship_state: addr.state } : {}),
   };
 
+  // Store credit metadata — distinct keys from the promotional-discount ones
+  // above, so the webhook (and any reporting) can never conflate the two.
+  const storeCreditSessionMetadata: Record<string, string> = {};
+  if (storeCreditAppliedCents > 0 && storeCreditRowId && storeCreditReservationRef) {
+    storeCreditSessionMetadata.store_credit_id = storeCreditRowId;
+    storeCreditSessionMetadata.store_credit_reservation_ref = storeCreditReservationRef;
+    storeCreditSessionMetadata.store_credit_applied_cents = String(storeCreditAppliedCents);
+  }
+
   let session: Awaited<ReturnType<typeof stripe.checkout.sessions.create>>;
   try {
     const taxMeta: Record<string, string> = {};
@@ -709,11 +900,15 @@ export async function POST(req: NextRequest) {
         ...taxMeta,
         ...campaignEventMetadata,
         ...insuranceMeta,
+        ...storeCreditSessionMetadata,
         payment_method: paymentMethod,
         ...(isSourcedOnlyCart ? { capture_mode: "manual" } : {}),
       },
     });
   } catch (err) {
+    // Release the store-credit reservation before failing — no Checkout
+    // Session exists to ever redeem or expire it otherwise.
+    if (storeCreditReservationRef) await releaseStoreCreditReservation(storeCreditReservationRef);
     const message = err instanceof Error ? err.message : String(err);
     console.error("[stripe/checkout] session creation failed:", message);
     if (

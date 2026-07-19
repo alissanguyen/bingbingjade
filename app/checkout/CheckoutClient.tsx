@@ -59,6 +59,22 @@ export function CheckoutClient() {
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [discountLoading, setDiscountLoading] = useState(false);
 
+  // Store credit — a payment method, tracked entirely separately from the
+  // promotional discount above (never combined server-side either).
+  const [storeCreditCode, setStoreCreditCode] = useState("");
+  const [appliedStoreCredit, setAppliedStoreCredit] = useState<{
+    codeMasked: string;
+    availableBalanceCents: number;
+    eligibleAmountCents: number;
+    remainingAfterCents: number;
+    willForfeitRemainder: boolean;
+    conditions: string[];
+  } | null>(null);
+  const [storeCreditError, setStoreCreditError] = useState<string | null>(null);
+  const [storeCreditLoading, setStoreCreditLoading] = useState(false);
+  const [storeCreditForfeitAck, setStoreCreditForfeitAck] = useState(false);
+  const storeCreditForfeitRef = useRef<HTMLDivElement>(null);
+
 
   // Admin unlock (beta mode)
   const [adminPassword, setAdminPassword] = useState("");
@@ -230,6 +246,11 @@ export function CheckoutClient() {
     ? Math.round((discountedSubtotal - reservationDepositTotal + insuranceFee + shipping + taxAmount + txFee) * 100) / 100
     : null;
 
+  // Store credit reduces only the final amount due — never recomputes tax,
+  // shipping, insurance, or the processing fee above.
+  const storeCreditDollars = appliedStoreCredit ? appliedStoreCredit.eligibleAmountCents / 100 : 0;
+  const finalGrandTotal = grandTotal != null ? Math.max(0, Math.round((grandTotal - storeCreditDollars) * 100) / 100) : null;
+
   const addressComplete = addressValue !== null;
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail.trim());
@@ -313,6 +334,8 @@ export function CheckoutClient() {
     removeFromCart(productId, optionId);
     setAppliedDiscount(null);
     setDiscountError(null);
+    setAppliedStoreCredit(null);
+    setStoreCreditError(null);
   }
 
   async function applyDiscount() {
@@ -343,6 +366,58 @@ export function CheckoutClient() {
     }
   }
 
+  async function applyStoreCredit() {
+    if (!storeCreditCode.trim()) {
+      setStoreCreditError("Please enter a store credit code.");
+      return;
+    }
+    if (!emailValid) {
+      setStoreCreditError("Enter your email above before applying a store credit code.");
+      return;
+    }
+    setStoreCreditLoading(true);
+    setStoreCreditError(null);
+    setAppliedStoreCredit(null);
+    try {
+      const res = await fetch("/api/validate-store-credit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: storeCreditCode.trim(),
+          customerEmail: customerEmail.trim(),
+          merchandiseSubtotalCents: Math.round(discountedSubtotal * 100),
+          orderTotalCents: grandTotal != null ? Math.round(grandTotal * 100) : 0,
+          items: availableItems.map((i) => ({ productId: i.productId, fulfillmentType: getItemFulfillmentType(i) })),
+          discountCodeApplied: appliedDiscount !== null,
+          otherStoreCreditApplied: false,
+        }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setAppliedStoreCredit({
+          codeMasked: data.codeMasked,
+          availableBalanceCents: data.availableBalanceCents,
+          eligibleAmountCents: data.eligibleAmountCents,
+          remainingAfterCents: data.remainingAfterCents,
+          willForfeitRemainder: data.willForfeitRemainder,
+          conditions: data.conditions ?? [],
+        });
+      } else {
+        setStoreCreditError(data.error ?? "This store credit could not be applied.");
+      }
+    } catch {
+      setStoreCreditError("Could not verify the code. Please try again.");
+    } finally {
+      setStoreCreditLoading(false);
+    }
+  }
+
+  function removeStoreCredit() {
+    setAppliedStoreCredit(null);
+    setStoreCreditCode("");
+    setStoreCreditError(null);
+  }
+
   async function handleAdminUnlock() {
     const res = await fetch("/api/stripe/verify-admin", {
       method: "POST",
@@ -365,6 +440,10 @@ export function CheckoutClient() {
       insuranceAckRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
+    if (appliedStoreCredit?.willForfeitRemainder && !storeCreditForfeitAck) {
+      storeCreditForfeitRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     setInsuranceAckError(false);
     setLoading(true);
     setError(null);
@@ -382,6 +461,7 @@ export function CheckoutClient() {
           shippingInsuranceDeclinedAcknowledged: !shippingInsurance && insuranceDeclinedAcknowledged,
           customerEmail: customerEmail.trim(),
           discountCode: discountCode.trim() || undefined,
+          storeCreditCode: storeCreditCode.trim() || undefined,
           taxAmountCents: taxAmountCents > 0 ? taxAmountCents : undefined,
           taxCalculationId: taxCalculationId || undefined,
           paymentMethod: paymentMethod ?? "standard",
@@ -400,6 +480,11 @@ export function CheckoutClient() {
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Something went wrong. Please try again.");
+        return;
+      }
+      if (data.zeroBalance) {
+        clearCart();
+        router.push(data.redirectUrl);
         return;
       }
       window.location.href = data.url;
@@ -776,6 +861,88 @@ export function CheckoutClient() {
                   )}
                 </div>
 
+                {/* ── Store credit field ──────────────────────── */}
+                <div className="rounded-xl border border-stone-200 dark:border-gray-700 bg-stone-50 dark:bg-gray-900/40 p-2.5 sm:p-3.5 space-y-2.5">
+                  <p className="text-[11px] sm:text-[15px] uppercase tracking-[0.2em] font-semibold text-stone-400 dark:text-gray-500">
+                    Store Credit Code
+                  </p>
+                  {!appliedStoreCredit ? (
+                    <>
+                      <div className="flex gap-2">
+                        <input
+                          id="store-credit"
+                          type="text"
+                          autoComplete="off"
+                          value={storeCreditCode}
+                          onChange={(e) => {
+                            setStoreCreditCode(e.target.value.toUpperCase());
+                            setStoreCreditError(null);
+                          }}
+                          onKeyDown={(e) => { if (e.key === "Enter") applyStoreCredit(); }}
+                          placeholder="BBJ-SC-XXXX-XXXX"
+                          className="text-[11px] sm:text-[14px] flex-1 rounded-lg border border-stone-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 sm:px-3 py-2 text-sm font-mono text-stone-900 dark:text-gray-100 placeholder-stone-400 dark:placeholder-gray-600 outline-none focus:ring-2 focus:ring-emerald-500 transition-shadow w-full"
+                        />
+                        <button
+                          type="button"
+                          onClick={applyStoreCredit}
+                          disabled={storeCreditLoading}
+                          className="text-[11px] sm:text-[15px] rounded-lg border border-emerald-700 text-emerald-700 dark:border-emerald-600 dark:text-emerald-400 hover:bg-emerald-700 hover:text-white dark:hover:bg-emerald-700 dark:hover:text-white disabled:opacity-40 px-2 sm:px-4 py-2 text-sm font-medium transition-colors shrink-0"
+                        >
+                          {storeCreditLoading ? "…" : "Apply"}
+                        </button>
+                      </div>
+                      {storeCreditError && (
+                        <p className="text-[12px] text-red-500 dark:text-red-400">{storeCreditError}</p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[12px] sm:text-[16px] text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1.5">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                          {appliedStoreCredit.codeMasked}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={removeStoreCredit}
+                          className="text-[11px] text-stone-400 hover:text-red-500 dark:hover:text-red-400 underline underline-offset-2 transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <div className="text-[11px] sm:text-[13px] text-stone-600 dark:text-gray-400 space-y-0.5">
+                        <p>Store credit available: {fmtPrice(appliedStoreCredit.availableBalanceCents / 100)}</p>
+                        <p>Applied to this order: −{fmtPrice(appliedStoreCredit.eligibleAmountCents / 100)}</p>
+                        <p>Remaining after purchase: {fmtPrice(appliedStoreCredit.remainingAfterCents / 100)}</p>
+                      </div>
+                      {appliedStoreCredit.conditions.length > 0 && (
+                        <ul className="text-[10px] sm:text-[12px] text-stone-400 dark:text-gray-500 list-disc list-inside space-y-0.5">
+                          {appliedStoreCredit.conditions.map((c, i) => <li key={i}>{c}</li>)}
+                        </ul>
+                      )}
+                      {appliedStoreCredit.willForfeitRemainder && (
+                        <div
+                          ref={storeCreditForfeitRef}
+                          className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-2.5 space-y-1.5"
+                        >
+                          <p className="text-[11px] sm:text-[13px] text-amber-800 dark:text-amber-300 font-medium">
+                            This credit is single use. The remaining {fmtPrice(appliedStoreCredit.remainingAfterCents / 100)} will be forfeited after this purchase.
+                          </p>
+                          <label className="flex items-start gap-2 text-[11px] sm:text-[13px] text-amber-700 dark:text-amber-400 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={storeCreditForfeitAck}
+                              onChange={(e) => setStoreCreditForfeitAck(e.target.checked)}
+                              className="mt-0.5"
+                            />
+                            I understand the remaining balance will be forfeited.
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* ── Priority Sourcing toggle (only for sourced_for_you items) ── */}
                 {hasSourcingItems && (
                   <div className="flex items-center justify-between py-0.5">
@@ -1045,13 +1212,19 @@ export function CheckoutClient() {
                       <span className="text-[12px] sm:text-sm text-stone-400">Calculating…</span>
                     </div>
                   )}
+                  {storeCreditDollars > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-[14px] sm:text-sm text-emerald-700 dark:text-emerald-400">Store credit applied</span>
+                      <span className="font-medium text-emerald-700 dark:text-emerald-400">−{fmtPrice(storeCreditDollars)}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* ── Grand total ──────────────────────────── */}
                 <div className="border-t-2 border-stone-900 dark:border-gray-700 pt-4 flex items-center justify-between">
                   <span className="text-[13px] sm:text-[16px] uppercase tracking-[0.15em] font-semibold text-stone-500 dark:text-gray-400">Total</span>
                   <span className="text-[16px] sm:text-lg font-semibold tracking-tight text-emerald-600 dark:text-emerald-500">
-                    {grandTotal != null ? fmtPrice(grandTotal) : "—"}
+                    {finalGrandTotal != null ? fmtPrice(finalGrandTotal) : "—"}
                   </span>
                 </div>
 
@@ -1160,7 +1333,7 @@ export function CheckoutClient() {
             <div className="flex-1 min-w-0">
               <p className="text-[10px] uppercase tracking-[0.2em] text-stone-400 dark:text-gray-500">Total</p>
               <p className="text-lg font-bold text-stone-900 dark:text-gray-100 tracking-tight">
-                {grandTotal != null ? fmtPrice(grandTotal) : "—"}
+                {finalGrandTotal != null ? fmtPrice(finalGrandTotal) : "—"}
               </p>
             </div>
             <button

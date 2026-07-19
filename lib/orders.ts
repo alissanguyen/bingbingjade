@@ -9,6 +9,8 @@ import { supabaseAdmin } from "./supabase-admin";
 import { resolveFirstImageUrl } from "./storage";
 import { stripe } from "./stripe";
 import type Stripe from "stripe";
+import type { MetaItem } from "./stripe-metadata";
+import { commitDiscount, buildShippingFingerprint } from "./discount";
 
 // ── Customer ──────────────────────────────────────────────────────────────────
 
@@ -416,6 +418,435 @@ export async function recordOrderPayment(params: {
   } catch (err) {
     console.error("[orders] recordOrderPayment failed (non-fatal):", err);
   }
+}
+
+// ── Mark product options + parent products as sold ───────────────────────────
+// Moved from app/api/stripe/webhook/route.ts so both the webhook and the
+// zero-balance (fully store-credit-paid) checkout path can call it.
+export async function markItemsAsSold(metaItems: MetaItem[]): Promise<void> {
+  // Mark affected options sold first
+  await Promise.all(
+    metaItems.map((item) =>
+      item.optionId
+        ? supabaseAdmin.from("product_options").update({ status: "sold" }).eq("id", item.optionId)
+        : supabaseAdmin.from("product_options").update({ status: "sold" }).eq("product_id", item.productId)
+    )
+  );
+
+  // Mark parent product sold when all options are sold (or it has no options)
+  const affectedProductIds = [...new Set(metaItems.map((i) => i.productId))];
+  await Promise.all(
+    affectedProductIds.map(async (productId) => {
+      const { data: allOptions } = await supabaseAdmin
+        .from("product_options")
+        .select("status")
+        .eq("product_id", productId);
+
+      const hasOptions = (allOptions?.length ?? 0) > 0;
+      const allSold = hasOptions && allOptions!.every((o) => o.status === "sold");
+
+      if (!hasOptions || allSold) {
+        await supabaseAdmin.from("products").update({ status: "sold" }).eq("id", productId);
+      }
+    })
+  );
+}
+
+// ── Shared "create a product order" logic ─────────────────────────────────────
+// Extracted from the webhook's default checkout.session.completed path so the
+// same order-creation/fulfillment logic can run either from a completed
+// Stripe Checkout Session (the webhook, unchanged behavior) or synchronously
+// from the checkout route when store credit covers the full amount due (no
+// Stripe session is ever created for a zero-balance order — see
+// app/api/stripe/checkout/route.ts).
+export interface FinalizeProductOrderParams {
+  // Tender / Stripe identity — null for a zero-balance (store-credit-only) order
+  stripeSessionId: string | null;
+  stripePaymentIntentId: string | null;
+  stripeCustomerId: string | null;
+  amountTotalCents: number;      // final order total, pre store-credit
+  currency: string;
+  paymentIsPaid: boolean;        // true for immediate-capture orders that have actually charged
+
+  // Customer & address
+  customerEmail: string | null;
+  resolvedCustomerName: string | null;
+  customerPhone: string | null;
+  resolvedAddr: {
+    name: string | null; line1: string | null; line2: string | null;
+    city: string | null; state: string | null; postal: string | null; country: string | null;
+  } | null;
+
+  // Items
+  metaItems: MetaItem[];
+  productNameMap: Map<string, string>;
+  optionLabelMap: Map<string, string | null>;
+  cogsCents: number;
+
+  // Pricing breakdown (already computed by the caller — Stripe line-item
+  // parsing for the webhook path stays in the webhook; the checkout route
+  // already has these numbers directly for the zero-balance path)
+  feeBreakdown: Record<string, number | string> | null;
+  discountMeta: { source: string; amountCents: number; subtotalBeforeCents: number; campaignId?: string; referrerCustomerId?: string; code?: string } | null;
+  shippingInsuranceAccepted: boolean;
+  shippingInsuranceDeclinedAcknowledged: boolean;
+  merchandiseSubtotalCents: number | null;
+
+  // Manual capture (Sourced for You)
+  isManualCapture: boolean;
+  capturePaymentMethod: string | null;
+  latestStripeStatus: string | null;
+  authorizationExpiresAt: string | null;
+
+  // Sourcing credit (Option B financing) passthrough
+  sourcingRequestId: string | null;
+  sourcingCreditAppliedCents: number;
+
+  // Store credit — new payment method, never mixed into discountMeta
+  storeCreditId: string | null;
+  storeCreditUsedCents: number;
+  storeCreditReservationRef: string | null;
+  stripeAmountCents: number; // amount actually sent to Stripe = amountTotalCents - storeCreditUsedCents (0 for zero-balance)
+}
+
+export async function finalizeProductOrder(
+  params: FinalizeProductOrderParams
+): Promise<{ orderId: string; orderNumber: string | null } | null> {
+  const {
+    stripeSessionId, stripePaymentIntentId, stripeCustomerId, amountTotalCents, currency, paymentIsPaid,
+    customerEmail, resolvedCustomerName, customerPhone, resolvedAddr,
+    metaItems, productNameMap, optionLabelMap, cogsCents,
+    feeBreakdown, discountMeta, shippingInsuranceAccepted, shippingInsuranceDeclinedAcknowledged,
+    merchandiseSubtotalCents, isManualCapture, capturePaymentMethod, latestStripeStatus, authorizationExpiresAt,
+    sourcingRequestId, sourcingCreditAppliedCents, storeCreditId, storeCreditUsedCents, storeCreditReservationRef,
+    stripeAmountCents,
+  } = params;
+
+  let customerId: string | null = null;
+  if (customerEmail && resolvedCustomerName) {
+    try {
+      customerId = await upsertCustomer({
+        name: resolvedCustomerName,
+        email: customerEmail,
+        phone: customerPhone,
+        stripeCustomerId,
+      });
+    } catch (err) {
+      console.error("[orders] Customer upsert failed (non-fatal):", err);
+    }
+  }
+
+  // Update customer marketing opt-in if email is in subscribers list
+  if (customerId && customerEmail) {
+    try {
+      const { data: subscriber } = await supabaseAdmin
+        .from("email_subscribers")
+        .select("id")
+        .eq("email", customerEmail)
+        .maybeSingle();
+
+      if (subscriber) {
+        await supabaseAdmin
+          .from("customers")
+          .update({
+            marketing_opt_in: true,
+            marketing_opt_in_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", customerId)
+          .eq("marketing_opt_in", false);
+      }
+    } catch (err) {
+      console.error("[orders] Marketing opt-in sync failed (non-fatal):", err);
+    }
+  }
+
+  // Update paid order tracking on the customer record
+  if (customerId && customerEmail) {
+    try {
+      const { data: customer } = await supabaseAdmin
+        .from("customers")
+        .select("paid_order_count, first_paid_order_at")
+        .eq("id", customerId)
+        .single();
+
+      if (customer) {
+        const newCount = (customer.paid_order_count ?? 0) + 1;
+        await supabaseAdmin
+          .from("customers")
+          .update({
+            paid_order_count: newCount,
+            first_paid_order_at: customer.first_paid_order_at ?? new Date().toISOString(),
+            is_frequent_customer: newCount >= 3,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", customerId);
+      }
+    } catch (err) {
+      console.error("[orders] Customer paid_order_count update failed (non-fatal):", err);
+    }
+  }
+
+  let shippingAddressId: string | null = null;
+  if (customerId && resolvedAddr?.line1 && resolvedAddr.city && resolvedAddr.postal && resolvedAddr.country) {
+    try {
+      shippingAddressId = await saveShippingAddress({
+        customerId,
+        recipientName: resolvedAddr.name ?? null,
+        line1: resolvedAddr.line1,
+        line2: resolvedAddr.line2 ?? null,
+        city: resolvedAddr.city,
+        state: resolvedAddr.state ?? "",
+        postal: resolvedAddr.postal,
+        country: resolvedAddr.country,
+      });
+    } catch (err) {
+      console.error("[orders] Address save failed (non-fatal):", err);
+    }
+  }
+
+  let orderNumber: string | null = null;
+  try {
+    orderNumber = await generateOrderNumber();
+  } catch (err) {
+    console.error("[orders] Order number generation failed (non-fatal):", err);
+  }
+
+  const nowIso = new Date().toISOString();
+
+  const { data: order, error: orderErr } = await supabaseAdmin
+    .from("orders")
+    .insert({
+      stripe_session_id: stripeSessionId,
+      stripe_payment_intent_id: stripePaymentIntentId,
+      stripe_customer_id: stripeCustomerId,
+      order_number: orderNumber,
+      customer_id: customerId,
+      customer_email: customerEmail,
+      customer_name: resolvedCustomerName,
+      customer_phone_snapshot: customerPhone,
+      amount_total: amountTotalCents,
+      currency,
+      status: isManualCapture ? "unpaid" : "paid",
+      order_status: isManualCapture ? "awaiting_vendor_confirmation" : "order_confirmed",
+      source: "stripe",
+      shipping_address_id: shippingAddressId,
+      fee_breakdown: feeBreakdown,
+      ...(isManualCapture ? {
+        capture_status: "authorized",
+        authorized_amount: amountTotalCents,
+        authorized_at: nowIso,
+        authorization_expires_at: authorizationExpiresAt,
+        latest_stripe_status: latestStripeStatus ?? "requires_capture",
+        capture_payment_method: capturePaymentMethod,
+      } : {}),
+      discount_source: discountMeta?.source ?? null,
+      discount_amount_cents: discountMeta?.amountCents ?? 0,
+      subtotal_before_discount_cents: discountMeta?.subtotalBeforeCents ?? null,
+      sourcing_credit_applied: sourcingCreditAppliedCents,
+      sourcing_request_id: sourcingRequestId,
+      cogs_cents: cogsCents > 0 ? cogsCents : null,
+      shipping_insurance_accepted: shippingInsuranceAccepted,
+      shipping_insurance_declined_acknowledged: shippingInsuranceDeclinedAcknowledged,
+      // Store credit — distinct payment method, never mixed into discount_* fields
+      store_credit_id: storeCreditId,
+      store_credit_used_cents: storeCreditUsedCents,
+      merchandise_subtotal_cents: merchandiseSubtotalCents,
+      stripe_amount_cents: stripeAmountCents,
+    })
+    .select("id")
+    .single();
+
+  if (orderErr || !order) {
+    if ((orderErr as { code?: string })?.code === "23505") {
+      const { message, details } = orderErr as { message?: string; details?: string };
+      console.info(
+        "[orders] Duplicate insert for session", stripeSessionId,
+        "| constraint:", message,
+        "| details:", details
+      );
+      await markItemsAsSold(metaItems);
+      return null;
+    }
+    console.error("[orders] Failed to create order for session", stripeSessionId, orderErr);
+    throw new Error(`finalizeProductOrder: failed to create order: ${orderErr?.message}`);
+  }
+
+  // ── Record payment in order_payments ledger ──────────────────────────────────
+  // Skipped for manual-capture orders (nothing charged yet) and for
+  // zero-balance orders (stripeAmountCents === 0 — nothing was sent to Stripe,
+  // so there is no Stripe payment to record; the store-credit ledger is the
+  // record of how this order was paid).
+  if (!isManualCapture && stripePaymentIntentId && stripeAmountCents > 0 && paymentIsPaid) {
+    await recordOrderPayment({
+      orderId: order.id,
+      orderNumber,
+      paymentIntentId: stripePaymentIntentId,
+      amountTotalCents: stripeAmountCents,
+      currency,
+      createdAtIso: nowIso,
+      notes: stripeSessionId ? `Stripe Checkout ${stripeSessionId}` : `Stripe payment ${stripePaymentIntentId}`,
+    });
+  }
+
+  // ── Commit discount (promotional — unrelated to store credit) ────────────────
+  if (discountMeta && customerEmail) {
+    try {
+      const shippingFingerprint =
+        discountMeta.source === "welcome"
+          ? buildShippingFingerprint(customerPhone, resolvedAddr?.city ?? null, resolvedAddr?.postal ?? null, resolvedAddr?.country ?? null)
+          : null;
+
+      const committed = await commitDiscount({
+        source: discountMeta.source as "welcome" | "referral" | "campaign" | "store_credit",
+        customerEmail,
+        customerId,
+        orderId: order.id,
+        discountAmountCents: discountMeta.amountCents,
+        campaignId: discountMeta.campaignId,
+        referrerCustomerId: discountMeta.referrerCustomerId,
+        referralCode: discountMeta.code,
+        shippingFingerprint,
+      });
+
+      if (committed.couponRedemptionId || committed.referralId) {
+        await supabaseAdmin
+          .from("orders")
+          .update({
+            coupon_redemption_id: committed.couponRedemptionId ?? null,
+            referral_id: committed.referralId ?? null,
+          })
+          .eq("id", order.id);
+      }
+    } catch (err) {
+      console.error("[orders] Discount commit failed (non-fatal):", err);
+    }
+  }
+
+  // ── Commit sourcing credit (idempotent via checkout_session_id) ──────────────
+  if (sourcingRequestId && sourcingCreditAppliedCents > 0 && stripeSessionId) {
+    try {
+      const { data: existingLedger } = await supabaseAdmin
+        .from("sourcing_credit_ledger")
+        .select("id")
+        .eq("checkout_session_id", stripeSessionId)
+        .eq("event_type", "credit_consumed")
+        .maybeSingle();
+
+      if (!existingLedger) {
+        const { data: sourcingReq } = await supabaseAdmin
+          .from("sourcing_requests")
+          .select("customer_email, user_id")
+          .eq("id", sourcingRequestId)
+          .maybeSingle();
+
+        if (sourcingReq) {
+          await supabaseAdmin.from("sourcing_credit_ledger").insert({
+            sourcing_request_id: sourcingRequestId,
+            customer_email: sourcingReq.customer_email,
+            user_id: sourcingReq.user_id ?? null,
+            event_type: "credit_consumed",
+            amount_cents: sourcingCreditAppliedCents,
+            currency: "usd",
+            order_id: order.id,
+            checkout_session_id: stripeSessionId,
+            notes: `Applied at checkout for order ${orderNumber ?? order.id}`,
+          });
+
+          await supabaseAdmin
+            .from("sourcing_requests")
+            .update({ credit_claimed_at: null, credit_claimed_session_id: null, updated_at: new Date().toISOString() })
+            .eq("id", sourcingRequestId);
+        }
+      }
+    } catch (err) {
+      console.error("[orders] Sourcing credit commit failed (non-fatal):", err);
+    }
+  }
+
+  // ── Create order items ────────────────────────────────────────────────────────
+  await supabaseAdmin.from("order_items").insert(
+    metaItems.map((item) => {
+      const productName = productNameMap.get(item.productId) ?? item.productId;
+      const optionLabel = item.optionId ? (optionLabelMap.get(item.optionId) ?? null) : null;
+      return {
+        order_id: order.id,
+        product_id: item.productId,
+        product_option_id: item.optionId ?? null,
+        product_name: productName,
+        option_label: optionLabel,
+        price_usd: item.price,
+        quantity: 1,
+        line_total: item.price,
+        inventory_type: item.fulfillmentType ?? "sourced_for_you",
+      };
+    })
+  );
+
+  // ── Create shipments grouped by inventory_type ────────────────────────────────
+  if (!isManualCapture) {
+    await createShipmentsForOrder(order.id, orderNumber);
+  }
+
+  // ── Mark options and products as sold ─────────────────────────────────────────
+  await markItemsAsSold(metaItems);
+
+  // ── Redeem the store-credit reservation, if any ───────────────────────────────
+  if (storeCreditReservationRef) {
+    const { redeemStoreCreditReservation } = await import("./store-credit");
+    const redeemed = await redeemStoreCreditReservation(storeCreditReservationRef, order.id);
+    if (!redeemed) {
+      console.error("[orders] Failed to redeem store-credit reservation for order", order.id, "ref:", storeCreditReservationRef);
+    }
+  }
+
+  console.info(
+    "[orders] Order created",
+    order.id,
+    orderNumber ? `(${orderNumber})` : "(no order number)",
+    stripeSessionId ? `for session ${stripeSessionId}` : "(zero-balance / store credit)",
+    "— items:", metaItems.length,
+    isManualCapture ? "— manual capture (awaiting vendor confirmation)" : "",
+    discountMeta ? `— discount: ${discountMeta.source} $${(discountMeta.amountCents / 100).toFixed(2)}` : "",
+    storeCreditUsedCents > 0 ? `— store credit: $${(storeCreditUsedCents / 100).toFixed(2)}` : ""
+  );
+
+  // ── Send branded confirmation email ───────────────────────────────────────────
+  if (orderNumber && resolvedCustomerName && customerEmail) {
+    try {
+      const emailItems = await fetchEmailItems(order.id);
+      if (isManualCapture) {
+        await sendAvailabilityConfirmationEmail({
+          orderNumber,
+          customerName: resolvedCustomerName,
+          customerEmail,
+          authorizedAmountCents: amountTotalCents,
+          items: emailItems,
+          shippingAddress: resolvedAddr ?? null,
+        });
+      } else {
+        await sendOrderConfirmationEmail({
+          orderNumber,
+          customerName: resolvedCustomerName,
+          customerEmail,
+          amountTotalCents,
+          items: emailItems,
+          shippingAddress: resolvedAddr ?? null,
+        });
+      }
+    } catch (err) {
+      console.error("[orders] Confirmation email failed (non-fatal):", err);
+    }
+  }
+
+  // ── Trigger ISR revalidation ──────────────────────────────────────────────────
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
+  const revalidateSecret = process.env.REVALIDATE_SECRET;
+  if (revalidateSecret) {
+    await fetch(`${siteUrl}/api/revalidate?secret=${revalidateSecret}`, { method: "POST" }).catch(() => {});
+  }
+
+  return { orderId: order.id, orderNumber };
 }
 
 // ── Confirmation email (Resend) ───────────────────────────────────────────────

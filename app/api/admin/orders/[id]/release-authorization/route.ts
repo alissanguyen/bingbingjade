@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { stripe } from "@/lib/stripe";
 import { getSessionUser, isAdmin } from "@/lib/approved-auth";
 import { sendAuthorizationReleasedEmail, getOrderShippingAddress } from "@/lib/orders";
+import { restoreStoreCredit } from "@/lib/store-credit";
 
 // Statuses from which an authorization can still be released. 'authorized' is
 // the normal case; 'authorization_expired' means Stripe already auto-cancelled
@@ -38,7 +39,7 @@ export async function POST(
 
   const { data: order, error: fetchErr } = await supabaseAdmin
     .from("orders")
-    .select("id, order_number, customer_name, customer_email, stripe_payment_intent_id, capture_status")
+    .select("id, order_number, customer_name, customer_email, stripe_payment_intent_id, capture_status, store_credit_id, store_credit_used_cents")
     .eq("id", id)
     .single();
 
@@ -126,6 +127,18 @@ export async function POST(
     .eq("id", order.id)
     .select("*")
     .single();
+
+  // Restore any store credit used — the authorization is being released, so
+  // nothing was ever actually charged for it.
+  if (order.store_credit_id && order.store_credit_used_cents > 0) {
+    await restoreStoreCredit({
+      storeCreditId: order.store_credit_id,
+      amountCents: order.store_credit_used_cents,
+      orderId: order.id,
+      reason: `Order ${order.order_number ?? order.id} authorization released — piece unavailable`,
+      createdBy: "admin",
+    });
+  }
 
   // Restore linked products/options to available — the piece was never sold.
   const { data: orderItems } = await supabaseAdmin

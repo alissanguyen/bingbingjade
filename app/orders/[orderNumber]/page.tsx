@@ -159,6 +159,8 @@ async function getOrder(orderNumber: string) {
       estimated_delivery_date,
       customer_name,
       fee_breakdown,
+      store_credit_used_cents,
+      stripe_amount_cents,
       review_window_closed,
       order_items (
         id,
@@ -681,6 +683,11 @@ export default async function TrackOrderPage({
                         <span>{fb!.otherLabel ?? "Other"}</span><span>+${fb!.other!.toFixed(2)}</span>
                       </div>
                     )}
+                    {(order.store_credit_used_cents ?? 0) > 0 && (
+                      <div className="flex justify-between text-xs text-emerald-600 dark:text-emerald-400">
+                        <span>Store credit applied</span><span>−${(order.store_credit_used_cents / 100).toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className={`flex justify-between items-center ${hasFees ? "pt-1 border-t border-gray-200 dark:border-gray-700" : ""}`}>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         {isAuthorizedNotCaptured
@@ -691,6 +698,12 @@ export default async function TrackOrderPage({
                       </p>
                       <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{totalFormatted}</p>
                     </div>
+                    {(order.store_credit_used_cents ?? 0) > 0 && (order.stripe_amount_cents ?? 0) > 0 && (
+                      <div className="flex justify-between items-center text-xs text-gray-400 dark:text-gray-500">
+                        <span>Paid through Stripe</span>
+                        <span>${(order.stripe_amount_cents / 100).toFixed(2)}</span>
+                      </div>
+                    )}
                   </>
                 );
               })()}

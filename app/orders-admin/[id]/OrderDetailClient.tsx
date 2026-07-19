@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { OrderStatus } from "@/types/orders";
+import { IssueStoreCreditForm } from "@/app/components/IssueStoreCreditForm";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -136,6 +137,10 @@ interface Order {
   authorization_canceled_at: string | null;
   latest_stripe_status: string | null;
   capture_payment_method: string | null;
+  // Store credit — distinct payment method, never mixed into fee_breakdown.discount
+  store_credit_id: string | null;
+  store_credit_used_cents: number;
+  stripe_amount_cents: number | null;
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -371,6 +376,7 @@ export function OrderDetailClient({
   const [editingEventDate, setEditingEventDate] = useState("");
 
   // Edit info state
+  const [showIssueCredit, setShowIssueCredit] = useState(false);
   const [showEditInfo, setShowEditInfo] = useState(false);
   const [editName, setEditName] = useState(order.customer_name ?? "");
   const [editEmail, setEditEmail] = useState(order.customer_email ?? "");
@@ -1373,6 +1379,15 @@ export function OrderDetailClient({
                 </button>
               )}
 
+              {order.customer_email && (
+                <button
+                  onClick={() => setShowIssueCredit(true)}
+                  className="w-full rounded-lg border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 py-2.5 text-sm font-medium transition-colors"
+                >
+                  Issue Store Credit
+                </button>
+              )}
+
               {order.order_status === "delivered" && (
                 <button
                   onClick={handleToggleReviewWindow}
@@ -1594,12 +1609,30 @@ export function OrderDetailClient({
                     <span>+${order.fee_breakdown!.other!.toFixed(2)}</span>
                   </div>
                 )}
+                {order.store_credit_used_cents > 0 && (
+                  <div className="flex justify-between text-xs text-emerald-600 dark:text-emerald-400">
+                    <span>Store credit applied</span><span>−${(order.store_credit_used_cents / 100).toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center pt-1 border-t border-gray-200 dark:border-gray-700">
                   <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">Total</span>
                   <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
                     ${displayTotal} {order.currency.toUpperCase()}
                   </span>
                 </div>
+                {order.store_credit_used_cents > 0 && (
+                  <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
+                    <span>Paid through Stripe</span>
+                    <span>{order.stripe_amount_cents != null ? `$${(order.stripe_amount_cents / 100).toFixed(2)}` : "—"}</span>
+                  </div>
+                )}
+                {order.store_credit_id && (
+                  <div className="pt-1">
+                    <a href={`/store-credits-admin/${order.store_credit_id}`} className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline">
+                      View store credit used on this order &rarr;
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -2154,6 +2187,40 @@ export function OrderDetailClient({
               className="flex-1 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white py-2.5 text-sm font-semibold transition-colors">
               {savingInfo ? "Saving…" : "Save Info"}
             </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Issue Store Credit Modal */}
+    {showIssueCredit && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8 overflow-y-auto"
+        onClick={(e) => { if (e.target === e.currentTarget) setShowIssueCredit(false); }}
+      >
+        <div className="w-full max-w-3xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden my-auto">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Issue Store Credit</h2>
+            <button
+              onClick={() => setShowIssueCredit(false)}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+          <div className="p-5 max-h-[75vh] overflow-y-auto">
+            <IssueStoreCreditForm
+              prefill={{
+                customerEmail: order.customer_email ?? undefined,
+                sourceOrderId: order.id,
+                sourceOrderNumber: order.order_number ?? undefined,
+                currency: order.currency,
+              }}
+              onIssued={() => { setShowIssueCredit(false); showToast("ok", "Store credit issued"); }}
+              onCancel={() => setShowIssueCredit(false)}
+            />
           </div>
         </div>
       </div>

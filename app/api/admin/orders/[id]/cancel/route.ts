@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { sendOrderStatusEmail, fetchEmailItems } from "@/lib/orders";
+import { restoreStoreCredit } from "@/lib/store-credit";
 
 async function isAdmin(): Promise<boolean> {
   const cookieStore = await cookies();
@@ -46,6 +47,18 @@ export async function POST(
 
   if (error || !order) {
     return NextResponse.json({ error: error?.message ?? "Cancel failed" }, { status: 500 });
+  }
+
+  // Restore any store credit used on this order — never converted to cash,
+  // the original credit (and its expiration) is simply made spendable again.
+  if (order.store_credit_id && order.store_credit_used_cents > 0) {
+    await restoreStoreCredit({
+      storeCreditId: order.store_credit_id,
+      amountCents: order.store_credit_used_cents,
+      orderId: id,
+      reason: `Order ${order.order_number ?? id} cancelled (${reason})`,
+      createdBy: "admin",
+    });
   }
 
   // Restore linked products to available
