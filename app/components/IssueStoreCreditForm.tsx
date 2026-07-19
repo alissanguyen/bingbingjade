@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { EmailPreviewModal } from "@/app/custom-emails-admin/EmailPreviewModal";
 
 const REASON_OPTIONS: { value: string; label: string }[] = [
   { value: "goodwill_resolution", label: "Goodwill resolution" },
@@ -56,6 +57,8 @@ export function IssueStoreCreditForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string[]>([]);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   // Live preview — recompute condition wording locally, mirroring
   // getStoreCreditDisplayConditions() so what's shown here matches what the
@@ -88,6 +91,46 @@ export function IssueStoreCreditForm({
     lines.push(`This credit is associated with ${email || "[email]"} and is non-transferable.`);
     setPreview(lines);
   }, [hasExpiration, expiresAt, startsAt, minSubtotal, maxLineItems, fulfillmentScope, excludeSaleItems, excludeClearanceItems, allowWithDiscountCodes, allowWithOtherStoreCredits, usageMode, maxPerOrder, maxPercentage, email]);
+
+  async function previewEmail() {
+    setPreviewLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/store-credits/preview-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amountCents: amount ? Math.round(Number(amount) * 100) : undefined,
+          customerEmail: email || undefined,
+          sourceOrderNumber: prefill?.sourceOrderNumber ?? null,
+          reason,
+          customerMessage: customerMessage.trim() || null,
+          startsAt: startsAt ? new Date(startsAt).toISOString() : null,
+          expiresAt: hasExpiration && expiresAt ? new Date(expiresAt).toISOString() : null,
+          minimumMerchandiseSubtotalCents: minSubtotal ? Math.round(Number(minSubtotal) * 100) : null,
+          maximumLineItems: maxLineItems ? Number(maxLineItems) : null,
+          eligibleFulfillmentTypes: fulfillmentScope === "any" ? null : [fulfillmentScope],
+          excludeSaleItems,
+          excludeClearanceItems,
+          allowWithDiscountCodes,
+          allowWithOtherStoreCredits,
+          usageMode,
+          maximumCreditPerOrderCents: maxPerOrder ? Math.round(Number(maxPerOrder) * 100) : null,
+          maximumCreditPercentage: maxPercentage ? Number(maxPercentage) : null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to load preview.");
+        return;
+      }
+      setPreviewHtml(data.html);
+    } catch {
+      setError("Failed to load preview.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -300,8 +343,18 @@ export function IssueStoreCreditForm({
             <p className="text-xs text-gray-500 dark:text-gray-400">Notification Email</p>
             <p className="text-sm text-gray-700 dark:text-gray-300">{sendEmail ? "Will be sent immediately upon issuance" : "Will not be sent — can be sent later from the credit's detail page"}</p>
           </div>
+          <button
+            type="button"
+            onClick={previewEmail}
+            disabled={previewLoading}
+            className="w-full rounded-lg border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 disabled:opacity-60 py-2 text-sm font-medium transition-colors"
+          >
+            {previewLoading ? "Loading…" : "Preview Email"}
+          </button>
         </div>
       </div>
+
+      {previewHtml && <EmailPreviewModal html={previewHtml} onClose={() => setPreviewHtml(null)} />}
     </form>
   );
 }

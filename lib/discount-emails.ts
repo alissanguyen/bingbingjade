@@ -1002,19 +1002,22 @@ export async function sendReferralRewardEmail(params: {
 
 import type { StoreCreditRow } from "./store-credit";
 
-export async function sendStoreCreditIssuedEmail(params: {
+export type StoreCreditEmailParams = {
   storeCredit: StoreCreditRow;
   customerName: string | null;
   sourceOrderNumber: string | null;
   conditions: string[];
   isResend?: boolean;
-}): Promise<void> {
-  const resend = getResend();
-  if (!resend) return;
+};
 
+/**
+ * Builds the store-credit email HTML + subject without sending anything —
+ * shared by sendStoreCreditIssuedEmail and the admin preview endpoints so
+ * "what admins preview" and "what customers receive" can never drift apart.
+ */
+export function buildStoreCreditEmailHtml(params: StoreCreditEmailParams): { html: string; subject: string } {
   const { storeCredit, customerName, sourceOrderNumber, conditions, isResend } = params;
   const siteUrl = getSiteUrl();
-  const from = "BingBing Jade <notification@bingbingjade.com>";
   const amountDollars = (storeCredit.original_amount_cents / 100).toFixed(2);
   const remainingDollars = (storeCredit.remaining_amount_cents / 100).toFixed(2);
   const greetingName = customerName?.split(" ")[0] ?? "there";
@@ -1148,14 +1151,25 @@ export async function sendStoreCreditIssuedEmail(params: {
 </body>
 </html>`;
 
+  const subject = isResend
+    ? `Your BingBing Jade store credit — ${storeCredit.code}`
+    : `You have received a $${amountDollars} BingBing Jade store credit`;
+
+  return { html, subject };
+}
+
+export async function sendStoreCreditIssuedEmail(params: StoreCreditEmailParams): Promise<void> {
+  const resend = getResend();
+  if (!resend) return;
+
+  const { html, subject } = buildStoreCreditEmailHtml(params);
+
   try {
     await resend.emails.send({
-      from,
-      to: storeCredit.customer_email,
+      from: "BingBing Jade <notification@bingbingjade.com>",
+      to: params.storeCredit.customer_email,
       bcc: "contact@bingbingjade.com",
-      subject: isResend
-        ? `Your BingBing Jade store credit — ${storeCredit.code}`
-        : `You have received a $${amountDollars} BingBing Jade store credit`,
+      subject,
       html,
     });
   } catch (err) {

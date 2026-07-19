@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { EmailPreviewModal } from "@/app/custom-emails-admin/EmailPreviewModal";
 
 type StoreCredit = {
   id: string;
@@ -50,6 +51,7 @@ export function StoreCreditDetailClient({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
 
   const [expiresAtInput, setExpiresAtInput] = useState("");
   const [adjustDelta, setAdjustDelta] = useState("");
@@ -102,6 +104,17 @@ export function StoreCreditDetailClient({ id }: { id: string }) {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function previewEmail() {
+    setMessage(null);
+    const res = await fetch(`/api/admin/store-credits/${id}/resend-email`);
+    const data = await res.json();
+    if (!res.ok) {
+      setMessage(data.error ?? "Failed to load preview.");
+      return;
+    }
+    setPreviewHtml(data.html);
   }
 
   function copyCode() {
@@ -163,11 +176,16 @@ export function StoreCreditDetailClient({ id }: { id: string }) {
         {message && <p className="text-sm text-emerald-600 dark:text-emerald-400 mb-3">{message}</p>}
 
         <div className="flex flex-wrap gap-2">
+          <button onClick={previewEmail} className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300">
+            Preview Email
+          </button>
           <button onClick={resendEmail} disabled={busy} className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300">
             Resend Email
           </button>
         </div>
       </div>
+
+      {previewHtml && <EmailPreviewModal html={previewHtml} onClose={() => setPreviewHtml(null)} />}
 
       {/* Expiration */}
       <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
