@@ -89,6 +89,7 @@ export async function POST() {
         let liInsuranceCents = 0;
         let liTaxCents       = 0;
         let liTxFeeCents     = 0;
+        let liBnplFeeCents   = 0;
         let liDiscountCents  = 0;
         for (const li of lineItems) {
           // Always trim — Stripe description whitespace is inconsistent
@@ -102,6 +103,8 @@ export async function POST() {
             liTaxCents += li.amount_total ?? 0;
           } else if (name.startsWith("Transaction Fee")) {
             liTxFeeCents += li.amount_total ?? 0;
+          } else if (name.startsWith("Installment Fee")) {
+            liBnplFeeCents += li.amount_total ?? 0;
           }
           for (const d of li.discounts ?? []) {
             liDiscountCents += d.amount ?? 0;
@@ -246,6 +249,7 @@ export async function POST() {
             if (!existing.insurance && liInsuranceCents > 0) patch.insurance = liInsuranceCents / 100;
             if (!existing.tax       && liTaxCents       > 0) patch.tax       = liTaxCents       / 100;
             if (!existing.paypal    && liTxFeeCents     > 0) patch.paypal    = liTxFeeCents     / 100;
+            if (!existing.bnpl      && liBnplFeeCents   > 0) patch.bnpl      = liBnplFeeCents   / 100;
 
             if (Object.keys(patch).length > 0) {
               await supabaseAdmin

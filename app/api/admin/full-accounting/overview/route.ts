@@ -144,8 +144,9 @@ export async function GET(req: NextRequest) {
     // Shipping/insurance: prefer fee_breakdown, fall back to Stripe snapshot shipping total
     const shipping  = (fees.shipping  ?? 0) > 0 ? (fees.shipping  ?? 0) : (snap?.shipping ?? 0);
     const insurance = fees.insurance ?? 0;
-    // Transaction fee charged to customer (stored as 'paypal' key for legacy reasons)
-    const txFee     = fees.paypal ?? 0;
+    // Transaction fee charged to customer (stored as 'paypal' key for legacy reasons;
+    // BNPL installment fees are stored separately under 'bnpl')
+    const txFee     = (fees.paypal ?? 0) + (fees.bnpl ?? 0);
     const discount  = fees.discount  ?? (o.discount_amount_cents ?? 0) / 100;
     const total     = (o.amount_total as number) / 100;
 

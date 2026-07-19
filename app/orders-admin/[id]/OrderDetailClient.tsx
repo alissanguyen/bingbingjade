@@ -114,6 +114,7 @@ interface Order {
     shipping?: number;
     tax?: number;
     paypal?: number;
+    bnpl?: number;
     insurance?: number;
     discount?: number;
     other?: number;
@@ -389,6 +390,7 @@ export function OrderDetailClient({
   const [editFeeShipping, setEditFeeShipping] = useState(String(order.fee_breakdown?.shipping ?? ""));
   const [editFeeTax, setEditFeeTax] = useState(String(order.fee_breakdown?.tax ?? ""));
   const [editFeePaypal, setEditFeePaypal] = useState(String(order.fee_breakdown?.paypal ?? ""));
+  const [editFeeBnpl, setEditFeeBnpl] = useState(String(order.fee_breakdown?.bnpl ?? ""));
   const [editFeeInsurance, setEditFeeInsurance] = useState(String(order.fee_breakdown?.insurance ?? ""));
   const [editFeeDiscount, setEditFeeDiscount] = useState(String(order.fee_breakdown?.discount ?? ""));
   const [editFeeOther, setEditFeeOther] = useState(String(order.fee_breakdown?.other ?? ""));
@@ -649,6 +651,7 @@ export function OrderDetailClient({
       if (parseFloat(editFeeShipping) > 0) fees.shipping = parseFloat(editFeeShipping);
       if (parseFloat(editFeeTax) > 0) fees.tax = parseFloat(editFeeTax);
       if (parseFloat(editFeePaypal) > 0) fees.paypal = parseFloat(editFeePaypal);
+      if (parseFloat(editFeeBnpl) > 0) fees.bnpl = parseFloat(editFeeBnpl);
       if (parseFloat(editFeeInsurance) > 0) fees.insurance = parseFloat(editFeeInsurance);
       if (parseFloat(editFeeDiscount) > 0) fees.discount = parseFloat(editFeeDiscount);
       if (parseFloat(editFeeOther) > 0) {
@@ -1268,6 +1271,7 @@ export function OrderDetailClient({
                   setEditFeeShipping(String(order.fee_breakdown?.shipping ?? ""));
                   setEditFeeTax(String(order.fee_breakdown?.tax ?? ""));
                   setEditFeePaypal(String(order.fee_breakdown?.paypal ?? ""));
+                  setEditFeeBnpl(String(order.fee_breakdown?.bnpl ?? ""));
                   setEditFeeInsurance(String(order.fee_breakdown?.insurance ?? ""));
                   setEditFeeDiscount(String(order.fee_breakdown?.discount ?? ""));
                   setEditFeeOther(String(order.fee_breakdown?.other ?? ""));
@@ -1567,6 +1571,11 @@ export function OrderDetailClient({
                 {(order.fee_breakdown?.paypal ?? 0) > 0 && (
                   <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                     <span>Transaction Fee</span><span>+${order.fee_breakdown!.paypal!.toFixed(2)}</span>
+                  </div>
+                )}
+                {(order.fee_breakdown?.bnpl ?? 0) > 0 && (
+                  <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <span>Installment Fee</span><span>+${order.fee_breakdown!.bnpl!.toFixed(2)}</span>
                   </div>
                 )}
                 {(order.fee_breakdown?.insurance ?? 0) > 0 && (
@@ -2109,6 +2118,7 @@ export function OrderDetailClient({
                   { label: "Shipping", val: editFeeShipping, set: setEditFeeShipping, prefix: "$" },
                   { label: "Tax", val: editFeeTax, set: setEditFeeTax, prefix: "$" },
                   { label: "Transaction Fee", val: editFeePaypal, set: setEditFeePaypal, prefix: "$" },
+                  { label: "Installment Fee", val: editFeeBnpl, set: setEditFeeBnpl, prefix: "$" },
                   { label: "Insurance", val: editFeeInsurance, set: setEditFeeInsurance, prefix: "$" },
                   { label: "Discount", val: editFeeDiscount, set: setEditFeeDiscount, prefix: "−$" },
                   { label: "Other", val: editFeeOther, set: setEditFeeOther, prefix: "$" },

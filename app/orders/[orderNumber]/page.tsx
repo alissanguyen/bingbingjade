@@ -636,9 +636,9 @@ export default async function TrackOrderPage({
             })}
             <div className="bg-gray-50 dark:bg-gray-900 px-5 py-3.5 space-y-1.5">
               {(() => {
-                const fb = order.fee_breakdown as { shipping?: number; tax?: number; paypal?: number; insurance?: number; discount?: number; other?: number; otherLabel?: string } | null;
+                const fb = order.fee_breakdown as { shipping?: number; tax?: number; paypal?: number; bnpl?: number; insurance?: number; discount?: number; other?: number; otherLabel?: string } | null;
                 const itemsSubtotal = items.reduce((s, i) => s + (i.line_total ?? (i.price_usd ?? 0) * i.quantity), 0);
-                const hasFees = fb && ((fb.shipping ?? 0) + (fb.tax ?? 0) + (fb.paypal ?? 0) + (fb.insurance ?? 0) + (fb.discount ?? 0) + (fb.other ?? 0)) > 0;
+                const hasFees = fb && ((fb.shipping ?? 0) + (fb.tax ?? 0) + (fb.paypal ?? 0) + (fb.bnpl ?? 0) + (fb.insurance ?? 0) + (fb.discount ?? 0) + (fb.other ?? 0)) > 0;
                 return (
                   <>
                     {hasFees && (
@@ -659,6 +659,11 @@ export default async function TrackOrderPage({
                     {(fb?.paypal ?? 0) > 0 && (
                       <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                         <span>Transaction Fee</span><span>+${fb!.paypal!.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {(fb?.bnpl ?? 0) > 0 && (
+                      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                        <span>Installment Fee</span><span>+${fb!.bnpl!.toFixed(2)}</span>
                       </div>
                     )}
                     {(fb?.insurance ?? 0) > 0 && (

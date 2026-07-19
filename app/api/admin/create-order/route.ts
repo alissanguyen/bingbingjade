@@ -107,6 +107,7 @@ export async function POST(req: NextRequest) {
       shipping?: number;
       tax?: number;
       paypal?: number;
+      bnpl?: number;
       insurance?: number;
       discount?: number;
       other?: number;
@@ -200,7 +201,7 @@ export async function POST(req: NextRequest) {
   const orderStatus: OrderStatus =
     body.orderStatus ?? (paidStatus === "paid" ? "order_confirmed" : "order_created");
   const itemsTotal = body.items.reduce((sum, i) => sum + i.price * (i.quantity ?? 1), 0);
-  const feesTotal = (body.fees?.shipping ?? 0) + (body.fees?.tax ?? 0) + (body.fees?.paypal ?? 0) + (body.fees?.insurance ?? 0) - (body.fees?.discount ?? 0) + (body.fees?.other ?? 0);
+  const feesTotal = (body.fees?.shipping ?? 0) + (body.fees?.tax ?? 0) + (body.fees?.paypal ?? 0) + (body.fees?.bnpl ?? 0) + (body.fees?.insurance ?? 0) - (body.fees?.discount ?? 0) + (body.fees?.other ?? 0);
   const amountTotalCents = Math.round((itemsTotal + feesTotal) * 100);
 
   // ── Insert order ──────────────────────────────────────────────────────────
