@@ -92,7 +92,7 @@ export default async function Contact({
       {/* WhatsApp QR */}
       <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-6">
         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Scan to chat on WhatsApp</p>
-        <Image src="/whatsapp.jpg" alt="WhatsApp QR code" width={450} height={320} className="rounded-lg object-contain" />
+        <Image src="/whatsapp.png" alt="WhatsApp QR code" width={450} height={320} className="rounded-lg object-contain" />
         <p className="text-xs text-gray-400 dark:text-gray-500">Point your camera at the QR code</p>
       </div>
 

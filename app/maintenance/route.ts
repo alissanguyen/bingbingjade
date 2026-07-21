@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-static";
 
 const RETRY_AFTER_SECONDS = "1800";
-const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "12065353443";
+const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "12062260891";
 const message = "Hi, I saw BingBing Jade is under maintenance and would like to get in touch.";
 
 export function GET() {

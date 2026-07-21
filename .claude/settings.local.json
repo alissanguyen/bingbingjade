@@ -109,7 +109,9 @@
       "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/livestreams-admin/[id]/live\")",
       "Bash(mkdir -p \"/Users/nouveau/Documents/workspaces/jade-shop/app/livestream-checkout/[token]\")",
       "Bash(xargs -0 ls -lh)",
-      "Bash(xargs -I {} basename {})"
+      "Bash(xargs -I {} basename {})",
+      "Bash(awk '/CREATE TABLE.*public\\\\.orders \\\\\\(/,/^\\\\\\);/' supabase/schema.sql)",
+      "Bash(xargs -I{} sh -c 'echo \"=== {} ===\"; grep -n \"products\\\\|ADD COLUMN\\\\|CREATE TABLE\" {} | head -20')"
     ]
   }
 }
