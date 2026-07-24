@@ -145,8 +145,15 @@ export async function ProductListing({
   const filterClearance = params.clearance === "1";
   const selectedCategories = params.category ? params.category.split(",").filter(Boolean) : [];
   const searchQuery = params.search?.trim() ?? "";
-  const minSize = params.minSize ? Number(params.minSize) : null;
-  const maxSize = params.maxSize ? Number(params.maxSize) : null;
+  const rawMinSize = params.minSize ? Number(params.minSize) : null;
+  const rawMaxSize = params.maxSize ? Number(params.maxSize) : null;
+  let minSize = rawMinSize !== null && Number.isFinite(rawMinSize) ? rawMinSize : null;
+  let maxSize = rawMaxSize !== null && Number.isFinite(rawMaxSize) ? rawMaxSize : null;
+  // Normalize an inverted range (e.g. minSize=60&maxSize=10) instead of silently
+  // ignoring it and showing unfiltered results.
+  if (minSize !== null && maxSize !== null && minSize > maxSize) {
+    [minSize, maxSize] = [maxSize, minSize];
+  }
   const minPrice = params.minPrice ? Number(params.minPrice) : null;
   const maxPrice = params.maxPrice ? Number(params.maxPrice) : null;
   const sort = params.sort ?? "";
@@ -224,12 +231,16 @@ export async function ProductListing({
     q = q.overlaps("color", selectedColors);
   }
 
-  // Size filter
+  // Size filter — `size` is stored as text (it can hold ranges like "7.2-7.5"
+  // or "Varies"), so range comparisons run against the generated `size_mm`
+  // numeric column instead. That column is NULL for anything that isn't a
+  // plain number, so non-numeric/blank sizes are correctly excluded whenever
+  // a size filter is active.
   if (minSize !== null) {
-    q = q.gte("size", minSize);
+    q = q.gte("size_mm", minSize);
   }
   if (maxSize !== null) {
-    q = q.lte("size", maxSize);
+    q = q.lte("size_mm", maxSize);
   }
 
   // Search filter
@@ -251,9 +262,9 @@ export async function ProductListing({
   } else if (sort === "price_desc") {
     q = q.order("price_display_usd", { ascending: false, nullsFirst: false });
   } else if (sort === "size_asc") {
-    q = q.order("size", { ascending: true, nullsFirst: false });
+    q = q.order("size_mm", { ascending: true, nullsFirst: false });
   } else if (sort === "size_desc") {
-    q = q.order("size", { ascending: false, nullsFirst: true });
+    q = q.order("size_mm", { ascending: false, nullsFirst: true });
   } else {
     // "newest", "featured", or default — sort by COALESCE(renewed_at, created_at)
     q = q.order("effective_date", { ascending: false });
