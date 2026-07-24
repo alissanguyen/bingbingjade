@@ -26,7 +26,26 @@ interface LookupResult {
     category: string;
     created_at: string;
     renewed_at: string | null;
+    sourcing_notes: string | null;
+    size: string | null;
+    is_oval: boolean;
+    wrist_size: string | null;
+    size_detailed: (number | null)[] | null;
   } | null;
+}
+
+function formatSize(product: NonNullable<LookupResult["product"]>): string | null {
+  if (product.is_oval) {
+    const sd = product.size_detailed;
+    const dims = sd && sd.length >= 4 ? `${sd[0]} × ${sd[1]} × ${sd[2]} × ${sd[3]} mm` : null;
+    const parts = [dims, product.wrist_size ? `fits wrist: ${product.wrist_size}` : null].filter(Boolean);
+    return parts.length ? parts.join(" · ") : product.size || null;
+  }
+  const sd = product.size_detailed;
+  if (sd && sd.length >= 3 && sd.some((v) => v != null)) {
+    return `${sd[0]} × ${sd[1]} × ${sd[2]} mm`;
+  }
+  return product.size || null;
 }
 
 export function ItemOriginLookupClient() {
@@ -164,7 +183,7 @@ export function ItemOriginLookupClient() {
               </div>
 
               {result.product ? (
-                <div className="grid sm:grid-cols-3 gap-4 border-t border-gray-100 dark:border-gray-800 pt-4">
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 border-t border-gray-100 dark:border-gray-800 pt-4">
                   {/* Listing */}
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Listing</p>
@@ -172,6 +191,18 @@ export function ItemOriginLookupClient() {
                       {result.product.name}
                     </p>
                     <p className="text-xs text-gray-400 font-mono mt-0.5">{result.product.public_id}</p>
+                  </div>
+
+                  {/* Size */}
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Size</p>
+                    {formatSize(result.product) ? (
+                      <p className="font-semibold text-gray-900 dark:text-gray-100 leading-snug">
+                        {formatSize(result.product)}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-gray-400 italic">Not set</p>
+                    )}
                   </div>
 
                   {/* Vendor */}
@@ -229,6 +260,15 @@ export function ItemOriginLookupClient() {
                 <p className="text-sm text-gray-400 italic border-t border-gray-100 dark:border-gray-800 pt-4">
                   No product linked to this SKU yet.
                 </p>
+              )}
+
+              {result.product?.sourcing_notes && (
+                <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Source / Vendor Notes</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                    {result.product.sourcing_notes}
+                  </p>
+                </div>
               )}
             </div>
 

@@ -432,7 +432,7 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
     }
   }
 
-  // AI copy generation — local state only, not saved to DB
+  // AI copy generation — saved to DB as sourcing_notes so the original vendor notes are preserved
   const [sourceNotes, setSourceNotes] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
@@ -709,6 +709,7 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
       sizeDetailed.forEach((v, i) => fd.append(`size_detailed_${i}`, v));
       fd.append("is_oval", String(isOval));
       if (wristSize) fd.append("wrist_size", wristSize);
+      if (sourceNotes) fd.append("sourcing_notes", sourceNotes);
       imageUrls.forEach((url) => fd.append("imageUrls", url));
       videoUrls.forEach((url) => fd.append("videoUrls", url));
 
@@ -744,6 +745,7 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
         setWristSize("");
         setHasVariants(false);
         setOptionRows([blankRow()]);
+        setSourceNotes("");
       }
     } catch (err) {
       setResult({ error: err instanceof Error ? err.message : "Something went wrong" });

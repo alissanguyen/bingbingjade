@@ -57,6 +57,7 @@ export async function createProduct(formData: FormData): Promise<{ error?: strin
       wrist_size: (formData.get("wrist_size") as string) || null,
       description: (formData.get("description") as string) || null,
       blemishes: (formData.get("blemishes") as string) || null,
+      sourcing_notes: (formData.get("sourcing_notes") as string) || null,
       price_display_usd: formData.get("price_display_usd") ? Number(formData.get("price_display_usd")) : null,
       sale_price_usd: formData.get("sale_price_usd") ? Number(formData.get("sale_price_usd")) : null,
       imported_price_vnd: approvedUser ? 0 : (formData.get("imported_price_vnd") ? Number(formData.get("imported_price_vnd")) : null),

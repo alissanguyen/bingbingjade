@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
   // Product metadata
   const { data: product } = await supabaseAdmin
     .from("products")
-    .select("id, name, public_id, category, created_at, renewed_at")
+    .select("id, name, public_id, category, created_at, renewed_at, sourcing_notes, size, is_oval, wrist_size, size_detailed")
     .eq("sku", paddedSku)
     .single();
 

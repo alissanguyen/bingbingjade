@@ -163,6 +163,7 @@ interface ProductData {
   wrist_size: string | null;
   description: string | null;
   blemishes: string | null;
+  sourcing_notes: string | null;
   price_display_usd: number | null;
   sale_price_usd: number | null;
   imported_price_vnd: number;
@@ -413,6 +414,7 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
     size: product.size ?? "",
     description: product.description ?? "",
     blemishes: product.blemishes ?? "",
+    sourcing_notes: product.sourcing_notes ?? "",
     price_display_usd: product.price_display_usd != null ? String(product.price_display_usd) : "",
     sale_price_usd: product.sale_price_usd != null ? String(product.sale_price_usd) : "",
     imported_price_vnd: String(product.imported_price_vnd),
@@ -1194,6 +1196,10 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
           <div>
             <label className={labelClass}>Blemishes</label>
             <textarea rows={2} value={form.blemishes} onChange={set("blemishes")} className={inputClass} />
+          </div>
+          <div>
+            <label className={labelClass}>Source / vendor notes</label>
+            <textarea rows={2} value={form.sourcing_notes} onChange={set("sourcing_notes")} className={inputClass} placeholder="Original AI prompt / vendor notes used to generate this listing's copy" />
           </div>
         </div>
       </section>
