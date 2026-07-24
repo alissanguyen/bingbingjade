@@ -57,6 +57,7 @@ The application is split into a **customer storefront** and a **password-protect
 
 - **Product catalog** with multi-faceted filtering (category, availability status, origin, color, price range, size, clearance) and sorting (newest, price ascending/descending); multi-category URL params (e.g. `?category=ring,earring`) display combined category views from nav links
 - **Product detail pages** with full image gallery (lightbox), inline video preview, variant selection (product options with per-option pricing), and add-to-cart
+- **Oval bangle support** — `size` is a flexible text field (holds a single number, a range like "7.2–7.5", or "Varies") rather than a strict numeric column; oval-shaped bangles show a dedicated 4-dimension measurement layout plus wrist-size guidance instead of the standard single-diameter display
 - **Persistent cart** stored in localStorage with a slide-out cart drawer
 - **Zone-based international shipping** — US $20 / Canada+Europe $35 / Asia-Pacific $75 base, +$10–$20 per additional piece; shipping address collected in the storefront UI before redirecting to Stripe so customers never re-enter it; address passed to `payment_intent_data.shipping` for Stripe records
 - **Stripe fee gross-up** — transaction fee is computed as `⌈(subtotal + 30) / (1 − rate)⌉ − subtotal` (domestic 2.9%, international 4.4%) so the seller nets exactly the item price after Stripe deducts their cut; displayed as a single "Transaction Fee" line with no formula exposed to customers
@@ -124,14 +125,17 @@ A luxury editorial system for curated collections with shoppable lifestyle photo
 - **Draft/publish workflow** — products default to draft and are hidden from the storefront until explicitly published; `published_at` timestamp set only on first publish
 - **Product status values** — `available`, `on_sale`, `sold`, `archived`; `is_clearance` boolean is independent from status and can coexist with any status
 - **Bulk operations** — select multiple products to batch-update status (available / on sale / sold) or bulk delete
-- **Order management** — admin panel at `/orders-admin` lists all orders sorted by order number descending; two-column amount display separates "Items" (sum of `order_items.price_usd × quantity`) from "Total" (full `amount_total` including shipping/fees/tax); search, status filtering, and pagination; each order has a full detail/edit page supporting:
+- **Order management** — admin panel at `/orders-admin` lists all orders sorted by order number descending; two-column amount display separates "Items" (sum of `order_items.price_usd × quantity`) from "Total" (full `amount_total` including shipping/fees/tax); search, status filtering, Ship Now / Sourced for You fulfillment-type filter pills, and pagination; each order has a full detail/edit page supporting:
   - Status updates with optional email notification to customer; changing status to `order_cancelled` opens a mandatory reason picker modal — `piece_unavailable` or `customer_cancelled` — stored on the order and used to render the correct cancellation state on the tracking page
   - Estimated delivery date (triggers automatic delivery-date email)
-  - Inline editing of order items (price, quantity) with auto-recalculated total
+  - Inline editing of order items (price, quantity) with auto-recalculated total; each item image links through to the live product page
   - Shipping address edit (create or update linked `customer_addresses` record)
-  - Fee breakdown editor (shipping, tax, PayPal, insurance, discount, custom line)
+  - Fee breakdown editor (shipping, tax, PayPal, BNPL installment fee, insurance, discount, custom line); store credit applied vs. amount actually charged through Stripe shown separately when relevant
   - Customer info edit (name, email, phone, order number, order date)
   - Notes field
+  - Mark-as-paid / mark-as-refunded controls for manually-tracked (non-Stripe) orders; Stripe-dashboard-issued refunds sync in automatically via webhook
+  - Delete order (admin-only, for genuine data-entry mistakes)
+  - Close/reopen the post-delivery review window on a per-order basis
 - **Accounting dashboard** (`/accounting-admin`) — financial reporting page with:
   - **KPI cards** — Total Collected (all payments including shipping/fees/tax), Item Revenue (jade product prices only), COGS, and Gross Profit with margin %
   - **Pure SVG bar chart** — no chart library dependencies; dual-series (emerald for revenue, rose for COGS) with year filter; overflow-scroll on mobile
@@ -162,6 +166,51 @@ A luxury editorial system for curated collections with shoppable lifestyle photo
 - **Subscriber management** (`/subscribers-admin`) — view all email subscribers with their coupon code, expiry, and status (Active / Used / Expired / No code); filter tabs; resend welcome coupon email to individual subscriber; bulk email with custom subject and message body targeting all or unused-coupon subscribers; backfill coupon codes for pre-migration subscribers
 - **Admin profile** (`/profile`) — at-a-glance action items: pending product approvals and pending partner token requests with inline approve/deny and adjustable grant amount
 - **Beta checkout mode** — checkout locked to admin during soft-launch; toggle to public with `NEXT_PUBLIC_CHECKOUT_MODE=live`
+
+### Livestream Selling (Instagram / TikTok)
+
+A full workflow for running "claim it live" style sales during an Instagram or TikTok livestream, at `/livestreams-admin`.
+
+- Admin pre-loads a livestream with numbered items (auto-coded `A1`, `A2`, … by a configurable letter prefix), each linked to an existing product with an asking price and an optional price floor
+- During the live, admin marks an item claimed by a buyer's handle and sends a **private, time-limited Stripe checkout link** (24-hour expiry) via DM — the underlying product is atomically set to `reserved` with an expiry timestamp so it can't be claimed or sold elsewhere in the meantime
+- Customers pay through a dedicated `/livestream-checkout/[token]` page (opaque token, not the raw Stripe URL) with `/livestream-checkout/expired` and `/livestream-checkout/invalid` fallback states
+- Full event log per item (`claimed` / `checkout_sent` / `released` / `paid` / `passed` / `cancelled`) plus a **backup-buyer queue** — if the first claimant doesn't pay in time, admin can offer the item to the next person in line without losing track of who asked first
+- Checkout price can differ from the announced asking price (e.g. live negotiation) with a required override note for the record
+- Orders from this flow are tagged `source: 'livestream'` and appear in the normal `/orders-admin` list alongside every other channel
+
+### Reserved Listings & Deposit Reservations
+
+Lets an admin hold a specific one-of-a-kind piece for a specific customer, gated by a code, with an optional deposit.
+
+- Admin creates a reservation from the product record: recipient name/email/note, deposit amount, and an expiry
+- The reservation code is **never stored in plaintext** — only its SHA-256 hash — and is shared with the customer out of band (DM, email, text)
+- The product page shows a "Reserved" state with a code-entry unlock panel; only a correct code reveals the checkout flow for that customer
+- Admin can optionally generate a real Stripe checkout link for the deposit; once paid, the deposit amount is credited against the item's final price at checkout (applied as a coupon reduction — the fee is still calculated on the pre-deposit subtotal so the deposit never distorts the transaction fee)
+- Only one active (non-cancelled) reservation is allowed per product, enforced at the database level
+
+### Inventory Batch Tracking
+
+Replaces flat per-product COGS entry with proper batch-level inventory accounting, at `/inventory-batches`.
+
+- Admin creates a batch representing one sourcing trip/shipment/partner order — tracks total batch cost, partner payments (money a sourcing partner contributes to or draws from the batch), item count, and per-item expenses (e.g. absorbed shipping)
+- Products are linked to the batch they came from; average cost per item, revenue booked so far, and **% sold** are computed live from linked product statuses
+- Batch summary cards surface a "missing items" banner when a batch's declared item count doesn't match how many products have actually been linked — catches sourcing/data-entry gaps early
+- Feeds the accounting dashboards' COGS figures in place of the older flat `imported_price_vnd`-only approach for batch-tracked products
+
+### Customer Reviews
+
+- Customers can submit a review (rating, description, optional photo) tied to a delivered order; the post-delivery review window can be closed per-order from the admin order detail page once no longer wanted
+- **Photo uploads go through an approval gate** — new reviews (and any photo) default to unapproved and are invisible on the public storefront until an admin approves them from `/reviews-admin` (All / Pending / Approved tabs)
+- Admin review photo upload includes a crop step (fixed square aspect ratio) before saving
+- Public display via `ReviewsCarousel` — responsive card grid (2/3/4 columns by viewport width, driven by inline style rather than CSS breakpoints to avoid rem-based drift), customer shown by initials rather than full name, click-to-expand modal for the full review and photo
+
+### Business Expense Tracking
+
+Part of `/full-detailed-accounting`, for fixed overhead separate from per-product COGS.
+
+- **Vendor and payment-method autocomplete** — `expense_vendors` / `expense_payment_methods` lookup tables (separate from jade-sourcing vendors) are seeded from existing expense history and suggested as you type, so spend keeps rolling up under one canonical name instead of fragmenting across typos and variants
+- **Summary view** grouped by vendor, payment method, and category, with CSV export
+- **Manage panel** — merge two vendor/method entries into one (re-points all existing expense rows) or delete an unused one
 
 ### Customer Restriction System
 
@@ -213,6 +262,13 @@ Every uploaded product image goes through an automated server-side processing pi
 - **Idempotent webhook handler** — `orders.stripe_session_id` UNIQUE constraint; `23505` error code handled to prevent Stripe retry loops
 - **Automatic inventory update** — webhook marks purchased options sold, auto-marks parent product sold when all options are sold
 - **ISR cache invalidation** — webhook triggers `/api/revalidate` to clear Next.js cache for product pages immediately
+- **Manual capture (authorize-then-capture) for Sourced for You orders** — overseas one-of-a-kind pieces authorize the customer's payment method at checkout (`payment_intent_data.capture_method: "manual"`) but are not charged until an admin confirms the vendor can actually secure the piece:
+  - Admin sees a **Payment** card on the order detail page with a live-countdown capture deadline (color-coded Normal / Warning `<48h` / Urgent `<24h` / Expired) and two actions: **Confirm Available & Capture Payment** or **Piece Unavailable — Release Authorization** (cancels the hold, never a refund — nothing was charged)
+  - Card, Klarna, Afterpay/Clearpay, and Affirm are **all** manual-capture capable in this integration (verified end-to-end per method); each has its own real authorization window tracked on the order (card 7 days, Afterpay/Clearpay 13, Klarna 28, Affirm 30) — used for the admin deadline badge only, never to gate the actual capture/cancel decision, which always re-verifies the live Stripe PaymentIntent status first
+  - Ship Now and Sourced for You items can't be mixed in one checkout — `capture_method` is set once per PaymentIntent, so a cart can't auto-capture some items while holding others; blocked client- and server-side with a clear explanation
+  - Fulfillment (shipment creation, inventory sold-marking follow-through, order-confirmation email) is deferred until capture; releasing an authorization restores the linked product to `available`
+  - Idempotent throughout: admin capture/release routes use an atomic conditional DB update plus a Stripe `idempotencyKey`; a `payment_intent.succeeded`/`payment_intent.canceled` webhook reconciliation path catches the rare case where the admin route's own write didn't land
+- **Shipping insurance acknowledgement** — customers must either opt in or explicitly acknowledge declining insurance before checkout submits; silently proceeding without a choice is blocked client-side with a scroll-to-and-highlight prompt; both states are persisted on the order (`shipping_insurance_accepted` / `shipping_insurance_declined_acknowledged`)
 
 ### Discount & Referral System
 
@@ -225,7 +281,7 @@ A production-hardened discount engine with no stacking (exactly one discount sou
 | 1 | Explicit code → referral | Tiered ($10/$20) | New customers only, no self-referral, no duplicate |
 | 2 | Explicit code → subscriber welcome coupon | Tiered ($10/$20) | Code tied to subscriber email, 30-day expiry, first order only |
 | 3 | Explicit code → campaign | Configurable | Per campaign rules |
-| 4 | Store credit (auto) | Full balance (capped at subtotal) | Any customer |
+| 4 | Store credit — legacy auto-applied (`store_credit_ledger`) | Full balance (capped at subtotal) | Any customer with a positive balance, matched by email |
 | 5 | Welcome (auto, legacy) | Tiered ($10/$20) | Pre-migration subscribers without a code |
 
 **Tiered discount:** subtotal ≥ $150 → $20 off; subtotal < $150 → $10 off. Computed server-side at checkout time so cart-size manipulation cannot lock in the higher tier.
@@ -277,6 +333,22 @@ A production-hardened discount engine with no stacking (exactly one discount sou
 1. Set `first_delivered_order_at` on customer
 2. If order has `referral_id`: call `processReferralRewardOnDelivery()`, send reward email to referrer
 3. If first delivery: generate referral code via `ensureReferralCode()`, send referral invite email to customer
+
+### Store Credit (Admin-Issued, Code-Redeemed)
+
+A second, distinct store-credit system — separate tables, separate admin surface, and deliberately **not** the same mechanism as the legacy auto-applied `store_credit_ledger` balance above. Built for goodwill resolutions, cancellations, damaged/lost packages, returns, price adjustments, and VIP/loyalty credit, where an admin needs to issue a specific amount with specific conditions against a specific customer, redeemed by code rather than by email match alone.
+
+- **Admin issuance** — `/store-credits-admin`, or an "Issue Store Credit" button directly on any order's detail page (pre-fills customer email, name, order number, currency). Required: amount, customer email, reason. Optional conditions: expiration date, valid-starting date, minimum merchandise subtotal, max line items in cart (`= 1` for single-item-only), Ship Now / Sourced for You / either, eligible or excluded products, sale/clearance exclusion, discount-code and other-store-credit stacking rules, single-use vs. reusable-until-zero, max $ or % of order per redemption
+- **One shared condition formatter** — `getStoreCreditDisplayConditions()` generates the plain-English condition list from the structured fields; used identically by the admin issuance preview, the customer email, and checkout display, so wording can never drift between what's promised and what's enforced
+- **Email preview** — both the issuance form (from in-progress draft fields, before the credit even exists) and the credit's detail page (for an already-issued credit) can render the exact email HTML a customer would receive, via a shared `buildStoreCreditEmailHtml()` builder
+- **Checkout redemption** — a separate "Store credit code" field from the discount-code field; validated live, then fully re-validated server-side against current DB state (never trusts client-echoed amounts); reduces only the final amount sent to Stripe — merchandise subtotal, promotional discounts, shipping, insurance, and tax are computed exactly as normal and are unaffected by store credit
+- **Concurrency-safe redemption** — a Postgres RPC function (`reserve_store_credit`, using `SELECT ... FOR UPDATE`) reserves the balance atomically at checkout-session creation, converts to a redemption on order completion, and releases automatically if the checkout session expires or fails — two simultaneous checkouts can't both spend the same balance
+- **Orders fully covered by credit skip Stripe entirely** — no $0 PaymentIntent; the order is created through the same shared order-finalization path the webhook uses, just without a Stripe session
+- **Refunds/cancellations restore credit before touching Stripe** — a goodwill credit can never be converted into a cash refund; only the amount actually charged through Stripe is ever refunded through Stripe
+- **Full audit trail** — every issuance, reservation, redemption, release, restoration, admin adjustment, and revocation is an immutable row in `store_credit_transactions`; the cached balance on `store_credits` is always reconcilable by replaying the ledger
+- **Admin management** — search/filter by email, code, order number, or reason; view full transaction history; resend the notification email; extend or remove expiration; increase/decrease balance with a required reason; revoke unused credit; transfer to another email with a required reason; export credits and the full ledger to CSV
+
+**Note on the legacy system:** `store_credit_ledger` / `customers.store_credit_balance` (earned via referral rewards, auto-applied by email match, no code or conditions) is untouched and still earning-only — the reasoning below about unauthenticated spending risk still applies to *that* system specifically. It doesn't apply to the new code-based system, since redemption there requires possession of an unguessable, securely-generated code rather than just knowledge of an email address.
 
 ### Email System (Resend)
 
@@ -440,35 +512,59 @@ jade-shop/
 
 ## Data Flows
 
-### Checkout with Discount
+### Checkout with Discount, Store Credit, and Manual Capture
 
 ```
-Customer fills email + optional discount code in cart drawer
-  → POST /api/validate-discount (read-only preview)
-      → validateDiscount() — checks referral, campaign, store credit, welcome
-      → Returns { valid, source, discountAmountCents, displayMessage }
-  → Cart displays discounted total + transaction fee on discounted amount
-  → Customer fills email + shipping address, clicks Checkout
-  → POST /api/stripe/checkout
-      → Re-validate all items (price + sold status)
-      → Re-run validateDiscount() server-side (client discount amount ignored)
+Customer fills email + optional discount code + optional store-credit code in cart/checkout
+  → POST /api/validate-discount (read-only preview)          — promotional discount
+  → POST /api/validate-store-credit (read-only preview)      — separate field, separate system
+      → validateDiscount() — checks referral, campaign, legacy auto store credit, welcome
+      → validateStoreCredit() — checks code/email/dates/subtotal/fulfillment-type/
+        product & collection scope/sale-clearance exclusion/stacking rules/usage caps
+  → Cart displays: subtotal → discount → shipping → insurance → tax → store credit
+    (store credit never affects tax/shipping/insurance — applied last, to the final total only)
+  → Customer clicks Checkout → POST /api/stripe/checkout
+      → Re-validate all items (price + sold status) — client amounts never trusted
+      → Re-run validateDiscount() and validateStoreCredit() server-side
       → checkCustomerRestriction() — email + address matched against restrictions
           → blocked: reject with 403 and log attempt
           → review: log attempt, continue checkout
-      → Build line items: items + shipping + tx fee + discount (negative)
-      → Encode discount into Stripe session metadata
-      → stripe.checkout.sessions.create(...)
-  → Redirect to Stripe hosted checkout
-  → Customer pays
+      → Build line items: items + shipping + insurance + tax + transaction fee
+      → If store credit applied: reserveStoreCredit() — row-locked Postgres RPC,
+        atomically decrements the cached balance and writes a 'reserved' ledger row
+      → If Ship Now: capture_method defaults to automatic (charged immediately)
+        If Sourced for You: payment_intent_data.capture_method = "manual"
+          (mixing the two fulfillment types in one cart is blocked — one PaymentIntent
+          can't auto-capture part of an order while holding the rest)
+      → If store credit covers the full remaining amount: skip Stripe entirely —
+        finalizeProductOrder() runs synchronously (same shared logic the webhook
+        uses below), reservation is redeemed immediately, customer redirects
+        straight to /checkout/success
+      → Else: fold discount + store credit into one Stripe coupon (Stripe doesn't
+        support negative line items), encode both into separate, non-overlapping
+        session metadata keys, stripe.checkout.sessions.create(...)
+  → Redirect to Stripe hosted checkout → customer pays (or authorizes, if manual capture)
   → Stripe fires checkout.session.completed
       → POST /api/stripe/webhook
-          → Decode discountMeta from metadata
+          → Decode discountMeta and store-credit metadata separately
           → Prefer metadata.cust_email over Stripe-collected email
-          → INSERT order with discount columns
-          → commitDiscount() — idempotent writes to coupon_redemptions/referrals
-          → Link coupon_redemption_id / referral_id back to order
-          → Send order confirmation email (Resend)
+          → finalizeProductOrder() — shared with the zero-balance path above:
+              → INSERT order (discount + store-credit columns tracked independently)
+              → commitDiscount() — idempotent writes to coupon_redemptions/referrals
+              → redeemStoreCreditReservation() if a reservation is attached
+              → Create shipments + mark inventory sold (skipped if manual capture —
+                deferred until an admin captures payment)
+              → Send order confirmation email, or the "confirming availability"
+                email instead if manual capture
           → Trigger ISR revalidation
+  → (Sourced for You only) Admin later reviews the Payment card on the order:
+      → Confirm Available & Capture Payment — captures the PaymentIntent, then
+        runs the deferred shipment creation + confirmation email
+      → Piece Unavailable — Release Authorization — cancels the PaymentIntent
+        (never a refund), restores product to available, restores any store
+        credit used, sends the "authorization released" email
+  → checkout.session.expired (abandoned checkout) → releaseStoreCreditReservation()
+    so the reserved balance doesn't stay locked with nothing to redeem it
 ```
 
 ### Post-Delivery Referral Flow
@@ -672,6 +768,26 @@ All schema changes are tracked as numbered SQL files in `/supabase/`. Run them i
 | 080 | Add `hero_scene_id` to `collections` — allows selecting an existing scene as the hero banner |
 | 081 | Add hero focal point columns to `collections` (`hero_focal_x/y`, `hero_mobile_focal_x/y`, `hero_crop_*`) for CSS `object-position` control |
 | 082 | Customer restriction system: `customer_restrictions` table (email, phone, address, severity, reason, status); `blocked_checkout_attempts` table |
+| 083 | Inventory batch tracking: `inventory_batches`, `inventory_batch_items`; order-level inventory expense columns replacing flat COGS entry |
+| 084 | Review photo approval workflow: `reviews.is_approved` (default false, admin must approve); `review_images` table |
+| 085 | Make `reviews.order_id` nullable; seed hardcoded historical testimonials |
+| 086 | Add partner payment tracking (`partner_payment_usd`) to `inventory_batches` |
+| 087 | Simplify review images: `reviews.image_path` single column, drop `review_images` table |
+| 088 | Add `item_expense_usd` to `inventory_batch_items` — per-product expense (e.g. absorbed shipping) tracked separately from batch cost |
+| 089 | Add `item_count` to `inventory_batches` for average-cost calculation |
+| 090 | Expense vendor/payment-method lookup tables (`expense_vendors`, `expense_payment_methods`) — autocomplete + merge support, separate from jade-sourcing vendors |
+| 091 | Add `renewed_at` to products — lets a listing be "bumped" to appear first in sort order without changing `created_at` |
+| 092 | Backfill missing shipments + shipment events for manual (Zelle/cash/admin) orders created before the shipment system existed |
+| 093 | Add `receipt_storage_path` to `product_costs` — attach a receipt/invoice file to a cost record |
+| 094 | Flexible size field (`products.size` → `text`, holds ranges/"Varies") + oval bangle support: `is_oval` boolean, `wrist_size`, 4-dimension measurement columns |
+| 095 | Livestream selling workflow: `'reserved'` product status, `'livestream'` order source; `livestreams`, `livestream_items`, `livestream_item_events`, `livestream_backup_buyers` tables |
+| 096 | Add generated column `effective_date = COALESCE(renewed_at, created_at)` for single-`ORDER BY` chronological sort across renewed and new listings |
+| 097 | Product reservation system: `product_reservations` — SHA-256-hashed code, deposit tracking, one active reservation per product enforced by a partial unique index |
+| 098 | Add `shipping_insurance_accepted` / `shipping_insurance_declined_acknowledged` to orders — persists the customer's explicit choice |
+| 099 | Add `review_window_closed` to orders — admin can end a delivered order's review eligibility early |
+| 100 | Manual capture (authorize-then-capture) support for Sourced for You orders: `capture_status` and related timestamps on orders, new order-status value `awaiting_vendor_confirmation` |
+| 101 | Track which payment method (card/Klarna/Afterpay/Affirm) was used for a manual-capture authorization, so the real per-method authorization window can be shown instead of a guess |
+| 102 | Store credit system (admin-issued, code-redeemed, conditional credits): `store_credits`, `store_credit_transactions` tables; row-locked Postgres RPC functions for atomic reserve/release/redeem/restore/adjust; `store_credit_id`, `store_credit_used_cents`, `merchandise_subtotal_cents`, `stripe_amount_cents` on orders |
 
 ---
 
@@ -725,8 +841,8 @@ The cart drawer calls `/api/validate-discount` for a live preview, but this resu
 **Why use `commitDiscount()` from the webhook rather than the checkout API?**
 Committing a discount (marking it redeemed, inserting a coupon_redemption row) must happen only after payment is confirmed. If it happened at session creation time, a user could repeatedly start checkout sessions to exhaust a campaign's global redemption cap without paying. The webhook fires on `checkout.session.completed` — confirmed payment — and the `23505` idempotency guard means duplicate webhook deliveries do not double-count redemptions.
 
-**Why store credit spending is earning-only for now?**
-Without a session-based auth system, any email-based claim at checkout is unauthenticated — an attacker who knows a customer's email could claim their store credit. Earning is fully implemented (referral reward → `store_credit_ledger`). Spending at checkout requires the customer to be logged in (verified identity) and is deferred to when account creation is added.
+**Why is the legacy referral-reward store credit (`store_credit_ledger`) still earning-only?**
+Without a session-based auth system, any email-based claim at checkout is unauthenticated — an attacker who knows a customer's email could claim their store credit. Earning is fully implemented (referral reward → `store_credit_ledger`). Spending that balance at checkout would require the customer to be logged in (verified identity), which is deferred to when account creation is added. This constraint is specific to *that* system's email-only matching — it's why the newer admin-issued store credit (see Store Credit section above) was built as a **separate, code-based** system instead of extending this one: possession of an unguessable code is its own authentication, so it can be safely spent today without waiting on account login.
 
 **Why `revalidatePath("/products/[slug]", "page")` on every webhook?**
 When a product sells, its detail page must show "Sold" as close to immediately as possible. The `"page"` variant purges the ISR cache for every cached page matching that pattern at once, rather than waiting for each page's TTL to expire.
