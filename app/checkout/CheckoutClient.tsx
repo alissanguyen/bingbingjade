@@ -375,6 +375,10 @@ export function CheckoutClient() {
       setStoreCreditError("Enter your email above before applying a store credit code.");
       return;
     }
+    if (grandTotal == null) {
+      setStoreCreditError("Enter your shipping address first so we can calculate your order total.");
+      return;
+    }
     setStoreCreditLoading(true);
     setStoreCreditError(null);
     setAppliedStoreCredit(null);
@@ -386,7 +390,7 @@ export function CheckoutClient() {
           code: storeCreditCode.trim(),
           customerEmail: customerEmail.trim(),
           merchandiseSubtotalCents: Math.round(discountedSubtotal * 100),
-          orderTotalCents: grandTotal != null ? Math.round(grandTotal * 100) : 0,
+          orderTotalCents: Math.round(grandTotal * 100),
           items: availableItems.map((i) => ({ productId: i.productId, fulfillmentType: getItemFulfillmentType(i) })),
           discountCodeApplied: appliedDiscount !== null,
           otherStoreCreditApplied: false,

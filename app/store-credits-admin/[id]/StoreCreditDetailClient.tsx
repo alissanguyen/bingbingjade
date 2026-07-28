@@ -20,8 +20,29 @@ type StoreCredit = {
   expires_at: string | null;
   starts_at: string | null;
   usage_mode: string;
+  minimum_merchandise_subtotal_cents: number | null;
+  maximum_line_items: number | null;
+  eligible_fulfillment_types: string[] | null;
+  eligible_product_ids: string[] | null;
+  eligible_collection_ids: string[] | null;
+  excluded_product_ids: string[] | null;
+  exclude_sale_items: boolean;
+  exclude_clearance_items: boolean;
+  allow_with_discount_codes: boolean;
+  allow_with_other_store_credits: boolean;
+  maximum_credit_per_order_cents: number | null;
+  maximum_credit_percentage: number | null;
   orders: { order_number: string; customer_name: string } | null;
 };
+
+type FulfillmentScope = "any" | "available_now" | "sourced_for_you";
+
+function fulfillmentScopeFromArray(types: string[] | null): FulfillmentScope {
+  if (!types || types.length === 0) return "any";
+  if (types.length === 1 && types[0] === "available_now") return "available_now";
+  if (types.length === 1 && types[0] === "sourced_for_you") return "sourced_for_you";
+  return "any";
+}
 
 type Transaction = {
   id: string;
@@ -48,6 +69,7 @@ export function StoreCreditDetailClient({ id }: { id: string }) {
   const [storeCredit, setStoreCredit] = useState<StoreCredit | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [reconciled, setReconciled] = useState(true);
+  const [conditions, setConditions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -60,6 +82,33 @@ export function StoreCreditDetailClient({ id }: { id: string }) {
   const [transferReason, setTransferReason] = useState("");
   const [revokeReason, setRevokeReason] = useState("");
 
+  const [editingRules, setEditingRules] = useState(false);
+  const [startsAtInput, setStartsAtInput] = useState("");
+  const [minSubtotal, setMinSubtotal] = useState("");
+  const [maxLineItems, setMaxLineItems] = useState("");
+  const [fulfillmentScope, setFulfillmentScope] = useState<FulfillmentScope>("any");
+  const [excludeSaleItems, setExcludeSaleItems] = useState(false);
+  const [excludeClearanceItems, setExcludeClearanceItems] = useState(false);
+  const [allowWithDiscountCodes, setAllowWithDiscountCodes] = useState(false);
+  const [allowWithOtherStoreCredits, setAllowWithOtherStoreCredits] = useState(false);
+  const [usageMode, setUsageMode] = useState<"single_use" | "reusable_until_balance_zero">("reusable_until_balance_zero");
+  const [maxPerOrder, setMaxPerOrder] = useState("");
+  const [maxPercentage, setMaxPercentage] = useState("");
+
+  function resetRuleInputs(sc: StoreCredit) {
+    setStartsAtInput(sc.starts_at ? sc.starts_at.slice(0, 10) : "");
+    setMinSubtotal(sc.minimum_merchandise_subtotal_cents != null ? String(sc.minimum_merchandise_subtotal_cents / 100) : "");
+    setMaxLineItems(sc.maximum_line_items != null ? String(sc.maximum_line_items) : "");
+    setFulfillmentScope(fulfillmentScopeFromArray(sc.eligible_fulfillment_types));
+    setExcludeSaleItems(sc.exclude_sale_items);
+    setExcludeClearanceItems(sc.exclude_clearance_items);
+    setAllowWithDiscountCodes(sc.allow_with_discount_codes);
+    setAllowWithOtherStoreCredits(sc.allow_with_other_store_credits);
+    setUsageMode(sc.usage_mode as "single_use" | "reusable_until_balance_zero");
+    setMaxPerOrder(sc.maximum_credit_per_order_cents != null ? String(sc.maximum_credit_per_order_cents / 100) : "");
+    setMaxPercentage(sc.maximum_credit_percentage != null ? String(sc.maximum_credit_percentage) : "");
+  }
+
   const load = useCallback(async () => {
     setLoading(true);
     const res = await fetch(`/api/admin/store-credits/${id}`);
@@ -67,13 +116,15 @@ export function StoreCreditDetailClient({ id }: { id: string }) {
     setStoreCredit(data.storeCredit ?? null);
     setTransactions(data.transactions ?? []);
     setReconciled(data.reconciled ?? true);
+    setConditions(data.conditions ?? []);
     setExpiresAtInput(data.storeCredit?.expires_at ? data.storeCredit.expires_at.slice(0, 10) : "");
+    if (data.storeCredit) resetRuleInputs(data.storeCredit);
     setLoading(false);
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
 
-  async function patch(action: string, extra: Record<string, unknown>) {
+  async function patch(action: string, extra: Record<string, unknown>): Promise<boolean> {
     setBusy(true);
     setMessage(null);
     try {
@@ -85,13 +136,31 @@ export function StoreCreditDetailClient({ id }: { id: string }) {
       const data = await res.json();
       if (!res.ok) {
         setMessage(data.error ?? "Action failed.");
-        return;
+        return false;
       }
       setMessage("Saved.");
       await load();
+      return true;
     } finally {
       setBusy(false);
     }
+  }
+
+  async function saveRules() {
+    const ok = await patch("update_rules", {
+      startsAt: startsAtInput ? new Date(startsAtInput).toISOString() : null,
+      minimumMerchandiseSubtotalCents: minSubtotal ? Math.round(Number(minSubtotal) * 100) : null,
+      maximumLineItems: maxLineItems ? Number(maxLineItems) : null,
+      eligibleFulfillmentTypes: fulfillmentScope === "any" ? null : [fulfillmentScope],
+      excludeSaleItems,
+      excludeClearanceItems,
+      allowWithDiscountCodes,
+      allowWithOtherStoreCredits,
+      usageMode,
+      maximumCreditPerOrderCents: maxPerOrder ? Math.round(Number(maxPerOrder) * 100) : null,
+      maximumCreditPercentage: maxPercentage ? Number(maxPercentage) : null,
+    });
+    if (ok) setEditingRules(false);
   }
 
   async function resendEmail() {
@@ -208,6 +277,122 @@ export function StoreCreditDetailClient({ id }: { id: string }) {
             Remove Expiration
           </button>
         </div>
+      </div>
+
+      {/* Rules & Conditions */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Rules &amp; Conditions</h2>
+          {!editingRules ? (
+            <button
+              onClick={() => { resetRuleInputs(storeCredit); setEditingRules(true); }}
+              className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300"
+            >
+              Edit Rules
+            </button>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                disabled={busy}
+                onClick={saveRules}
+                className="rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white px-3 py-1.5 text-xs font-medium"
+              >
+                Save Rules
+              </button>
+              <button
+                disabled={busy}
+                onClick={() => { resetRuleInputs(storeCredit); setEditingRules(false); }}
+                className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+
+        {!editingRules ? (
+          <>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">As shown to the customer:</p>
+            <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1 list-disc list-inside">
+              {conditions.map((c, i) => <li key={i}>{c}</li>)}
+            </ul>
+            {(storeCredit.eligible_product_ids?.length || storeCredit.eligible_collection_ids?.length || storeCredit.excluded_product_ids?.length) ? (
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">
+                {storeCredit.eligible_product_ids?.length ? `Restricted to ${storeCredit.eligible_product_ids.length} specific item(s). ` : ""}
+                {storeCredit.eligible_collection_ids?.length ? `Restricted to ${storeCredit.eligible_collection_ids.length} collection(s). ` : ""}
+                {storeCredit.excluded_product_ids?.length ? `Excludes ${storeCredit.excluded_product_ids.length} specific item(s). ` : ""}
+                (Not editable here — set at issuance only.)
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Valid Starting (optional)</label>
+                <input type="date" value={startsAtInput} onChange={(e) => setStartsAtInput(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Minimum Merchandise Subtotal (USD, optional)</label>
+                <input type="number" step="0.01" min="0" value={minSubtotal} onChange={(e) => setMinSubtotal(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Maximum Number of Items in Cart (optional)</label>
+                <input type="number" min="1" value={maxLineItems} onChange={(e) => setMaxLineItems(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Eligible Fulfillment Type</label>
+                <select value={fulfillmentScope} onChange={(e) => setFulfillmentScope(e.target.value as FulfillmentScope)}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100">
+                  <option value="any">Either Ship Now or Sourced for You</option>
+                  <option value="available_now">Ship Now only</option>
+                  <option value="sourced_for_you">Sourced for You only</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Usage Mode</label>
+                <select value={usageMode} onChange={(e) => setUsageMode(e.target.value as typeof usageMode)}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100">
+                  <option value="reusable_until_balance_zero">Reusable until balance reaches zero</option>
+                  <option value="single_use">Single use</option>
+                </select>
+              </div>
+              <div />
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Max $ Per Order (optional)</label>
+                <input type="number" step="0.01" min="0" value={maxPerOrder} onChange={(e) => setMaxPerOrder(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Max % of Order (optional)</label>
+                <input type="number" step="1" min="1" max="100" value={maxPercentage} onChange={(e) => setMaxPercentage(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="exSale" checked={excludeSaleItems} onChange={(e) => setExcludeSaleItems(e.target.checked)} />
+                <label htmlFor="exSale" className="text-sm text-gray-700 dark:text-gray-300">Exclude sale items</label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="exClearance" checked={excludeClearanceItems} onChange={(e) => setExcludeClearanceItems(e.target.checked)} />
+                <label htmlFor="exClearance" className="text-sm text-gray-700 dark:text-gray-300">Exclude clearance items</label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="allowDisc" checked={allowWithDiscountCodes} onChange={(e) => setAllowWithDiscountCodes(e.target.checked)} />
+                <label htmlFor="allowDisc" className="text-sm text-gray-700 dark:text-gray-300">Allow combining with discount codes</label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="allowOtherSC" checked={allowWithOtherStoreCredits} onChange={(e) => setAllowWithOtherStoreCredits(e.target.checked)} />
+                <label htmlFor="allowOtherSC" className="text-sm text-gray-700 dark:text-gray-300">Allow combining with another store credit</label>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Balance adjustment */}

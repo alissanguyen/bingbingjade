@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser, isAdmin, approvedCreatedBy } from "@/lib/approved-auth";
-import { adjustStoreCreditBalance, normalizeEmail } from "@/lib/store-credit";
+import { adjustStoreCreditBalance, normalizeEmail, getStoreCreditDisplayConditions } from "@/lib/store-credit";
+import type { StoreCreditUsageMode } from "@/lib/store-credit";
+import type { FulfillmentType } from "@/types/cart";
 
 function actorId(session: NonNullable<Awaited<ReturnType<typeof getSessionUser>>>): string {
   return session.type === "admin" ? "admin" : approvedCreatedBy(session.user.id);
@@ -37,7 +39,12 @@ export async function GET(
   // recent row must match the cached remaining_amount_cents.
   const reconciled = (transactions ?? []).length === 0 || transactions![0].balance_after_cents === storeCredit.remaining_amount_cents;
 
-  return NextResponse.json({ storeCredit, transactions: transactions ?? [], reconciled });
+  return NextResponse.json({
+    storeCredit,
+    transactions: transactions ?? [],
+    reconciled,
+    conditions: getStoreCreditDisplayConditions(storeCredit),
+  });
 }
 
 // PATCH — admin actions: extend/remove expiration, adjust balance, revoke, transfer
@@ -52,11 +59,22 @@ export async function PATCH(
 
   const { id } = await params;
   let body: {
-    action?: "set_expiration" | "adjust_balance" | "revoke" | "transfer";
+    action?: "set_expiration" | "adjust_balance" | "revoke" | "transfer" | "update_rules";
     expiresAt?: string | null;
     deltaCents?: number;
     reason?: string;
     newEmail?: string;
+    startsAt?: string | null;
+    minimumMerchandiseSubtotalCents?: number | null;
+    maximumLineItems?: number | null;
+    eligibleFulfillmentTypes?: FulfillmentType[] | null;
+    excludeSaleItems?: boolean;
+    excludeClearanceItems?: boolean;
+    allowWithDiscountCodes?: boolean;
+    allowWithOtherStoreCredits?: boolean;
+    usageMode?: StoreCreditUsageMode;
+    maximumCreditPerOrderCents?: number | null;
+    maximumCreditPercentage?: number | null;
   };
   try {
     body = await req.json();
@@ -137,6 +155,42 @@ export async function PATCH(
 
       const { data: updated } = await supabaseAdmin.from("store_credits").select("*").eq("id", id).single();
       return NextResponse.json({ storeCredit: updated });
+    }
+
+    case "update_rules": {
+      if (body.usageMode && body.usageMode !== "single_use" && body.usageMode !== "reusable_until_balance_zero") {
+        return NextResponse.json({ error: "Invalid usage mode." }, { status: 400 });
+      }
+      if (
+        body.maximumCreditPercentage != null &&
+        (body.maximumCreditPercentage <= 0 || body.maximumCreditPercentage > 100)
+      ) {
+        return NextResponse.json({ error: "Maximum credit percentage must be between 1 and 100." }, { status: 400 });
+      }
+      if (body.maximumLineItems != null && body.maximumLineItems < 1) {
+        return NextResponse.json({ error: "Maximum number of items must be at least 1." }, { status: 400 });
+      }
+
+      const { data: updated, error } = await supabaseAdmin
+        .from("store_credits")
+        .update({
+          starts_at: body.startsAt ?? null,
+          minimum_merchandise_subtotal_cents: body.minimumMerchandiseSubtotalCents ?? null,
+          maximum_line_items: body.maximumLineItems ?? null,
+          eligible_fulfillment_types: body.eligibleFulfillmentTypes ?? null,
+          exclude_sale_items: body.excludeSaleItems ?? false,
+          exclude_clearance_items: body.excludeClearanceItems ?? false,
+          allow_with_discount_codes: body.allowWithDiscountCodes ?? false,
+          allow_with_other_store_credits: body.allowWithOtherStoreCredits ?? false,
+          usage_mode: body.usageMode ?? "reusable_until_balance_zero",
+          maximum_credit_per_order_cents: body.maximumCreditPerOrderCents ?? null,
+          maximum_credit_percentage: body.maximumCreditPercentage ?? null,
+        })
+        .eq("id", id)
+        .select("*")
+        .single();
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ storeCredit: updated, conditions: getStoreCreditDisplayConditions(updated) });
     }
 
     case "transfer": {
