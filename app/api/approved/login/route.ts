@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
 
   const { data: user } = await supabaseAdmin
     .from("approved_users")
-    .select("id, email, full_name, access_level, password_hash, is_active")
+    .select("id, email, full_name, access_level, role, password_hash, is_active, session_version")
     .eq("email", email)
     .maybeSingle();
 
@@ -27,9 +27,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
   }
 
-  const cookieValue = signApprovedUserId(user.id);
+  const cookieValue = signApprovedUserId(user.id, user.role, user.session_version);
 
-  const res = NextResponse.json({ ok: true, user: { email: user.email, full_name: user.full_name, access_level: user.access_level } });
+  const res = NextResponse.json({
+    ok: true,
+    user: { id: user.id, email: user.email, full_name: user.full_name, access_level: user.access_level, role: user.role },
+  });
   res.cookies.set("approved_session", cookieValue, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

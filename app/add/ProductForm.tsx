@@ -20,8 +20,33 @@ interface OptionRow {
 
 interface Props {
   vendors: Vendor[];
-  isApprovedUser?: boolean;
+  /**
+   * Rendering/behavior mode. Defaults to "admin" to preserve pre-existing behavior
+   * when omitted. "partner" preserves 100% of the old isApprovedUser=true behavior.
+   * "employee-create" hides pricing/vendor/variants and enables the restricted
+   * employee submit flow (see onEmployeeSubmit).
+   */
+  mode?: "admin" | "partner" | "employee-create" | "employee-edit";
   sku: string;
+  /**
+   * Called with an employee-safe FormData (no price/vendor/options fields) instead
+   * of the createProduct server action when mode is "employee-create" or "employee-edit".
+   */
+  onEmployeeSubmit?: (formData: FormData) => Promise<void>;
+  /**
+   * Same employee-safe FormData shape as onEmployeeSubmit, but for the
+   * separate "Save Draft" action — saves without the validation/locking that
+   * submitting for approval implies, and doesn't navigate away.
+   */
+  onEmployeeSaveDraft?: (formData: FormData) => Promise<void>;
+  /**
+   * Per-employee capability (employee_profiles.can_view_vendors), only
+   * consulted in employee modes. When false (the default), vendor
+   * search/selection is omitted entirely, same as before this flag existed.
+   * The server actions independently re-check this — this prop only
+   * controls rendering, never the source of write authorization.
+   */
+  canViewVendors?: boolean;
 }
 
 const CATEGORIES: ProductCategory[] = ["bracelet", "bangle", "ring", "pendant", "necklace", "set", "earring", "raw_material"];
@@ -312,7 +337,9 @@ function VendorSearch({ vendors: initialVendors, value, onChange }: { vendors: V
   );
 }
 
-export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
+export function ProductForm({ vendors, mode = "admin", sku, onEmployeeSubmit, onEmployeeSaveDraft, canViewVendors = false }: Props) {
+  const isApprovedUser = mode === "partner"; // preserves 100% of existing partner behavior/rendering
+  const isEmployeeMode = mode === "employee-create" || mode === "employee-edit";
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
@@ -571,6 +598,8 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
   const [isOval, setIsOval] = useState(false);
   const [wristSize, setWristSize] = useState("");
   const [priceHint, setPriceHint] = useState<string | null>(null);
+  // Employee mode only — the single Cost of Goods field shown in place of the Pricing section.
+  const [cogUsd, setCogUsd] = useState("");
 
   function suggestPrice() {
     const vnd = parseFloat(form.imported_price_vnd);
@@ -677,8 +706,89 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
     return { imageUrls, videoUrls };
   };
 
+  // Shared by both employee actions (Save Draft / Submit for Approval) — the
+  // FormData shape must be identical either way, only which callback and
+  // which validation runs differs.
+  const buildEmployeeFormData = async () => {
+    const { imageUrls, videoUrls } = await uploadFiles();
+
+    const fd = new FormData();
+    fd.append("name", form.name);
+    fd.append("category", form.category);
+    fd.append("origin", form.origin);
+    fd.append("size", form.size);
+    fd.append("description", form.description);
+    fd.append("blemishes", form.blemishes);
+    selectedColors.forEach((c) => fd.append("color", c));
+    selectedTiers.forEach((t) => fd.append("tier", t));
+    fd.append("is_featured", String(isFeatured));
+    fd.append("is_published", String(isPublished));
+    fd.append("quick_ship", String(isQuickShip));
+    fd.append("is_clearance", String(isIsClearance));
+    fd.append("show_price", String(showPrice));
+    fd.append("status", status);
+    if (inventoryType) fd.append("inventory_type", inventoryType);
+    fd.append("sku", sku);
+    sizeDetailed.forEach((v, i) => fd.append(`size_detailed_${i}`, v));
+    fd.append("is_oval", String(isOval));
+    if (wristSize) fd.append("wrist_size", wristSize);
+    if (sourceNotes) fd.append("sourcing_notes", sourceNotes);
+    imageUrls.forEach((url) => fd.append("imageUrls", url));
+    videoUrls.forEach((url) => fd.append("videoUrls", url));
+    if (cogUsd) fd.append("cogUsd", cogUsd);
+    // Only present when this employee has vendor visibility — the server
+    // action independently re-checks the permission before honoring it.
+    if (canViewVendors && vendorId) fd.append("vendor_id", vendorId);
+    return fd;
+  };
+
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [draftSavedMsg, setDraftSavedMsg] = useState<string | null>(null);
+
+  const handleSaveDraft = async () => {
+    if (!onEmployeeSaveDraft) return;
+    setIsSavingDraft(true);
+    setDraftSavedMsg(null);
+    setResult(null);
+    try {
+      const fd = await buildEmployeeFormData();
+      await onEmployeeSaveDraft(fd);
+      setDraftSavedMsg("Draft saved.");
+    } catch (err) {
+      setResult({ error: err instanceof Error ? err.message : "Failed to save draft." });
+    } finally {
+      setIsSavingDraft(false);
+      setTimeout(() => setDraftSavedMsg(null), 3000);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Employee mode: build an employee-safe FormData (no pricing/vendor/options fields)
+    // and hand off to the caller-supplied onEmployeeSubmit callback instead of the
+    // admin/partner createProduct server action. The admin/partner path below is untouched.
+    if (isEmployeeMode) {
+      if (!form.name.trim()) {
+        setResult({ error: "Name is required." });
+        return;
+      }
+      setIsSubmitting(true);
+      setResult(null);
+      try {
+        const fd = await buildEmployeeFormData();
+        if (onEmployeeSubmit) {
+          await onEmployeeSubmit(fd);
+        }
+        setResult({ success: true, pendingApproval: true });
+      } catch (err) {
+        setResult({ error: err instanceof Error ? err.message : "Something went wrong" });
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     if (!vendorId) {
       setResult({ error: "Please select a vendor before saving." });
       return;
@@ -777,14 +887,18 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
                 ))}
               </select>
             </div>
-            <div>
-              <label className={labelClass}>Vendor <span className="text-red-400">*</span></label>
-              {vendors.length === 0 ? (
-                <p className="text-sm text-gray-400 dark:text-gray-500 py-2">No vendors yet — <a href="/addvendor" className="text-emerald-600 dark:text-emerald-400 underline">add one first</a>.</p>
-              ) : (
-                <VendorSearch vendors={vendors} value={vendorId} onChange={(id) => setVendorId(id)} />
-              )}
-            </div>
+            {(!isEmployeeMode || canViewVendors) && (
+              <div>
+                <label className={labelClass}>Vendor {!isEmployeeMode && <span className="text-red-400">*</span>}</label>
+                {vendors.length === 0 ? (
+                  <p className="text-sm text-gray-400 dark:text-gray-500 py-2">
+                    {isEmployeeMode ? "No vendors yet." : <>No vendors yet — <a href="/addvendor" className="text-emerald-600 dark:text-emerald-400 underline">add one first</a>.</>}
+                  </p>
+                ) : (
+                  <VendorSearch vendors={vendors} value={vendorId} onChange={(id) => setVendorId(id)} />
+                )}
+              </div>
+            )}
           </div>
           <div>
             <label className={labelClass}>Origin</label>
@@ -1222,93 +1336,115 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 sm:px-6 py-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Pricing</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className={labelClass}>Display Price (USD)</label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
-                <input
-                  type="number" step="0.01" min="0"
-                  value={form.price_display_usd}
-                  onChange={e => { set("price_display_usd")(e); setPriceHint(null); }}
-                  placeholder="0.00"
-                  className={`${inputClass} pl-7`}
-                />
+      {/* Pricing — admin/partner only. Employees get the restricted Cost section instead. */}
+      {isEmployeeMode ? (
+        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 sm:px-6 py-6">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Cost</h2>
+          <div className="max-w-xs">
+            <label className={labelClass}>Cost of Goods (COG) (USD)</label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
+              <input
+                type="number" step="0.01" min="0"
+                value={cogUsd}
+                onChange={(e) => setCogUsd(e.target.value)}
+                placeholder="0.00"
+                className={`${inputClass} pl-7`}
+              />
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 sm:px-6 py-6">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Pricing</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Display Price (USD)</label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
+                  <input
+                    type="number" step="0.01" min="0"
+                    value={form.price_display_usd}
+                    onChange={e => { set("price_display_usd")(e); setPriceHint(null); }}
+                    placeholder="0.00"
+                    className={`${inputClass} pl-7`}
+                  />
+                </div>
+                {!isApprovedUser && (
+                  <button
+                    type="button"
+                    onClick={suggestPrice}
+                    className="shrink-0 px-3 py-2 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors whitespace-nowrap"
+                  >
+                    Suggest Price
+                  </button>
+                )}
               </div>
-              {!isApprovedUser && (
-                <button
-                  type="button"
-                  onClick={suggestPrice}
-                  className="shrink-0 px-3 py-2 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors whitespace-nowrap"
-                >
-                  Suggest Price
-                </button>
+              {priceHint ? (
+                <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500 leading-snug">{priceHint}</p>
+              ) : (
+                <p className="mt-1 text-[12px] sm:text-xs text-gray-400">Leave blank to show &quot;Contact for price&quot;</p>
               )}
             </div>
-            {priceHint ? (
-              <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500 leading-snug">{priceHint}</p>
-            ) : (
-              <p className="mt-1 text-[12px] sm:text-xs text-gray-400">Leave blank to show &quot;Contact for price&quot;</p>
+            {status === "on_sale" && (
+              <div>
+                <label className={labelClass}>Sale Price (USD)</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-amber-400">$</span>
+                  <input type="number" step="0.01" min="0" value={form.sale_price_usd} onChange={set("sale_price_usd")} placeholder="0.00" className={`${inputClass} pl-7 border-amber-300 dark:border-amber-700 focus:border-amber-500 focus:ring-amber-500`} />
+                </div>
+                <p className="mt-1 text-xs text-gray-400">Shown as the discounted price</p>
+              </div>
+            )}
+            {!isApprovedUser && (
+              <div>
+                <label className={labelClass}>Imported Price (VND) <span className="text-xs text-gray-400 font-normal">(optional)</span></label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">₫</span>
+                  <input type="number" min="0" value={form.imported_price_vnd} onChange={set("imported_price_vnd")} placeholder="0" className={`${inputClass} pl-7`} />
+                </div>
+                <p className="mt-1 text-xs text-gray-400">Leave blank if cost is tracked via an inventory batch</p>
+              </div>
+            )}
+            {!isApprovedUser && (
+              <div>
+                <label className={labelClass}>Inventory Type</label>
+                <select value={inventoryType} onChange={(e) => setInventoryType(e.target.value as typeof inventoryType)} className={inputClass}>
+                  <option value="">— Not specified —</option>
+                  <option value="available_now">Available Now</option>
+                  <option value="sourced_for_you">Sourced for You</option>
+                </select>
+              </div>
+            )}
+            {!isApprovedUser && (
+              <div className="col-span-full pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowPrice((v) => !v)}
+                  className="flex items-center gap-3 group"
+                >
+                  <div className={`relative w-10 h-6 rounded-full transition-colors ${showPrice ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"}`}>
+                    <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${showPrice ? "translate-x-4" : ""}`} />
+                  </div>
+                  <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+                    {showPrice
+                      ? "Price visible to customers"
+                      : "Price hidden — customers see \"Inquire to purchase\""}
+                  </span>
+                </button>
+                <p className="mt-1.5 ml-[52px] text-xs text-gray-400">
+                  When hidden, the actual price is never sent to the browser.
+                </p>
+              </div>
             )}
           </div>
-          {status === "on_sale" && (
-            <div>
-              <label className={labelClass}>Sale Price (USD)</label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-amber-400">$</span>
-                <input type="number" step="0.01" min="0" value={form.sale_price_usd} onChange={set("sale_price_usd")} placeholder="0.00" className={`${inputClass} pl-7 border-amber-300 dark:border-amber-700 focus:border-amber-500 focus:ring-amber-500`} />
-              </div>
-              <p className="mt-1 text-xs text-gray-400">Shown as the discounted price</p>
-            </div>
-          )}
-          {!isApprovedUser && (
-            <div>
-              <label className={labelClass}>Imported Price (VND) <span className="text-xs text-gray-400 font-normal">(optional)</span></label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">₫</span>
-                <input type="number" min="0" value={form.imported_price_vnd} onChange={set("imported_price_vnd")} placeholder="0" className={`${inputClass} pl-7`} />
-              </div>
-              <p className="mt-1 text-xs text-gray-400">Leave blank if cost is tracked via an inventory batch</p>
-            </div>
-          )}
-          {!isApprovedUser && (
-            <div>
-              <label className={labelClass}>Inventory Type</label>
-              <select value={inventoryType} onChange={(e) => setInventoryType(e.target.value as typeof inventoryType)} className={inputClass}>
-                <option value="">— Not specified —</option>
-                <option value="available_now">Available Now</option>
-                <option value="sourced_for_you">Sourced for You</option>
-              </select>
-            </div>
-          )}
-          {!isApprovedUser && (
-            <div className="col-span-full pt-1">
-              <button
-                type="button"
-                onClick={() => setShowPrice((v) => !v)}
-                className="flex items-center gap-3 group"
-              >
-                <div className={`relative w-10 h-6 rounded-full transition-colors ${showPrice ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"}`}>
-                  <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${showPrice ? "translate-x-4" : ""}`} />
-                </div>
-                <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
-                  {showPrice
-                    ? "Price visible to customers"
-                    : "Price hidden — customers see \"Inquire to purchase\""}
-                </span>
-              </button>
-              <p className="mt-1.5 ml-[52px] text-xs text-gray-400">
-                When hidden, the actual price is never sent to the browser.
-              </p>
-            </div>
-          )}
-        </div>
-      </section>
+        </section>
+      )}
 
+      {/* Variants — employees don't see per-variant pricing/options (v1: single-SKU only) */}
+      {!isEmployeeMode && (
+      <>
       {/* Variants */}
       {/* Variants */}
       <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-4 sm:px-6 sm:py-6">
@@ -1557,6 +1693,8 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
           </>
         )}
       </section>
+      </>
+      )}
 
       {/* Options */}
       <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 sm:px-6 py-6">
@@ -1666,13 +1804,35 @@ export function ProductForm({ vendors, isApprovedUser = false, sku }: Props) {
       )}
 
       {/* Submit */}
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="w-full rounded-full bg-emerald-700 py-3 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-      >
-        {isSubmitting ? "Uploading & saving…" : "Add Product"}
-      </button>
+      {isEmployeeMode ? (
+        <div className="flex items-center gap-3">
+          {onEmployeeSaveDraft && (
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={isSavingDraft || isSubmitting}
+              className="rounded-full border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-3 px-6 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+            >
+              {isSavingDraft ? "Saving…" : draftSavedMsg ?? "Save Draft"}
+            </button>
+          )}
+          <button
+            type="submit"
+            disabled={isSubmitting || isSavingDraft}
+            className="flex-1 rounded-full bg-emerald-700 py-3 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isSubmitting ? "Uploading & saving…" : "Submit for Approval"}
+          </button>
+        </div>
+      ) : (
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full rounded-full bg-emerald-700 py-3 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {isSubmitting ? "Uploading & saving…" : "Add Product"}
+        </button>
+      )}
 
       {cropTarget && (
         <ImageCropModal

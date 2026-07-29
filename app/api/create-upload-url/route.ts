@@ -16,14 +16,16 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { VIDEO_BUCKET } from "@/lib/storage";
-import { getSessionUser } from "@/lib/approved-auth";
+import { VIDEO_BUCKET, EMPLOYEE_DRAFT_BUCKET } from "@/lib/storage";
+import { getSessionUser, isCatalogContributor } from "@/lib/approved-auth";
 
 export async function POST(req: NextRequest) {
   // ── Auth ──────────────────────────────────────────────────────────────────
-  if (!(await getSessionUser())) {
+  const session = await getSessionUser();
+  if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const videoBucket = isCatalogContributor(session) ? EMPLOYEE_DRAFT_BUCKET : VIDEO_BUCKET;
 
   // ── Parse body ────────────────────────────────────────────────────────────
   let filename: string;
@@ -43,7 +45,7 @@ export async function POST(req: NextRequest) {
   const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
   const { data, error } = await supabaseAdmin.storage
-    .from(VIDEO_BUCKET)
+    .from(videoBucket)
     .createSignedUploadUrl(path);
 
   if (error || !data) {

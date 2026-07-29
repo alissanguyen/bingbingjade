@@ -25,6 +25,8 @@ export default function ApprovedLoginPage() {
 
       if (!res.ok) {
         setError(data.error ?? "Login failed.");
+      } else if (data.user?.role === "catalog_contributor") {
+        router.push(`/employee/${data.user.id}`);
       } else {
         router.push("/add");
       }

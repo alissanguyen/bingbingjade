@@ -95,6 +95,8 @@ export function AdminBar({
     { href: "/store-credits-admin", label: "Store Credits" },
     ...(showUsersLink ? [
       { href: "/approved-users", label: "Users" },
+      { href: "/admin/listing-approvals", label: "Listing Approvals" },
+      { href: "/admin/payouts", label: "Payouts" },
       { href: "/coupons-admin", label: "Coupons" },
       { href: "/subscribers-admin", label: "Subscribers" },
       { href: "/custom-emails-admin", label: "Custom Emails" },
@@ -153,6 +155,8 @@ export function AdminBar({
                   label="More"
                   links={[
                     { href: "/approved-users", label: "Users" },
+                    { href: "/admin/listing-approvals", label: "Listing Approvals" },
+                    { href: "/admin/payouts", label: "Payouts" },
                     { href: "/coupons-admin", label: "Coupons" },
                     { href: "/subscribers-admin", label: "Subscribers" },
                     { href: "/custom-emails-admin", label: "Custom Emails" },

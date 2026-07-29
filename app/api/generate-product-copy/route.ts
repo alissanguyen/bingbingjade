@@ -20,7 +20,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionUser, isApproved } from "@/lib/approved-auth";
+import { getSessionUser, isApproved, isCatalogContributor } from "@/lib/approved-auth";
 import { anthropic } from "@/lib/claude";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
@@ -39,6 +39,11 @@ interface GenerateRequest {
   origin: string;
   sourceNotes?: string;
   images?: ImagePayload[]; // up to 3 product photos for vision analysis
+  // Catalog Contributors only: the listing this generation is for. Required
+  // for that role so we can scope the tool to "the product currently being
+  // edited" — required to be either unset (brand-new, not-yet-saved draft)
+  // or a product the caller actually owns.
+  productId?: string;
 }
 
 function buildPrompt(data: GenerateRequest): string {
@@ -102,30 +107,13 @@ BLEMISHES RULES:
 }
 
 export async function POST(req: NextRequest) {
-  // Auth — admin or approved users can generate copy
+  // Auth — admin, partner, or catalog-contributor employees can generate copy
   const session = await getSessionUser();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Token gate for approved users
-  let approvedUserId: string | null = null;
-  let currentTokens: number | null = null;
-  if (isApproved(session)) {
-    approvedUserId = (session as Extract<typeof session, { type: "approved" }>).user.id;
-    const { data: tokenRow } = await supabaseAdmin
-      .from("approved_users")
-      .select("generation_tokens")
-      .eq("id", approvedUserId)
-      .single();
-    if (!tokenRow || tokenRow.generation_tokens <= 0) {
-      return NextResponse.json(
-        { error: "You have no generation tokens remaining. Request more from your Profile page." },
-        { status: 403 }
-      );
-    }
-    currentTokens = tokenRow.generation_tokens;
-  }
+  const isPartnerOrEmployee = isApproved(session) || isCatalogContributor(session);
 
   let body: GenerateRequest;
   try {
@@ -134,9 +122,46 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { category, colors, tiers, size, origin, sourceNotes, images } = body;
+  const { category, colors, tiers, size, origin, sourceNotes, images, productId } = body;
   if (!category) {
     return NextResponse.json({ error: "category is required" }, { status: 400 });
+  }
+
+  // Catalog Contributors are scoped to "the product they're currently
+  // editing" — if they name a productId, it must be a draft/adjustment
+  // listing they own. No productId is fine too (a brand-new, not-yet-saved
+  // listing) but never lets them reference someone else's product.
+  if (isCatalogContributor(session)) {
+    if (productId) {
+      const { data: product } = await supabaseAdmin
+        .from("products")
+        .select("created_by_employee_id")
+        .eq("id", productId)
+        .maybeSingle();
+      if (!product || product.created_by_employee_id !== session.user.id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+  }
+
+  // Token gate for approved users and catalog contributors (same
+  // generation_tokens balance on approved_users; not applied to admin).
+  let gatedUserId: string | null = null;
+  let currentTokens: number | null = null;
+  if (isPartnerOrEmployee) {
+    gatedUserId = session.user.id;
+    const { data: tokenRow } = await supabaseAdmin
+      .from("approved_users")
+      .select("generation_tokens")
+      .eq("id", gatedUserId)
+      .single();
+    if (!tokenRow || tokenRow.generation_tokens <= 0) {
+      return NextResponse.json(
+        { error: "You have no generation tokens remaining. Request more from your Profile page." },
+        { status: 403 }
+      );
+    }
+    currentTokens = tokenRow.generation_tokens;
   }
 
   // claude-opus-4-6 pricing (per million tokens)
@@ -197,12 +222,12 @@ export async function POST(req: NextRequest) {
 
     const toNum = (v: unknown) => (typeof v === "number" && isFinite(v) ? v : null);
 
-    // Decrement token for approved users after successful generation
-    if (approvedUserId && currentTokens !== null) {
+    // Decrement token for approved/employee users after successful generation
+    if (gatedUserId && currentTokens !== null) {
       await supabaseAdmin
         .from("approved_users")
         .update({ generation_tokens: currentTokens - 1 })
-        .eq("id", approvedUserId)
+        .eq("id", gatedUserId)
         .gte("generation_tokens", 1); // safety: only update if still > 0
     }
 
@@ -214,8 +239,8 @@ export async function POST(req: NextRequest) {
       width: toNum(parsed.width),
       thickness: toNum(parsed.thickness),
       origin: ["Myanmar", "Guatemala"].includes(parsed.origin) ? parsed.origin : "Myanmar",
-      // Never return profit margin data to approved users
-      imported_price_vnd: isApproved(session) ? null : toNum(parsed.imported_price_vnd),
+      // Never return cost/pricing data to approved users or employees
+      imported_price_vnd: isPartnerOrEmployee ? null : toNum(parsed.imported_price_vnd),
     });
   } catch (err) {
     // Surface the real error message so it's visible in the UI during debugging

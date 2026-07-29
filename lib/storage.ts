@@ -19,6 +19,8 @@
 export const IMAGE_BUCKET = "jade-images";
 export const VIDEO_BUCKET = "jade-videos";
 export const REVIEW_IMAGE_BUCKET = "review-images";
+/** Private bucket for employee-uploaded draft images/videos — never public. */
+export const EMPLOYEE_DRAFT_BUCKET = "jade-employee-drafts";
 
 /** Signed URL TTL for videos (seconds). 7 days. */
 const VIDEO_TTL = 60 * 60 * 24 * 7;
@@ -221,4 +223,83 @@ export async function resolveVideoUrls(pathsOrUrls: string[]): Promise<string[]>
 
 export async function resolveVideoUrlsFailSoft(pathsOrUrls: string[]): Promise<string[]> {
   return withMediaTimeout(resolveVideoUrls(pathsOrUrls), pathsOrUrls);
+}
+
+// ── Employee draft media — private bucket, signed URLs, ownership-checked ────
+//
+// Employee-uploaded images/videos live in EMPLOYEE_DRAFT_BUCKET while a
+// listing is EMPLOYEE_DRAFT / AWAITING_APPROVAL / NEEDS_ADJUSTMENT /
+// APPROVED_UNPUBLISHED. Nothing in this bucket is ever public — resolving a
+// URL always requires a signed request, and callers are expected to have
+// already checked the requester owns (or is admin for) the product that
+// references the path (see app/api/employee/media/route.ts).
+
+const DRAFT_MEDIA_TTL = 60 * 10; // 10 minutes — short-lived, re-requested per page view
+
+export async function resolveEmployeeDraftUrl(path: string): Promise<string | null> {
+  if (!isStoragePath(path)) return path;
+  const { supabaseAdmin } = await import("./supabase-admin");
+  const { data } = await supabaseAdmin.storage
+    .from(EMPLOYEE_DRAFT_BUCKET)
+    .createSignedUrl(path, DRAFT_MEDIA_TTL);
+  return data?.signedUrl ?? null;
+}
+
+/**
+ * Copy an approved draft object into its permanent public/private bucket at
+ * publish time. Cross-bucket, so this downloads then re-uploads rather than
+ * using storage's same-bucket copy(). Returns the new path (same basename,
+ * new bucket) or null on failure — callers should treat a null as "keep the
+ * product's images/videos referencing the draft path" rather than losing the
+ * media, and can retry the promotion later.
+ */
+export async function promoteEmployeeDraftObject(
+  path: string,
+  targetBucket: typeof IMAGE_BUCKET | typeof VIDEO_BUCKET
+): Promise<string | null> {
+  const { supabaseAdmin } = await import("./supabase-admin");
+  const { data: file, error: downloadError } = await supabaseAdmin.storage
+    .from(EMPLOYEE_DRAFT_BUCKET)
+    .download(path);
+  if (downloadError || !file) return null;
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const { error: uploadError } = await supabaseAdmin.storage
+    .from(targetBucket)
+    .upload(path, bytes, { contentType: file.type || "application/octet-stream", upsert: true });
+  if (uploadError) return null;
+
+  return path;
+}
+
+/**
+ * Promote every image/video on a listing from the draft bucket to the
+ * public/permanent buckets in one call — used when an admin publishes an
+ * employee-submitted listing. Best-effort per object (a single failed
+ * promotion doesn't abort the rest); callers should log any returned
+ * failures for manual follow-up rather than blocking the publish action on
+ * them, since the product row itself is already the source of truth for
+ * which paths it references.
+ */
+export async function promoteProductDraftMedia(
+  images: string[],
+  videos: string[]
+): Promise<{ failedImages: string[]; failedVideos: string[] }> {
+  const failedImages: string[] = [];
+  const failedVideos: string[] = [];
+
+  await Promise.all([
+    ...images.map(async (path) => {
+      if (!isStoragePath(path)) return;
+      const result = await promoteEmployeeDraftObject(path, IMAGE_BUCKET);
+      if (!result) failedImages.push(path);
+    }),
+    ...videos.map(async (path) => {
+      if (!isStoragePath(path)) return;
+      const result = await promoteEmployeeDraftObject(path, VIDEO_BUCKET);
+      if (!result) failedVideos.push(path);
+    }),
+  ]);
+
+  return { failedImages, failedVideos };
 }

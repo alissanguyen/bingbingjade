@@ -177,6 +177,8 @@ interface ProductData {
   renewed_at: string | null;
   reserved_until: string | null;
   reserved_for_handle: string | null;
+  /** Only populated (and only needed) in employee-edit mode. */
+  created_by_employee_id?: string | null;
 }
 
 interface InitialOption {
@@ -194,12 +196,39 @@ interface Props {
   product: ProductData;
   vendors: Vendor[];
   initialOptions?: InitialOption[];
-  isApprovedUser?: boolean;
+  /**
+   * Rendering/behavior mode. Defaults to "admin" to preserve pre-existing behavior
+   * when omitted. "partner" preserves 100% of the old isApprovedUser=true behavior.
+   * "employee-edit" hides pricing/vendor/variants and enables the restricted
+   * employee submit flow (see onEmployeeSubmit).
+   */
+  mode?: "admin" | "partner" | "employee-create" | "employee-edit";
   hasPendingApproval?: boolean;
   sku?: string | null;
+  /** Existing COG (employee-edit mode only) — product_costs lives in a separate table. */
+  initialCogUsd?: number | null;
+  /**
+   * Called with an employee-safe FormData (no price/vendor/options fields) instead
+   * of the updateProduct server action when mode is "employee-create" or "employee-edit".
+   */
+  onEmployeeSubmit?: (formData: FormData) => Promise<void>;
+  /**
+   * Same employee-safe FormData shape as onEmployeeSubmit, but for the
+   * separate "Save Draft" action — saves without submission validation/locking
+   * and doesn't navigate away.
+   */
+  onEmployeeSaveDraft?: (formData: FormData) => Promise<void>;
+  /**
+   * Per-employee capability (employee_profiles.can_view_vendors), only
+   * consulted in employee modes. The server actions independently re-check
+   * this — this prop only controls rendering, never write authorization.
+   */
+  canViewVendors?: boolean;
 }
 
-export function EditForm({ product, vendors, initialOptions = [], isApprovedUser = false, hasPendingApproval = false, sku }: Props) {
+export function EditForm({ product, vendors, initialOptions = [], mode = "admin", hasPendingApproval = false, sku, onEmployeeSubmit, onEmployeeSaveDraft, initialCogUsd, canViewVendors = false }: Props) {
+  const isApprovedUser = mode === "partner"; // preserves 100% of existing partner behavior/rendering
+  const isEmployeeMode = mode === "employee-create" || mode === "employee-edit";
   const router = useRouter();
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -406,6 +435,8 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
 
   const [isOval, setIsOval] = useState(product.is_oval ?? false);
   const [wristSize, setWristSize] = useState(product.wrist_size ?? "");
+  // Employee mode only — the single Cost of Goods field shown in place of the Pricing section.
+  const [cogUsd, setCogUsd] = useState(initialCogUsd != null ? String(initialCogUsd) : "");
 
   const [form, setForm] = useState({
     name: product.name,
@@ -713,8 +744,87 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
     }
   };
 
+  // Shared by both employee actions (Save Draft / Submit for Approval).
+  const buildEmployeeFormData = async () => {
+    const { orderedImageUrls, videoUrls } = await uploadNewFiles();
+    const fd = new FormData();
+    fd.append("productId", product.id);
+    fd.append("name", form.name);
+    fd.append("category", form.category);
+    fd.append("origin", form.origin);
+    fd.append("size", form.size);
+    fd.append("description", form.description);
+    fd.append("blemishes", form.blemishes);
+    if (form.sourcing_notes) fd.append("sourcing_notes", form.sourcing_notes);
+    fd.append("is_featured", String(isFeatured));
+    fd.append("is_published", String(isPublished));
+    fd.append("quick_ship", String(isQuickShip));
+    fd.append("is_clearance", String(isIsClearance));
+    fd.append("show_price", String(showPrice));
+    fd.append("status", status);
+    fd.append("is_oval", String(isOval));
+    fd.append("wrist_size", wristSize);
+    sizeDetailed.forEach((v, i) => fd.append(`size_detailed_${i}`, v));
+    selectedColors.forEach((c) => fd.append("color", c));
+    selectedTiers.forEach((t) => fd.append("tier", t));
+    orderedImageUrls.forEach((url) => fd.append("imageUrls", url));
+    [...existingVideos, ...videoUrls].forEach((url) => fd.append("videoUrls", url));
+    if (cogUsd) fd.append("cogUsd", cogUsd);
+    // Only present when this employee has vendor visibility — the server
+    // action independently re-checks the permission before honoring it.
+    if (canViewVendors && vendorId) fd.append("vendor_id", vendorId);
+    return fd;
+  };
+
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [draftSavedMsg, setDraftSavedMsg] = useState<string | null>(null);
+
+  const handleSaveDraft = async () => {
+    if (!onEmployeeSaveDraft) return;
+    setIsSavingDraft(true);
+    setDraftSavedMsg(null);
+    setResult(null);
+    try {
+      const fd = await buildEmployeeFormData();
+      await onEmployeeSaveDraft(fd);
+      setDraftSavedMsg("Draft saved.");
+      setNewVideos([]);
+    } catch (err) {
+      setResult({ error: err instanceof Error ? err.message : "Failed to save draft." });
+    } finally {
+      setIsSavingDraft(false);
+      setTimeout(() => setDraftSavedMsg(null), 3000);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Employee mode: build an employee-safe FormData (no pricing/vendor/options fields)
+    // and hand off to the caller-supplied onEmployeeSubmit callback instead of the
+    // admin/partner updateProduct server action. The admin/partner path below is untouched.
+    if (isEmployeeMode) {
+      if (!form.name.trim()) {
+        setResult({ error: "Name is required." });
+        return;
+      }
+      setIsSubmitting(true);
+      setResult(null);
+      try {
+        const fd = await buildEmployeeFormData();
+        if (onEmployeeSubmit) {
+          await onEmployeeSubmit(fd);
+        }
+        setResult({ success: true, pendingApproval: true });
+        setNewVideos([]);
+      } catch (err) {
+        setResult({ error: err instanceof Error ? err.message : "Something went wrong" });
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     if (hasVariants && status === "sold" && optionRows.some((r) => r.status !== "sold")) {
       setResult({ error: "All variants must be marked as Sold before the product can be marked Sold." });
       return;
@@ -808,10 +918,16 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
                 {CATEGORIES.map((c) => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
               </select>
             </div>
-            <div>
-              <label className={labelClass}>Vendor <span className="text-red-400">*</span></label>
-              <VendorSearch vendors={vendors} initialId={vendorId} onChange={setVendorId} />
-            </div>
+            {(!isEmployeeMode || canViewVendors) && (
+              <div>
+                <label className={labelClass}>Vendor {!isEmployeeMode && <span className="text-red-400">*</span>}</label>
+                {isEmployeeMode && vendors.length === 0 ? (
+                  <p className="text-sm text-gray-400 dark:text-gray-500 py-2">No vendors yet.</p>
+                ) : (
+                  <VendorSearch vendors={vendors} initialId={vendorId} onChange={setVendorId} />
+                )}
+              </div>
+            )}
           </div>
           <div>
             <label className={labelClass}>Origin</label>
@@ -1204,80 +1320,102 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
         </div>
       </section>
 
-      {/* Pricing */}
-      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-4 sm:px-6 sm:py-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Pricing</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className={labelClass}>Listing Price (USD)</label>
-            <div className="flex flex-wrap gap-2">
-              <div className="relative flex-1">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
-                <input
-                  type="number" step="0.01" min="0"
-                  value={form.price_display_usd}
-                  onChange={e => { set("price_display_usd")(e); setPriceHint(null); }}
-                  placeholder="0.00"
-                  className={`${inputClass} pl-7`}
-                />
+      {/* Pricing — admin/partner only. Employees get the restricted Cost section instead. */}
+      {isEmployeeMode ? (
+        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-4 sm:px-6 sm:py-6">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Cost</h2>
+          <div className="max-w-xs">
+            <label className={labelClass}>Cost of Goods (COG) (USD)</label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
+              <input
+                type="number" step="0.01" min="0"
+                value={cogUsd}
+                onChange={(e) => setCogUsd(e.target.value)}
+                placeholder="0.00"
+                className={`${inputClass} pl-7`}
+              />
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-4 sm:px-6 sm:py-6">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Pricing</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Listing Price (USD)</label>
+              <div className="flex flex-wrap gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
+                  <input
+                    type="number" step="0.01" min="0"
+                    value={form.price_display_usd}
+                    onChange={e => { set("price_display_usd")(e); setPriceHint(null); }}
+                    placeholder="0.00"
+                    className={`${inputClass} pl-7`}
+                  />
+                </div>
+                {!isApprovedUser && (
+                  <button
+                    type="button"
+                    onClick={suggestPrice}
+                    className="shrink-0 px-3 py-2 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors whitespace-nowrap"
+                  >
+                    Suggest Price
+                  </button>
+                )}
               </div>
-              {!isApprovedUser && (
-                <button
-                  type="button"
-                  onClick={suggestPrice}
-                  className="shrink-0 px-3 py-2 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors whitespace-nowrap"
-                >
-                  Suggest Price
-                </button>
+              {priceHint ? (
+                <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500 leading-snug">{priceHint}</p>
+              ) : (
+                <p className="mt-1 text-xs text-gray-400">Control visibility with the toggle below.</p>
               )}
             </div>
-            {priceHint ? (
-              <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500 leading-snug">{priceHint}</p>
-            ) : (
-              <p className="mt-1 text-xs text-gray-400">Control visibility with the toggle below.</p>
+            {!isApprovedUser && (
+              <div className="sm:col-span-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowPrice((v) => !v)}
+                  className="flex items-center gap-3 group"
+                >
+                  <div className={`relative w-10 h-6 rounded-full transition-colors ${showPrice ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"}`}>
+                    <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${showPrice ? "translate-x-4" : ""}`} />
+                  </div>
+                  <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+                    {showPrice
+                      ? "Price visible to customers"
+                      : "Price hidden — customers see \"Contact for Price\""}
+                  </span>
+                </button>
+                <p className="mt-1.5 ml-[52px] text-xs text-gray-400">
+                  When hidden, the actual price is never sent to the browser.
+                </p>
+              </div>
+            )}
+            <div>
+              <label className={labelClass}>Sale Price (USD)</label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-amber-400">$</span>
+                <input type="number" step="0.01" min="0" value={form.sale_price_usd} onChange={set("sale_price_usd")} placeholder="0.00" className={`${inputClass} pl-7 border-amber-300 dark:border-amber-700 focus:border-amber-500 focus:ring-amber-500`} />
+              </div>
+              <p className="mt-1 text-xs text-gray-400">Shown as the discounted price when status is On Sale</p>
+            </div>
+            {!isApprovedUser && (
+              <div>
+                <label className={labelClass}>Imported Price (VND)</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">₫</span>
+                  <input type="number" min="0" value={form.imported_price_vnd} onChange={set("imported_price_vnd")} className={`${inputClass} pl-7`} />
+                </div>
+              </div>
             )}
           </div>
-          {!isApprovedUser && (
-            <div className="sm:col-span-2 pt-1">
-              <button
-                type="button"
-                onClick={() => setShowPrice((v) => !v)}
-                className="flex items-center gap-3 group"
-              >
-                <div className={`relative w-10 h-6 rounded-full transition-colors ${showPrice ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"}`}>
-                  <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${showPrice ? "translate-x-4" : ""}`} />
-                </div>
-                <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
-                  {showPrice
-                    ? "Price visible to customers"
-                    : "Price hidden — customers see \"Contact for Price\""}
-                </span>
-              </button>
-              <p className="mt-1.5 ml-[52px] text-xs text-gray-400">
-                When hidden, the actual price is never sent to the browser.
-              </p>
-            </div>
-          )}
-          <div>
-            <label className={labelClass}>Sale Price (USD)</label>
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-amber-400">$</span>
-              <input type="number" step="0.01" min="0" value={form.sale_price_usd} onChange={set("sale_price_usd")} placeholder="0.00" className={`${inputClass} pl-7 border-amber-300 dark:border-amber-700 focus:border-amber-500 focus:ring-amber-500`} />
-            </div>
-            <p className="mt-1 text-xs text-gray-400">Shown as the discounted price when status is On Sale</p>
-          </div>
-          {!isApprovedUser && (
-            <div>
-              <label className={labelClass}>Imported Price (VND)</label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">₫</span>
-                <input type="number" min="0" value={form.imported_price_vnd} onChange={set("imported_price_vnd")} className={`${inputClass} pl-7`} />
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
+        </section>
+      )}
 
+      {/* Variants — employees don't see per-variant pricing/options (v1: single-SKU only) */}
+      {!isEmployeeMode && (
+      <>
       {/* Variants */}
       {/* Variants */}
       <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-4 sm:px-6 sm:py-6">
@@ -1476,6 +1614,8 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
           </div>
         )}
       </section>
+      </>
+      )}
 
       {/* Options */}
       <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-4 sm:px-6 sm:py-6">        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Options</h2>
@@ -1572,13 +1712,19 @@ export function EditForm({ product, vendors, initialOptions = [], isApprovedUser
       )}
 
       <div className="flex gap-3">
-        <button type="button" onClick={() => router.push("/products-admin")}
+        <button type="button" onClick={() => router.push(isEmployeeMode ? `/employee/${product.created_by_employee_id}/listings` : "/products-admin")}
           className="flex-1 rounded-full border border-gray-300 dark:border-gray-700 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
           Back
         </button>
-        <button type="submit" disabled={isSubmitting}
+        {isEmployeeMode && onEmployeeSaveDraft && (
+          <button type="button" onClick={handleSaveDraft} disabled={isSavingDraft || isSubmitting}
+            className="flex-1 rounded-full border border-gray-300 dark:border-gray-700 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap">
+            {isSavingDraft ? "Saving…" : draftSavedMsg ?? "Save Draft"}
+          </button>
+        )}
+        <button type="submit" disabled={isSubmitting || isSavingDraft}
           className="flex-1 rounded-full bg-emerald-700 py-3 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-          {isSubmitting ? "Saving…" : "Save Changes"}
+          {isSubmitting ? "Saving…" : isEmployeeMode ? "Submit for Approval" : "Save Changes"}
         </button>
       </div>
 

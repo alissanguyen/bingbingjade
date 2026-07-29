@@ -66,7 +66,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         product={productWithUrls}
         vendors={approvedUser ? [] : (vendors ?? [])}
         initialOptions={initialOptions}
-        isApprovedUser={approvedUser}
+        mode={approvedUser ? "partner" : "admin"}
         hasPendingApproval={product.pending_approval ?? false}
         sku={product.sku ?? null}
       />
