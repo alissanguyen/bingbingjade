@@ -21,6 +21,13 @@ export const VIDEO_BUCKET = "jade-videos";
 export const REVIEW_IMAGE_BUCKET = "review-images";
 /** Private bucket for employee-uploaded draft images/videos — never public. */
 export const EMPLOYEE_DRAFT_BUCKET = "jade-employee-drafts";
+/**
+ * Private bucket for customer-submitted service-request attachments
+ * (restoration/preservation photos, staff inspection photos, etc.). Never
+ * public — these are a customer's own diagnostic photos of their jewelry,
+ * not product marketing images. Always resolved via short-lived signed URLs.
+ */
+export const SERVICE_REQUEST_BUCKET = "service-request-attachments";
 
 /** Signed URL TTL for videos (seconds). 7 days. */
 const VIDEO_TTL = 60 * 60 * 24 * 7;
@@ -243,6 +250,34 @@ export async function resolveEmployeeDraftUrl(path: string): Promise<string | nu
     .from(EMPLOYEE_DRAFT_BUCKET)
     .createSignedUrl(path, DRAFT_MEDIA_TTL);
   return data?.signedUrl ?? null;
+}
+
+// ── Service-request attachments — private bucket, signed URLs ────────────────
+//
+// Customer-submitted restoration/preservation photos and staff inspection
+// photos. Callers (customer tracker page, admin service-request detail page)
+// are expected to have already checked the requester owns (customer token
+// match) or is staff for the service_request that references the path.
+
+const SERVICE_REQUEST_MEDIA_TTL = 60 * 10; // 10 minutes
+
+export async function resolveServiceAttachmentUrl(path: string): Promise<string | null> {
+  if (!isStoragePath(path)) return path;
+  const { supabaseAdmin } = await import("./supabase-admin");
+  const { data } = await supabaseAdmin.storage
+    .from(SERVICE_REQUEST_BUCKET)
+    .createSignedUrl(path, SERVICE_REQUEST_MEDIA_TTL);
+  return data?.signedUrl ?? null;
+}
+
+export async function resolveServiceAttachmentUrls(paths: string[]): Promise<Array<string | null>> {
+  if (paths.length === 0) return [];
+  const { supabaseAdmin } = await import("./supabase-admin");
+  const { data } = await supabaseAdmin.storage
+    .from(SERVICE_REQUEST_BUCKET)
+    .createSignedUrls(paths, SERVICE_REQUEST_MEDIA_TTL);
+  const signed = new Map(data?.map((d) => [d.path, d.signedUrl]) ?? []);
+  return paths.map((p) => signed.get(p) ?? null);
 }
 
 /**

@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
-import emailjs from "@emailjs/browser";
+import { ServiceRequestImageUploader, type UploadedAttachment } from "./ServiceRequestImageUploader";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type ClientType = "new" | "bingbing_client";
 type ServiceType = "polishing" | "silver_wrapping" | "gold_wrapping";
+
+const MIN_IMAGES = 1;
+const MAX_IMAGES = 5;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -99,12 +102,15 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
   const [notes, setNotes] = useState("");
   const [banglesFromBingBing, setBanglesFromBingBing] = useState<"yes" | "no" | "">("");
 
+  // Draft / attachments — the service_requests row is created lazily on first
+  // image upload, and images must be validated before any submit/payment.
+  const draftIdRef = useRef<Promise<string> | null>(null);
+  const [attachments, setAttachments] = useState<UploadedAttachment[]>([]);
+
   // Submission
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [inquiryLoading, setInquiryLoading] = useState(false);
-  const [inquirySubmitted, setInquirySubmitted] = useState(false);
-  const [inquiryError, setInquiryError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submittedMode, setSubmittedMode] = useState<"quote_required" | "authorization_hold" | "instant_purchase" | null>(null);
 
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -120,11 +126,35 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
     setVerifiedEmail("");
   }, [clientType]);
 
-  // Reset service-specific state when service changes
+  // Reset service-specific state when service changes — a draft/attachments
+  // belong to one specific service_requests row, so switching services means
+  // starting a fresh draft.
   useEffect(() => {
-    setCheckoutError(null);
-    setInquiryError(null);
-    setInquirySubmitted(false);
+    setSubmitError(null);
+    setSubmittedMode(null);
+    draftIdRef.current = null;
+    setAttachments([]);
+  }, [service]);
+
+  const getServiceRequestId = useCallback(async (): Promise<string> => {
+    if (!draftIdRef.current) {
+      if (!service) throw new Error("No service selected.");
+      draftIdRef.current = fetch("/api/service-requests/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serviceSlug: service }),
+      })
+        .then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error ?? "Failed to start request.");
+          return data.id as string;
+        })
+        .catch((err) => {
+          draftIdRef.current = null; // allow retry on next upload attempt
+          throw err;
+        });
+    }
+    return draftIdRef.current;
   }, [service]);
 
   async function handleVerify() {
@@ -158,91 +188,66 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
     }
   }
 
-  async function handlePolishingCheckout() {
+  async function handleSubmitRequest(e: React.FormEvent) {
+    e.preventDefault();
+    if (!service) return;
     if (!name.trim() || !email.trim()) {
-      setCheckoutError("Please provide your name and email before proceeding.");
+      setSubmitError("Please provide your name and email before proceeding.");
       return;
     }
-    setCheckoutLoading(true);
-    setCheckoutError(null);
+    if (attachments.length < MIN_IMAGES) {
+      setSubmitError(`Please upload at least ${MIN_IMAGES} photo of your jade item before submitting.`);
+      return;
+    }
+
+    setSubmitting(true);
+    setSubmitError(null);
+
     try {
-      const res = await fetch("/api/restoration/checkout", {
+      const serviceRequestId = await getServiceRequestId();
+      const fullNotes = [
+        notes.trim(),
+        banglesFromBingBing ? `Purchased from BingBing Jade: ${banglesFromBingBing === "yes" ? "Yes" : "No"}` : "",
+      ].filter(Boolean).join("\n\n");
+
+      const submitRes = await fetch(`/api/service-requests/${serviceRequestId}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          clientType,
+          customerName: name.trim(),
+          customerEmail: email.trim(),
+          customerPhone: phone.trim() || undefined,
+          notes: fullNotes || undefined,
+          clientType: clientType === "bingbing_client" ? "existing_client" : "new",
           verified,
           verifiedOrderNumber: verified ? verifyOrder.trim() : undefined,
-          customerEmail: email.trim(),
-          customerName: name.trim(),
         }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setCheckoutError(data.error ?? "Unable to start checkout. Please try again.");
+      const submitData = await submitRes.json();
+      if (!submitRes.ok) {
+        setSubmitError(submitData.error ?? "Unable to submit your request. Please try again.");
         return;
       }
-      if (data.url) window.location.href = data.url;
+
+      const mode = submitData.workflowMode as "quote_required" | "authorization_hold" | "instant_purchase";
+
+      if (mode === "quote_required") {
+        setSubmittedMode("quote_required");
+        return;
+      }
+
+      // authorization_hold / instant_purchase → proceed to Stripe checkout
+      const checkoutRes = await fetch(`/api/service-requests/${serviceRequestId}/checkout`, { method: "POST" });
+      const checkoutData = await checkoutRes.json();
+      if (!checkoutRes.ok) {
+        setSubmitError(checkoutData.error ?? "Unable to start checkout. Please try again.");
+        return;
+      }
+      if (checkoutData.url) window.location.href = checkoutData.url;
     } catch {
-      setCheckoutError("Something went wrong. Please try again.");
+      setSubmitError("Something went wrong. Please try again.");
     } finally {
-      setCheckoutLoading(false);
-    }
-  }
-
-  async function handleInquirySubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim() || !email.trim()) return;
-
-    setInquiryLoading(true);
-    setInquiryError(null);
-
-    const serviceLabel =
-      service === "silver_wrapping"
-        ? "Silver Protective Wrapping (Starting at $250+)"
-        : "Gold Protective Wrapping (Starting at $400+)";
-
-    const messageBody = [
-      `Service Requested: ${serviceLabel}`,
-      `Client Type: ${clientType === "bingbing_client" ? "BingBing Jade Client" : "New Client"}`,
-      ...(clientType === "bingbing_client" && verifyOrder ? [`Order Number (unverified): ${verifyOrder}`] : []),
-      "",
-      `Name: ${name}`,
-      `Email: ${email}`,
-      ...(phone.trim() ? [`Phone: ${phone}`] : []),
-      ...(banglesFromBingBing ? [`Bangle purchased from BingBing Jade: ${banglesFromBingBing === "yes" ? "Yes" : "No"}`] : []),
-      "",
-      `Notes / Concerns:`,
-      notes.trim() || "(none provided)",
-      "",
-      "---",
-      "service_type: " + service,
-      "client_type: " + clientType,
-      "verified_client: false",
-      "quote_required: true",
-    ].join("\n");
-
-    try {
-      const opts = { publicKey: process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY! };
-      await Promise.all([
-        emailjs.send(
-          process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!,
-          process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!,
-          { from_name: name, from_email: email, name, email, message: messageBody, inquiry_type: "General inquiry", product_names: "", product_public_ids: "", product_categories: "", product_prices: "", product_statuses: "", product_urls: "", product_image_urls: "", primary_product_name: "", primary_product_public_id: "", primary_product_category: "", primary_product_price: "", primary_product_status: "", primary_product_url: "", primary_product_image_url: "", product_count: "0", has_multiple_products: "no" },
-          opts
-        ),
-        emailjs.send(
-          process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!,
-          process.env.NEXT_PUBLIC_EMAILJS_NOTIFICATION_TEMPLATE_ID!,
-          { from_name: name, from_email: email, name, email, message: messageBody, inquiry_type: "General inquiry", product_names: "", product_public_ids: "", product_categories: "", product_prices: "", product_statuses: "", product_urls: "", product_image_urls: "", primary_product_name: "", primary_product_public_id: "", primary_product_category: "", primary_product_price: "", primary_product_status: "", primary_product_url: "", primary_product_image_url: "", product_count: "0", has_multiple_products: "no" },
-          opts
-        ),
-      ]);
-      setInquirySubmitted(true);
-    } catch {
-      setInquiryError("Something went wrong sending your inquiry. Please try again or reach out via the contact page.");
-    } finally {
-      setInquiryLoading(false);
+      setSubmitting(false);
     }
   }
 
@@ -250,6 +255,7 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
   const polishingTimeline = clientType === "bingbing_client" && verified ? "2–4 weeks" : "4–6 weeks";
   const needsVerification = clientType === "bingbing_client" && !verified;
   const isWrapping = service === "silver_wrapping" || service === "gold_wrapping";
+  const hasEnoughImages = attachments.length >= MIN_IMAGES;
 
   if (checkoutSuccess) {
     return (
@@ -260,12 +266,14 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <h2 className="text-2xl font-semibold text-stone-800 dark:text-gray-100">Service Confirmed</h2>
+          <h2 className="text-2xl font-semibold text-stone-800 dark:text-gray-100">Request Confirmed</h2>
           <p className="text-stone-600 dark:text-gray-400 leading-relaxed">
-            Thank you for booking your jade bangle polishing service. You&apos;ll receive a confirmation email shortly with instructions on how to ship your bangle to us.
+            Thank you for your jade bangle polishing request. We&apos;ve placed an authorization hold on your card —
+            you have not been charged yet. Our specialists are reviewing your submitted photos and will be in touch
+            shortly with our decision and next steps.
           </p>
-          <p className="text-sm text-stone-500 dark:text-gray-500">
-            Please handle and package your bangle carefully. We recommend a padded box with bubble wrap.
+          <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+            Please do not ship your item until you receive approval and shipping instructions.
           </p>
           <a
             href="/restoration"
@@ -291,7 +299,6 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
           className="object-cover object-center"
           sizes="100vw"
         />
-        {/* Overlay — dark gradient so text stays legible */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/40 to-black/65" />
         <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-20 sm:py-28 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300 mb-3">
@@ -308,7 +315,7 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
             className="mt-8 inline-flex items-center gap-2 rounded-full bg-white/15 hover:bg-white/25 border border-white/30 backdrop-blur-sm px-6 py-2.5 text-sm font-medium text-white transition-colors"
           >
             Start Service Request
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12l7 7 7-7" /></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12l7 7-7 7" /></svg>
           </a>
         </div>
       </div>
@@ -381,7 +388,7 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
               <div className="pt-1">
                 <span className="inline-flex items-center gap-1 text-[11px] sm:text-[13px] font-medium text-emerald-700 dark:text-emerald-400">
                   <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                  Direct checkout available
+                  Photos reviewed before payment is captured
                 </span>
               </div>
             </div>
@@ -426,7 +433,7 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
               <div className="pt-1">
                 <span className="inline-flex items-center gap-1 text-[11px] sm:text-[13px] font-medium text-stone-500 dark:text-gray-500">
                   <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-                  Inquiry &amp; quote required — no direct checkout
+                  Photos &amp; quote required — no direct checkout
                 </span>
               </div>
             </div>
@@ -447,7 +454,7 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
               <div className="pt-1">
                 <span className="inline-flex items-center gap-1 text-[11px] sm:text-[13px] font-medium text-stone-500 dark:text-gray-500">
                   <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-                  Inquiry &amp; quote required — no direct checkout
+                  Photos &amp; quote required — no direct checkout
                 </span>
               </div>
             </div>
@@ -464,10 +471,10 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
           <div className="max-w-2xl mx-auto">
             <h2 className="text-xl font-semibold text-stone-800 dark:text-gray-100 mb-2">Start Your Service Request</h2>
             <p className="text-sm text-stone-500 dark:text-gray-400 mb-8">
-              Select your client type and service below. Polishing can be booked directly; wrapping services require a quote.
+              Select your client type and service below. All requests require photos before we can confirm whether we can accept the piece.
             </p>
 
-            <form onSubmit={handleInquirySubmit} className="space-y-8">
+            <form onSubmit={handleSubmitRequest} className="space-y-8">
 
               {/* Step 1 — Client type */}
               <div>
@@ -600,10 +607,10 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
                 </div>
               )}
 
-              {/* Step 3 — Contact info (shown once service is selected) */}
+              {/* Step 3 — Contact info + photos (shown once service is selected) */}
               {service && (
                 <div>
-                  <SectionHeading step={3} title="Your contact information" />
+                  <SectionHeading step={3} title="Your contact information and photos" />
                   <div className="space-y-4">
                     <div>
                       <label className={labelCls}>Full Name <span className="text-red-500">*</span></label>
@@ -670,90 +677,79 @@ export function RestorationClient({ checkoutSuccess }: { checkoutSuccess: boolea
                       />
                     </div>
 
-                    {/* Photo upload — TODO */}
-                    <div className="rounded-xl border border-dashed border-stone-300 dark:border-gray-700 px-4 py-4 text-center">
-                      <p className="text-xs text-stone-400 dark:text-gray-600">
-                        📷 Bangle photo upload — coming soon. For now, you may attach photos to your confirmation email or send them via our{" "}
-                        <a href="/contact" className="underline underline-offset-2 hover:text-stone-600 dark:hover:text-gray-400 transition-colors">
-                          contact page
-                        </a>.
-                      </p>
-                    </div>
+                    <ServiceRequestImageUploader
+                      getServiceRequestId={getServiceRequestId}
+                      uploadUrl={(id) => `/api/service-requests/${id}/attachments`}
+                      deleteUrl={(id, attachmentId) => `/api/service-requests/${id}/attachments/${attachmentId}`}
+                      minImages={MIN_IMAGES}
+                      maxImages={MAX_IMAGES}
+                      onChange={setAttachments}
+                      disabled={submitting}
+                    />
                   </div>
                 </div>
               )}
 
-              {/* CTA — Polishing checkout */}
-              {service === "polishing" && (
+              {/* CTA */}
+              {service && !submittedMode && (
                 <div className="rounded-2xl border border-stone-200 dark:border-gray-700 bg-stone-50 dark:bg-gray-900 p-5 space-y-4">
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-stone-700 dark:text-gray-300">
-                        {clientType === "bingbing_client" && verified
-                          ? "BingBing Jade Client Polishing"
-                          : "Standard Polishing"}
-                      </span>
-                      <span className="text-xl font-semibold text-emerald-700 dark:text-emerald-400">
-                        ${polishingPrice}.00
-                      </span>
+                  {service === "polishing" && (
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-stone-700 dark:text-gray-300">
+                          {clientType === "bingbing_client" && verified ? "BingBing Jade Client Polishing" : "Standard Polishing"}
+                        </span>
+                        <span className="text-xl font-semibold text-emerald-700 dark:text-emerald-400">${polishingPrice}.00</span>
+                      </div>
+                      <p className="text-xs text-stone-500 dark:text-gray-500 mt-0.5">
+                        Estimated {polishingTimeline} · Card authorized after submission, charged only once your photos are approved
+                      </p>
                     </div>
-                    <p className="text-xs text-stone-500 dark:text-gray-500 mt-0.5">
-                      Estimated {polishingTimeline} · Includes return shipping
-                    </p>
-                  </div>
+                  )}
 
-                  {needsVerification && (
+                  {service === "polishing" && needsVerification && (
                     <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
                       Complete the verification above to unlock the $50 BingBing Jade client rate. Or proceed at the standard $100 rate by switching to &ldquo;New Client&rdquo;.
                     </p>
                   )}
 
-                  {checkoutError && (
-                    <p className="text-xs text-red-600 dark:text-red-400">{checkoutError}</p>
-                  )}
+                  {submitError && <p className="text-xs text-red-600 dark:text-red-400">{submitError}</p>}
 
-                  <button
-                    type="button"
-                    onClick={handlePolishingCheckout}
-                    disabled={checkoutLoading || (clientType === "bingbing_client" && !verified)}
-                    className="w-full rounded-full bg-emerald-700 hover:bg-emerald-800 text-white py-3 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {checkoutLoading
-                      ? "Preparing checkout…"
-                      : clientType === "bingbing_client" && !verified
-                        ? "Verify above to proceed"
-                        : `Proceed to Checkout — $${polishingPrice}.00`}
-                  </button>
-                  <p className="text-[11px] text-stone-400 dark:text-gray-600 text-center">
-                    You will provide your shipping address on the next screen. After payment, we will send instructions for shipping your bangle to us.
-                  </p>
-                </div>
-              )}
-
-              {/* CTA — Inquiry (wrapping) */}
-              {isWrapping && !inquirySubmitted && (
-                <div className="space-y-3">
-                  {inquiryError && (
-                    <p className="text-xs text-red-600 dark:text-red-400">{inquiryError}</p>
-                  )}
                   <button
                     type="submit"
-                    disabled={inquiryLoading || !name.trim() || !email.trim()}
-                    className="w-full rounded-full bg-stone-800 dark:bg-gray-100 hover:bg-stone-900 dark:hover:bg-gray-50 text-white dark:text-gray-900 py-3 text-sm font-medium transition-colors disabled:opacity-50"
+                    disabled={
+                      submitting ||
+                      !hasEnoughImages ||
+                      !name.trim() ||
+                      !email.trim() ||
+                      (service === "polishing" && clientType === "bingbing_client" && !verified)
+                    }
+                    className="w-full rounded-full bg-emerald-700 hover:bg-emerald-800 text-white py-3 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {inquiryLoading ? "Sending…" : "Contact Us for a Quote"}
+                    {submitting
+                      ? "Submitting…"
+                      : !hasEnoughImages
+                        ? `Upload at least ${MIN_IMAGES} photo to continue`
+                        : service === "polishing"
+                          ? (clientType === "bingbing_client" && !verified ? "Verify above to proceed" : `Continue to Payment Authorization — $${polishingPrice}.00`)
+                          : "Submit Request for Quote"}
                   </button>
                   <p className="text-[11px] text-stone-400 dark:text-gray-600 text-center">
-                    We&apos;ll review your request and respond within 1–3 business days with a personalized quote.
+                    {service === "polishing"
+                      ? "We'll place an authorization hold (you won't be charged yet) while we review your photos, then follow up with our decision and next steps."
+                      : "We'll review your photos and follow up with a personalized quote. No payment is required to submit your request."}
                   </p>
                 </div>
               )}
 
-              {inquirySubmitted && (
+              {submittedMode === "quote_required" && (
                 <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-5 py-4 text-center space-y-1">
-                  <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">Inquiry received — thank you.</p>
+                  <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">Request received — thank you.</p>
                   <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                    We&apos;ll review your request and be in touch within 1–3 business days with a personalized quote and next steps.
+                    We&apos;ve received your service request and photos. Our team will review the condition of your jade
+                    item before confirming whether we can accept the requested service and preparing your quote. We&apos;ll
+                    be in touch within 1–3 business days. Please do not ship your item until you receive approval and
+                    shipping instructions.
                   </p>
                 </div>
               )}

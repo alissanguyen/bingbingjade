@@ -16,6 +16,7 @@ import { CREDIT_VALIDITY_DAYS } from "@/lib/sourcing-classification";
 import { sendDepositConfirmationEmail } from "@/lib/sourcing-emails";
 import { MANUAL_CAPTURE_WINDOW_DAYS } from "@/lib/shipping";
 import { releaseStoreCreditReservation } from "@/lib/store-credit";
+import { handleServiceCheckoutCompleted } from "@/lib/service-requests";
 import type Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -292,6 +293,24 @@ export async function POST(req: NextRequest) {
 
   if (session.metadata?.is_livestream_checkout === "true") {
     return handleLivestreamCheckout(session, supabase);
+  }
+
+  // Service Requests (Restoration & Preservation, and any future service
+  // line) — root-cause fix for order #1330-3268: this branch didn't exist,
+  // so service checkouts fell into the generic product path below, which
+  // expects cart-style items_N metadata that service checkouts never set,
+  // and 400'd out before ever creating a durable record. The service_requests
+  // row already exists (created before checkout, with its images validated)
+  // — this only ever updates it, never creates one, so there's no metadata
+  // shape to mismatch.
+  if (session.metadata?.is_service_checkout === "true") {
+    try {
+      await handleServiceCheckoutCompleted(session);
+    } catch (err) {
+      console.error("[webhook/service] Failed to process service checkout completion:", err);
+      return NextResponse.json({ error: "Failed to process service checkout." }, { status: 500 });
+    }
+    return NextResponse.json({ received: true });
   }
 
   // ── Resolve payment intent ID early (needed for idempotency + insert) ──────────
