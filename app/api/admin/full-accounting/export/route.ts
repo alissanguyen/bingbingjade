@@ -462,6 +462,7 @@ export async function GET(req: NextRequest) {
       .from("orders")
       .select("id, amount_total, fee_breakdown, discount_amount_cents, created_at, source")
       .neq("order_status", "order_cancelled")
+      .neq("status", "unpaid")
       .not("amount_total", "is", null)
       .order("created_at");
     if (from) oq = oq.gte("created_at", from);

@@ -35,6 +35,7 @@ export async function POST() {
         order_fulfillment_costs(label_cost_usd, business_shipping_insurance_cost_usd, supplies_cost_usd, dropoff_transport_cost_usd, other_fulfillment_cost_usd)
       `)
       .neq("order_status", "order_cancelled")
+      .neq("status", "unpaid")
       .not("amount_total", "is", null),
     supabaseAdmin
       .from("order_payments")

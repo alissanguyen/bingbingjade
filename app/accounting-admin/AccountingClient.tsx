@@ -192,7 +192,7 @@ export function AccountingClient() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Accounting</h1>
           <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            {data.orderCount} paid order{data.orderCount !== 1 ? "s" : ""} · excludes cancelled
+            {data.orderCount} paid order{data.orderCount !== 1 ? "s" : ""} · excludes cancelled & unpaid
             {data.uncostedOrderCount > 0 && (
               <span className="ml-2 text-amber-500 dark:text-amber-400">
                 · {data.uncostedOrderCount} uncosted
