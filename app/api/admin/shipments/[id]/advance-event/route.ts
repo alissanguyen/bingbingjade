@@ -1,25 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser, isAdmin } from "@/lib/approved-auth";
-
-function eventKeyToShipmentStatus(key: string): string {
-  if (key === "shipped") return "shipped";
-  if (key === "delivered") return "delivered";
-  if (key === "confirmed") return "confirmed";
-  return "processing";
-}
-
-function eventKeyToOrderStatus(key: string): string | null {
-  if (key === "delivered") return "delivered";
-  if (key === "shipped") return "outbound_shipping";
-  if (key === "inbound" || key === "inbound_shipping" || key === "arriving") return "inbound_shipping";
-  if (key === "certifying" || key === "certification") return "certifying";
-  if (key === "quality_inspection" || key === "quality_control") return "quality_control";
-  if (key === "polishing" || key === "finishing") return "polishing";
-  if (key === "in_production" || key === "production") return "in_production";
-  if (key === "confirmed") return "order_confirmed";
-  return null;
-}
+import { eventKeyToShipmentStatus, eventKeyToOrderStatus } from "@/lib/shipment-status";
 
 export async function POST(
   _req: NextRequest,
