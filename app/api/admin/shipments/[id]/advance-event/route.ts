@@ -63,13 +63,13 @@ export async function POST(
   // Sync order_status to match the new shipment event
   const { data: shipment } = await supabaseAdmin
     .from("shipments")
-    .select("order_id")
+    .select("order_id, fulfillment_type")
     .eq("id", id)
     .single();
 
   let newOrderStatus: string | null = null;
   if (shipment?.order_id) {
-    newOrderStatus = eventKeyToOrderStatus(nextEvent.event_key);
+    newOrderStatus = eventKeyToOrderStatus(nextEvent.event_key, shipment.fulfillment_type ?? "sourced_for_you");
     if (newOrderStatus) {
       await supabaseAdmin
         .from("orders")

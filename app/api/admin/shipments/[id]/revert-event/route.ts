@@ -57,12 +57,14 @@ export async function POST(
   // Sync order_status if we can determine it
   const { data: shipment } = await supabaseAdmin
     .from("shipments")
-    .select("order_id")
+    .select("order_id, fulfillment_type")
     .eq("id", id)
     .single();
 
+  const fulfillmentType = shipment?.fulfillment_type ?? "sourced_for_you";
+
   if (shipment?.order_id) {
-    const newOrderStatus = eventKeyToOrderStatus(prevEvent.event_key);
+    const newOrderStatus = eventKeyToOrderStatus(prevEvent.event_key, fulfillmentType);
     if (newOrderStatus) {
       await supabaseAdmin
         .from("orders")
@@ -86,6 +88,6 @@ export async function POST(
   return NextResponse.json({
     events: updatedEvents,
     shipment: updatedShipment,
-    newOrderStatus: shipment?.order_id ? eventKeyToOrderStatus(prevEvent.event_key) : null,
+    newOrderStatus: shipment?.order_id ? eventKeyToOrderStatus(prevEvent.event_key, fulfillmentType) : null,
   });
 }
