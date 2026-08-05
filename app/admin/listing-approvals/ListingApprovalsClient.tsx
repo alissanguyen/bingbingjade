@@ -97,7 +97,7 @@ export function ListingApprovalsClient() {
                   {row.priorAdjustmentRequests > 0 && ` · ${row.priorAdjustmentRequests} prior adjustment${row.priorAdjustmentRequests > 1 ? "s" : ""}`}
                 </p>
                 <p className="text-xs text-gray-400 dark:text-gray-500">
-                  COG: {row.cog != null ? `${row.cogCurrency ?? "USD"} ${row.cog.toFixed(2)}` : "—"}
+                  COG: {row.cog != null ? `${row.cogCurrency ?? "VND"} ${row.cogCurrency === "CNY" ? row.cog.toFixed(2) : row.cog.toLocaleString()}` : "—"}
                   {" · "}
                   {new Date(row.createdAt).toLocaleDateString()}
                 </p>

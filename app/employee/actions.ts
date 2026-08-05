@@ -93,22 +93,46 @@ function fieldsToRow(fields: EmployeeFields, canViewVendors: boolean) {
   };
 }
 
-function extractCog(formData: FormData): number | null {
-  const raw = formData.get("cogUsd");
-  if (!raw) return null;
-  const n = Number(raw);
-  return Number.isFinite(n) && n >= 0 ? n : null;
+type CostCurrency = "VND" | "CNY";
+
+// Yuan is never entered directly as an import price — it's converted to VND
+// so it lands in the same products.imported_price_vnd field admin-created
+// listings already use for COGS-at-sale accounting (see the webhook's
+// cogsCents calculation, which reads this column directly). 3950 is the
+// VND-per-CNY rate; 1.1 is the markup applied on top.
+const YUAN_TO_VND_RATE = 3950;
+const YUAN_MARKUP = 1.1;
+
+function extractContributorCost(
+  formData: FormData
+): { currency: CostCurrency; amount: number; importedPriceVnd: number } | null {
+  const raw = formData.get("costAmount");
+  if (raw === null || raw === "") return null;
+  const amount = Number(raw);
+  if (!Number.isFinite(amount) || amount < 0) return null;
+  const currency: CostCurrency = formData.get("costCurrency") === "CNY" ? "CNY" : "VND";
+  const importedPriceVnd = Math.round(currency === "CNY" ? amount * YUAN_TO_VND_RATE * YUAN_MARKUP : amount);
+  return { currency, amount, importedPriceVnd };
 }
 
-async function upsertCog(productId: string, cogUsd: number | null): Promise<void> {
-  if (cogUsd === null) return;
+/**
+ * Applies the contributor-reported cost: sets products.imported_price_vnd —
+ * the same field admin-created listings use, so employee-submitted listings
+ * are no longer excluded from COGS-at-sale accounting — and records the
+ * original currency/amount in product_costs for provenance and display in
+ * the admin review panel. Not part of fieldsToRow's allowlist (see file
+ * header) — the VND figure is always server-computed from a validated
+ * numeric amount + currency, never trusted directly from the client.
+ */
+async function applyContributorCost(productId: string, formData: FormData): Promise<void> {
+  const cost = extractContributorCost(formData);
+  if (!cost) return;
+  await supabaseAdmin.from("products").update({ imported_price_vnd: cost.importedPriceVnd }).eq("id", productId);
   await supabaseAdmin.from("product_costs").upsert(
     {
       product_id: productId,
-      purchase_price_original: cogUsd,
-      purchase_currency: "USD",
-      exchange_rate_to_usd: 1,
-      purchase_price_usd: cogUsd,
+      purchase_price_original: cost.amount,
+      purchase_currency: cost.currency,
       cost_last_updated_at: new Date().toISOString(),
     },
     { onConflict: "product_id" }
@@ -177,13 +201,13 @@ export async function saveEmployeeDraft(formData: FormData): Promise<void> {
     if (!fields.name) throw new Error("Name is required.");
     const { error } = await supabaseAdmin.from("products").update(fieldsToRow(fields, canViewVendors)).eq("id", productId);
     if (error) throw new Error(error.message);
-    await upsertCog(productId, extractCog(formData));
+    await applyContributorCost(productId, formData);
     revalidatePath(`/employee/${employeeId}/listings/${productId}/edit`);
     return;
   }
 
   const newId = await insertDraft(employeeId, fields, canViewVendors);
-  await upsertCog(newId, extractCog(formData));
+  await applyContributorCost(newId, formData);
   revalidatePath(`/employee/${employeeId}/listings`);
   redirect(`/employee/${employeeId}/listings/${newId}/edit`);
 }
@@ -211,10 +235,15 @@ export async function submitEmployeeListing(formData: FormData): Promise<void> {
     productId = await insertDraft(employeeId, fields, canViewVendors);
   }
 
-  const cogUsd = extractCog(formData);
-  await upsertCog(productId, cogUsd);
+  const cost = extractContributorCost(formData);
+  await applyContributorCost(productId, formData);
 
-  const snapshot = { ...fieldsToRow(fields, canViewVendors), cogUsd };
+  const snapshot = {
+    ...fieldsToRow(fields, canViewVendors),
+    costCurrency: cost?.currency ?? null,
+    costAmount: cost?.amount ?? null,
+    importedPriceVnd: cost?.importedPriceVnd ?? null,
+  };
   const { error: rpcError } = await supabaseAdmin.rpc("fn_submit_listing", {
     p_product_id: productId,
     p_employee_id: employeeId,

@@ -96,7 +96,7 @@ export function ReviewActionsPanel({
         </div>
 
         <div className="text-sm text-gray-600 dark:text-gray-300">
-          COG: <span className="font-medium">{cog != null ? `${cogCurrency ?? "USD"} ${cog.toFixed(2)}` : "—"}</span>
+          COG: <span className="font-medium">{cog != null ? `${cogCurrency ?? "VND"} ${cogCurrency === "CNY" ? cog.toFixed(2) : cog.toLocaleString()}` : "—"}</span>
         </div>
 
         {!canReview && (

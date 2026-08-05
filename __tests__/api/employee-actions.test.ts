@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // A tiny in-memory "products" table so requireEditableOwnedDraft / insert /
 // update behave like the real thing without a live DB. Only the columns
 // these actions actually touch are modeled.
-type Row = { id: string; created_by_employee_id: string; listing_status: string; name?: string; vendor_id?: string };
+type Row = { id: string; created_by_employee_id: string; listing_status: string; name?: string; vendor_id?: string; imported_price_vnd?: number };
 let products: Row[] = [];
 let canViewVendors = false;
 
@@ -152,6 +152,27 @@ describe("employee actions — per-employee vendor visibility", () => {
       submitEmployeeListing(fd({ name: "New", imageUrls: ["wm/a.webp"], vendor_id: "some-vendor-uuid" }))
     ).rejects.toThrow("REDIRECT:");
     expect(products[0].vendor_id).toBeUndefined();
+  });
+});
+
+describe("employee actions — contributor cost currency", () => {
+  it("stores a VND cost amount directly as imported_price_vnd", async () => {
+    products.push({ id: "p1", created_by_employee_id: EMP_A, listing_status: "EMPLOYEE_DRAFT", name: "Old" });
+    await saveEmployeeDraft(fd({ productId: "p1", name: "Updated", costCurrency: "VND", costAmount: "1500000" }));
+    expect(products[0].imported_price_vnd).toBe(1500000);
+  });
+
+  it("converts a Yuan cost amount to VND via amount * 3950 * 1.1", async () => {
+    products.push({ id: "p1", created_by_employee_id: EMP_A, listing_status: "EMPLOYEE_DRAFT", name: "Old" });
+    await saveEmployeeDraft(fd({ productId: "p1", name: "Updated", costCurrency: "CNY", costAmount: "500" }));
+    // 500 * 3950 * 1.1 = 2,172,500
+    expect(products[0].imported_price_vnd).toBe(2172500);
+  });
+
+  it("leaves imported_price_vnd untouched when no cost amount is provided", async () => {
+    products.push({ id: "p1", created_by_employee_id: EMP_A, listing_status: "EMPLOYEE_DRAFT", name: "Old", imported_price_vnd: 999 });
+    await saveEmployeeDraft(fd({ productId: "p1", name: "Updated" }));
+    expect(products[0].imported_price_vnd).toBe(999);
   });
 });
 

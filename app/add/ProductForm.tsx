@@ -599,7 +599,12 @@ export function ProductForm({ vendors, mode = "admin", sku, onEmployeeSubmit, on
   const [wristSize, setWristSize] = useState("");
   const [priceHint, setPriceHint] = useState<string | null>(null);
   // Employee mode only — the single Cost of Goods field shown in place of the Pricing section.
-  const [cogUsd, setCogUsd] = useState("");
+  const [costCurrency, setCostCurrency] = useState<"VND" | "CNY">("VND");
+  const [costAmount, setCostAmount] = useState("");
+  const computedImportedPriceVnd =
+    costAmount && Number.isFinite(parseFloat(costAmount))
+      ? Math.round(costCurrency === "CNY" ? parseFloat(costAmount) * 3950 * 1.1 : parseFloat(costAmount))
+      : null;
 
   function suggestPrice() {
     const vnd = parseFloat(form.imported_price_vnd);
@@ -735,7 +740,10 @@ export function ProductForm({ vendors, mode = "admin", sku, onEmployeeSubmit, on
     if (sourceNotes) fd.append("sourcing_notes", sourceNotes);
     imageUrls.forEach((url) => fd.append("imageUrls", url));
     videoUrls.forEach((url) => fd.append("videoUrls", url));
-    if (cogUsd) fd.append("cogUsd", cogUsd);
+    if (costAmount) {
+      fd.append("costCurrency", costCurrency);
+      fd.append("costAmount", costAmount);
+    }
     // Only present when this employee has vendor visibility — the server
     // action independently re-checks the permission before honoring it.
     if (canViewVendors && vendorId) fd.append("vendor_id", vendorId);
@@ -1340,17 +1348,40 @@ export function ProductForm({ vendors, mode = "admin", sku, onEmployeeSubmit, on
       {isEmployeeMode ? (
         <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 sm:px-6 py-6">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Cost</h2>
-          <div className="max-w-xs">
-            <label className={labelClass}>Cost of Goods (COG) (USD)</label>
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
-              <input
-                type="number" step="0.01" min="0"
-                value={cogUsd}
-                onChange={(e) => setCogUsd(e.target.value)}
-                placeholder="0.00"
-                className={`${inputClass} pl-7`}
-              />
+          <div className="max-w-xs space-y-3">
+            <div>
+              <label className={labelClass}>Cost Currency</label>
+              <div className="mt-1 flex gap-2">
+                {(["VND", "CNY"] as const).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCostCurrency(c)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${costCurrency === c
+                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
+                      : "border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400"
+                      }`}
+                  >
+                    {c === "VND" ? "VND (₫)" : "Yuan (¥)"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className={labelClass}>Cost of Goods ({costCurrency})</label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">{costCurrency === "VND" ? "₫" : "¥"}</span>
+                <input
+                  type="number" step={costCurrency === "VND" ? "1" : "0.01"} min="0"
+                  value={costAmount}
+                  onChange={(e) => setCostAmount(e.target.value)}
+                  placeholder="0"
+                  className={`${inputClass} pl-7`}
+                />
+              </div>
+              {costCurrency === "CNY" && computedImportedPriceVnd != null && (
+                <p className="mt-1 text-xs text-gray-400">≈ ₫{computedImportedPriceVnd.toLocaleString()} imported price (¥1 = ₫3,950 × 1.1)</p>
+              )}
             </div>
           </div>
         </section>

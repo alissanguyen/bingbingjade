@@ -57,7 +57,7 @@ export default async function ListingApprovalDetailPage({
 
   const [{ data: employeeProfile }, { data: cost }, { data: financials }, { data: submissions }] = await Promise.all([
     supabaseAdmin.from("employee_profiles").select("display_name").eq("user_id", product.created_by_employee_id).maybeSingle(),
-    supabaseAdmin.from("product_costs").select("purchase_price_usd, purchase_currency").eq("product_id", listingId).maybeSingle(),
+    supabaseAdmin.from("product_costs").select("purchase_price_original, purchase_currency").eq("product_id", listingId).maybeSingle(),
     supabaseAdmin.from("admin_product_financials").select("*").eq("product_id", listingId).maybeSingle(),
     supabaseAdmin
       .from("listing_submissions")
@@ -90,7 +90,7 @@ export default async function ListingApprovalDetailPage({
         <ReviewActionsPanel
           listingId={listingId}
           currentStatus={product.listing_status}
-          cog={cost?.purchase_price_usd ?? null}
+          cog={cost?.purchase_price_original ?? null}
           cogCurrency={cost?.purchase_currency ?? null}
           existingSalePrice={product.price_display_usd}
           existingFinancials={financials ?? null}

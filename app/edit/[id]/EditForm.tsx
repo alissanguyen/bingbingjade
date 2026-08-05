@@ -205,8 +205,9 @@ interface Props {
   mode?: "admin" | "partner" | "employee-create" | "employee-edit";
   hasPendingApproval?: boolean;
   sku?: string | null;
-  /** Existing COG (employee-edit mode only) — product_costs lives in a separate table. */
-  initialCogUsd?: number | null;
+  /** Existing contributor-reported cost (employee-edit mode only) — product_costs lives in a separate table. */
+  initialCostCurrency?: "VND" | "CNY" | null;
+  initialCostAmount?: number | null;
   /**
    * Called with an employee-safe FormData (no price/vendor/options fields) instead
    * of the updateProduct server action when mode is "employee-create" or "employee-edit".
@@ -226,7 +227,7 @@ interface Props {
   canViewVendors?: boolean;
 }
 
-export function EditForm({ product, vendors, initialOptions = [], mode = "admin", hasPendingApproval = false, sku, onEmployeeSubmit, onEmployeeSaveDraft, initialCogUsd, canViewVendors = false }: Props) {
+export function EditForm({ product, vendors, initialOptions = [], mode = "admin", hasPendingApproval = false, sku, onEmployeeSubmit, onEmployeeSaveDraft, initialCostCurrency, initialCostAmount, canViewVendors = false }: Props) {
   const isApprovedUser = mode === "partner"; // preserves 100% of existing partner behavior/rendering
   const isEmployeeMode = mode === "employee-create" || mode === "employee-edit";
   const router = useRouter();
@@ -436,7 +437,12 @@ export function EditForm({ product, vendors, initialOptions = [], mode = "admin"
   const [isOval, setIsOval] = useState(product.is_oval ?? false);
   const [wristSize, setWristSize] = useState(product.wrist_size ?? "");
   // Employee mode only — the single Cost of Goods field shown in place of the Pricing section.
-  const [cogUsd, setCogUsd] = useState(initialCogUsd != null ? String(initialCogUsd) : "");
+  const [costCurrency, setCostCurrency] = useState<"VND" | "CNY">(initialCostCurrency ?? "VND");
+  const [costAmount, setCostAmount] = useState(initialCostAmount != null ? String(initialCostAmount) : "");
+  const computedImportedPriceVnd =
+    costAmount && Number.isFinite(parseFloat(costAmount))
+      ? Math.round(costCurrency === "CNY" ? parseFloat(costAmount) * 3950 * 1.1 : parseFloat(costAmount))
+      : null;
 
   const [form, setForm] = useState({
     name: product.name,
@@ -769,7 +775,10 @@ export function EditForm({ product, vendors, initialOptions = [], mode = "admin"
     selectedTiers.forEach((t) => fd.append("tier", t));
     orderedImageUrls.forEach((url) => fd.append("imageUrls", url));
     [...existingVideos, ...videoUrls].forEach((url) => fd.append("videoUrls", url));
-    if (cogUsd) fd.append("cogUsd", cogUsd);
+    if (costAmount) {
+      fd.append("costCurrency", costCurrency);
+      fd.append("costAmount", costAmount);
+    }
     // Only present when this employee has vendor visibility — the server
     // action independently re-checks the permission before honoring it.
     if (canViewVendors && vendorId) fd.append("vendor_id", vendorId);
@@ -1324,17 +1333,40 @@ export function EditForm({ product, vendors, initialOptions = [], mode = "admin"
       {isEmployeeMode ? (
         <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-4 sm:px-6 sm:py-6">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-5">Cost</h2>
-          <div className="max-w-xs">
-            <label className={labelClass}>Cost of Goods (COG) (USD)</label>
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
-              <input
-                type="number" step="0.01" min="0"
-                value={cogUsd}
-                onChange={(e) => setCogUsd(e.target.value)}
-                placeholder="0.00"
-                className={`${inputClass} pl-7`}
-              />
+          <div className="max-w-xs space-y-3">
+            <div>
+              <label className={labelClass}>Cost Currency</label>
+              <div className="mt-1 flex gap-2">
+                {(["VND", "CNY"] as const).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCostCurrency(c)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${costCurrency === c
+                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
+                      : "border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400"
+                      }`}
+                  >
+                    {c === "VND" ? "VND (₫)" : "Yuan (¥)"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className={labelClass}>Cost of Goods ({costCurrency})</label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">{costCurrency === "VND" ? "₫" : "¥"}</span>
+                <input
+                  type="number" step={costCurrency === "VND" ? "1" : "0.01"} min="0"
+                  value={costAmount}
+                  onChange={(e) => setCostAmount(e.target.value)}
+                  placeholder="0"
+                  className={`${inputClass} pl-7`}
+                />
+              </div>
+              {costCurrency === "CNY" && computedImportedPriceVnd != null && (
+                <p className="mt-1 text-xs text-gray-400">≈ ₫{computedImportedPriceVnd.toLocaleString()} imported price (¥1 = ₫3,950 × 1.1)</p>
+              )}
             </div>
           </div>
         </section>

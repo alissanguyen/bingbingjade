@@ -80,7 +80,7 @@ export default async function EmployeeEditListingPage({
   }
 
   const [{ data: costRow }, { data: vendors }] = await Promise.all([
-    supabaseAdmin.from("product_costs").select("purchase_price_usd").eq("product_id", listingId).maybeSingle(),
+    supabaseAdmin.from("product_costs").select("purchase_price_original, purchase_currency").eq("product_id", listingId).maybeSingle(),
     canViewVendors ? supabaseAdmin.from("vendors").select("*").order("name") : Promise.resolve({ data: [] }),
   ]);
 
@@ -127,7 +127,8 @@ export default async function EmployeeEditListingPage({
         canViewVendors={canViewVendors}
         mode="employee-edit"
         sku={null}
-        initialCogUsd={costRow?.purchase_price_usd ?? null}
+        initialCostCurrency={costRow?.purchase_currency === "CNY" ? "CNY" : "VND"}
+        initialCostAmount={costRow?.purchase_price_original ?? null}
         onEmployeeSubmit={submitEmployeeListing}
         onEmployeeSaveDraft={saveEmployeeDraft}
       />

@@ -57,8 +57,8 @@ export async function GET(req: NextRequest) {
       ? supabaseAdmin.from("employee_profiles").select("user_id, display_name").in("user_id", employeeIds)
       : Promise.resolve({ data: [] as { user_id: string; display_name: string }[] }),
     productIds.length > 0
-      ? supabaseAdmin.from("product_costs").select("product_id, purchase_price_usd, purchase_currency").in("product_id", productIds)
-      : Promise.resolve({ data: [] as { product_id: string; purchase_price_usd: number; purchase_currency: string }[] }),
+      ? supabaseAdmin.from("product_costs").select("product_id, purchase_price_original, purchase_currency").in("product_id", productIds)
+      : Promise.resolve({ data: [] as { product_id: string; purchase_price_original: number; purchase_currency: string }[] }),
     productIds.length > 0
       ? supabaseAdmin
           .from("listing_submissions")
@@ -86,7 +86,7 @@ export async function GET(req: NextRequest) {
     submissionVersion: r.current_submission_version,
     employeeId: r.created_by_employee_id,
     employeeName: r.created_by_employee_id ? (nameByEmployee.get(r.created_by_employee_id) ?? "Unknown") : null,
-    cog: costByProduct.get(r.id)?.purchase_price_usd ?? null,
+    cog: costByProduct.get(r.id)?.purchase_price_original ?? null,
     cogCurrency: costByProduct.get(r.id)?.purchase_currency ?? null,
     hasSalePrice: r.price_display_usd != null,
     createdAt: r.created_at,
