@@ -144,6 +144,7 @@ export function ProductGallery({ images, videos, category = "", activeIndex }: {
               src={active.src}
               controls
               playsInline
+              muted
               /* Download deterrence — not true DRM */
               controlsList="nodownload nofullscreen"
               disablePictureInPicture
@@ -285,6 +286,7 @@ export function ProductGallery({ images, videos, category = "", activeIndex }: {
                   controls
                   autoPlay
                   playsInline
+                  muted
                   controlsList="nodownload nofullscreen"
                   disablePictureInPicture
                   onContextMenu={blockContextMenu}

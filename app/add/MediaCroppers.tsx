@@ -458,6 +458,7 @@ export function VideoTrimModal({ file, onConfirm, onClose }: VideoTrimModalProps
             src={srcUrl}
             onLoadedMetadata={handleLoadedMetadata}
             controls
+            muted
             className="max-w-full"
             style={{ maxHeight: 300 }}
           />

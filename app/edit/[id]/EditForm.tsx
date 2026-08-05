@@ -1269,7 +1269,7 @@ export function EditForm({ product, vendors, initialOptions = [], mode = "admin"
                       className="ml-3 text-gray-400 hover:text-red-500 transition-colors shrink-0"><XIcon /></button>
                   </div>
                   {previewVideoUrl === url && (
-                    <video src={url} controls playsInline className="w-full max-h-72 bg-black" />
+                    <video src={url} controls playsInline muted className="w-full max-h-72 bg-black" />
                   )}
                 </li>
               ))}

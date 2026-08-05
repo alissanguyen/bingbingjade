@@ -479,7 +479,7 @@ export function SourcingTracker({ token, data, purchaseSuccess }: Props) {
                     {(option.videos_json as string[]).length > 0 && (
                       <div className="flex flex-col gap-3 mb-3">
                         {(option.videos_json as string[]).map((url, i) => (
-                          <video key={i} src={url} controls playsInline className="w-full max-h-72 rounded-lg border border-gray-200 dark:border-gray-700 bg-black" />
+                          <video key={i} src={url} controls playsInline muted className="w-full max-h-72 rounded-lg border border-gray-200 dark:border-gray-700 bg-black" />
                         ))}
                       </div>
                     )}
