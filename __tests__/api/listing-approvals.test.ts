@@ -82,6 +82,12 @@ describe("PATCH /api/admin/listing-approvals/[listingId] — validation", () => 
 
   it("does not require feedback for approve", async () => {
     rpcMock.mockReturnValue({ single: () => Promise.resolve({ data: { new_status: "APPROVED_UNPUBLISHED", credit_created: true }, error: null }) });
+    // Plain "approve" now also promotes draft media (not just approve_and_publish) —
+    // see app/api/admin/listing-approvals/[listingId]/route.ts — so the route fetches
+    // the product's images/videos/slug regardless of which approval decision this is.
+    fromMock.mockReturnValue({
+      select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: { images: [], videos: [], slug: "p1-slug" }, error: null }) }) }),
+    });
     const res = await PATCH(makeReq({ decision: "approve" }), ctx);
     expect(res.status).toBe(200);
     expect(rpcMock).toHaveBeenCalledWith(

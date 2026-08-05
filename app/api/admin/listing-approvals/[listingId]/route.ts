@@ -104,16 +104,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ li
     }
   }
 
-  if (body.decision === "approve_and_publish") {
+  if (isApproval) {
+    // Promote draft media out of the private employee-draft bucket on ANY
+    // approval, not just approve_and_publish — an APPROVED_UNPUBLISHED
+    // product is still shown (with its images) in internal admin tooling
+    // (e.g. the /edit product picker) well before it's published to the
+    // storefront, so its image paths must already resolve publicly by then.
     const { data: product } = await supabaseAdmin.from("products").select("images, videos, slug").eq("id", listingId).maybeSingle();
     if (product) {
       const { failedImages, failedVideos } = await promoteProductDraftMedia(product.images ?? [], product.videos ?? []);
       if (failedImages.length > 0 || failedVideos.length > 0) {
         console.error("[listing-approvals] media promotion had failures", { listingId, failedImages, failedVideos });
       }
-      if (product.slug) revalidatePath(`/products/${product.slug}`);
+      if (body.decision === "approve_and_publish" && product.slug) revalidatePath(`/products/${product.slug}`);
     }
-    revalidatePath("/products");
+    if (body.decision === "approve_and_publish") revalidatePath("/products");
   }
 
   await logAudit({

@@ -41,17 +41,24 @@ export function isStoragePath(value: string): boolean {
 /**
  * Normalise any Supabase Storage URL for a managed bucket back to a bare
  * storage path. This corrects the case where a resolved URL was accidentally
- * saved to the database instead of the original path.
+ * saved to the database instead of the original path — including a signed
+ * jade-employee-drafts preview URL saved via the admin listing-review page
+ * (see app/admin/listing-approvals/[listingId]/page.tsx, which resolves
+ * still-private draft images to short-lived signed URLs so an admin can
+ * preview them inside the shared EditForm component before the listing is
+ * promoted/published). Without this bucket in the allowlist, that signed
+ * URL — token, 10-minute expiry, and all — would be saved verbatim.
  *
  * Examples:
- *   "wm/abc.jpg"                                       → "wm/abc.jpg"  (no-op)
- *   ".../object/sign/jade-images/wm/abc.jpg?token=…"  → "wm/abc.jpg"
- *   ".../object/public/jade-images/wm/abc.jpg"         → "wm/abc.jpg"
- *   ".../object/public/product-images/abc.jpg"         → unchanged    (legacy bucket)
+ *   "wm/abc.jpg"                                             → "wm/abc.jpg"  (no-op)
+ *   ".../object/sign/jade-images/wm/abc.jpg?token=…"        → "wm/abc.jpg"
+ *   ".../object/public/jade-images/wm/abc.jpg"               → "wm/abc.jpg"
+ *   ".../object/sign/jade-employee-drafts/wm/abc.jpg?token=…" → "wm/abc.jpg"
+ *   ".../object/public/product-images/abc.jpg"               → unchanged    (legacy bucket)
  */
 export function toStoragePath(urlOrPath: string): string {
   if (!urlOrPath.startsWith("http")) return urlOrPath;
-  for (const bucket of [IMAGE_BUCKET, VIDEO_BUCKET]) {
+  for (const bucket of [IMAGE_BUCKET, VIDEO_BUCKET, EMPLOYEE_DRAFT_BUCKET]) {
     const match = urlOrPath.match(new RegExp(`/object/(?:sign|public)/${bucket}/([^?]+)`));
     if (match) return match[1];
   }

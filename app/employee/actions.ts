@@ -21,6 +21,7 @@ import { getSessionUser, isCatalogContributor } from "@/lib/approved-auth";
 import { slugify, generatePublicId } from "@/lib/slug";
 import { logAudit } from "@/lib/audit";
 import { getEmployeeCanViewVendors } from "@/lib/employee-permissions";
+import { toStoragePath } from "@/lib/storage";
 
 type EmployeeFields = {
   name: string;
@@ -55,8 +56,13 @@ function extractFields(formData: FormData): EmployeeFields {
     sourcing_notes: (formData.get("sourcing_notes") as string) || null,
     description: (formData.get("description") as string) || null,
     blemishes: (formData.get("blemishes") as string) || null,
-    images: formData.getAll("imageUrls").map(String).filter(Boolean),
-    videos: formData.getAll("videoUrls").map(String).filter(Boolean),
+    // Defensive normalization (mirrors app/edit/[id]/actions.ts): should
+    // always be bare wm/ paths already in the employee flow since the
+    // client never resolves a signed draft URL for these fields, but this
+    // guards against the same class of bug reaching products.images from
+    // this write path too if that ever changes.
+    images: formData.getAll("imageUrls").map(String).filter(Boolean).map(toStoragePath),
+    videos: formData.getAll("videoUrls").map(String).filter(Boolean).map(toStoragePath),
     vendorId: (formData.get("vendor_id") as string) || null,
   };
 }
