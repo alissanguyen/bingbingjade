@@ -20,6 +20,7 @@ export function EmployeeNav({ employeeId, displayName }: { employeeId: string; d
     { href: `${base}/add`, label: "Add Listing" },
     { href: `${base}/adjustments`, label: "Needs Adjustment" },
     { href: `${base}/pay`, label: "Payouts" },
+    { href: `${base}/tokens`, label: "Tokens" },
     { href: `${base}/profile`, label: "Profile" },
   ];
 

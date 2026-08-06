@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionUser, isApproved } from "@/lib/approved-auth";
+import { getSessionUser, isApproved, isCatalogContributor } from "@/lib/approved-auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 // POST /api/approved/token-request
 // Body: { message?: string; requested_amount?: number }
+//
+// Generation tokens (approved_users.generation_tokens) gate both partners and
+// catalog contributors in /api/generate-product-copy, so both roles need to
+// be able to request more here — isApproved() alone is partner-only by
+// design (see its doc comment in lib/approved-auth.ts), so it's OR'd with
+// isCatalogContributor() explicitly rather than widened globally.
 export async function POST(req: NextRequest) {
   const session = await getSessionUser();
-  if (!isApproved(session)) {
+  if (!isApproved(session) && !isCatalogContributor(session)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

@@ -5,7 +5,7 @@ import { getSessionUser, isApproved } from "@/lib/approved-auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { AdminBarServer } from "@/app/components/AdminBarServer";
 import Image from "next/image";
-import { TokenSection } from "./TokenSection";
+import { TokenSection } from "@/app/components/TokenSection";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 

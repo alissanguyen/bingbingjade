@@ -156,8 +156,9 @@ export async function POST(req: NextRequest) {
       .eq("id", gatedUserId)
       .single();
     if (!tokenRow || tokenRow.generation_tokens <= 0) {
+      const requestMorePage = isCatalogContributor(session) ? `the Tokens page in your employee portal` : "your Profile page";
       return NextResponse.json(
-        { error: "You have no generation tokens remaining. Request more from your Profile page." },
+        { error: `You have no generation tokens remaining. Request more from ${requestMorePage}.` },
         { status: 403 }
       );
     }

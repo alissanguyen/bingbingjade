@@ -11,7 +11,7 @@ async function isAdmin(): Promise<boolean> {
   return !!session && session === process.env.ADMIN_PASSWORD;
 }
 
-const USER_SELECT = "id, email, full_name, access_level, role, is_active, session_version, created_at";
+const USER_SELECT = "id, email, full_name, access_level, role, is_active, session_version, generation_tokens, created_at";
 
 // GET — list all approved users (partners and catalog contributors), with
 // employee_profiles embedded for catalog contributors.
@@ -131,6 +131,8 @@ export async function PATCH(req: NextRequest) {
     ratePerApprovedListing?: number;
     employeeStatus?: "active" | "suspended" | "terminated";
     canViewVendors?: boolean;
+    /** Additive — added to the user's current generation_tokens balance, not an absolute set. */
+    grantTokens?: number;
   };
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
@@ -140,7 +142,7 @@ export async function PATCH(req: NextRequest) {
 
   const { data: existing } = await supabaseAdmin
     .from("approved_users")
-    .select("id, role, is_active, session_version")
+    .select("id, role, is_active, session_version, generation_tokens")
     .eq("id", body.id)
     .maybeSingle();
   if (!existing) return NextResponse.json({ error: "User not found." }, { status: 404 });
@@ -162,6 +164,13 @@ export async function PATCH(req: NextRequest) {
   }
   if (body.revokeSessions) {
     updates.session_version = existing.session_version + 1;
+  }
+  if (body.grantTokens !== undefined) {
+    const grantAmount = Number(body.grantTokens);
+    if (!Number.isFinite(grantAmount) || grantAmount <= 0) {
+      return NextResponse.json({ error: "grantTokens must be a positive number." }, { status: 400 });
+    }
+    updates.generation_tokens = (existing.generation_tokens ?? 0) + Math.round(grantAmount);
   }
 
   // employee_profiles.status drives login access for catalog contributors:
@@ -208,7 +217,7 @@ export async function PATCH(req: NextRequest) {
 
   await logAudit({
     actorUserId: "admin",
-    action: body.revokeSessions ? "revoke_sessions" : "update_account",
+    action: body.revokeSessions ? "revoke_sessions" : body.grantTokens !== undefined ? "grant_tokens" : "update_account",
     entityType: "approved_user",
     entityId: body.id,
     previousValue: existing,

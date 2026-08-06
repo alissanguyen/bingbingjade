@@ -22,6 +22,7 @@ type ApprovedUser = {
   role: "partner" | "catalog_contributor";
   is_active: boolean;
   created_at: string;
+  generation_tokens: number;
   employee_profiles: EmployeeProfile[] | EmployeeProfile | null;
 };
 
@@ -57,6 +58,9 @@ export default function ApprovedUsersPage() {
   });
   const [editError, setEditError] = useState("");
   const [reassignTarget, setReassignTarget] = useState<Record<string, string>>({});
+  const [grantAmount, setGrantAmount] = useState<Record<string, string>>({});
+  const [granting, setGranting] = useState<string | null>(null);
+  const [grantError, setGrantError] = useState<Record<string, string>>({});
 
   async function load() {
     const res = await fetch("/api/admin/approved-users");
@@ -144,6 +148,26 @@ export default function ApprovedUsersPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, revokeSessions: true }),
     });
+    load();
+  }
+
+  async function handleGrantTokens(id: string) {
+    const amount = Number(grantAmount[id]);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setGrantError((e) => ({ ...e, [id]: "Enter a positive number." }));
+      return;
+    }
+    setGranting(id);
+    setGrantError((e) => ({ ...e, [id]: "" }));
+    const res = await fetch("/api/admin/approved-users", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, grantTokens: amount }),
+    });
+    const data = await res.json();
+    setGranting(null);
+    if (!res.ok) { setGrantError((e) => ({ ...e, [id]: data.error })); return; }
+    setGrantAmount((a) => ({ ...a, [id]: "" }));
     load();
   }
 
@@ -352,6 +376,16 @@ export default function ApprovedUsersPage() {
                               {profile.status}
                             </span>
                           )}
+                          <span
+                            className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${user.generation_tokens === 0
+                              ? "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400"
+                              : user.generation_tokens <= 3
+                                ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400"
+                                : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                              }`}
+                          >
+                            {user.generation_tokens} token{user.generation_tokens === 1 ? "" : "s"}
+                          </span>
                         </div>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{user.email}</p>
                         {isEmployee && profile && (
@@ -377,6 +411,29 @@ export default function ApprovedUsersPage() {
                           Delete
                         </button>
                       </div>
+                    </div>
+                  )}
+
+                  {editing !== user.id && (
+                    <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-2 flex-wrap">
+                      <label className="text-xs text-gray-500 dark:text-gray-400">Grant tokens:</label>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        placeholder="e.g. 10"
+                        value={grantAmount[user.id] ?? ""}
+                        onChange={e => setGrantAmount(a => ({ ...a, [user.id]: e.target.value }))}
+                        className="w-20 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-xs text-gray-900 dark:text-gray-100"
+                      />
+                      <button
+                        onClick={() => handleGrantTokens(user.id)}
+                        disabled={granting === user.id || !grantAmount[user.id]}
+                        className="text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:underline disabled:opacity-50 disabled:no-underline"
+                      >
+                        {granting === user.id ? "Granting…" : "Grant"}
+                      </button>
+                      {grantError[user.id] && <p className="text-xs text-red-500">{grantError[user.id]}</p>}
                     </div>
                   )}
 
