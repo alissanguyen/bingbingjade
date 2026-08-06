@@ -16,8 +16,8 @@ export function ProfileEditForm({ initialBio, initialAvatarUrl }: { initialBio: 
       const fd = new FormData();
       fd.append("bio", bio);
       fd.append("avatarUrl", avatarUrl);
-      await updateOwnEmployeeProfile(fd);
-      setMsg("Saved.");
+      const res = await updateOwnEmployeeProfile(fd);
+      setMsg(res?.error ?? "Saved.");
     } catch (err) {
       setMsg(err instanceof Error ? err.message : "Failed to save.");
     } finally {

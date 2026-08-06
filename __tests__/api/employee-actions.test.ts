@@ -51,8 +51,19 @@ vi.mock("@/lib/employee-permissions", () => ({
   getEmployeeCanViewVendors: () => Promise.resolve(canViewVendors),
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+// Mirrors real Next.js: redirect() throws an error tagged with a digest;
+// unstable_rethrow only rethrows errors carrying that tag, otherwise no-ops —
+// so actions.ts's try/catch can tell "this is a redirect" apart from "this
+// is a real error that should become a returned { error } instead of throwing."
 vi.mock("next/navigation", () => ({
-  redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); },
+  redirect: (url: string) => {
+    const err = new Error(`REDIRECT:${url}`) as Error & { digest: string };
+    err.digest = "NEXT_REDIRECT";
+    throw err;
+  },
+  unstable_rethrow: (err: unknown) => {
+    if (err instanceof Error && (err as Error & { digest?: string }).digest === "NEXT_REDIRECT") throw err;
+  },
 }));
 
 let mockSession: unknown = null;
@@ -85,42 +96,45 @@ beforeEach(() => {
 describe("employee actions — authorization", () => {
   it("rejects a non-employee session (admin) from saveEmployeeDraft", async () => {
     mockSession = { type: "admin" };
-    await expect(saveEmployeeDraft(fd({ name: "Test" }))).rejects.toThrow("Unauthorized");
+    const res = await saveEmployeeDraft(fd({ name: "Test" }));
+    expect(res?.error).toMatch(/Unauthorized/);
   });
 
   it("rejects a partner session from saveEmployeeDraft", async () => {
     mockSession = { type: "approved", user: { id: "p1", role: "partner", email: "p@x.com", full_name: "P", access_level: "standard" } };
-    await expect(saveEmployeeDraft(fd({ name: "Test" }))).rejects.toThrow("Unauthorized");
+    const res = await saveEmployeeDraft(fd({ name: "Test" }));
+    expect(res?.error).toMatch(/Unauthorized/);
   });
 });
 
 describe("employee actions — ownership", () => {
   it("an employee cannot edit another employee's listing by guessing its productId", async () => {
     products.push({ id: "p1", created_by_employee_id: EMP_B, listing_status: "EMPLOYEE_DRAFT" });
-    await expect(saveEmployeeDraft(fd({ productId: "p1", name: "Hijacked" }))).rejects.toThrow("Listing not found");
+    const res = await saveEmployeeDraft(fd({ productId: "p1", name: "Hijacked" }));
+    expect(res?.error).toMatch(/Listing not found/);
     // The other employee's row must be untouched.
     expect(products[0].name).toBeUndefined();
   });
 
   it("gives the same error for a nonexistent listing as for someone else's (no existence signal)", async () => {
-    let ownErr: string | undefined;
-    let missingErr: string | undefined;
     products.push({ id: "p1", created_by_employee_id: EMP_B, listing_status: "EMPLOYEE_DRAFT" });
-    try { await saveEmployeeDraft(fd({ productId: "p1", name: "X" })); } catch (e) { ownErr = (e as Error).message; }
-    try { await saveEmployeeDraft(fd({ productId: "does-not-exist", name: "X" })); } catch (e) { missingErr = (e as Error).message; }
-    expect(ownErr).toBe(missingErr);
+    const ownRes = await saveEmployeeDraft(fd({ productId: "p1", name: "X" }));
+    const missingRes = await saveEmployeeDraft(fd({ productId: "does-not-exist", name: "X" }));
+    expect(ownRes?.error).toBe(missingRes?.error);
   });
 });
 
 describe("employee actions — status locking", () => {
   it("cannot edit a listing that is AWAITING_APPROVAL", async () => {
     products.push({ id: "p1", created_by_employee_id: EMP_A, listing_status: "AWAITING_APPROVAL" });
-    await expect(saveEmployeeDraft(fd({ productId: "p1", name: "X" }))).rejects.toThrow("can no longer be edited");
+    const res = await saveEmployeeDraft(fd({ productId: "p1", name: "X" }));
+    expect(res?.error).toMatch(/can no longer be edited/);
   });
 
   it("cannot edit a PUBLISHED listing", async () => {
     products.push({ id: "p1", created_by_employee_id: EMP_A, listing_status: "PUBLISHED" });
-    await expect(saveEmployeeDraft(fd({ productId: "p1", name: "X" }))).rejects.toThrow("can no longer be edited");
+    const res = await saveEmployeeDraft(fd({ productId: "p1", name: "X" }));
+    expect(res?.error).toMatch(/can no longer be edited/);
   });
 
   it("CAN edit a listing in NEEDS_ADJUSTMENT", async () => {
@@ -178,7 +192,8 @@ describe("employee actions — contributor cost currency", () => {
 
 describe("employee actions — submit", () => {
   it("requires at least one photo", async () => {
-    await expect(submitEmployeeListing(fd({ name: "No Photos" }))).rejects.toThrow("At least one photo");
+    const res = await submitEmployeeListing(fd({ name: "No Photos" }));
+    expect(res?.error).toMatch(/At least one photo/);
   });
 
   it("calls fn_submit_listing with the caller's own employeeId, never a client-supplied one", async () => {

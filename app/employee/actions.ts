@@ -14,7 +14,7 @@
  * re-checks that flag itself rather than trusting whatever the client sent.
  */
 
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser, isCatalogContributor } from "@/lib/approved-auth";
@@ -190,26 +190,39 @@ async function requireEditableOwnedDraft(employeeId: string, productId: string):
 // Works for both the Add page (no productId yet — creates, then redirects to
 // the new draft's edit page) and the Edit page (productId present — updates
 // in place, stays on the page).
-export async function saveEmployeeDraft(formData: FormData): Promise<void> {
-  const employeeId = await requireEmployeeId();
-  const canViewVendors = await getEmployeeCanViewVendors(employeeId);
-  const fields = extractFields(formData);
-  const productId = String(formData.get("productId") ?? "");
+//
+// Returns { error } instead of throwing on failure — matching updateProduct's
+// convention (app/edit/[id]/actions.ts) — because Next.js redacts a Server
+// Action's thrown Error message to a generic "An error occurred in the Server
+// Components render..." string in production builds, so a plain `throw` here
+// would make every validation/ownership error (not just unexpected bugs)
+// unreadable to the caller. unstable_rethrow lets the internal redirect()
+// calls below still navigate normally — only real errors get converted.
+export async function saveEmployeeDraft(formData: FormData): Promise<{ error: string } | void> {
+  try {
+    const employeeId = await requireEmployeeId();
+    const canViewVendors = await getEmployeeCanViewVendors(employeeId);
+    const fields = extractFields(formData);
+    const productId = String(formData.get("productId") ?? "");
 
-  if (productId) {
-    await requireEditableOwnedDraft(employeeId, productId);
-    if (!fields.name) throw new Error("Name is required.");
-    const { error } = await supabaseAdmin.from("products").update(fieldsToRow(fields, canViewVendors)).eq("id", productId);
-    if (error) throw new Error(error.message);
-    await applyContributorCost(productId, formData);
-    revalidatePath(`/employee/${employeeId}/listings/${productId}/edit`);
-    return;
+    if (productId) {
+      await requireEditableOwnedDraft(employeeId, productId);
+      if (!fields.name) throw new Error("Name is required.");
+      const { error } = await supabaseAdmin.from("products").update(fieldsToRow(fields, canViewVendors)).eq("id", productId);
+      if (error) throw new Error(error.message);
+      await applyContributorCost(productId, formData);
+      revalidatePath(`/employee/${employeeId}/listings/${productId}/edit`);
+      return;
+    }
+
+    const newId = await insertDraft(employeeId, fields, canViewVendors);
+    await applyContributorCost(newId, formData);
+    revalidatePath(`/employee/${employeeId}/listings`);
+    redirect(`/employee/${employeeId}/listings/${newId}/edit`);
+  } catch (err) {
+    unstable_rethrow(err);
+    return { error: err instanceof Error ? err.message : "Failed to save draft." };
   }
-
-  const newId = await insertDraft(employeeId, fields, canViewVendors);
-  await applyContributorCost(newId, formData);
-  revalidatePath(`/employee/${employeeId}/listings`);
-  redirect(`/employee/${employeeId}/listings/${newId}/edit`);
 }
 
 // ── Submit for Approval ────────────────────────────────────────────────────────
@@ -218,67 +231,79 @@ export async function saveEmployeeDraft(formData: FormData): Promise<void> {
 // fn_submit_listing DB function is what actually enforces the status/ownership
 // invariants atomically (see migration_113) and creates the versioned
 // submission snapshot.
-export async function submitEmployeeListing(formData: FormData): Promise<void> {
-  const employeeId = await requireEmployeeId();
-  const canViewVendors = await getEmployeeCanViewVendors(employeeId);
-  const fields = extractFields(formData);
-  if (!fields.name) throw new Error("Name is required.");
-  if (fields.images.length === 0) throw new Error("At least one photo is required to submit.");
+//
+// Returns { error } instead of throwing — see saveEmployeeDraft's comment above.
+export async function submitEmployeeListing(formData: FormData): Promise<{ error: string } | void> {
+  try {
+    const employeeId = await requireEmployeeId();
+    const canViewVendors = await getEmployeeCanViewVendors(employeeId);
+    const fields = extractFields(formData);
+    if (!fields.name) throw new Error("Name is required.");
+    if (fields.images.length === 0) throw new Error("At least one photo is required to submit.");
 
-  let productId = String(formData.get("productId") ?? "");
+    let productId = String(formData.get("productId") ?? "");
 
-  if (productId) {
-    await requireEditableOwnedDraft(employeeId, productId);
-    const { error } = await supabaseAdmin.from("products").update(fieldsToRow(fields, canViewVendors)).eq("id", productId);
-    if (error) throw new Error(error.message);
-  } else {
-    productId = await insertDraft(employeeId, fields, canViewVendors);
+    if (productId) {
+      await requireEditableOwnedDraft(employeeId, productId);
+      const { error } = await supabaseAdmin.from("products").update(fieldsToRow(fields, canViewVendors)).eq("id", productId);
+      if (error) throw new Error(error.message);
+    } else {
+      productId = await insertDraft(employeeId, fields, canViewVendors);
+    }
+
+    const cost = extractContributorCost(formData);
+    await applyContributorCost(productId, formData);
+
+    const snapshot = {
+      ...fieldsToRow(fields, canViewVendors),
+      costCurrency: cost?.currency ?? null,
+      costAmount: cost?.amount ?? null,
+      importedPriceVnd: cost?.importedPriceVnd ?? null,
+    };
+    const { error: rpcError } = await supabaseAdmin.rpc("fn_submit_listing", {
+      p_product_id: productId,
+      p_employee_id: employeeId,
+      p_snapshot: snapshot,
+    });
+    if (rpcError) throw new Error(rpcError.message);
+
+    await logAudit({
+      actorUserId: employeeId,
+      action: "submit_listing",
+      entityType: "product",
+      entityId: productId,
+    });
+
+    revalidatePath(`/employee/${employeeId}/listings`);
+    redirect(`/employee/${employeeId}/listings`);
+  } catch (err) {
+    unstable_rethrow(err);
+    return { error: err instanceof Error ? err.message : "Something went wrong." };
   }
-
-  const cost = extractContributorCost(formData);
-  await applyContributorCost(productId, formData);
-
-  const snapshot = {
-    ...fieldsToRow(fields, canViewVendors),
-    costCurrency: cost?.currency ?? null,
-    costAmount: cost?.amount ?? null,
-    importedPriceVnd: cost?.importedPriceVnd ?? null,
-  };
-  const { error: rpcError } = await supabaseAdmin.rpc("fn_submit_listing", {
-    p_product_id: productId,
-    p_employee_id: employeeId,
-    p_snapshot: snapshot,
-  });
-  if (rpcError) throw new Error(rpcError.message);
-
-  await logAudit({
-    actorUserId: employeeId,
-    action: "submit_listing",
-    entityType: "product",
-    entityId: productId,
-  });
-
-  revalidatePath(`/employee/${employeeId}/listings`);
-  redirect(`/employee/${employeeId}/listings`);
 }
 
 // ── Update own profile (bio/avatar only) ───────────────────────────────────────
 // Name, pay rate, and status are admin-controlled — not writable here.
-export async function updateOwnEmployeeProfile(formData: FormData): Promise<void> {
-  const employeeId = await requireEmployeeId();
-  const bio = String(formData.get("bio") ?? "").trim();
-  const avatarUrl = String(formData.get("avatarUrl") ?? "").trim();
+export async function updateOwnEmployeeProfile(formData: FormData): Promise<{ error: string } | void> {
+  try {
+    const employeeId = await requireEmployeeId();
+    const bio = String(formData.get("bio") ?? "").trim();
+    const avatarUrl = String(formData.get("avatarUrl") ?? "").trim();
 
-  const { error } = await supabaseAdmin
-    .from("employee_profiles")
-    .update({
-      bio: bio || null,
-      avatar_url: avatarUrl || null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", employeeId);
+    const { error } = await supabaseAdmin
+      .from("employee_profiles")
+      .update({
+        bio: bio || null,
+        avatar_url: avatarUrl || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", employeeId);
 
-  if (error) throw new Error(error.message);
-  revalidatePath(`/employee/${employeeId}/profile`);
-  revalidatePath(`/employee/${employeeId}`);
+    if (error) throw new Error(error.message);
+    revalidatePath(`/employee/${employeeId}/profile`);
+    revalidatePath(`/employee/${employeeId}`);
+  } catch (err) {
+    unstable_rethrow(err);
+    return { error: err instanceof Error ? err.message : "Failed to save." };
+  }
 }

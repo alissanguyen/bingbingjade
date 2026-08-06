@@ -212,13 +212,13 @@ interface Props {
    * Called with an employee-safe FormData (no price/vendor/options fields) instead
    * of the updateProduct server action when mode is "employee-create" or "employee-edit".
    */
-  onEmployeeSubmit?: (formData: FormData) => Promise<void>;
+  onEmployeeSubmit?: (formData: FormData) => Promise<{ error: string } | void>;
   /**
    * Same employee-safe FormData shape as onEmployeeSubmit, but for the
    * separate "Save Draft" action — saves without submission validation/locking
    * and doesn't navigate away.
    */
-  onEmployeeSaveDraft?: (formData: FormData) => Promise<void>;
+  onEmployeeSaveDraft?: (formData: FormData) => Promise<{ error: string } | void>;
   /**
    * Per-employee capability (employee_profiles.can_view_vendors), only
    * consulted in employee modes. The server actions independently re-check
@@ -795,7 +795,11 @@ export function EditForm({ product, vendors, initialOptions = [], mode = "admin"
     setResult(null);
     try {
       const fd = await buildEmployeeFormData();
-      await onEmployeeSaveDraft(fd);
+      const res = await onEmployeeSaveDraft(fd);
+      if (res?.error) {
+        setResult({ error: res.error });
+        return;
+      }
       setDraftSavedMsg("Draft saved.");
       setNewVideos([]);
     } catch (err) {
@@ -817,12 +821,18 @@ export function EditForm({ product, vendors, initialOptions = [], mode = "admin"
         setResult({ error: "Name is required." });
         return;
       }
+      if (acceptedImages.length === 0) {
+        setResult({ error: "At least one photo is required to submit." });
+        return;
+      }
       setIsSubmitting(true);
       setResult(null);
       try {
         const fd = await buildEmployeeFormData();
-        if (onEmployeeSubmit) {
-          await onEmployeeSubmit(fd);
+        const res = onEmployeeSubmit ? await onEmployeeSubmit(fd) : undefined;
+        if (res?.error) {
+          setResult({ error: res.error });
+          return;
         }
         setResult({ success: true, pendingApproval: true });
         setNewVideos([]);
