@@ -463,6 +463,23 @@ export function ProductForm({ vendors, mode = "admin", sku, onEmployeeSubmit, on
   const [sourceNotes, setSourceNotes] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
+  const [isNoTokensError, setIsNoTokensError] = useState(false);
+  const [tokenRequest, setTokenRequest] = useState<{ sending?: boolean; sent?: boolean; error?: string } | null>(null);
+
+  const requestMoreTokens = async () => {
+    setTokenRequest({ sending: true });
+    try {
+      const res = await fetch("/api/approved/token-request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+      const data = await res.json();
+      if (!res.ok) {
+        setTokenRequest({ error: data.error ?? "Something went wrong." });
+        return;
+      }
+      setTokenRequest({ sent: true });
+    } catch {
+      setTokenRequest({ error: "Network error." });
+    }
+  };
 
   const fillNotesFromForm = () => {
     const parts: string[] = [];
@@ -506,6 +523,8 @@ export function ProductForm({ vendors, mode = "admin", sku, onEmployeeSubmit, on
   const generateCopy = async () => {
     setIsGenerating(true);
     setGenerateError(null);
+    setIsNoTokensError(false);
+    setTokenRequest(null);
     try {
       // Encode up to 3 images for Claude vision (resize to 1024px — AI-only, upload is unaffected)
       const imagePayloads: { data: string; mediaType: "image/jpeg" }[] = [];
@@ -530,6 +549,7 @@ export function ProductForm({ vendors, mode = "admin", sku, onEmployeeSubmit, on
       const data = await res.json();
       if (!res.ok) {
         setGenerateError(data.error ?? "Generation failed");
+        setIsNoTokensError(data.code === "no_tokens");
         return;
       }
       setForm((f) => ({
@@ -1339,7 +1359,27 @@ export function ProductForm({ vendors, mode = "admin", sku, onEmployeeSubmit, on
               Analyzes photos + notes to fill Name, Description, Blemishes, Size, Origin, and Imported Price. Review before saving.
             </p>
             {generateError && (
-              <p className="text-xs text-red-500 dark:text-red-400">{generateError}</p>
+              <p className="text-xs text-red-500 dark:text-red-400">
+                {generateError}
+                {isNoTokensError && (
+                  tokenRequest?.sent ? (
+                    <span className="ml-1 text-emerald-600 dark:text-emerald-400">Request sent!</span>
+                  ) : (
+                    <>
+                      {" "}
+                      <button
+                        type="button"
+                        onClick={requestMoreTokens}
+                        disabled={tokenRequest?.sending}
+                        className="underline hover:no-underline disabled:opacity-50 font-medium"
+                      >
+                        {tokenRequest?.sending ? "Requesting…" : "Request more"}
+                      </button>
+                      {tokenRequest?.error && <span className="ml-1">({tokenRequest.error})</span>}
+                    </>
+                  )
+                )}
+              </p>
             )}
           </div>
 
