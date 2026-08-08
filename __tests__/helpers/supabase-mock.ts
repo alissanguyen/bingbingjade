@@ -7,7 +7,7 @@ import { vi } from "vitest";
  * builders are themselves thenable.
  */
 export function chainable(result: { data?: unknown; error?: unknown; count?: number } = { data: null, error: null }) {
-  const methods = ["select", "insert", "update", "delete", "eq", "neq", "in", "is", "order", "range", "or", "limit"];
+  const methods = ["select", "insert", "update", "delete", "eq", "neq", "in", "is", "not", "order", "range", "or", "limit", "returns"];
   const builder: Record<string, unknown> = {};
   for (const m of methods) {
     builder[m] = vi.fn(() => builder);

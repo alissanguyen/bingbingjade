@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser, isAdmin } from "@/lib/approved-auth";
+import { isStoragePath, resolveEmployeeDraftUrl, resolveImageUrl } from "@/lib/storage";
 
 type ProductRow = {
   id: string;
@@ -77,22 +78,35 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const queue = rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    category: r.category,
-    thumbnail: r.images?.[0] ?? null,
-    listingStatus: r.listing_status,
-    submissionVersion: r.current_submission_version,
-    employeeId: r.created_by_employee_id,
-    employeeName: r.created_by_employee_id ? (nameByEmployee.get(r.created_by_employee_id) ?? "Unknown") : null,
-    cog: costByProduct.get(r.id)?.purchase_price_original ?? null,
-    cogCurrency: costByProduct.get(r.id)?.purchase_currency ?? null,
-    hasSalePrice: r.price_display_usd != null,
-    createdAt: r.created_at,
-    isFirstSubmission: r.current_submission_version === 1,
-    priorAdjustmentRequests: adjustmentCountByProduct.get(r.id) ?? 0,
-  }));
+  // Thumbnail resolution mirrors app/admin/listing-approvals/[listingId]/page.tsx:
+  // an unpublished listing's images still live in the private
+  // jade-employee-drafts bucket (need a signed URL), while a published one's
+  // images have been promoted to the public jade-images bucket. Rendering the
+  // bare storage path directly (the previous behavior) 404s either way.
+  async function resolveThumbnail(path: string | undefined, listingStatus: string | null): Promise<string | null> {
+    if (!path) return null;
+    if (!isStoragePath(path)) return path;
+    return listingStatus === "PUBLISHED" ? resolveImageUrl(path) : resolveEmployeeDraftUrl(path);
+  }
+
+  const queue = await Promise.all(
+    rows.map(async (r) => ({
+      id: r.id,
+      name: r.name,
+      category: r.category,
+      thumbnail: await resolveThumbnail(r.images?.[0], r.listing_status),
+      listingStatus: r.listing_status,
+      submissionVersion: r.current_submission_version,
+      employeeId: r.created_by_employee_id,
+      employeeName: r.created_by_employee_id ? (nameByEmployee.get(r.created_by_employee_id) ?? "Unknown") : null,
+      cog: costByProduct.get(r.id)?.purchase_price_original ?? null,
+      cogCurrency: costByProduct.get(r.id)?.purchase_currency ?? null,
+      hasSalePrice: r.price_display_usd != null,
+      createdAt: r.created_at,
+      isFirstSubmission: r.current_submission_version === 1,
+      priorAdjustmentRequests: adjustmentCountByProduct.get(r.id) ?? 0,
+    }))
+  );
 
   return NextResponse.json({ queue });
 }

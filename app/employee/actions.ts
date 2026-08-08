@@ -28,6 +28,7 @@ type EmployeeFields = {
   category: string;
   origin: string;
   size: string;
+  size_detailed: (number | null)[] | null;
   color: string[];
   tier: string[];
   quick_ship: boolean;
@@ -48,6 +49,19 @@ function extractFields(formData: FormData): EmployeeFields {
     category: String(formData.get("category") ?? ""),
     origin: String(formData.get("origin") ?? "Myanmar"),
     size: String(formData.get("size") ?? ""),
+    // Mirrors app/add/actions.ts's size_detailed parsing — size/width/thickness,
+    // the same 3 fields the employee form's "Detailed Dimensions" section sends
+    // (size_detailed_0/1/2). Previously these were sent by the client (including
+    // when auto-filled from AI generation) but silently dropped here since this
+    // field wasn't in the allowlist at all.
+    size_detailed: (() => {
+      const keys = ["size_detailed_0", "size_detailed_1", "size_detailed_2"];
+      const vals = keys.map((k) => {
+        const v = formData.get(k);
+        return v !== "" && v !== null ? Number(v) : null;
+      });
+      return vals.some((v) => v !== null) ? vals : null;
+    })(),
     color: formData.getAll("color").map(String),
     tier: formData.getAll("tier").map(String),
     quick_ship: formData.get("quick_ship") === "true",
@@ -79,6 +93,7 @@ function fieldsToRow(fields: EmployeeFields, canViewVendors: boolean) {
     category: fields.category,
     origin: fields.origin,
     size: fields.size,
+    size_detailed: fields.size_detailed,
     color: fields.color,
     tier: fields.tier,
     quick_ship: fields.quick_ship,

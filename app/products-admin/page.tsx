@@ -41,6 +41,13 @@ export default async function ProductsAdminPage() {
         .from("products")
         .select("id, name, category, status, is_published, is_clearance, quick_ship, price_display_usd, public_id, slug, images, created_at, renewed_at")
         .eq("pending_approval", false)
+        // Catalog-contributor listings carry their own listing_status (see
+        // migration_106) independent of pending_approval, which only covers
+        // the legacy partner flow. Unvalidated employee listings (still
+        // EMPLOYEE_DRAFT/AWAITING_APPROVAL/NEEDS_ADJUSTMENT/REJECTED) have
+        // their own queue at /admin/listing-approvals and must not leak
+        // into the main catalog here until an admin has approved them.
+        .or("listing_status.is.null,listing_status.in.(APPROVED_UNPUBLISHED,PUBLISHED)")
         .order("created_at", { ascending: false })
         .range(from, to)
     ),

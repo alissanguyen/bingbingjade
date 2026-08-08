@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // A tiny in-memory "products" table so requireEditableOwnedDraft / insert /
 // update behave like the real thing without a live DB. Only the columns
 // these actions actually touch are modeled.
-type Row = { id: string; created_by_employee_id: string; listing_status: string; name?: string; vendor_id?: string; imported_price_vnd?: number };
+type Row = { id: string; created_by_employee_id: string; listing_status: string; name?: string; vendor_id?: string; imported_price_vnd?: number; size_detailed?: (number | null)[] | null };
 let products: Row[] = [];
 let canViewVendors = false;
 
@@ -187,6 +187,26 @@ describe("employee actions — contributor cost currency", () => {
     products.push({ id: "p1", created_by_employee_id: EMP_A, listing_status: "EMPLOYEE_DRAFT", name: "Old", imported_price_vnd: 999 });
     await saveEmployeeDraft(fd({ productId: "p1", name: "Updated" }));
     expect(products[0].imported_price_vnd).toBe(999);
+  });
+});
+
+describe("employee actions — detailed dimensions", () => {
+  it("saves size_detailed_0/1/2 (size/width/thickness) sent by the form", async () => {
+    products.push({ id: "p1", created_by_employee_id: EMP_A, listing_status: "EMPLOYEE_DRAFT", name: "Old" });
+    await saveEmployeeDraft(fd({ productId: "p1", name: "Updated", size_detailed_0: "57", size_detailed_1: "16", size_detailed_2: "9" }));
+    expect(products[0].size_detailed).toEqual([57, 16, 9]);
+  });
+
+  it("keeps a partially-filled dimension as null rather than coercing to 0", async () => {
+    products.push({ id: "p1", created_by_employee_id: EMP_A, listing_status: "EMPLOYEE_DRAFT", name: "Old" });
+    await saveEmployeeDraft(fd({ productId: "p1", name: "Updated", size_detailed_0: "57" }));
+    expect(products[0].size_detailed).toEqual([57, null, null]);
+  });
+
+  it("saves null when no detailed dimensions are provided at all", async () => {
+    products.push({ id: "p1", created_by_employee_id: EMP_A, listing_status: "EMPLOYEE_DRAFT", name: "Old" });
+    await saveEmployeeDraft(fd({ productId: "p1", name: "Updated" }));
+    expect(products[0].size_detailed).toBeNull();
   });
 });
 
