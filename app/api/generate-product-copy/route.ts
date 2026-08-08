@@ -55,6 +55,15 @@ function buildPrompt(data: GenerateRequest): string {
   const sizeStr = size ? `${size}mm` : "unspecified";
   const notesStr = sourceNotes?.trim() || "(none provided)";
 
+  // "Icy" is a specific, meaningful transparency grade (Icy / Icy Glutinous /
+  // High Icy) — using the word when the piece wasn't actually graded that way
+  // overstates transparency to the buyer. Decided in code, not left to the
+  // model to infer from the tier list, so it's enforced deterministically.
+  const hasIcyTier = tiers.some((t) => /icy/i.test(t));
+  const icyRule = hasIcyTier
+    ? `- The tier includes an Icy grade (${tierStr}), so "icy"/"Icy" may be used if it visually fits.`
+    : `- CRITICAL: The word "icy"/"Icy" must NOT appear anywhere in the title or description — no Icy-grade tier (Icy, Icy Glutinous, High Icy) is selected (tier: ${tierStr}).`;
+
   return `You are an expert copywriter for a premium jade jewelry boutique. Generate product copy for a jadeite piece.
 ${hasPhotos ? "You have been provided with actual photos of the piece above. Base your copy primarily on what you observe in the photos — color, translucency, texture, inclusions, pattern, and overall visual impression. The structured facts below supplement the photos." : "No photos were provided. Base your copy on the structured facts below."}
 
@@ -86,7 +95,9 @@ TITLE RULES:
 - Do NOT write generic titles like "Natural Jadeite Bangle 56mm - Blue and Purple" or "Green Jade Ring"
 - Do NOT keyword-stuff
 - Do NOT use cheesy mystical or fantasy language
-- GOOD examples: "Soft Jelly Translucency with Moss Accents", "Icy Blue with Floating Emerald Bangle 52mm", "Deep Forest Floating Jadeite Bangle", "Spring Green-Emerald Jadeite Band"
+${icyRule}
+- If the piece shows only a faint/subtle lavender undertone (not a dominant, saturated lavender color), call it "Moonlight" or "Lavender Undertone" rather than plain "Lavender" — "Lavender" alone implies a stronger, more saturated purple that would misrepresent a faint piece
+- GOOD examples: "Soft Jelly Translucency with Moss Accents", "Frosted Blue with Floating Emerald Bangle 52mm", "Deep Forest Floating Jadeite Bangle", "Spring Green-Emerald Jadeite Band", "Moonlight Undertone Bangle 54mm" (faint lavender), "Icy Blue with Floating Emerald Bangle 52mm" (only when tier is Icy-grade)
 
 DESCRIPTION RULES:
 - Single paragraph only, 2–4 sentences
@@ -95,6 +106,8 @@ DESCRIPTION RULES:
 - Do NOT sound like a lab report or a mass-produced listing
 - Do NOT mention certification or "Type A" unless the source notes explicitly state it
 - Do NOT invent facts not present in the input
+- The Icy-grade restriction above applies here too: ${hasIcyTier ? `"icy"/"Icy" may be used if it fits` : `do NOT use the word "icy"/"Icy" anywhere in the description`}
+- Same Lavender rule as above: a faint lavender undertone is "Moonlight" or "Lavender Undertone", never plain "Lavender"
 
 BLEMISHES RULES:
 - Be accurate and gentle — this field supports buyer trust
@@ -103,7 +116,8 @@ BLEMISHES RULES:
 - Do NOT add generic cautionary disclaimers ("natural inclusions may be present", "internal structures typical of jade") to a piece the vendor described as clean
 - If a specific flaw is disclosed in the source notes, describe it gently and honestly
 - If no flaw information is provided, write a neutral positive statement — do not invent problems
-- Do NOT over-disclaim or falsely claim perfection if a flaw is given`;
+- Do NOT over-disclaim or falsely claim perfection if a flaw is given
+- Do NOT use the phrase "from the photos", "from the provided photos", or any close variant (e.g. "as seen in the photos", "based on the images") — describe what's observed directly and confidently instead of citing the photos as the source`;
 }
 
 export async function POST(req: NextRequest) {
