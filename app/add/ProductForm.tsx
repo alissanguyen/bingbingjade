@@ -425,6 +425,12 @@ export function ProductForm({ vendors, mode = "admin", sku, onEmployeeSubmit, on
     setAcceptedImages((prev) => [...prev, { id: newId(), file: item.file, preview: item.preview }]);
   };
 
+  // AI Navy/Beige background replacement — disabled for now (not in use, but
+  // may come back), so processImageBg is commented out rather than deleted.
+  // The Navy/Beige buttons that called this were removed from the pending-
+  // image action row below; "Skip" (which still works) is the only action
+  // needed to accept a pending image as-is while this is off.
+  /*
   async function processImageBg(id: string, mode: "navy" | "beige") {
     const item = pendingImages.find((p) => p.id === id);
     if (!item || !item.file) return;
@@ -458,6 +464,7 @@ export function ProductForm({ vendors, mode = "admin", sku, onEmployeeSubmit, on
       setPendingImages((prev) => prev.map((p) => p.id === id ? { ...p, processing: null } : p));
     }
   }
+  */
 
   // AI copy generation — saved to DB as sourcing_notes so the original vendor notes are preserved
   const [sourceNotes, setSourceNotes] = useState("");
@@ -1139,6 +1146,7 @@ export function ProductForm({ vendors, mode = "admin", sku, onEmployeeSubmit, on
                     </button>
                     {/* Action buttons */}
                     <div className="flex border-t border-amber-200 dark:border-amber-800">
+                      {/* AI Navy/Beige background replacement — disabled for now, see processImageBg above.
                       {(["navy", "beige"] as const).map((mode) => (
                         <button
                           key={mode}
@@ -1151,6 +1159,7 @@ export function ProductForm({ vendors, mode = "admin", sku, onEmployeeSubmit, on
                           {item.processing === mode ? "…" : mode === "navy" ? "Navy" : "Beige"}
                         </button>
                       ))}
+                      */}
                       <button
                         type="button"
                         disabled={item.processing != null}
