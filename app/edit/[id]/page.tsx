@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { resolveImageUrls, resolveVideoUrls, isStoragePath } from "@/lib/storage";
 import { EditForm } from "./EditForm";
 import { getSessionUser, isApproved } from "@/lib/approved-auth";
+import { generateSku } from "@/lib/slug";
 import type { OptionStatus } from "@/types/product";
 
 interface InitialOptionRaw {
@@ -35,6 +36,16 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   const optionsData = (optionsResult.data ?? []) as InitialOptionRaw[];
 
   if (!product) notFound();
+
+  // Self-heal any product still missing a SKU (mainly former Catalog
+  // Contributor listings from before SKU generation was wired up for that
+  // flow) the moment it's opened here — the regular /edit/[id] page, not
+  // the listing-approvals review page, is the one admin actually uses
+  // day-to-day for an already-published/approved product.
+  if (!product.sku) {
+    product.sku = generateSku();
+    await supabaseAdmin.from("products").update({ sku: product.sku }).eq("id", id);
+  }
 
   const imagePaths: string[] = product.images ?? [];
   const videoPaths: string[] = product.videos ?? [];
