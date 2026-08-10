@@ -4,10 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { ProductForm } from "./ProductForm";
 import { AdminBarServer } from "@/app/components/AdminBarServer";
 import { getSessionUser, isApproved } from "@/lib/approved-auth";
-
-function generateSku(): string {
-  return String(Math.floor(Math.random() * 100_000_000)).padStart(8, "0");
-}
+import { generateSku } from "@/lib/slug";
 
 export default async function AddProductPage() {
   const [{ data: vendors }, session] = await Promise.all([

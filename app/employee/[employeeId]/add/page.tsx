@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getEmployeeCanViewVendors } from "@/lib/employee-permissions";
 import { ProductForm } from "@/app/add/ProductForm";
 import { saveEmployeeDraft, submitEmployeeListing } from "@/app/employee/actions";
+import { generateSku } from "@/lib/slug";
 
 export default async function EmployeeAddListingPage({
   params,
@@ -23,7 +24,7 @@ export default async function EmployeeAddListingPage({
         mode="employee-create"
         vendors={vendors ?? []}
         canViewVendors={canViewVendors}
-        sku=""
+        sku={generateSku()}
         onEmployeeSubmit={submitEmployeeListing}
         onEmployeeSaveDraft={saveEmployeeDraft}
       />

@@ -44,9 +44,6 @@ export async function GET(req: NextRequest) {
   if (imgErr) {
     return NextResponse.json({ error: imgErr.message }, { status: 500 });
   }
-  if (!images || images.length === 0) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
 
   // Product metadata
   const { data: product } = await supabaseAdmin
@@ -55,9 +52,19 @@ export async function GET(req: NextRequest) {
     .eq("sku", paddedSku)
     .single();
 
+  // Only 404 when there's truly nothing for this SKU. A listing can have a
+  // valid SKU with zero recorded originals — e.g. any Catalog Contributor
+  // listing submitted before original-image tracking was wired up for that
+  // flow (the raw pre-watermark file was never preserved for those, so
+  // there's nothing to backfill) — and the caller still wants to see the
+  // product/vendor/sourcing info in that case, not a bare error.
+  if (!product && (!images || images.length === 0)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   // Signed URLs for each original image (valid 1 hour)
   const signedImages = await Promise.all(
-    images.map(async (img) => {
+    (images ?? []).map(async (img) => {
       const { data } = await supabaseAdmin.storage
         .from(IMAGE_BUCKET)
         .createSignedUrl(img.original_storage_path, 3600);

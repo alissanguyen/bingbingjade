@@ -6,6 +6,7 @@ import { getEmployeeCanViewVendors } from "@/lib/employee-permissions";
 import { EditForm } from "@/app/edit/[id]/EditForm";
 import { saveEmployeeDraft, submitEmployeeListing } from "@/app/employee/actions";
 import { StatusBadge } from "@/app/employee/StatusBadge";
+import { generateSku } from "@/lib/slug";
 import type { ProductCategory } from "@/types/product";
 
 // Explicit allowlist — price/financial columns are never selected here, so
@@ -14,7 +15,7 @@ import type { ProductCategory } from "@/types/product";
 // is appended conditionally below, only for employees with vendor visibility.
 const EMPLOYEE_SAFE_SELECT =
   "id, name, category, origin, images, videos, color, tier, size, size_detailed, is_oval, wrist_size, " +
-  "description, blemishes, sourcing_notes, quick_ship, listing_status, created_by_employee_id, current_submission_version";
+  "description, blemishes, sourcing_notes, quick_ship, listing_status, created_by_employee_id, current_submission_version, sku";
 
 type EmployeeSafeRow = {
   id: string;
@@ -36,6 +37,7 @@ type EmployeeSafeRow = {
   listing_status: string | null;
   created_by_employee_id: string | null;
   current_submission_version: number;
+  sku: string | null;
   vendor_id?: string | null;
 };
 
@@ -77,6 +79,15 @@ export default async function EmployeeEditListingPage({
         </p>
       </div>
     );
+  }
+
+  // Self-heal drafts created before SKU generation was wired up for the
+  // employee flow — backfill once, in place, so item-origin lookups work
+  // for listings that already exist rather than only new ones going forward.
+  let sku = row.sku;
+  if (!sku) {
+    sku = generateSku();
+    await supabaseAdmin.from("products").update({ sku }).eq("id", listingId);
   }
 
   const [{ data: costRow }, { data: vendors }] = await Promise.all([
@@ -126,7 +137,7 @@ export default async function EmployeeEditListingPage({
         vendors={vendors ?? []}
         canViewVendors={canViewVendors}
         mode="employee-edit"
-        sku={null}
+        sku={sku}
         initialCostCurrency={costRow?.purchase_currency === "CNY" ? "CNY" : "VND"}
         initialCostAmount={costRow?.purchase_price_original ?? null}
         onEmployeeSubmit={submitEmployeeListing}

@@ -39,6 +39,14 @@ type EmployeeFields = {
   blemishes: string | null;
   images: string[];
   videos: string[];
+  /**
+   * Set only on first creation (ProductForm's employee create path sends a
+   * freshly generated SKU; EditForm's employee update path never resends
+   * one — there's no SKU input in the UI). fieldsToRow only includes this
+   * in the row when non-empty, so a later edit-save can never blank out an
+   * already-assigned SKU.
+   */
+  sku: string;
   /** Raw, untrusted — only ever applied by fieldsToRow if canViewVendors is true. */
   vendorId: string | null;
 };
@@ -77,6 +85,7 @@ function extractFields(formData: FormData): EmployeeFields {
     // this write path too if that ever changes.
     images: formData.getAll("imageUrls").map(String).filter(Boolean).map(toStoragePath),
     videos: formData.getAll("videoUrls").map(String).filter(Boolean).map(toStoragePath),
+    sku: String(formData.get("sku") ?? "").trim(),
     vendorId: (formData.get("vendor_id") as string) || null,
   };
 }
@@ -104,6 +113,7 @@ function fieldsToRow(fields: EmployeeFields, canViewVendors: boolean) {
     blemishes: fields.blemishes,
     images: fields.images,
     videos: fields.videos,
+    ...(fields.sku ? { sku: fields.sku } : {}),
     ...(canViewVendors ? { vendor_id: fields.vendorId } : {}),
   };
 }

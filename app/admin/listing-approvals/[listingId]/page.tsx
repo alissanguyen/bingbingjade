@@ -7,6 +7,7 @@ import { AdminBarServer } from "@/app/components/AdminBarServer";
 import { EditForm } from "@/app/edit/[id]/EditForm";
 import { resolveImageUrls, resolveVideoUrls, resolveEmployeeDraftUrl, isStoragePath } from "@/lib/storage";
 import { ReviewActionsPanel } from "./ReviewActionsPanel";
+import { generateSku } from "@/lib/slug";
 import type { OptionStatus } from "@/types/product";
 
 interface InitialOptionRaw {
@@ -40,6 +41,14 @@ export default async function ListingApprovalDetailPage({
   ]);
 
   if (!product || !product.created_by_employee_id) notFound();
+
+  // Self-heal listings submitted before SKU generation was wired up for the
+  // employee flow — backfill once, in place, so item-origin lookups work
+  // for listings that already exist rather than only new ones going forward.
+  if (!product.sku) {
+    product.sku = generateSku();
+    await supabaseAdmin.from("products").update({ sku: product.sku }).eq("id", listingId);
+  }
 
   const stillInDraftBucket = product.listing_status !== "PUBLISHED";
   const imagePaths: string[] = product.images ?? [];

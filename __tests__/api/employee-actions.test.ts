@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // A tiny in-memory "products" table so requireEditableOwnedDraft / insert /
 // update behave like the real thing without a live DB. Only the columns
 // these actions actually touch are modeled.
-type Row = { id: string; created_by_employee_id: string; listing_status: string; name?: string; vendor_id?: string; imported_price_vnd?: number; size_detailed?: (number | null)[] | null };
+type Row = { id: string; created_by_employee_id: string; listing_status: string; name?: string; vendor_id?: string; imported_price_vnd?: number; size_detailed?: (number | null)[] | null; sku?: string };
 let products: Row[] = [];
 let canViewVendors = false;
 
@@ -27,7 +27,7 @@ function fromProducts() {
       select: () => ({
         single: () => {
           const id = `p${products.length + 1}`;
-          products.push({ id, created_by_employee_id: row.created_by_employee_id as string, listing_status: row.listing_status as string, name: row.name as string });
+          products.push({ id, created_by_employee_id: row.created_by_employee_id as string, listing_status: row.listing_status as string, name: row.name as string, sku: row.sku as string | undefined });
           return Promise.resolve({ data: { id }, error: null });
         },
       }),
@@ -207,6 +207,19 @@ describe("employee actions — detailed dimensions", () => {
     products.push({ id: "p1", created_by_employee_id: EMP_A, listing_status: "EMPLOYEE_DRAFT", name: "Old" });
     await saveEmployeeDraft(fd({ productId: "p1", name: "Updated" }));
     expect(products[0].size_detailed).toBeNull();
+  });
+});
+
+describe("employee actions — sku", () => {
+  it("saves the sku sent by the client on first creation", async () => {
+    await expect(saveEmployeeDraft(fd({ name: "New", sku: "00012345" }))).rejects.toThrow("REDIRECT:");
+    expect(products[0].sku).toBe("00012345");
+  });
+
+  it("never blanks out an already-assigned sku on a later edit save (EditForm never resends one)", async () => {
+    products.push({ id: "p1", created_by_employee_id: EMP_A, listing_status: "EMPLOYEE_DRAFT", name: "Old", sku: "00099999" });
+    await saveEmployeeDraft(fd({ productId: "p1", name: "Updated" }));
+    expect(products[0].sku).toBe("00099999");
   });
 });
 
