@@ -101,6 +101,7 @@ export function AdminBar({
       { href: "/subscribers-admin", label: "Subscribers" },
       { href: "/custom-emails-admin", label: "Custom Emails" },
       { href: "/campaigns-admin", label: "Campaigns" },
+      { href: "/upload-bingbing-gallery", label: "BingBing Gallery" },
       { href: "/admin", label: "Admin Profile" },
     ] : []),
     ...(!showUsersLink && profileHref ? [{ href: profileHref, label: "Profile" }] : []),
@@ -161,6 +162,7 @@ export function AdminBar({
                     { href: "/subscribers-admin", label: "Subscribers" },
                     { href: "/custom-emails-admin", label: "Custom Emails" },
                     { href: "/campaigns-admin", label: "Campaigns" },
+                    { href: "/upload-bingbing-gallery", label: "BingBing Gallery" },
                     { href: "/admin", label: "Admin Profile" },
                   ]}
                 />
