@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { stripe } from "@/lib/stripe";
 import { restoreStoreCredit } from "@/lib/store-credit";
+import { syncOrderPaymentsRefundStatus } from "@/lib/orders";
 
 async function isAdmin(): Promise<boolean> {
   const cookieStore = await cookies();
@@ -96,6 +97,11 @@ export async function POST(
       { status: 500 }
     );
   }
+
+  // This route only ever issues a full refund (no partial-amount param) —
+  // any recorded payment for this order is now fully refunded, so it must
+  // stop counting toward Cash Received / Net Cash Received.
+  await syncOrderPaymentsRefundStatus(id, false);
 
   return NextResponse.json({
     order: updated,

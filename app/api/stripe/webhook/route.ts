@@ -10,6 +10,7 @@ import {
   createShipmentsForOrder,
   recordOrderPayment,
   finalizeProductOrder,
+  syncOrderPaymentsRefundStatus,
 } from "@/lib/orders";
 import { normalizeEmail } from "@/lib/discount";
 import { CREDIT_VALIDITY_DAYS } from "@/lib/sourcing-classification";
@@ -108,6 +109,8 @@ export async function POST(req: NextRequest) {
         .eq("stripe_payment_intent_id", paymentIntentId)
         .maybeSingle();
 
+      const isPartial = charge.amount_refunded < charge.amount;
+
       if (existingOrder && existingOrder.status !== "refunded") {
         await supabase
           .from("orders")
@@ -119,11 +122,18 @@ export async function POST(req: NextRequest) {
       // Manual-capture orders: track partial vs full refund on capture_status,
       // separately from the legacy `status` field above.
       if (existingOrder?.capture_status && existingOrder.capture_status !== "refunded") {
-        const isPartial = charge.amount_refunded < charge.amount;
         await supabase
           .from("orders")
           .update({ capture_status: isPartial ? "partially_refunded" : "refunded" })
           .eq("id", existingOrder.id);
+      }
+
+      // A refund issued directly in the Stripe dashboard bypasses the admin
+      // /refund route entirely, so this is the only place that syncs it —
+      // without it, order_payments stays payment_status='paid' forever and
+      // keeps counting toward Cash Received in Full Detailed Accounting.
+      if (existingOrder) {
+        await syncOrderPaymentsRefundStatus(existingOrder.id, isPartial);
       }
     }
     return NextResponse.json({ received: true });

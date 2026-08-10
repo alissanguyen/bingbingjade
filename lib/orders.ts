@@ -421,6 +421,28 @@ export async function recordOrderPayment(params: {
   }
 }
 
+/**
+ * Marks every order_payments row for an order as refunded/partially_refunded
+ * when the order itself is refunded. Called from both the admin refund route
+ * and the charge.refunded webhook handler (a refund issued directly in the
+ * Stripe dashboard bypasses the admin route entirely). Without this,
+ * order_payments rows stay payment_status='paid' forever — and that column
+ * is what "Cash Received"/"Net Cash Received" in Full Detailed Accounting
+ * are summed from (app/api/admin/full-accounting/overview/route.ts), which
+ * never joins back to orders.status/order_status at all.
+ */
+export async function syncOrderPaymentsRefundStatus(orderId: string, partial: boolean): Promise<void> {
+  try {
+    await supabaseAdmin
+      .from("order_payments")
+      .update({ payment_status: partial ? "partially_refunded" : "refunded" })
+      .eq("order_id", orderId)
+      .in("payment_status", ["paid", "partially_refunded"]);
+  } catch (err) {
+    console.error("[orders] syncOrderPaymentsRefundStatus failed (non-fatal):", err);
+  }
+}
+
 // ── Mark product options + parent products as sold ───────────────────────────
 // Moved from app/api/stripe/webhook/route.ts so both the webhook and the
 // zero-balance (fully store-credit-paid) checkout path can call it.
