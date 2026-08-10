@@ -19,6 +19,8 @@
 export const IMAGE_BUCKET = "jade-images";
 export const VIDEO_BUCKET = "jade-videos";
 export const REVIEW_IMAGE_BUCKET = "review-images";
+/** Public bucket for admin-uploaded BingBing Gallery images (logo already baked in). */
+export const BINGBING_GALLERY_BUCKET = "bingbing-gallery";
 /** Private bucket for employee-uploaded draft images/videos — never public. */
 export const EMPLOYEE_DRAFT_BUCKET = "jade-employee-drafts";
 /**
@@ -207,6 +209,20 @@ export function reviewImageThumbnailUrl(path: string, width = 400): string {
   const storageBase = supabaseStorageBase();
   if (!storageBase) return path;
   return `${storageBase}/render/image/public/${REVIEW_IMAGE_BUCKET}/${path.replace(/^\/+/, "")}?width=${width}&quality=75&format=webp&resize=cover`;
+}
+
+// ── BingBing Gallery image helpers — public bucket ────────────────────────────
+
+export function bingbingGalleryPublicUrl(path: string): string {
+  const storageBase = supabaseStorageBase();
+  if (!storageBase) return path;
+  return `${storageBase}/object/public/${BINGBING_GALLERY_BUCKET}/${path.replace(/^\/+/, "")}`;
+}
+
+export function bingbingGalleryThumbnailUrl(path: string, width = 600): string {
+  const storageBase = supabaseStorageBase();
+  if (!storageBase) return path;
+  return `${storageBase}/render/image/public/${BINGBING_GALLERY_BUCKET}/${path.replace(/^\/+/, "")}?width=${width}&quality=80&format=webp&resize=cover`;
 }
 
 // ── Video helpers — signed URLs (private bucket) ──────────────────────────────

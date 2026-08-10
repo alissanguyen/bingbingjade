@@ -49,12 +49,56 @@ function getSvgBuffer(): Buffer {
 const CENTER_CATEGORIES = new Set(["bangle", "necklace"]);
 
 /**
- * Applies the logo watermark to an image buffer.
- * Position depends on category:
- *   bangle / necklace  → center-right (30% inset from right, vertically centered)
- *   everything else    → bottom-left  (10% from left, 10% from bottom)
+ * Pure position math, split out from applyWatermark so it can be unit
+ * tested without needing to run image data through sharp.
  */
-export async function applyWatermark(input: Buffer, category = ""): Promise<Buffer> {
+export function resolveWatermarkPosition(params: {
+  width: number;
+  height: number;
+  wmarkW: number;
+  wmarkH: number;
+  category?: string;
+  position?: { xPercent: number; yPercent: number };
+}): { left: number; top: number } {
+  const { width, height, wmarkW, wmarkH, category = "", position } = params;
+
+  if (position) {
+    // Center the watermark on the chosen point, clamped so it stays fully on-canvas.
+    return {
+      left: Math.min(Math.max(0, Math.round((position.xPercent / 100) * width - wmarkW / 2)), width - wmarkW),
+      top: Math.min(Math.max(0, Math.round((position.yPercent / 100) * height - wmarkH / 2)), height - wmarkH),
+    };
+  }
+  if (CENTER_CATEGORIES.has(category)) {
+    // Center-right: right edge 30% inset from right, vertically centered
+    return {
+      left: Math.max(0, width - wmarkW - Math.round(width * WATERMARK.marginRightPercent)),
+      top: Math.max(0, Math.round(height * WATERMARK.verticalPositionPercent - wmarkH / 2)),
+    };
+  }
+  // Bottom-left: 10% from left edge, 10% from bottom edge
+  return {
+    left: Math.round(width * 0.10),
+    top: Math.max(0, height - wmarkH - Math.round(height * 0.10)),
+  };
+}
+
+/**
+ * Applies the logo watermark to an image buffer.
+ *
+ * Position resolution:
+ *   - `position` supplied → watermark is centered at that exact {xPercent, yPercent}
+ *     point (0-100, relative to image width/height), clamped so it never runs off
+ *     the edge. Used for admin-chosen placements (e.g. BingBing Gallery uploads).
+ *   - otherwise, position depends on `category`:
+ *       bangle / necklace  → center-right (30% inset from right, vertically centered)
+ *       everything else    → bottom-left  (10% from left, 10% from bottom)
+ */
+export async function applyWatermark(
+  input: Buffer,
+  category = "",
+  position?: { xPercent: number; yPercent: number }
+): Promise<Buffer> {
   // Compute post-resize dimensions without encoding an intermediate JPEG.
   // Sharp's fit:"inside" with withoutEnlargement scales by min(2000/w, 2000/h, 1).
   //
@@ -93,18 +137,7 @@ export async function applyWatermark(input: Buffer, category = ""): Promise<Buff
 
   const { height: wmarkH = wmarkW } = await sharp(wmarkPng).metadata();
 
-  let left: number;
-  let top: number;
-
-  if (CENTER_CATEGORIES.has(category)) {
-    // Center-right: right edge 30% inset from right, vertically centered
-    left = Math.max(0, width - wmarkW - Math.round(width * WATERMARK.marginRightPercent));
-    top = Math.max(0, Math.round(height * WATERMARK.verticalPositionPercent - wmarkH / 2));
-  } else {
-    // Bottom-left: 10% from left edge, 10% from bottom edge
-    left = Math.round(width * 0.10);
-    top = Math.max(0, height - wmarkH - Math.round(height * 0.10));
-  }
+  const { left, top } = resolveWatermarkPosition({ width, height, wmarkW, wmarkH, category, position });
 
   // Single pipeline: rotate → resize → composite → WebP. No intermediate encoding.
   return sharp(input)

@@ -58,7 +58,7 @@ export const metadata: Metadata = {
   },
 };
 
-const ADMIN_PREFIXES = ["/orders-admin", "/customers-admin", "/edit", "/add", "/admin", "/products-admin", "/vendors", "/profile", "/coupons-admin", "/subscribers-admin"];
+const ADMIN_PREFIXES = ["/orders-admin", "/customers-admin", "/edit", "/add", "/admin", "/products-admin", "/vendors", "/profile", "/coupons-admin", "/subscribers-admin", "/upload-bingbing-gallery"];
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
@@ -165,7 +165,7 @@ export default async function RootLayout({
                         { href: "/policy", label: "Store Policy" },
                         { href: "/privacy-policy", label: "Privacy Policy" },
                         { href: "/rewards", label: "Client Rewards" },
-                        
+                        { href: "/bingbing-gallery", label: "BingBing Gallery" },
                       ].map(({ href, label }) => (
                         <li key={href}>
                           <Link href={href} className="text-xs text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">
