@@ -63,14 +63,14 @@ export function BingBingGalleryClient({ images }: { images: GalleryImage[] }) {
             >
               {/* Transparent overlay — blocks right-click save even through pointer-events-none image below */}
               <div className="absolute inset-0 z-1 pointer-events-auto" onContextMenu={blockContextMenu} />
-              <Image
+              {/* Plain <img> (not next/image) — masonry needs each tile to size to the
+                  image's real aspect ratio. next/image requires fixed width/height,
+                  which forces every tile into the same box and crops content to fit it. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={img.thumbUrl}
                 alt="BingBing Jade"
-                width={600}
-                height={600}
-                unoptimized
-                className="w-full h-auto object-cover pointer-events-none transition-transform duration-500 group-hover:scale-105"
-                sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                className="w-full h-auto block pointer-events-none transition-transform duration-500 group-hover:scale-105"
                 loading="lazy"
                 draggable={false}
                 onDragStart={blockDrag}
