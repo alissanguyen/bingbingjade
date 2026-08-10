@@ -222,7 +222,12 @@ export function bingbingGalleryPublicUrl(path: string): string {
 export function bingbingGalleryThumbnailUrl(path: string, width = 600): string {
   const storageBase = supabaseStorageBase();
   if (!storageBase) return path;
-  return `${storageBase}/render/image/public/${BINGBING_GALLERY_BUCKET}/${path.replace(/^\/+/, "")}?width=${width}&quality=80&format=webp&resize=cover`;
+  // Supabase's image transform only scales the axis it's given a value for —
+  // requesting `width` alone leaves height completely untouched (not scaled,
+  // not capped), which stretched every non-square gallery photo into a
+  // distorted tall strip. A generous height ceiling + resize=contain forces
+  // it to actually preserve the real aspect ratio instead.
+  return `${storageBase}/render/image/public/${BINGBING_GALLERY_BUCKET}/${path.replace(/^\/+/, "")}?width=${width}&height=3000&quality=80&format=webp&resize=contain`;
 }
 
 // ── Video helpers — signed URLs (private bucket) ──────────────────────────────
