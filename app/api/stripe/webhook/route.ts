@@ -383,8 +383,8 @@ export async function POST(req: NextRequest) {
   );
 
   // ── Compute COGS at time of sale (server-side only, never exposed to clients) ─
-  // Fixed exchange rate: 1 USD = 26,000 VND
-  const VND_PER_USD = 26000;
+  // Fixed exchange rate: 1 USD = VND_PER_USD_RATE VND (env-configurable, falls back to 26,000)
+  const VND_PER_USD = Number(process.env.VND_PER_USD_RATE) || 26000;
   const productCostMap = new Map(
     (productsResult.data ?? []).map((p) => [p.id, (p.imported_price_vnd as number) ?? 0])
   );

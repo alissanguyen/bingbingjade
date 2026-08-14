@@ -123,9 +123,10 @@ type CostCurrency = "VND" | "CNY";
 // Yuan is never entered directly as an import price — it's converted to VND
 // so it lands in the same products.imported_price_vnd field admin-created
 // listings already use for COGS-at-sale accounting (see the webhook's
-// cogsCents calculation, which reads this column directly). 3950 is the
-// VND-per-CNY rate; 1.1 is the markup applied on top.
-const YUAN_TO_VND_RATE = 3950;
+// cogsCents calculation, which reads this column directly). CNY_TO_VND_RATE
+// is the VND-per-CNY rate (env-configurable, falls back to 3950); 1.1 is the
+// markup applied on top.
+const YUAN_TO_VND_RATE = Number(process.env.CNY_TO_VND_RATE) || 3950;
 const YUAN_MARKUP = 1.1;
 
 function extractContributorCost(

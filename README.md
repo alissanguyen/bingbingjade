@@ -668,6 +668,11 @@ SUPABASE_SERVICE_ROLE_KEY=          # Server-only — never expose to client
 # Admin
 ADMIN_PASSWORD=                     # Protects /add, /edit, beta checkout, admin API routes
 
+# Fixed operational exchange rates for COGS accounting (server-only). Not
+# live/market rates on purpose — keeps the accounting dashboard deterministic.
+VND_PER_USD_RATE=26000              # Used to convert imported_price_vnd to USD cents at order time
+CNY_TO_VND_RATE=3950                # Used to convert Catalog Contributor CNY cost entries to VND
+
 # Stripe — test mode
 STRIPE_SECRET_KEY=
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
