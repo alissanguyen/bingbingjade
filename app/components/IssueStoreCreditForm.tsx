@@ -13,6 +13,22 @@ const REASON_OPTIONS: { value: string; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
+// Reasons where the credit substitutes for a monetary refund on an already-
+// paid order — that order's revenue needs to stay linkable (via
+// source_order_id) so accounting can back it out of Gross Sales instead of
+// double-counting it once the credit is redeemed on a new order. See
+// full-accounting/summary's revenueAdjustments.
+const REFUND_LIKE_REASONS = new Set(["canceled_order", "damaged_lost_package", "return"]);
+
+interface OrderSearchResult {
+  id: string;
+  order_number: string | null;
+  customer_name: string | null;
+  customer_email: string | null;
+  amount_total: number | null;
+  currency: string;
+}
+
 const inputCls =
   "w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500";
 const labelCls = "block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1";
@@ -36,6 +52,13 @@ export function IssueStoreCreditForm({
   const [amount, setAmount] = useState("");
   const [email, setEmail] = useState(prefill?.customerEmail ?? "");
   const [reason, setReason] = useState("goodwill_resolution");
+
+  // Source order — only searchable when not already fixed by prefill (i.e.
+  // this form wasn't opened from that order's own page).
+  const [sourceOrderSearch, setSourceOrderSearch] = useState("");
+  const [sourceOrderResults, setSourceOrderResults] = useState<OrderSearchResult[]>([]);
+  const [showSourceOrderDropdown, setShowSourceOrderDropdown] = useState(false);
+  const [selectedSourceOrder, setSelectedSourceOrder] = useState<OrderSearchResult | null>(null);
   const [customerMessage, setCustomerMessage] = useState("");
   const [customSubject, setCustomSubject] = useState("");
   const [internalNote, setInternalNote] = useState("");
@@ -94,6 +117,24 @@ export function IssueStoreCreditForm({
     setPreview(lines);
   }, [hasExpiration, expiresAt, startsAt, minSubtotal, maxLineItems, fulfillmentScope, excludeSaleItems, excludeClearanceItems, allowWithDiscountCodes, allowWithOtherStoreCredits, usageMode, maxPerOrder, maxPercentage, email]);
 
+  // Source order search (debounced) — only relevant when this form wasn't
+  // opened with a source order already fixed by prefill.
+  useEffect(() => {
+    if (prefill?.sourceOrderId) return;
+    if (!sourceOrderSearch.trim()) { setSourceOrderResults([]); return; }
+    const t = setTimeout(() => {
+      fetch(`/api/admin/orders?search=${encodeURIComponent(sourceOrderSearch)}&limit=8`)
+        .then((r) => r.json())
+        .then((d) => setSourceOrderResults(d.orders ?? []))
+        .catch(() => {});
+    }, 250);
+    return () => clearTimeout(t);
+  }, [sourceOrderSearch, prefill?.sourceOrderId]);
+
+  const resolvedSourceOrderId = prefill?.sourceOrderId ?? selectedSourceOrder?.id ?? null;
+  const sourceOrderRequired = REFUND_LIKE_REASONS.has(reason) && !prefill?.sourceOrderId;
+  const sourceOrderMissing = sourceOrderRequired && !selectedSourceOrder;
+
   async function previewEmail() {
     setPreviewLoading(true);
     setError(null);
@@ -148,6 +189,10 @@ export function IssueStoreCreditForm({
       setError("Customer email is required.");
       return;
     }
+    if (sourceOrderMissing) {
+      setError("This reason substitutes for a refund on an existing order — search for and select that order above, so accounting can back its revenue out once this credit is redeemed.");
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch("/api/admin/store-credits", {
@@ -156,7 +201,7 @@ export function IssueStoreCreditForm({
         body: JSON.stringify({
           amountCents,
           customerEmail: email.trim(),
-          sourceOrderId: prefill?.sourceOrderId ?? null,
+          sourceOrderId: resolvedSourceOrderId,
           currency: prefill?.currency ?? "USD",
           reason,
           customerMessage: customerMessage.trim() || null,
@@ -205,10 +250,64 @@ export function IssueStoreCreditForm({
           <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} />
         </div>
 
-        {prefill?.sourceOrderNumber && (
+        {prefill?.sourceOrderNumber ? (
           <div>
             <label className={labelCls}>Source Order</label>
             <p className="text-sm text-gray-700 dark:text-gray-300 font-mono">{prefill.sourceOrderNumber}</p>
+          </div>
+        ) : (
+          <div className="relative">
+            <label className={labelCls}>
+              Source Order {sourceOrderRequired && <span className="text-red-500">*</span>}
+              <span className="ml-1 font-normal normal-case text-gray-400">
+                {sourceOrderRequired ? "— required for this reason" : "(optional)"}
+              </span>
+            </label>
+            {selectedSourceOrder ? (
+              <div className="flex items-center justify-between rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2">
+                <span className="text-sm font-mono text-emerald-700 dark:text-emerald-400">
+                  {selectedSourceOrder.order_number} · {selectedSourceOrder.customer_email}
+                  {selectedSourceOrder.amount_total != null && ` · $${(selectedSourceOrder.amount_total / 100).toFixed(2)}`}
+                </span>
+                <button type="button" onClick={() => { setSelectedSourceOrder(null); setSourceOrderSearch(""); }}
+                  className="text-xs text-gray-400 hover:text-red-500">
+                  Clear
+                </button>
+              </div>
+            ) : (
+              <>
+                <input
+                  value={sourceOrderSearch}
+                  onChange={(e) => { setSourceOrderSearch(e.target.value); setShowSourceOrderDropdown(true); }}
+                  onFocus={() => setShowSourceOrderDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowSourceOrderDropdown(false), 150)}
+                  placeholder="Order # or customer name/email…"
+                  autoComplete="off"
+                  className={inputCls}
+                />
+                {showSourceOrderDropdown && sourceOrderResults.length > 0 && (
+                  <ul className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg max-h-48 overflow-y-auto">
+                    {sourceOrderResults.map((o) => (
+                      <li key={o.id}>
+                        <button type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setSelectedSourceOrder(o);
+                            setSourceOrderSearch("");
+                            setSourceOrderResults([]);
+                            if (!email.trim() && o.customer_email) setEmail(o.customer_email);
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                        >
+                          <p className="text-sm font-mono text-gray-800 dark:text-gray-200">{o.order_number ?? "(no number)"}</p>
+                          <p className="text-xs text-gray-400">{o.customer_name} · {o.customer_email}{o.amount_total != null && ` · $${(o.amount_total / 100).toFixed(2)}`}</p>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
           </div>
         )}
 

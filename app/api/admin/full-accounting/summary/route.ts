@@ -26,6 +26,7 @@ export async function POST() {
     { data: payments },
     { data: expenses },
     { data: settingsRow },
+    { data: refundCredits },
   ] = await Promise.all([
     supabaseAdmin
       .from("orders")
@@ -49,9 +50,35 @@ export async function POST() {
       .select("default_supplies_cost_per_order")
       .limit(1)
       .maybeSingle(),
+    // Store credit issued in place of a monetary refund on an already-paid
+    // order — see migration_124. Subtracted from gross_sales in the period
+    // it was issued so redeeming it later on a different order doesn't
+    // double-count that revenue. Includes the Claims workflow's reasons
+    // (lib/claims.ts issueClaimCredit always sets source_order_id, with
+    // reason 'claim_resolution' or 'exchange_credit') alongside the
+    // older/ad-hoc reasons issued before that workflow existed.
+    supabaseAdmin
+      .from("store_credits")
+      .select("original_amount_cents, issued_at")
+      .not("source_order_id", "is", null)
+      .in("reason", ["canceled_order", "damaged_lost_package", "return", "claim_resolution", "exchange_credit"]),
   ]);
 
   const defaultSuppliesPerOrder = Number(settingsRow?.default_supplies_cost_per_order ?? 20);
+
+  // Bucket store-credit refund adjustments by issue date, same key scheme as
+  // the orders loop below (month / quarter / year all point at one sum).
+  const refundAdjByBucket: Record<string, number> = {};
+  for (const c of refundCredits ?? []) {
+    const issuedAt = c.issued_at as string;
+    const amount   = (c.original_amount_cents as number) / 100;
+    const month = issuedAt.slice(0, 7);
+    const year  = issuedAt.slice(0, 4);
+    const qKey  = `${year}-Q${getQuarter(issuedAt)}`;
+    for (const key of [month, qKey, year]) {
+      refundAdjByBucket[key] = (refundAdjByBucket[key] ?? 0) + amount;
+    }
+  }
 
   // Per-order paid amounts (for reconciliation)
   const orderPaidMap: Record<string, number> = {};
@@ -193,7 +220,9 @@ export async function POST() {
   // ── 3. Build upsert rows ──────────────────────────────────────────────────
   const rows = Object.entries(buckets).map(([key, b]) => {
     const exp                = expByBucket[key] ?? 0;
-    const outstanding        = r2(b.gross_sales - b.cash_received);
+    const refundAdjustment   = refundAdjByBucket[key] ?? 0;
+    const adjustedGrossSales = b.gross_sales - refundAdjustment;
+    const outstanding        = r2(adjustedGrossSales - b.cash_received);
     const nonSuppliesExp     = exp - (suppliesActualBucket[key] ?? 0);
 
     // Tax-ready profit (Option B): actual supplies via expenses, per-order estimate excluded from fulfillment
@@ -227,7 +256,8 @@ export async function POST() {
       period_year,
       period_quarter,
       period_month,
-      gross_sales:               r2(b.gross_sales),
+      gross_sales:               r2(adjustedGrossSales),
+      store_credit_refund_adjustments: r2(refundAdjustment),
       discounts:                 r2(b.discounts),
       tax_collected:             r2(b.tax_collected),
       cash_received:             r2(b.cash_received),
