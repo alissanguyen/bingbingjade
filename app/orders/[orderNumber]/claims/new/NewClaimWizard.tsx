@@ -69,6 +69,16 @@ function windowDaysFor(claimType: ClaimType, windows: ClaimWindows | null): numb
   return null;
 }
 
+// Sourced for You pieces are acquired specifically for the order — sizing
+// returns are never eligible for them (§30), so "My item doesn't fit"
+// shouldn't even be offered as a choice when every item on the order is
+// Sourced for You. (A single order is always one fulfillment type — Ship
+// Now and Sourced for You can't be mixed at checkout.)
+function visibleClaimTypes(orderItems: OrderItem[]) {
+  const allSourcedForYou = orderItems.length > 0 && orderItems.every((i) => i.inventory_type === "sourced_for_you");
+  return allSourcedForYou ? CLAIM_TYPES.filter((t) => t.value !== "doesnt_fit") : CLAIM_TYPES;
+}
+
 export default function NewClaimWizard({ orderNumber }: { orderNumber: string }) {
   const router = useRouter();
   const [step, setStep] = useState<"type" | "form" | "done">("type");
@@ -88,6 +98,7 @@ export default function NewClaimWizard({ orderNumber }: { orderNumber: string })
   const [submitting, setSubmitting] = useState(false);
 
   const [uploading, setUploading] = useState(false);
+  const [uploadFailures, setUploadFailures] = useState<string[]>([]);
   const [packagingAck, setPackagingAck] = useState(false);
   const [createdClaimId, setCreatedClaimId] = useState<string | null>(null);
 
@@ -125,7 +136,11 @@ export default function NewClaimWizard({ orderNumber }: { orderNumber: string })
   }, [claimType, deliveredAt, claimWindows]);
   const deadlinePassed = deadline != null && deadline.getTime() < Date.now();
 
-  async function uploadStaged(claimId: string, files: File[], category: "item_photo" | "packaging_outer_photo") {
+  /** Returns filenames that failed to upload — never throws, so one bad
+   *  file can't block the rest of the batch, but the caller can still tell
+   *  the customer something didn't make it through. */
+  async function uploadStaged(claimId: string, files: File[], category: "item_photo" | "packaging_outer_photo"): Promise<string[]> {
+    const failed: string[] = [];
     for (const file of files) {
       try {
         const urlRes = await fetch(`/api/orders/${orderNumber}/claims/${claimId}/evidence`, {
@@ -133,16 +148,21 @@ export default function NewClaimWizard({ orderNumber }: { orderNumber: string })
           body: JSON.stringify({ mode: "upload-url", filename: file.name }),
         });
         const { signedUrl, path } = await urlRes.json();
-        if (!signedUrl) continue;
-        await fetch(signedUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
-        await fetch(`/api/orders/${orderNumber}/claims/${claimId}/evidence`, {
+        if (!signedUrl) { failed.push(file.name); continue; }
+
+        const putRes = await fetch(signedUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+        if (!putRes.ok) { failed.push(file.name); continue; }
+
+        const registerRes = await fetch(`/api/orders/${orderNumber}/claims/${claimId}/evidence`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ storagePath: path, category, filename: file.name, contentType: file.type }),
         });
+        if (!registerRes.ok) failed.push(file.name);
       } catch {
-        // best-effort — a single failed upload shouldn't block the rest
+        failed.push(file.name);
       }
     }
+    return failed;
   }
 
   async function submitClaim() {
@@ -181,9 +201,10 @@ export default function NewClaimWizard({ orderNumber }: { orderNumber: string })
       setCreatedClaimId(claimId);
 
       setUploading(true);
-      await uploadStaged(claimId, stagedItemPhotos, "item_photo");
-      await uploadStaged(claimId, stagedPackagingPhotos, "packaging_outer_photo");
+      const failedItem = await uploadStaged(claimId, stagedItemPhotos, "item_photo");
+      const failedPackaging = await uploadStaged(claimId, stagedPackagingPhotos, "packaging_outer_photo");
       setUploading(false);
+      setUploadFailures([...failedItem, ...failedPackaging]);
 
       if (requirement?.originalPackagingRequired && packagingAck) {
         await fetch(`/api/orders/${orderNumber}/claims/${claimId}/acknowledge-packaging`, { method: "POST" });
@@ -217,6 +238,11 @@ export default function NewClaimWizard({ orderNumber }: { orderNumber: string })
         <p className="text-2xl mb-3">✓</p>
         <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Claim submitted</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">We&apos;ll keep you updated on this page.</p>
+        {uploadFailures.length > 0 && (
+          <p className="text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-4 py-3 mb-6 max-w-sm mx-auto">
+            {uploadFailures.length} photo{uploadFailures.length === 1 ? "" : "s"} didn&apos;t upload ({uploadFailures.join(", ")}). You can add them from your claim page.
+          </p>
+        )}
         <Link href={`/orders/${orderNumber}/claims/${createdClaimId}`} className="rounded-full bg-emerald-700 hover:bg-emerald-800 px-6 py-2.5 text-sm font-medium text-white transition-colors">
           View your claim
         </Link>
@@ -233,7 +259,7 @@ export default function NewClaimWizard({ orderNumber }: { orderNumber: string })
       {step === "type" && (
         <div className="space-y-3">
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">What happened?</p>
-          {CLAIM_TYPES.map((t) => (
+          {visibleClaimTypes(orderItems).map((t) => (
             <button
               key={t.value}
               onClick={() => { setClaimType(t.value); setStep("form"); }}
@@ -375,15 +401,37 @@ export default function NewClaimWizard({ orderNumber }: { orderNumber: string })
   );
 }
 
+// Actual visual thumbnails of what's staged for upload — a filename-only
+// chip isn't enough confirmation that a photo was really selected.
 function FileChips({ files, onRemove }: { files: File[]; onRemove: (index: number) => void }) {
+  // Computed directly during render (memoized on `files`), not via
+  // setState-in-an-effect — the effect below only revokes the previous
+  // batch's object URLs on cleanup, it never sets state itself.
+  const previewUrls = useMemo(() => files.map((f) => URL.createObjectURL(f)), [files]);
+  useEffect(() => {
+    return () => { previewUrls.forEach((u) => URL.revokeObjectURL(u)); };
+  }, [previewUrls]);
+
   if (files.length === 0) return null;
   return (
-    <div className="flex flex-wrap gap-2 mt-2">
+    <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 mt-2">
       {files.map((f, i) => (
-        <span key={`${f.name}-${i}`} className="inline-flex items-center gap-1.5 rounded-full bg-gray-200 dark:bg-gray-700 px-3 py-1 text-xs text-gray-700 dark:text-gray-300">
-          {f.name.length > 20 ? f.name.slice(0, 17) + "…" : f.name}
-          <button onClick={() => onRemove(i)} className="text-gray-400 hover:text-red-500">×</button>
-        </span>
+        <div key={`${f.name}-${i}`} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800">
+          {f.type.startsWith("video/") ? (
+            <video src={previewUrls[i]} className="w-full h-full object-cover" muted />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={previewUrls[i]} alt={f.name} className="w-full h-full object-cover" />
+          )}
+          <button
+            type="button"
+            onClick={() => onRemove(i)}
+            aria-label={`Remove ${f.name}`}
+            className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center rounded-full bg-black/70 text-white text-xs leading-none"
+          >
+            ×
+          </button>
+        </div>
       ))}
     </div>
   );

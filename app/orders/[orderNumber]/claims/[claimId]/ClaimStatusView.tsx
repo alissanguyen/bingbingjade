@@ -87,6 +87,15 @@ export default function ClaimStatusView({ orderNumber, claimId }: { orderNumber:
         </div>
       )}
 
+      {/* Always available while the claim is open — e.g. if a photo failed
+          to upload during submission, or the customer just has more to add. */}
+      {!needsEvidence && claim.status !== "closed" && (
+        <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/60 px-5 py-4 mb-6">
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Add more photos</p>
+          <input type="file" accept="image/*,video/*" multiple onChange={(e) => Array.from(e.target.files ?? []).forEach(uploadMore)} />
+        </div>
+      )}
+
       {latestShipment && (
         <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/60 px-5 py-4 mb-6 space-y-2 text-sm">
           <p className="font-semibold text-gray-700 dark:text-gray-300">Return shipment</p>
