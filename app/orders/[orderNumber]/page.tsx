@@ -9,6 +9,7 @@ import { resolveFirstImageUrl } from "@/lib/storage";
 import type { OrderStatus } from "@/types/orders";
 import ReviewForm from "./ReviewForm";
 import OrderTimeline from "./OrderTimeline";
+import ClaimsSection from "./ClaimsSection";
 
 // Revalidate every 5 minutes so status updates surface quickly
 export const revalidate = 300;
@@ -740,6 +741,9 @@ export default async function TrackOrderPage({
           />
         </div>
       )}
+
+      {/* Claims / returns — delivered orders only */}
+      {isDelivered && <ClaimsSection orderNumber={order.order_number} />}
 
       {/* Actions */}
       <div className="flex flex-wrap gap-3">
