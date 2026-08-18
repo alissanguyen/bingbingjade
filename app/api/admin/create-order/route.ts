@@ -26,6 +26,14 @@
  *   notes?            string
  *   estimatedDeliveryDate?  string   — ISO date YYYY-MM-DD
  *   currency?         string   — default 'usd'
+ *   fulfillmentType?  'available_now' | 'sourced_for_you'         (default: 'sourced_for_you')
+ *                                — drives the shipment's timeline template.
+ *                                'available_now' (Ship Now) is a 4-step
+ *                                timeline (confirmed → packing → shipped →
+ *                                delivered) for pieces already in our own
+ *                                stock; 'sourced_for_you' is the fuller
+ *                                7-step timeline for pieces coming through a
+ *                                sourcing partner.
  *
  *   // Items (required, non-empty)
  *   items: [{
@@ -76,6 +84,8 @@ import { normalizeEmail, reserveStoreCredit, redeemStoreCreditReservation, relea
 import type { StoreCreditRow } from "@/lib/store-credit";
 import { getSessionUser, isApproved, approvedCreatedBy, SessionUser } from "@/lib/approved-auth";
 import type { OrderStatus, OrderSource } from "@/types/orders";
+import type { FulfillmentType } from "@/lib/shipment-status";
+import { eventTemplateFor } from "@/lib/shipment-event-templates";
 
 const VALID_SOURCES: OrderSource[] = ["stripe", "paypal", "zelle", "cash", "custom", "admin"];
 const VALID_ORDER_STATUSES: OrderStatus[] = [
@@ -105,6 +115,7 @@ export async function POST(req: NextRequest) {
     orderDate?: string;
     currency?: string;
     orderType?: "standard" | "custom";
+    fulfillmentType?: FulfillmentType;
     items: {
       productName: string;
       optionLabel?: string | null;
@@ -421,14 +432,18 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Create shipment + timeline events ────────────────────────────────────
-  // All manual orders default to sourced_for_you (Zelle/cash/custom pieces).
+  // Manual orders default to sourced_for_you (Zelle/cash/custom pieces), but
+  // the admin can pick "Ship Now" for pieces already in our own stock — its
+  // 4-step timeline (confirmed → packing → shipped → delivered) skips the
+  // vendor/QC/certification legs that don't apply.
   if (order) {
+    const fulfillmentType: FulfillmentType = body.fulfillmentType ?? "sourced_for_you";
     const { data: shipment } = await supabaseAdmin
       .from("shipments")
       .insert({
         order_id: order.id,
         shipment_number: orderNumber ? `${orderNumber}-S1` : null,
-        fulfillment_type: "sourced_for_you",
+        fulfillment_type: fulfillmentType,
         status: "confirmed",
       })
       .select("id")
@@ -446,14 +461,14 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      await supabaseAdmin.from("shipment_events").insert([
-        { shipment_id: shipment.id, event_key: "confirmed",          label: "Order Confirmed",        description: "Order placed and payment received.",                             sort_order: 0, is_current: true,  is_completed: false, event_time: orderCreatedAtIso },
-        { shipment_id: shipment.id, event_key: "quality_inspection", label: "Quality Inspection",     description: "Your piece is being carefully inspected to meet our standards.", sort_order: 1, is_current: false, is_completed: false },
-        { shipment_id: shipment.id, event_key: "certification",      label: "Certification",          description: "Your jade is undergoing authentication and certification.",      sort_order: 2, is_current: false, is_completed: false },
-        { shipment_id: shipment.id, event_key: "arriving_at_studio", label: "Arriving at Our Studio", description: "Your piece is on its way to our studio for final handling.",    sort_order: 3, is_current: false, is_completed: false },
-        { shipment_id: shipment.id, event_key: "shipped",            label: "Shipped",                description: "Your order has been carefully packaged and shipped.",            sort_order: 4, is_current: false, is_completed: false },
-        { shipment_id: shipment.id, event_key: "delivered",          label: "Delivered",              description: "Your piece has arrived. We hope it brings you lasting beauty.",  sort_order: 5, is_current: false, is_completed: false },
-      ]);
+      const eventTemplate = eventTemplateFor(fulfillmentType);
+      await supabaseAdmin.from("shipment_events").insert(
+        eventTemplate.map((e, i) => ({
+          ...e,
+          shipment_id: shipment.id,
+          ...(i === 0 ? { event_time: orderCreatedAtIso } : {}),
+        }))
+      );
     }
   }
 
