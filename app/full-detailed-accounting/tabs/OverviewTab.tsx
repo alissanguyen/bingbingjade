@@ -28,6 +28,7 @@ interface OverviewData {
   // Revenue basis
   grossSales: number;
   grossRevenue: number;
+  revenueAdjustments: number;
   discountTotal: number;
   taxCollected: number;
   shippingRevenue: number;
@@ -260,6 +261,14 @@ export function OverviewTab() {
             <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Revenue (order basis)</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               <StatCard label="Gross Sales"         value={fmt(grossSales)}             sub={`${data.orderCount} orders`} color="green" />
+              {data.revenueAdjustments > 0 && (
+                <StatCard
+                  label="Store Credit Refund Adjustments"
+                  value={`−${fmt(data.revenueAdjustments)}`}
+                  sub="already netted out of Gross Sales above"
+                  color="amber"
+                />
+              )}
               <StatCard label="Discounts Given"     value={fmt(data.discountTotal)}      color="amber" />
               <StatCard label="Sales Tax Collected" value={fmt(data.taxCollected)}       sub="pass-through" />
               <StatCard label="Shipping Charged"      value={fmt(data.shippingRevenue)}  sub="collected from customers" />

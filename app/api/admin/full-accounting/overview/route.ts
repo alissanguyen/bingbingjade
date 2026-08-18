@@ -53,16 +53,33 @@ export async function GET(req: NextRequest) {
   if (from) expQuery = expQuery.gte("expense_date", from.slice(0, 7) + "-01");
   if (to)   expQuery = expQuery.lte("expense_date", to);
 
+  // Store credit issued in place of a monetary refund on an already-paid
+  // order — subtracted from gross sales in the period it was issued so
+  // redeeming it later on a different order doesn't double-count that
+  // revenue. See migration_124. Includes the Claims workflow's reasons
+  // (lib/claims.ts issueClaimCredit always sets source_order_id, with
+  // reason 'claim_resolution' or 'exchange_credit') alongside the
+  // older/ad-hoc reasons issued before that workflow existed.
+  let refundCreditsQuery = supabaseAdmin
+    .from("store_credits")
+    .select("original_amount_cents, issued_at")
+    .not("source_order_id", "is", null)
+    .in("reason", ["canceled_order", "damaged_lost_package", "return", "claim_resolution", "exchange_credit"]);
+  if (from) refundCreditsQuery = refundCreditsQuery.gte("issued_at", from);
+  if (to)   refundCreditsQuery = refundCreditsQuery.lte("issued_at", to + "T23:59:59Z");
+
   const [
     { data: orders, error: ordErr },
     { data: pmDate },
     { data: expenses },
     { data: settingsRow },
+    { data: refundCredits },
   ] = await Promise.all([
     ordersQuery,
     pmDateQuery,
     expQuery,
     supabaseAdmin.from("accounting_settings").select("default_supplies_cost_per_order").limit(1).maybeSingle(),
+    refundCreditsQuery,
   ]);
 
   if (ordErr) return NextResponse.json({ error: ordErr.message }, { status: 500 });
@@ -108,6 +125,7 @@ export async function GET(req: NextRequest) {
 
   // ── 3. Aggregate revenue + costs (order basis) ─────────────────────────────
   let grossSales               = 0;
+  let revenueAdjustments       = 0; // store credit issued as a refund on a paid order — see refundCredits
   let discountTotal            = 0;
   let taxCollected             = 0;
   let txFeeTotal               = 0; // "Transaction Fee" line item charged to customer
@@ -202,6 +220,29 @@ export async function GET(req: NextRequest) {
       qRev[q].cogs             += cogs;
       qRev[q].fulfillment      += fulfillment;
       qRev[q].suppliesEstimate += suppliesEstimate;
+    }
+  }
+
+  // Subtract store-credit refund adjustments from gross sales, bucketed by
+  // the credit's issue date (not the order it eventually gets redeemed on —
+  // that's a separate, later event).
+  for (const c of refundCredits ?? []) {
+    const amount   = (c.original_amount_cents as number) / 100;
+    const issuedAt = c.issued_at as string;
+    revenueAdjustments += amount;
+    grossSales         -= amount;
+
+    const month = issuedAt.slice(0, 7);
+    if (!monthlyMap[month]) {
+      monthlyMap[month] = {
+        revenue: 0, discount: 0, tax: 0, cashReceived: 0, paymentFee: 0,
+        cogs: 0, fulfillment: 0, suppliesEstimate: 0, profit: 0, taxReadyProfit: 0,
+      };
+    }
+    monthlyMap[month].revenue -= amount;
+
+    if (year && issuedAt.slice(0, 4) === year) {
+      qRev[getQuarter(issuedAt)].revenue -= amount;
     }
   }
 
@@ -397,6 +438,7 @@ export async function GET(req: NextRequest) {
     // Revenue basis (from orders)
     grossSales:              r2(grossSales),
     grossRevenue:            r2(grossSales), // backward-compat alias
+    revenueAdjustments:      r2(revenueAdjustments), // store credit issued as a refund on a paid order — already netted out of grossSales above
     discountTotal:           r2(discountTotal),
     taxCollected:            r2(taxCollected),
     // Cash basis (from order_payments)
