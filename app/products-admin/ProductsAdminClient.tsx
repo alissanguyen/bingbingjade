@@ -127,6 +127,9 @@ export function ProductsAdminClient({
 
   function handleBulkStatus(status: "available" | "on_sale" | "sold" | "archived") {
     if (!selectedIds.length) return;
+    if (status === "sold" && !confirm(
+      `Marking ${selectedIds.length} product${selectedIds.length !== 1 ? "s" : ""} Sold this way does NOT create an order or record revenue — it will show as sold in inventory batch/accounting reports with $0 attributed to it. If these were purchased through checkout, that already happened automatically. If sold off-platform (cash, wholesale, etc.), use "Add Order" on Orders Admin instead so revenue is tracked. Continue anyway?`
+    )) return;
     startTransition(async () => {
       const res = await bulkUpdateStatus(selectedIds, status);
       if (res.error) { showToast(`Error: ${res.error}`); return; }

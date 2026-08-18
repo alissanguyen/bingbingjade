@@ -1622,8 +1622,14 @@ export function OrderDetailClient({
                 </div>
                 {order.store_credit_used_cents > 0 && (
                   <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
-                    <span>Paid through Stripe</span>
-                    <span>{order.stripe_amount_cents != null ? `$${(order.stripe_amount_cents / 100).toFixed(2)}` : "—"}</span>
+                    <span>Remaining paid via {order.source.charAt(0).toUpperCase() + order.source.slice(1)}</span>
+                    <span>
+                      {order.stripe_amount_cents != null
+                        ? `$${(order.stripe_amount_cents / 100).toFixed(2)}`
+                        : order.amount_total != null
+                          ? `$${((order.amount_total - order.store_credit_used_cents) / 100).toFixed(2)}`
+                          : "—"}
+                    </span>
                   </div>
                 )}
                 {order.store_credit_id && (
