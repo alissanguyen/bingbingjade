@@ -664,7 +664,11 @@ export async function finalizeProductOrder(
       fee_breakdown: feeBreakdown,
       ...(isManualCapture ? {
         capture_status: "authorized",
-        authorized_amount: amountTotalCents,
+        // The amount actually held on the card — net of store credit — not
+        // the pre-store-credit order total. This is shown to admins and
+        // customers as "authorized for $X", so it must match what Stripe
+        // will actually capture.
+        authorized_amount: stripeAmountCents,
         authorized_at: nowIso,
         authorization_expires_at: authorizationExpiresAt,
         latest_stripe_status: latestStripeStatus ?? "requires_capture",
@@ -899,7 +903,9 @@ export async function finalizeProductOrder(
           orderNumber,
           customerName: resolvedCustomerName,
           customerEmail,
-          authorizedAmountCents: amountTotalCents,
+          // The amount actually held on the card — net of store credit —
+          // not the pre-store-credit order total. Matches authorized_amount.
+          authorizedAmountCents: stripeAmountCents,
           items: emailItems,
           shippingAddress: resolvedAddr ?? null,
         });
