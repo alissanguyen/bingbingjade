@@ -1001,6 +1001,7 @@ export async function sendReferralRewardEmail(params: {
 // from what checkout actually enforces.
 
 import type { StoreCreditRow } from "./store-credit";
+import { STORE_CREDIT_REASON_LABELS } from "./store-credit";
 
 export type StoreCreditEmailParams = {
   storeCredit: StoreCreditRow;
@@ -1030,13 +1031,13 @@ export function buildStoreCreditEmailHtml(params: StoreCreditEmailParams): { htm
     ? conditions.map((c) => `<p style="margin:0 0 6px;font-size:13px;color:#78350f;line-height:1.6;">${c}</p>`).join("")
     : "";
 
+  // Plain text, not a boxed callout — rendered above the credit amount, as if
+  // the admin were speaking directly to the customer before showing the credit.
   const customerMessageHtml = storeCredit.customer_message
-    ? `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;margin-bottom:24px;">
-        <tr><td style="padding:16px 20px;">
-          <p style="margin:0;font-size:14px;color:#0c4a6e;line-height:1.6;font-style:italic;">"${storeCredit.customer_message}"</p>
-        </td></tr>
-      </table>`
+    ? `<p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;font-style:italic;">"${storeCredit.customer_message}"</p>`
     : "";
+
+  const reasonLabel = STORE_CREDIT_REASON_LABELS[storeCredit.reason] ?? "Store Credit";
 
   const orderReferenceHtml = sourceOrderNumber
     ? `<p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">This credit relates to your order <strong>${sourceOrderNumber}</strong>.</p>`
@@ -1071,6 +1072,8 @@ export function buildStoreCreditEmailHtml(params: StoreCreditEmailParams): { htm
 
             ${orderReferenceHtml}
 
+            ${customerMessageHtml}
+
             <!-- Credit Highlight -->
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:20px;">
               <tr>
@@ -1087,8 +1090,6 @@ export function buildStoreCreditEmailHtml(params: StoreCreditEmailParams): { htm
                 </td>
               </tr>
             </table>
-
-            ${customerMessageHtml}
 
             <!-- How to use -->
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;margin-bottom:20px;">
@@ -1152,8 +1153,8 @@ export function buildStoreCreditEmailHtml(params: StoreCreditEmailParams): { htm
 </html>`;
 
   const subject = isResend
-    ? `Your BingBing Jade store credit — ${storeCredit.code}`
-    : `You have received a $${amountDollars} BingBing Jade store credit`;
+    ? `Your BingBing Jade store credit (${reasonLabel}) — ${storeCredit.code}`
+    : `You have received a $${amountDollars} BingBing Jade store credit — ${reasonLabel}`;
 
   return { html, subject };
 }

@@ -25,6 +25,19 @@ export type StoreCreditReason =
   | "loyalty_vip"
   | "other";
 
+// Single source of truth for human-readable reason labels — used in the
+// issuance form's dropdown and in the notification email's subject line, so
+// the subject always reflects the actual type of credit being issued.
+export const STORE_CREDIT_REASON_LABELS: Record<StoreCreditReason, string> = {
+  goodwill_resolution: "Goodwill Resolution",
+  canceled_order: "Canceled Order",
+  damaged_lost_package: "Damaged/Lost Package",
+  return: "Return",
+  price_adjustment: "Price Adjustment",
+  loyalty_vip: "Loyalty/VIP",
+  other: "Other",
+};
+
 export type StoreCreditStatus = "active" | "fully_used" | "expired" | "revoked";
 export type StoreCreditUsageMode = "single_use" | "reusable_until_balance_zero";
 

@@ -58,6 +58,7 @@ export function IssueStoreCreditForm({
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string[]>([]);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewSubject, setPreviewSubject] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
   // Live preview — recompute condition wording locally, mirroring
@@ -125,6 +126,7 @@ export function IssueStoreCreditForm({
         return;
       }
       setPreviewHtml(data.html);
+      setPreviewSubject(data.subject ?? null);
     } catch {
       setError("Failed to load preview.");
     } finally {
@@ -354,7 +356,13 @@ export function IssueStoreCreditForm({
         </div>
       </div>
 
-      {previewHtml && <EmailPreviewModal html={previewHtml} onClose={() => setPreviewHtml(null)} />}
+      {previewHtml && (
+        <EmailPreviewModal
+          html={previewHtml}
+          subject={previewSubject ?? undefined}
+          onClose={() => { setPreviewHtml(null); setPreviewSubject(null); }}
+        />
+      )}
     </form>
   );
 }

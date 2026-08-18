@@ -4,10 +4,12 @@ import { useEffect, useRef } from "react";
 
 export function EmailPreviewModal({
   html,
+  subject,
   onClose,
   maxWidth = "max-w-2xl",
 }: {
   html: string;
+  subject?: string;
   onClose: () => void;
   maxWidth?: string;
 }) {
@@ -40,6 +42,13 @@ export function EmailPreviewModal({
             </svg>
           </button>
         </div>
+        {/* Subject line */}
+        {subject && (
+          <div className="px-5 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+            <span className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mr-2">Subject</span>
+            <span className="text-sm text-gray-700 dark:text-gray-200">{subject}</span>
+          </div>
+        )}
         {/* iframe */}
         <iframe
           srcDoc={html}

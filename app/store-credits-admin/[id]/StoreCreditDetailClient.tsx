@@ -74,6 +74,7 @@ export function StoreCreditDetailClient({ id }: { id: string }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewSubject, setPreviewSubject] = useState<string | null>(null);
 
   const [expiresAtInput, setExpiresAtInput] = useState("");
   const [adjustDelta, setAdjustDelta] = useState("");
@@ -184,6 +185,7 @@ export function StoreCreditDetailClient({ id }: { id: string }) {
       return;
     }
     setPreviewHtml(data.html);
+    setPreviewSubject(data.subject ?? null);
   }
 
   function copyCode() {
@@ -254,7 +256,13 @@ export function StoreCreditDetailClient({ id }: { id: string }) {
         </div>
       </div>
 
-      {previewHtml && <EmailPreviewModal html={previewHtml} onClose={() => setPreviewHtml(null)} />}
+      {previewHtml && (
+        <EmailPreviewModal
+          html={previewHtml}
+          subject={previewSubject ?? undefined}
+          onClose={() => { setPreviewHtml(null); setPreviewSubject(null); }}
+        />
+      )}
 
       {/* Expiration */}
       <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
