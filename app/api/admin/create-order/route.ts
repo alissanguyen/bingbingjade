@@ -377,6 +377,10 @@ export async function POST(req: NextRequest) {
       payment_provider: providerBySource[body.source] ?? "other",
       payment_type: "manual",
       amount_paid_usd: amountPaidCents / 100,
+      // No processing fee on manual/off-platform payments (Zelle, cash, wire) —
+      // net received equals what was collected.
+      payment_fee_usd: 0,
+      net_received_usd: amountPaidCents / 100,
       currency: (body.currency ?? "usd").toUpperCase(),
       payment_date: orderCreatedAtIso,
       payment_status: "paid",
