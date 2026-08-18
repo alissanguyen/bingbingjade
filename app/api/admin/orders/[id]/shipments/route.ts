@@ -1,23 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser, isAdmin } from "@/lib/approved-auth";
-
-const EVENTS_AVAILABLE_NOW = [
-  { event_key: "confirmed",  label: "Order Confirmed", description: "Order placed and payment received.",        sort_order: 0, is_current: true,  is_completed: false },
-  { event_key: "packing",    label: "Packing",         description: "Your piece is being carefully packaged.",   sort_order: 1, is_current: false, is_completed: false },
-  { event_key: "shipped",    label: "Shipped",          description: "Your order is on its way to you.",          sort_order: 2, is_current: false, is_completed: false },
-  { event_key: "delivered",  label: "Delivered",        description: "Your piece has arrived.",                  sort_order: 3, is_current: false, is_completed: false },
-];
-
-const EVENTS_SOURCED = [
-  { event_key: "confirmed",          label: "Order Confirmed",        description: "Order placed and payment received.",                             sort_order: 0, is_current: true,  is_completed: false },
-  { event_key: "quality_inspection", label: "Quality Inspection",     description: "Your piece is being carefully inspected to meet our standards.", sort_order: 1, is_current: false, is_completed: false },
-  { event_key: "certification",      label: "Certification",          description: "Your jade is undergoing authentication and certification.",      sort_order: 2, is_current: false, is_completed: false },
-  { event_key: "arriving_at_studio", label: "Arriving at Our Studio", description: "Your piece is on its way to our studio for final handling.",     sort_order: 3, is_current: false, is_completed: false },
-  { event_key: "packing",            label: "Packing",                description: "Your piece is undergoing final quality control and being packaged for shipment.", sort_order: 4, is_current: false, is_completed: false },
-  { event_key: "shipped",            label: "Shipped",                description: "Your order has been carefully packaged and shipped.",            sort_order: 5, is_current: false, is_completed: false },
-  { event_key: "delivered",          label: "Delivered",              description: "Your piece has arrived. We hope it brings you lasting beauty.",  sort_order: 6, is_current: false, is_completed: false },
-];
+import { eventTemplateFor } from "@/lib/shipment-event-templates";
 
 export async function POST(
   req: NextRequest,
@@ -73,7 +57,7 @@ export async function POST(
   if (error || !shipment)
     return NextResponse.json({ error: error?.message ?? "Failed to create shipment" }, { status: 500 });
 
-  const eventTemplate = fulfillmentType === "available_now" ? EVENTS_AVAILABLE_NOW : EVENTS_SOURCED;
+  const eventTemplate = eventTemplateFor(fulfillmentType);
   const { data: events } = await supabaseAdmin
     .from("shipment_events")
     .insert(eventTemplate.map((e) => ({ ...e, shipment_id: shipment.id })))

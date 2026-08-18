@@ -178,6 +178,7 @@ const EMPTY_FORM = {
   orderStatus: "order_confirmed" as OrderStatus,
   currency: "usd",
   orderType: "standard" as "standard" | "custom",
+  fulfillmentType: "sourced_for_you" as "available_now" | "sourced_for_you",
   notes: "",
   estimatedDeliveryDate: "",
   orderNumber: "BBJ-",
@@ -465,6 +466,7 @@ export function OrdersAdminClient() {
       ...(form.amountPaid.trim() ? { amountPaidCents: Math.round(parseFloat(form.amountPaid) * 100) } : {}),
       currency: form.currency,
       orderType: form.orderType,
+      fulfillmentType: form.fulfillmentType,
       items: parsedItems,
       ...(Object.keys(fees).length > 0 ? { fees } : {}),
       ...(storeCreditMatch && storeCreditAmountCents > 0
@@ -902,12 +904,20 @@ export function OrdersAdminClient() {
                     <input type="date" value={form.estimatedDeliveryDate} onChange={(e) => setField("estimatedDeliveryDate", e.target.value)}
                       className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                   </div>
-                  <div className="col-span-2">
+                  <div>
                     <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Order Type</label>
                     <select value={form.orderType} onChange={(e) => setField("orderType", e.target.value as "standard" | "custom")}
                       className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
                       <option value="standard">Standard Order</option>
                       <option value="custom">Custom Order</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Fulfillment</label>
+                    <select value={form.fulfillmentType} onChange={(e) => setField("fulfillmentType", e.target.value as "available_now" | "sourced_for_you")}
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                      <option value="sourced_for_you">Sourced for You (7 steps)</option>
+                      <option value="available_now">Ship Now (4 steps)</option>
                     </select>
                   </div>
                 </div>
