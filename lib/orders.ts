@@ -11,6 +11,7 @@ import { stripe } from "./stripe";
 import type Stripe from "stripe";
 import type { MetaItem } from "./stripe-metadata";
 import { commitDiscount, buildShippingFingerprint } from "./discount";
+import { getDepositPayments } from "./reservations";
 
 // ── Customer ──────────────────────────────────────────────────────────────────
 
@@ -530,6 +531,12 @@ export interface FinalizeProductOrderParams {
   storeCreditUsedCents: number;
   storeCreditReservationRef: string | null;
   stripeAmountCents: number; // amount actually sent to Stripe = amountTotalCents - storeCreditUsedCents (0 for zero-balance)
+
+  // Reservation deposits — like store credit, cash already collected toward
+  // this same sale via a separate mechanism, not a discount. amountTotalCents
+  // must already include this credit back in (see app/api/stripe/checkout/route.ts).
+  reservationId: string | null;
+  reservationDepositCreditCents: number;
 }
 
 export async function finalizeProductOrder(
@@ -542,7 +549,7 @@ export async function finalizeProductOrder(
     feeBreakdown, discountMeta, shippingInsuranceAccepted, shippingInsuranceDeclinedAcknowledged,
     merchandiseSubtotalCents, isManualCapture, capturePaymentMethod, latestStripeStatus, authorizationExpiresAt,
     sourcingRequestId, sourcingCreditAppliedCents, storeCreditId, storeCreditUsedCents, storeCreditReservationRef,
-    stripeAmountCents,
+    stripeAmountCents, reservationId, reservationDepositCreditCents,
   } = params;
 
   let customerId: string | null = null;
@@ -676,6 +683,8 @@ export async function finalizeProductOrder(
       store_credit_used_cents: storeCreditUsedCents,
       merchandise_subtotal_cents: merchandiseSubtotalCents,
       stripe_amount_cents: stripeAmountCents,
+      reservation_id: reservationId,
+      reservation_deposit_credit_cents: reservationDepositCreditCents,
     })
     .select("id")
     .single();
@@ -710,6 +719,53 @@ export async function finalizeProductOrder(
       createdAtIso: nowIso,
       notes: stripeSessionId ? `Stripe Checkout ${stripeSessionId}` : `Stripe payment ${stripePaymentIntentId}`,
     });
+  }
+
+  // ── Backfill reservation deposit history into order_payments ─────────────────
+  // Each deposit installment was already actually collected via its own Stripe
+  // session, earlier in time — record them now, with their real historical
+  // dates, so Cash Received for this order reflects every dollar collected,
+  // not just today's final balance payment. Idempotent via the same
+  // (payment_provider, provider_transaction_id) unique index recordOrderPayment
+  // relies on. Also marks the reservation as converted so it drops out of
+  // "pending reservation" views.
+  if (reservationId && reservationDepositCreditCents > 0) {
+    try {
+      const deposits = await getDepositPayments(reservationId);
+
+      for (const deposit of deposits) {
+        if (!deposit.stripePaymentIntentId) continue;
+
+        const { data: existing } = await supabaseAdmin
+          .from("order_payments")
+          .select("id")
+          .eq("payment_provider", "stripe")
+          .eq("provider_transaction_id", deposit.stripePaymentIntentId)
+          .maybeSingle();
+
+        if (existing) continue;
+
+        await supabaseAdmin.from("order_payments").insert({
+          order_id: order.id,
+          bbj_order_code: orderNumber,
+          payment_provider: "stripe",
+          payment_type: "deposit",
+          provider_transaction_id: deposit.stripePaymentIntentId,
+          amount_paid_usd: deposit.amountUsd,
+          currency: currency.toUpperCase(),
+          payment_date: deposit.paidAt,
+          payment_status: "paid",
+          notes: `Reservation deposit installment`,
+        });
+      }
+
+      await supabaseAdmin
+        .from("product_reservations")
+        .update({ converted_order_id: order.id })
+        .eq("id", reservationId);
+    } catch (err) {
+      console.error("[orders] Reservation deposit backfill failed (non-fatal):", err);
+    }
   }
 
   // ── Commit discount (promotional — unrelated to store credit) ────────────────

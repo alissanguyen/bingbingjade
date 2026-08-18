@@ -18,7 +18,7 @@ export async function POST(
 
   const { id } = await params;
 
-  let body: { customerEmail?: string } = {};
+  let body: { customerEmail?: string; amountUsd?: number } = {};
   try {
     body = await req.json();
   } catch {
@@ -27,7 +27,7 @@ export async function POST(
 
   const { data: reservation, error: fetchError } = await supabaseAdmin
     .from("product_reservations")
-    .select("id, product_id, customer_name, customer_email, deposit_amount_usd, expires_at, cancelled_at")
+    .select("id, product_id, customer_name, customer_email, expires_at, cancelled_at")
     .eq("id", id)
     .single();
 
@@ -43,9 +43,11 @@ export async function POST(
     return NextResponse.json({ error: "Reservation has expired." }, { status: 400 });
   }
 
-  const depositAmount = Number(reservation.deposit_amount_usd ?? 0);
-  if (depositAmount <= 0) {
-    return NextResponse.json({ error: "No deposit amount set on this reservation." }, { status: 400 });
+  // Each call generates a link for one installment — admin can call this as
+  // many times as needed, with any amount, to build up the full deposit.
+  const depositAmount = Number(body.amountUsd ?? 0);
+  if (!Number.isFinite(depositAmount) || depositAmount <= 0) {
+    return NextResponse.json({ error: "A positive deposit amount is required." }, { status: 400 });
   }
 
   const { data: product } = await supabaseAdmin
@@ -88,12 +90,6 @@ export async function POST(
       customer_name: reservation.customer_name ?? "",
     },
   });
-
-  // Store the session ID on the reservation for tracking
-  await supabaseAdmin
-    .from("product_reservations")
-    .update({ deposit_stripe_session_id: stripeSession.id })
-    .eq("id", reservation.id);
 
   return NextResponse.json({ url: stripeSession.url });
 }

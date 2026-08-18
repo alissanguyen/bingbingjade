@@ -469,7 +469,9 @@ export function CheckoutClient() {
           taxAmountCents: taxAmountCents > 0 ? taxAmountCents : undefined,
           taxCalculationId: taxCalculationId || undefined,
           paymentMethod: paymentMethod ?? "standard",
-          reservationDepositAmountCents: reservationDepositTotal > 0 ? Math.round(reservationDepositTotal * 100) : undefined,
+          // The server re-derives the actual deposit credit itself from the
+          // matched reservation's payment history — it never trusts a
+          // client-supplied amount for this.
           shippingAddress: {
             name: shippingAddress.name.trim(),
             line1: shippingAddress.line1.trim(),

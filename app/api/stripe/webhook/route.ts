@@ -528,11 +528,25 @@ export async function POST(req: NextRequest) {
     ? parseInt(session.metadata.sourcing_credit_applied_cents, 10)
     : 0;
 
+  // ── Reservation deposit metadata ──────────────────────────────────────────────
+  const reservationId = session.metadata?.reservation_id ?? null;
+  const reservationDepositCreditCents = session.metadata?.reservation_deposit_credit_cents
+    ? parseInt(session.metadata.reservation_deposit_credit_cents, 10)
+    : 0;
+
+  // orders.amount_total must be the TRUE full sale price. session.amount_total
+  // is net of EVERY coupon folded into the Stripe session — including store
+  // credit and reservation deposits, neither of which is a real discount (both
+  // are cash already collected/credited toward this same sale via a separate
+  // mechanism). Add both back so amount_total, gross_sales, and Cash Received
+  // all reflect the actual sale value, not just what Stripe charged today.
+  const amountTotalCents = (session.amount_total ?? 0) + storeCreditUsedCents + reservationDepositCreditCents;
+
   const result = await finalizeProductOrder({
     stripeSessionId: session.id,
     stripePaymentIntentId: paymentIntentId,
     stripeCustomerId,
-    amountTotalCents: session.amount_total ?? 0,
+    amountTotalCents,
     currency: session.currency ?? "usd",
     paymentIsPaid: session.payment_status === "paid",
     customerEmail,
@@ -557,11 +571,12 @@ export async function POST(req: NextRequest) {
     storeCreditId,
     storeCreditUsedCents,
     storeCreditReservationRef,
-    // Stripe was sent the full session amount minus whatever store credit
-    // was folded into the session's coupon — since a zero-remaining order
-    // never reaches this webhook path (no Stripe session is created for
-    // it), the amount actually collected here always equals amount_total.
+    // What Stripe actually charged this session — unlike amountTotalCents
+    // above, this is NOT grossed back up, since it's specifically meant to
+    // represent the real Stripe transaction amount (used for refund safety).
     stripeAmountCents: session.amount_total ?? 0,
+    reservationId,
+    reservationDepositCreditCents,
   });
 
   if (!result) {
@@ -906,7 +921,12 @@ async function handleSourcingPrivateCheckout(
   return NextResponse.json({ received: true });
 }
 
-// ── Sourcing deposit handler ───────────────────────────────────────────────────
+// ── Reservation deposit handler ─────────────────────────────────────────────────
+// Each Stripe session here is ONE installment — a reservation can have any
+// number of these. Idempotency is per-session (unique index on
+// reservation_deposit_payments.stripe_checkout_session_id), not a single
+// reservation-level flag, so a 2nd or 3rd installment is never silently
+// dropped just because an earlier one was already recorded.
 async function handleReservationDeposit(
   session: Stripe.Checkout.Session,
   supabase: typeof supabaseAdmin
@@ -919,7 +939,7 @@ async function handleReservationDeposit(
 
   const { data: reservation } = await supabase
     .from("product_reservations")
-    .select("id, deposit_paid")
+    .select("id")
     .eq("id", reservationId)
     .maybeSingle();
 
@@ -928,7 +948,13 @@ async function handleReservationDeposit(
     return NextResponse.json({ error: "Reservation not found." }, { status: 404 });
   }
 
-  if (reservation.deposit_paid) {
+  const { data: existing } = await supabase
+    .from("reservation_deposit_payments")
+    .select("id")
+    .eq("stripe_checkout_session_id", session.id)
+    .maybeSingle();
+
+  if (existing) {
     return NextResponse.json({ received: true });
   }
 
@@ -937,16 +963,25 @@ async function handleReservationDeposit(
       ? session.payment_intent
       : (session.payment_intent as { id?: string } | null)?.id ?? null;
 
-  await supabase
-    .from("product_reservations")
-    .update({
-      deposit_paid: true,
-      deposit_paid_at: new Date().toISOString(),
-      deposit_payment_intent_id: paymentIntentId,
-    })
-    .eq("id", reservationId);
+  const { error: insertError } = await supabase.from("reservation_deposit_payments").insert({
+    reservation_id: reservationId,
+    amount_usd: (session.amount_total ?? 0) / 100,
+    stripe_checkout_session_id: session.id,
+    stripe_payment_intent_id: paymentIntentId,
+    paid_at: new Date(session.created * 1000).toISOString(),
+  });
 
-  console.info("[webhook/reservation] Deposit confirmed for reservation", reservationId);
+  if (insertError) {
+    // Unique-index violation means a concurrent delivery already recorded this
+    // session — that's success, not a failure to report to Stripe.
+    if ((insertError as { code?: string }).code === "23505") {
+      return NextResponse.json({ received: true });
+    }
+    console.error("[webhook/reservation] Failed to record deposit payment:", insertError);
+    return NextResponse.json({ error: "Failed to record deposit." }, { status: 500 });
+  }
+
+  console.info("[webhook/reservation] Deposit installment recorded for reservation", reservationId);
   return NextResponse.json({ received: true });
 }
 

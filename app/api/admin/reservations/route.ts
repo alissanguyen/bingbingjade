@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser, isAdmin } from "@/lib/approved-auth";
 import { createHash } from "crypto";
+import { getDepositPayments } from "@/lib/reservations";
 
 // GET /api/admin/reservations?productId=<id>
 export async function GET(req: NextRequest) {
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabaseAdmin
     .from("product_reservations")
-    .select("id, customer_name, customer_email, customer_note, deposit_amount_usd, deposit_paid, deposit_paid_at, deposit_stripe_session_id, expires_at, created_at, cancelled_at")
+    .select("id, customer_name, customer_email, customer_note, expires_at, created_at, cancelled_at, converted_order_id")
     .eq("product_id", productId)
     .is("cancelled_at", null)
     .maybeSingle();
@@ -26,7 +27,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ reservation: data });
+  const deposits = data ? await getDepositPayments(data.id) : [];
+  const depositTotalUsd = deposits.reduce((sum, d) => sum + d.amountUsd, 0);
+
+  return NextResponse.json({ reservation: data, deposits, depositTotalUsd });
 }
 
 // POST /api/admin/reservations — create or replace a reservation
@@ -42,7 +46,6 @@ export async function POST(req: NextRequest) {
     customerName?: string;
     customerEmail?: string;
     customerNote?: string;
-    depositAmountUsd?: number;
     expiresAt: string;
   };
   try {
@@ -51,7 +54,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const { productId, code, customerName, customerEmail, customerNote, depositAmountUsd, expiresAt } = body;
+  const { productId, code, customerName, customerEmail, customerNote, expiresAt } = body;
 
   if (!productId || !code || !expiresAt) {
     return NextResponse.json({ error: "productId, code, and expiresAt are required." }, { status: 400 });
@@ -81,7 +84,6 @@ export async function POST(req: NextRequest) {
       customer_name: customerName || null,
       customer_email: customerEmail || null,
       customer_note: customerNote || null,
-      deposit_amount_usd: depositAmountUsd ?? 0,
       expires_at: expiresAt,
     })
     .select("id")

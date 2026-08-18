@@ -10,6 +10,7 @@ import { getShippingZone, calculateShipping, calculateStripeFee, calculateBnplFe
 import { checkCustomerRestriction, logBlockedAttempt } from "@/lib/customer-restrictions";
 import { validateStoreCredit, reserveStoreCredit, releaseStoreCreditReservation } from "@/lib/store-credit";
 import { finalizeProductOrder } from "@/lib/orders";
+import { getDepositTotalCents } from "@/lib/reservations";
 import crypto from "crypto";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
@@ -44,7 +45,6 @@ export async function POST(req: NextRequest) {
       country: string;
     };
     paymentMethod?: "standard" | "bnpl";
-    reservationDepositAmountCents?: number;
   };
   try {
     body = await req.json();
@@ -90,6 +90,11 @@ export async function POST(req: NextRequest) {
   const appliedCampaignEventIds = new Set<string>();
   let anyCampaignEventApplied = false;
   let allAppliedAllowStack = true; // flipped false if any applied campaign has allow_coupon_stack=false
+
+  // A cart holds at most one reserved+unlocked item in practice (reservation
+  // codes are entered per-product on the product page) — this is the reservation
+  // whose deposit credit gets applied at checkout.
+  let verifiedReservationId: string | null = null;
 
   for (const item of items) {
     if (!item.productId) {
@@ -137,6 +142,7 @@ export async function POST(req: NextRequest) {
           { status: 409 }
         );
       }
+      verifiedReservationId = res.id;
     }
 
     let serverPrice: number | null = null;
@@ -499,9 +505,18 @@ export async function POST(req: NextRequest) {
 
   // Reservation deposit credit — applied as a coupon but does NOT reduce the fee base.
   // Fee is calculated on the full (pre-deposit) discounted subtotal so the seller is made whole.
-  const reservationDepositCents = typeof body.reservationDepositAmountCents === "number"
-    ? Math.max(0, body.reservationDepositAmountCents)
+  // Re-derived server-side from the actual recorded deposit payments — never trust
+  // body.reservationDepositAmountCents, which a client could set to any value.
+  const reservationDepositCents = verifiedReservationId
+    ? await getDepositTotalCents(verifiedReservationId)
     : 0;
+
+  // Threaded into Stripe session metadata so the webhook can, at order-creation
+  // time, backfill the order's payment history with these historical deposits
+  // and correct orders.amount_total back to the full (pre-deposit) sale price.
+  const reservationMetadata: Record<string, string> = verifiedReservationId
+    ? { reservation_id: verifiedReservationId, reservation_deposit_credit_cents: String(reservationDepositCents) }
+    : {};
 
   // Tax (WA state only, pre-calculated via stripe.tax.calculations)
   const taxAmountCents = typeof body.taxAmountCents === "number" ? body.taxAmountCents : 0;
@@ -699,13 +714,20 @@ export async function POST(req: NextRequest) {
       console.error("[stripe/checkout] Zero-balance COGS lookup failed (non-fatal):", err);
     }
 
+    // orders.amount_total must be the TRUE full sale price — grandTotalBeforeStoreCreditCents
+    // already correctly excludes store credit, but it also nets out the reservation
+    // deposit (needed to determine how much store credit/Stripe must cover here).
+    // A deposit isn't a discount — it's cash already collected for this same sale —
+    // so add it back for the order's recorded total.
+    const trueOrderTotalCents = grandTotalBeforeStoreCreditCents + reservationDepositCents;
+
     let finalizeResult: Awaited<ReturnType<typeof finalizeProductOrder>>;
     try {
       finalizeResult = await finalizeProductOrder({
         stripeSessionId: null,
         stripePaymentIntentId: null,
         stripeCustomerId: null,
-        amountTotalCents: grandTotalBeforeStoreCreditCents,
+        amountTotalCents: trueOrderTotalCents,
         currency: "usd",
         paymentIsPaid: false,
         customerEmail: normalizeEmail(body.customerEmail!),
@@ -743,6 +765,8 @@ export async function POST(req: NextRequest) {
         storeCreditUsedCents: storeCreditAppliedCents,
         storeCreditReservationRef,
         stripeAmountCents: 0,
+        reservationId: verifiedReservationId,
+        reservationDepositCreditCents: reservationDepositCents,
       });
     } catch (err) {
       // No Stripe session exists for this path, so there's no expiry event to
@@ -901,6 +925,7 @@ export async function POST(req: NextRequest) {
         ...campaignEventMetadata,
         ...insuranceMeta,
         ...storeCreditSessionMetadata,
+        ...reservationMetadata,
         payment_method: paymentMethod,
         ...(isSourcedOnlyCart ? { capture_mode: "manual" } : {}),
       },

@@ -425,7 +425,11 @@ export function EditForm({ product, vendors, initialOptions = [], mode = "admin"
   const [reservationCustomerName, setReservationCustomerName] = useState(product.reserved_for_handle ?? "");
   const [reservationCustomerEmail, setReservationCustomerEmail] = useState("");
   const [reservationCustomerNote, setReservationCustomerNote] = useState("");
-  const [reservationDeposit, setReservationDeposit] = useState("");
+  // Amount for the NEXT deposit link only — a reservation can have any number
+  // of installments, each generated separately, so there's no single stored
+  // "the deposit amount" for the reservation anymore.
+  const [nextDepositAmount, setNextDepositAmount] = useState("");
+  const [deposits, setDeposits] = useState<{ id: string; amountUsd: number; paidAt: string }[]>([]);
   const [reservationExpiresAt, setReservationExpiresAt] = useState(
     product.reserved_until
       ? new Date(product.reserved_until).toISOString().slice(0, 16)
@@ -526,14 +530,16 @@ export function EditForm({ product, vendors, initialOptions = [], mode = "admin"
     if (isApprovedUser || product.status !== "reserved") return;
     fetch(`/api/admin/reservations?productId=${product.id}`)
       .then((r) => r.json())
-      .then(({ reservation }) => {
+      .then(({ reservation, deposits: depositRows }) => {
         if (reservation) {
           setReservationId(reservation.id);
           if (reservation.customer_name) setReservationCustomerName(reservation.customer_name);
           if (reservation.customer_email) setReservationCustomerEmail(reservation.customer_email);
           if (reservation.customer_note) setReservationCustomerNote(reservation.customer_note);
-          if (reservation.deposit_amount_usd) setReservationDeposit(String(reservation.deposit_amount_usd));
           if (reservation.expires_at) setReservationExpiresAt(new Date(reservation.expires_at).toISOString().slice(0, 16));
+        }
+        if (Array.isArray(depositRows)) {
+          setDeposits(depositRows.map((d: { id: string; amountUsd: number; paidAt: string }) => ({ id: d.id, amountUsd: d.amountUsd, paidAt: d.paidAt })));
         }
       })
       .catch(() => {});
@@ -671,7 +677,6 @@ export function EditForm({ product, vendors, initialOptions = [], mode = "admin"
           customerName: reservationCustomerName || undefined,
           customerEmail: reservationCustomerEmail || undefined,
           customerNote: reservationCustomerNote || undefined,
-          depositAmountUsd: reservationDeposit ? parseFloat(reservationDeposit) : 0,
           expiresAt: new Date(reservationExpiresAt).toISOString(),
         }),
       });
@@ -681,6 +686,7 @@ export function EditForm({ product, vendors, initialOptions = [], mode = "admin"
       } else {
         setReservationId(data.reservationId);
         setStatus("reserved");
+        setDeposits([]);
         setReservationMsg("Reservation saved. Product is now reserved.");
       }
     } catch {
@@ -693,6 +699,12 @@ export function EditForm({ product, vendors, initialOptions = [], mode = "admin"
   const handleCancelReservation = async () => {
     const rid = reservationId;
     if (!rid) return;
+    if (deposits.length > 0) {
+      const total = deposits.reduce((s, d) => s + d.amountUsd, 0);
+      if (!confirm(`This reservation has $${total.toLocaleString()} in deposits already collected. Cancelling does NOT refund them automatically — you'll need to issue a refund separately. Continue?`)) {
+        return;
+      }
+    }
     setReservationSaving(true);
     setReservationMsg(null);
     setReservationError(null);
@@ -705,6 +717,7 @@ export function EditForm({ product, vendors, initialOptions = [], mode = "admin"
         setReservationId(null);
         setStatus("available");
         setReservationCode("");
+        setDeposits([]);
         setReservationMsg("Reservation cancelled. Product is now available.");
       }
     } catch {
@@ -720,6 +733,11 @@ export function EditForm({ product, vendors, initialOptions = [], mode = "admin"
       setReservationError("Save the reservation first before generating a deposit link.");
       return;
     }
+    const amountUsd = parseFloat(nextDepositAmount);
+    if (!Number.isFinite(amountUsd) || amountUsd <= 0) {
+      setReservationError("Enter a positive amount for this installment.");
+      return;
+    }
     setDepositLinkLoading(true);
     setReservationMsg(null);
     setReservationError(null);
@@ -727,14 +745,15 @@ export function EditForm({ product, vendors, initialOptions = [], mode = "admin"
       const res = await fetch(`/api/admin/reservations/${rid}/deposit-checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerEmail: reservationCustomerEmail || undefined }),
+        body: JSON.stringify({ amountUsd, customerEmail: reservationCustomerEmail || undefined }),
       });
       const data = await res.json();
       if (!res.ok) {
         setReservationError(data.error ?? "Failed to generate deposit link.");
       } else if (data.url) {
         await navigator.clipboard.writeText(data.url).catch(() => {});
-        setReservationMsg(`Deposit link copied to clipboard: ${data.url}`);
+        setReservationMsg(`Deposit link for $${amountUsd.toLocaleString()} copied to clipboard: ${data.url}`);
+        setNextDepositAmount("");
       }
     } catch {
       setReservationError("Unexpected error. Please try again.");
@@ -1863,14 +1882,14 @@ export function EditForm({ product, vendors, initialOptions = [], mode = "admin"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">Deposit Amount (USD)</label>
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">Next Deposit Amount (USD)</label>
               <input
                 type="number"
                 min="0"
                 step="1"
-                value={reservationDeposit}
-                onChange={(e) => setReservationDeposit(e.target.value)}
-                placeholder="0 = no deposit"
+                value={nextDepositAmount}
+                onChange={(e) => setNextDepositAmount(e.target.value)}
+                placeholder="e.g. 400 — for this installment's link"
                 className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-400"
               />
             </div>
@@ -1901,10 +1920,10 @@ export function EditForm({ product, vendors, initialOptions = [], mode = "admin"
                 <button
                   type="button"
                   onClick={handleGenerateDepositLink}
-                  disabled={depositLinkLoading || !reservationDeposit || parseFloat(reservationDeposit) <= 0}
+                  disabled={depositLinkLoading || !nextDepositAmount || parseFloat(nextDepositAmount) <= 0}
                   className="px-4 py-2 rounded-lg border border-purple-300 dark:border-purple-700 text-sm font-medium text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30 disabled:opacity-50 transition-colors"
                 >
-                  {depositLinkLoading ? "Generating…" : "Copy Deposit Link"}
+                  {depositLinkLoading ? "Generating…" : "Generate Deposit Link"}
                 </button>
                 <button
                   type="button"
@@ -1917,6 +1936,22 @@ export function EditForm({ product, vendors, initialOptions = [], mode = "admin"
               </>
             )}
           </div>
+
+          {reservationId && deposits.length > 0 && (
+            <div className="rounded-lg border border-purple-100 dark:border-purple-900 bg-purple-50/50 dark:bg-purple-950/20 px-3 py-2.5 space-y-1.5">
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                Deposits collected: ${deposits.reduce((s, d) => s + d.amountUsd, 0).toLocaleString()}
+              </p>
+              <ul className="space-y-1">
+                {deposits.map((d) => (
+                  <li key={d.id} className="text-xs text-gray-500 dark:text-gray-400 flex justify-between">
+                    <span>${d.amountUsd.toLocaleString()}</span>
+                    <span>{new Date(d.paidAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {reservationMsg && (
             <p className="text-xs text-emerald-600 dark:text-emerald-400 break-all">{reservationMsg}</p>
