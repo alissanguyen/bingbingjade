@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { createClaim, evaluateClaimEligibility, CLAIM_TYPE_LABELS, type ClaimType, type ClaimSubtype, type FitIssue } from "@/lib/claims";
+import { createClaim, evaluateClaimEligibility, getClaimWindows, CLAIM_TYPE_LABELS, type ClaimType, type ClaimSubtype, type FitIssue } from "@/lib/claims";
 
 // Customer-facing claims list + submission for a delivered order.
 //
@@ -27,19 +27,25 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ orde
   const order = await loadOrder(orderNumber);
   if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });
 
-  const [{ data: claims }, { data: orderItems }] = await Promise.all([
+  const [{ data: claims }, { data: orderItems }, { data: shipments }, claimWindows] = await Promise.all([
     supabaseAdmin
       .from("claims")
       .select("id, claim_number, claim_type, claim_subtype, status, responsibility, opened_at, resolved_at, closed_at")
       .eq("order_id", order.id)
       .order("opened_at", { ascending: false }),
     supabaseAdmin.from("order_items").select("id, product_name, option_label, price_usd, inventory_type").eq("order_id", order.id),
+    supabaseAdmin.from("shipments").select("delivered_at").eq("order_id", order.id),
+    getClaimWindows(),
   ]);
+
+  const deliveredAt = (shipments ?? []).map((s) => s.delivered_at).filter(Boolean).sort().pop() ?? null;
 
   return NextResponse.json({
     claims: claims ?? [],
     orderItems: orderItems ?? [],
     canSubmitClaim: order.order_status === "delivered",
+    deliveredAt,
+    claimWindows,
   });
 }
 
