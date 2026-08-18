@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
     customer_email: email,
     customer_id: null,
     source_order_id: null,
+    claim_id: null,
     currency: "USD",
     original_amount_cents: amountCents,
     remaining_amount_cents: amountCents,
