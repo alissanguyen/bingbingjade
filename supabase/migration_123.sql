@@ -94,6 +94,12 @@ VALUES
   ('doesnt_fit',        false, 0, 10, false, true,  false, false, true)
 ON CONFLICT (claim_type) DO NOTHING;
 
+ALTER TABLE public.claim_evidence_requirements ENABLE ROW LEVEL SECURITY;
+-- No public policy — service role only. Read via
+-- GET /api/orders/[orderNumber]/claims/requirements (unauthenticated but
+-- server-side, using supabaseAdmin) and the admin claim routes; never
+-- queried directly with an anon/authenticated client key.
+
 CREATE TABLE IF NOT EXISTS public.claim_windows (
   id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   window_key text        NOT NULL UNIQUE
@@ -118,6 +124,10 @@ INSERT INTO public.claim_windows (window_key, days) VALUES
   ('customer_response_days', 7),
   ('insurance_evidence_days', 10)
 ON CONFLICT (window_key) DO NOTHING;
+
+ALTER TABLE public.claim_windows ENABLE ROW LEVEL SECURITY;
+-- No public policy — service role only, same reasoning as
+-- claim_evidence_requirements above.
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- 3. Claims (§1, §2)
