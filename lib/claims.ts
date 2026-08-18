@@ -832,11 +832,10 @@ export async function issueClaimCashRefund(params: {
 
   if (params.method === "stripe") {
     if (!params.stripePaymentIntentId) throw new Error("stripePaymentIntentId required for a Stripe refund");
-    const refund: Stripe.Refund = await stripe.refunds.create({
-      payment_intent: params.stripePaymentIntentId,
-      amount: params.amountCents,
-      idempotencyKey: `claim_refund_${params.resolutionId}`,
-    });
+    const refund: Stripe.Refund = await stripe.refunds.create(
+      { payment_intent: params.stripePaymentIntentId, amount: params.amountCents },
+      { idempotencyKey: `claim_refund_${params.resolutionId}` }
+    );
     stripeRefundId = refund.id;
     stripeChargeId = typeof refund.charge === "string" ? refund.charge : (refund.charge?.id ?? null);
     status = refund.status === "failed" ? "failed" : "succeeded";
