@@ -191,7 +191,7 @@ type WindowKey =
   | "customer_response_days" | "insurance_evidence_days";
 
 const DEFAULT_WINDOWS: Record<WindowKey, number> = {
-  damage_reporting_days: 14,
+  damage_reporting_days: 2, // 48 hours — damage must be reported quickly after delivery
   missing_package_reporting_days: 30,
   ship_now_return_days: 14,
   sizing_return_days: 14,
@@ -273,11 +273,16 @@ export async function evaluateClaimEligibility(input: EligibilityInput): Promise
       input.claimType === "not_as_described" ? windows.ship_now_return_days :
       null;
     if (windowDays != null && daysSinceDelivery > windowDays) {
-      return { result: "requires_admin_review", reason: `reporting window (${windowDays} days) has passed — manual exception required` };
+      return { result: "requires_admin_review", reason: `reporting window (${formatWindow(windowDays)}) has passed — manual exception required` };
     }
   }
 
   return { result: "eligible", reason: `${claimTypeEligibilityReasonKey(input.claimType, input.inventoryTypes)} return window open` };
+}
+
+/** "48 hours" for windows of 2 days or less, "N days" otherwise — matches how the window is actually communicated to customers. */
+export function formatWindow(days: number): string {
+  return days <= 2 ? `${Math.round(days * 24)} hours` : `${days} day${days === 1 ? "" : "s"}`;
 }
 
 function claimTypeEligibilityReasonKey(claimType: ClaimType, inventoryTypes: string[]): string {
