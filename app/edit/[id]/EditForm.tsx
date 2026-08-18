@@ -1698,7 +1698,12 @@ export function EditForm({ product, vendors, initialOptions = [], mode = "admin"
                 <button
                   key={s}
                   type="button"
-                  onClick={() => setStatus(s)}
+                  onClick={() => {
+                    if (s === "sold" && status !== "sold" && !confirm(
+                      'Marking this Sold here does NOT create an order or record revenue — it will show as sold in inventory batch/accounting reports with $0 attributed to it. If this was purchased through checkout, that already happened automatically. If sold off-platform (cash, wholesale, etc.), use "Add Order" on Orders Admin instead so revenue is tracked. Continue anyway?'
+                    )) return;
+                    setStatus(s);
+                  }}
                   className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${status === s
                     ? s === "available"
                       ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"

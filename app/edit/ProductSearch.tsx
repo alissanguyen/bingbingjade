@@ -70,6 +70,9 @@ export function ProductSearch({ products }: { products: ProductStub[] }) {
   };
 
   const handleBulkStatus = () => {
+    if (bulkStatus === "sold" && !confirm(
+      `Marking ${selected.size} product${selected.size !== 1 ? "s" : ""} Sold this way does NOT create an order or record revenue — it will show as sold in inventory batch/accounting reports with $0 attributed to it. If these were purchased through checkout, that already happened automatically. If sold off-platform (cash, wholesale, etc.), use "Add Order" on Orders Admin instead so revenue is tracked. Continue anyway?`
+    )) return;
     setError(null);
     startTransition(async () => {
       const result = await bulkUpdateStatus(Array.from(selected), bulkStatus);

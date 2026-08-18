@@ -151,6 +151,14 @@ interface AvailableCoupon {
   expiresAt?: string | null;
 }
 
+interface StoreCreditLookup {
+  id: string;
+  code: string;
+  customer_email: string;
+  remaining_amount_cents: number;
+  status: string;
+}
+
 const EMPTY_ITEM: NewItem = { productId: "", productName: "", optionId: "", optionLabel: "", price: "", quantity: "1" };
 
 function productThumb(images: string[] | null): string {
@@ -166,7 +174,7 @@ const EMPTY_FORM = {
   customerEmail: "",
   customerPhone: "",
   source: "zelle" as OrderSource,
-  paidStatus: "paid" as "paid" | "unpaid",
+  amountPaid: "", // blank = fully paid (the order total); enter a smaller amount for a deposit/partial payment
   orderStatus: "order_confirmed" as OrderStatus,
   currency: "usd",
   orderType: "standard" as "standard" | "custom",
@@ -219,6 +227,15 @@ export function OrdersAdminClient() {
   const [selectedCouponCode, setSelectedCouponCode] = useState("");
   const [couponsLoading, setCouponsLoading] = useState(false);
   const couponFetchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Store credit — a payment method (customer pays partly/fully with an
+  // existing credit instead of cash), not a discount off the order total.
+  const [storeCreditCodeInput, setStoreCreditCodeInput] = useState("");
+  const [storeCreditAmount, setStoreCreditAmount] = useState("");
+  const [storeCreditMatch, setStoreCreditMatch] = useState<StoreCreditLookup | null>(null);
+  const [storeCreditLookupLoading, setStoreCreditLookupLoading] = useState(false);
+  const [storeCreditLookupError, setStoreCreditLookupError] = useState<string | null>(null);
+  const storeCreditFetchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Existing customer selection
   const [customerMode, setCustomerMode] = useState<"new" | "existing">("new");
@@ -304,6 +321,33 @@ export function OrdersAdminClient() {
     }, 400);
   }, [effectiveEmail]); // eslint-disable-line
 
+  // Look up a store credit by code as the admin types it (debounced).
+  // Reuses the existing search-by-code listing endpoint — there's no
+  // single-code lookup route, so an exact case-insensitive match is picked
+  // out of the (usually one-row) result set client-side.
+  useEffect(() => {
+    const code = storeCreditCodeInput.trim().toUpperCase();
+    if (!code) { setStoreCreditMatch(null); setStoreCreditLookupError(null); return; }
+    if (storeCreditFetchRef.current) clearTimeout(storeCreditFetchRef.current);
+    storeCreditFetchRef.current = setTimeout(() => {
+      setStoreCreditLookupLoading(true);
+      fetch(`/api/admin/store-credits?search=${encodeURIComponent(code)}&limit=5`)
+        .then((r) => r.json())
+        .then((d) => {
+          const match = ((d.storeCredits ?? []) as StoreCreditLookup[]).find((sc) => sc.code.toUpperCase() === code) ?? null;
+          setStoreCreditMatch(match);
+          setStoreCreditLookupError(match ? null : "No store credit found with that code.");
+        })
+        .catch(() => setStoreCreditLookupError("Lookup failed — try again."))
+        .finally(() => setStoreCreditLookupLoading(false));
+    }, 400);
+  }, [storeCreditCodeInput]);
+
+  function resetStoreCredit() {
+    setStoreCreditCodeInput(""); setStoreCreditAmount("");
+    setStoreCreditMatch(null); setStoreCreditLookupError(null);
+  }
+
   function resetCustomerMode() {
     setCustomerMode("new");
     setCustSearch(""); setCustResults([]); setSelCustomer(null);
@@ -348,8 +392,37 @@ export function OrdersAdminClient() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    setCreating(true);
     setCreateError(null);
+
+    // Resolve customer email/phone — existing customer vs new
+    const resolvedEmail = customerMode === "existing"
+      ? (newEmail.trim() || selEmail)
+      : form.customerEmail.trim();
+    const resolvedPhone = customerMode === "existing"
+      ? (newPhone.trim() || selPhone)
+      : form.customerPhone.trim();
+
+    const storeCreditAmountCents = Math.round((parseFloat(storeCreditAmount) || 0) * 100);
+    if (storeCreditCodeInput.trim()) {
+      if (!storeCreditMatch || storeCreditMatch.status !== "active") {
+        setCreateError("Enter a valid, active store credit code, or clear the field.");
+        return;
+      }
+      if (!resolvedEmail || storeCreditMatch.customer_email.toLowerCase() !== resolvedEmail.toLowerCase()) {
+        setCreateError("The store credit's email doesn't match this order's customer email.");
+        return;
+      }
+      if (storeCreditAmountCents <= 0) {
+        setCreateError("Enter an amount to apply from the store credit, or clear the code field.");
+        return;
+      }
+      if (storeCreditAmountCents > storeCreditMatch.remaining_amount_cents) {
+        setCreateError(`Store credit only has $${(storeCreditMatch.remaining_amount_cents / 100).toFixed(2)} remaining.`);
+        return;
+      }
+    }
+
+    setCreating(true);
 
     const parsedItems = items.map((i) => ({
       productName: i.productName.trim(),
@@ -359,14 +432,6 @@ export function OrdersAdminClient() {
       ...(i.productId ? { productId: i.productId } : {}),
       ...(i.optionId ? { optionId: i.optionId } : {}),
     }));
-
-    // Resolve customer email/phone — existing customer vs new
-    const resolvedEmail = customerMode === "existing"
-      ? (newEmail.trim() || selEmail)
-      : form.customerEmail.trim();
-    const resolvedPhone = customerMode === "existing"
-      ? (newPhone.trim() || selPhone)
-      : form.customerPhone.trim();
 
     // If existing customer added a new email/phone, save to their record first
     if (customerMode === "existing" && selCustomer) {
@@ -397,11 +462,14 @@ export function OrdersAdminClient() {
 
     const body: Record<string, unknown> = {
       source: form.source,
-      paidStatus: form.paidStatus,
+      ...(form.amountPaid.trim() ? { amountPaidCents: Math.round(parseFloat(form.amountPaid) * 100) } : {}),
       currency: form.currency,
       orderType: form.orderType,
       items: parsedItems,
       ...(Object.keys(fees).length > 0 ? { fees } : {}),
+      ...(storeCreditMatch && storeCreditAmountCents > 0
+        ? { storeCreditCode: storeCreditMatch.code, storeCreditAmountCents }
+        : {}),
       ...(form.customerName.trim() ? { customerName: form.customerName.trim() } : {}),
       ...(resolvedEmail ? { customerEmail: resolvedEmail } : {}),
       ...(resolvedPhone ? { customerPhone: resolvedPhone } : {}),
@@ -472,7 +540,7 @@ export function OrdersAdminClient() {
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{total} total</p>
           </div>
           <button
-            onClick={() => { setForm(EMPTY_FORM); setItems([{ ...EMPTY_ITEM }]); setCreateError(null); resetCustomerMode(); setSelectedCouponCode(""); setAvailableCoupons([]); setShowCreate(true); }}
+            onClick={() => { setForm(EMPTY_FORM); setItems([{ ...EMPTY_ITEM }]); setCreateError(null); resetCustomerMode(); setSelectedCouponCode(""); setAvailableCoupons([]); resetStoreCredit(); setShowCreate(true); }}
             className="rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 text-sm font-medium transition-colors self-start sm:self-auto shrink-0"
           >
             + New Order
@@ -794,12 +862,11 @@ export function OrdersAdminClient() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Payment</label>
-                    <select value={form.paidStatus} onChange={(e) => setField("paidStatus", e.target.value as "paid" | "unpaid")}
-                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                      <option value="paid">Paid</option>
-                      <option value="unpaid">Unpaid</option>
-                    </select>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Amount Collected (USD)</label>
+                    <input type="number" step="0.01" min="0" value={form.amountPaid} onChange={(e) => setField("amountPaid", e.target.value)}
+                      placeholder="Blank = full order total"
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Enter 0 for unpaid, or a partial amount for a deposit — the rest shows as outstanding.</p>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Status</label>
@@ -1140,9 +1207,97 @@ export function OrdersAdminClient() {
                       <div className="flex justify-between text-sm font-semibold text-gray-900 dark:text-gray-100 pt-1 border-t border-gray-200 dark:border-gray-700">
                         <span>Order Total</span><span>${grand.toFixed(2)} {form.currency.toUpperCase()}</span>
                       </div>
+                      {storeCreditMatch && (parseFloat(storeCreditAmount) || 0) > 0 && (
+                        <div className="flex justify-between text-xs text-violet-600 dark:text-violet-400">
+                          <span>Store credit applied</span><span>−${(parseFloat(storeCreditAmount) || 0).toFixed(2)}</span>
+                        </div>
+                      )}
+                      {form.amountPaid.trim() && (() => {
+                        const storeCreditApplied = storeCreditMatch ? (parseFloat(storeCreditAmount) || 0) : 0;
+                        const collected = parseFloat(form.amountPaid) || 0;
+                        const remaining = Math.max(0, grand - storeCreditApplied - collected);
+                        return (
+                          <>
+                            <div className="flex justify-between text-xs text-emerald-600 dark:text-emerald-400">
+                              <span>Collected now</span><span>${collected.toFixed(2)}</span>
+                            </div>
+                            {remaining > 0 && (
+                              <div className="flex justify-between text-xs text-amber-600 dark:text-amber-400">
+                                <span>Remaining</span><span>${remaining.toFixed(2)}</span>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   );
                 })()}
+              </section>
+
+              {/* Store Credit — a payment method, not a discount */}
+              <section>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
+                  Store Credit <span className="font-normal normal-case tracking-normal text-gray-300 dark:text-gray-600">(optional — customer paying partly or fully with an existing credit)</span>
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Credit code</label>
+                    <input
+                      value={storeCreditCodeInput}
+                      onChange={(e) => setStoreCreditCodeInput(e.target.value.toUpperCase())}
+                      placeholder="BBJ-SC-XXXX-XXXX"
+                      autoComplete="off"
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Amount to apply</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                      <input type="number" inputMode="decimal" min="0" step="0.01" value={storeCreditAmount}
+                        onChange={(e) => setStoreCreditAmount(e.target.value)} placeholder="0.00"
+                        disabled={!storeCreditMatch}
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm pl-7 pr-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50" />
+                    </div>
+                  </div>
+                </div>
+
+                {storeCreditCodeInput.trim() && (
+                  <div className="mt-2 text-xs">
+                    {storeCreditLookupLoading ? (
+                      <span className="text-gray-400">Looking up…</span>
+                    ) : storeCreditMatch ? (() => {
+                      const emailMatches = !effectiveEmail || storeCreditMatch.customer_email.toLowerCase() === effectiveEmail.toLowerCase();
+                      const usable = storeCreditMatch.status === "active" && emailMatches;
+                      return (
+                        <div className={`rounded-lg border px-3 py-2 space-y-1 ${
+                          usable
+                            ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400"
+                            : "border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400"
+                        }`}>
+                          <div className="flex justify-between gap-2">
+                            <span className="truncate">{storeCreditMatch.customer_email} · {storeCreditMatch.status}</span>
+                            <span className="font-medium shrink-0">${(storeCreditMatch.remaining_amount_cents / 100).toFixed(2)} remaining</span>
+                          </div>
+                          {storeCreditMatch.status !== "active" && <p>This credit is {storeCreditMatch.status.replace("_", " ")} and cannot be applied.</p>}
+                          {storeCreditMatch.status === "active" && !emailMatches && (
+                            <p>This credit belongs to a different email than this order&apos;s customer.</p>
+                          )}
+                          {usable && (
+                            <button type="button"
+                              onClick={() => setStoreCreditAmount((storeCreditMatch.remaining_amount_cents / 100).toFixed(2))}
+                              className="underline hover:no-underline"
+                            >
+                              Apply full remaining balance
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })() : (
+                      <span className="text-gray-400 italic">{storeCreditLookupError ?? "No matching store credit."}</span>
+                    )}
+                  </div>
+                )}
               </section>
 
               {/* Shipping */}
