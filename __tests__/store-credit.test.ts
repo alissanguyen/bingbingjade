@@ -71,6 +71,7 @@ function baseCredit(overrides: Partial<StoreCreditRow> = {}): StoreCreditRow {
     status: "active",
     reason: "goodwill_resolution",
     customer_message: null,
+    custom_subject: null,
     internal_note: null,
     issued_at: "2026-01-01T00:00:00.000Z",
     issued_by: "admin",

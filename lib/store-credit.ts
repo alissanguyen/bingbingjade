@@ -53,6 +53,7 @@ export interface StoreCreditRow {
   status: StoreCreditStatus;
   reason: StoreCreditReason;
   customer_message: string | null;
+  custom_subject: string | null;
   internal_note: string | null;
   issued_at: string;
   issued_by: string;
@@ -146,6 +147,7 @@ export interface IssueStoreCreditParams {
   currency?: string;
   reason: StoreCreditReason;
   customerMessage?: string | null;
+  customSubject?: string | null;
   internalNote?: string | null;
   issuedBy: string;
   startsAt?: string | null;
@@ -193,6 +195,7 @@ export async function issueStoreCredit(params: IssueStoreCreditParams): Promise<
       status: "active",
       reason: params.reason,
       customer_message: params.customerMessage ?? null,
+      custom_subject: params.customSubject ?? null,
       internal_note: params.internalNote ?? null,
       issued_by: params.issuedBy,
       starts_at: params.startsAt ?? null,

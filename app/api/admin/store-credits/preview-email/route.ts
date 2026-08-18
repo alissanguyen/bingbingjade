@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
     sourceOrderNumber?: string | null;
     reason?: StoreCreditReason;
     customerMessage?: string | null;
+    customSubject?: string | null;
     startsAt?: string | null;
     expiresAt?: string | null;
     minimumMerchandiseSubtotalCents?: number | null;
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest) {
     status: "active",
     reason: body.reason ?? "goodwill_resolution",
     customer_message: body.customerMessage ?? null,
+    custom_subject: body.customSubject ?? null,
     internal_note: null,
     issued_at: now,
     issued_by: "admin",

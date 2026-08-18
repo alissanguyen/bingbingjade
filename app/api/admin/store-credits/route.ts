@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
     currency?: string;
     reason?: StoreCreditReason;
     customerMessage?: string | null;
+    customSubject?: string | null;
     internalNote?: string | null;
     startsAt?: string | null;
     expiresAt?: string | null;
@@ -120,6 +121,7 @@ export async function POST(req: NextRequest) {
     currency: body.currency,
     reason: body.reason,
     customerMessage: body.customerMessage ?? null,
+    customSubject: body.customSubject ?? null,
     internalNote: body.internalNote ?? null,
     issuedBy: actorId(session),
     startsAt: body.startsAt ?? null,

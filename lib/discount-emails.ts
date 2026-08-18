@@ -1152,9 +1152,11 @@ export function buildStoreCreditEmailHtml(params: StoreCreditEmailParams): { htm
 </body>
 </html>`;
 
-  const subject = isResend
-    ? `Your BingBing Jade store credit (${reasonLabel}) — ${storeCredit.code}`
-    : `You have received a $${amountDollars} BingBing Jade store credit — ${reasonLabel}`;
+  const subject = storeCredit.custom_subject?.trim() || (
+    isResend
+      ? `Your BingBing Jade store credit (${reasonLabel}) — ${storeCredit.code}`
+      : `You have received a $${amountDollars} BingBing Jade store credit — ${reasonLabel}`
+  );
 
   return { html, subject };
 }

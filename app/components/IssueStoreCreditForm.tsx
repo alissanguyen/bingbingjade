@@ -37,6 +37,7 @@ export function IssueStoreCreditForm({
   const [email, setEmail] = useState(prefill?.customerEmail ?? "");
   const [reason, setReason] = useState("goodwill_resolution");
   const [customerMessage, setCustomerMessage] = useState("");
+  const [customSubject, setCustomSubject] = useState("");
   const [internalNote, setInternalNote] = useState("");
   const [sendEmail, setSendEmail] = useState(true);
 
@@ -106,6 +107,7 @@ export function IssueStoreCreditForm({
           sourceOrderNumber: prefill?.sourceOrderNumber ?? null,
           reason,
           customerMessage: customerMessage.trim() || null,
+          customSubject: customSubject.trim() || null,
           startsAt: startsAt ? new Date(startsAt).toISOString() : null,
           expiresAt: hasExpiration && expiresAt ? new Date(expiresAt).toISOString() : null,
           minimumMerchandiseSubtotalCents: minSubtotal ? Math.round(Number(minSubtotal) * 100) : null,
@@ -158,6 +160,7 @@ export function IssueStoreCreditForm({
           currency: prefill?.currency ?? "USD",
           reason,
           customerMessage: customerMessage.trim() || null,
+          customSubject: customSubject.trim() || null,
           internalNote: internalNote.trim() || null,
           startsAt: startsAt ? new Date(startsAt).toISOString() : null,
           expiresAt: hasExpiration && expiresAt ? new Date(expiresAt).toISOString() : null,
@@ -294,6 +297,11 @@ export function IssueStoreCreditForm({
         </div>
 
         <div>
+          <label className={labelCls}>Custom Email Subject Line (optional)</label>
+          <input type="text" value={customSubject} onChange={(e) => setCustomSubject(e.target.value)} className={inputCls} placeholder="Leave blank to auto-generate from the reason" />
+        </div>
+
+        <div>
           <label className={labelCls}>Internal Admin Note (never shown to customer)</label>
           <textarea value={internalNote} onChange={(e) => setInternalNote(e.target.value)} rows={2} className={inputCls} />
         </div>
@@ -339,6 +347,12 @@ export function IssueStoreCreditForm({
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Customer Message</p>
               <p className="text-sm italic text-gray-700 dark:text-gray-300">&ldquo;{customerMessage.trim()}&rdquo;</p>
+            </div>
+          )}
+          {customSubject.trim() && (
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Email Subject</p>
+              <p className="text-sm text-gray-700 dark:text-gray-300">{customSubject.trim()}</p>
             </div>
           )}
           <div>
