@@ -293,7 +293,7 @@ export function IssueStoreCreditForm({
 
         <div>
           <label className={labelCls}>Customer-Facing Message (optional)</label>
-          <textarea value={customerMessage} onChange={(e) => setCustomerMessage(e.target.value)} rows={2} className={inputCls} placeholder="Shown in the email — e.g. an apology or thank-you note" />
+          <textarea value={customerMessage} onChange={(e) => setCustomerMessage(e.target.value)} rows={5} className={inputCls} placeholder={"Shown in the email — e.g. an apology or thank-you note.\n\nLeave a blank line between paragraphs. Wrap text in **double asterisks** to bold it."} />
         </div>
 
         <div>
@@ -346,7 +346,7 @@ export function IssueStoreCreditForm({
           {customerMessage.trim() && (
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Customer Message</p>
-              <p className="text-sm italic text-gray-700 dark:text-gray-300">&ldquo;{customerMessage.trim()}&rdquo;</p>
+              <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{customerMessage.trim()}</p>
             </div>
           )}
           {customSubject.trim() && (

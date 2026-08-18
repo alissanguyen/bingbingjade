@@ -1033,8 +1033,18 @@ export function buildStoreCreditEmailHtml(params: StoreCreditEmailParams): { htm
 
   // Plain text, not a boxed callout — rendered above the credit amount, as if
   // the admin were speaking directly to the customer before showing the credit.
+  // Blank lines in the admin's input become separate paragraphs; **text**
+  // becomes bold, so admin can emphasize key facts (amount, resolution) inline.
   const customerMessageHtml = storeCredit.customer_message
-    ? `<p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;font-style:italic;">"${storeCredit.customer_message}"</p>`
+    ? storeCredit.customer_message
+        .split(/\n\s*\n/)
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .map((p) => {
+          const withBold = p.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br>");
+          return `<p style="margin:0 0 20px;font-size:15px;color:#374151;line-height:1.6;">${withBold}</p>`;
+        })
+        .join("")
     : "";
 
   const reasonLabel = STORE_CREDIT_REASON_LABELS[storeCredit.reason] ?? "Store Credit";
