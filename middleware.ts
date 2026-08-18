@@ -21,7 +21,8 @@ const PARTNER_PROTECTED = [
   "/products-admin",
   "/customers-admin",
   "/approved-users",
-  "/sourcing-admin"
+  "/sourcing-admin",
+  "/claims-admin"
 ];
 
 // Isolated employee portal — only a catalog_contributor (or admin) session
@@ -44,6 +45,7 @@ const MAINTENANCE_ALLOWED = [
   "/customers-admin",
   "/approved-users",
   "/sourcing-admin",
+  "/claims-admin",
   "/api",
   "/add",
   "/addvendor",
