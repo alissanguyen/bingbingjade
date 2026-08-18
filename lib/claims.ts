@@ -191,10 +191,11 @@ type WindowKey =
   | "customer_response_days" | "insurance_evidence_days";
 
 const DEFAULT_WINDOWS: Record<WindowKey, number> = {
-  damage_reporting_days: 2, // 48 hours — damage must be reported quickly after delivery
-  missing_package_reporting_days: 30,
-  ship_now_return_days: 14,
-  sizing_return_days: 14,
+  // 48 hours for every claim type — must be reported quickly after delivery.
+  damage_reporting_days: 2,
+  missing_package_reporting_days: 2,
+  ship_now_return_days: 2,
+  sizing_return_days: 2,
   return_dropoff_days: 10,
   return_label_expiration_days: 14,
   customer_response_days: 7,

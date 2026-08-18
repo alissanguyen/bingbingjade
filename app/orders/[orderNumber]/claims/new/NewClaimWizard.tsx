@@ -6,11 +6,13 @@ import Link from "next/link";
 
 type ClaimType = "missing_package" | "damaged_item" | "not_as_described" | "doesnt_fit";
 
+// All four claim types must be reported within 48 hours of delivery — see
+// the deadline banner on the form step, computed from claim_windows.
 const CLAIM_TYPES: { value: ClaimType; label: string; blurb: string }[] = [
-  { value: "missing_package", label: "My package is missing", blurb: "Lost in transit, or marked delivered but you can't find it." },
+  { value: "missing_package", label: "My package is missing", blurb: "Lost in transit, or marked delivered but you can't find it. Must be reported within 48 hours." },
   { value: "damaged_item", label: "My item arrived damaged", blurb: "Photos required — must be reported within 48 hours of delivery." },
-  { value: "not_as_described", label: "My item is not as described", blurb: "Photos required." },
-  { value: "doesnt_fit", label: "My item doesn't fit", blurb: "Ship Now items only." },
+  { value: "not_as_described", label: "My item is not as described", blurb: "Photos required. Must be reported within 48 hours of delivery." },
+  { value: "doesnt_fit", label: "My item doesn't fit", blurb: "Ship Now items only. Must be reported within 48 hours of delivery." },
 ];
 
 interface OrderItem {
