@@ -23,7 +23,12 @@ export type StoreCreditReason =
   | "return"
   | "price_adjustment"
   | "loyalty_vip"
-  | "other";
+  | "other"
+  // Claims workflow (supabase/migration_123.sql) — kept distinct from the
+  // reasons above so exchange credit is never confused with an ordinary
+  // promotional/goodwill credit (see lib/claims.ts).
+  | "exchange_credit"
+  | "claim_resolution";
 
 // Single source of truth for human-readable reason labels — used in the
 // issuance form's dropdown and in the notification email's subject line, so
@@ -36,6 +41,8 @@ export const STORE_CREDIT_REASON_LABELS: Record<StoreCreditReason, string> = {
   price_adjustment: "Price Adjustment",
   loyalty_vip: "Loyalty/VIP",
   other: "Other",
+  exchange_credit: "Exchange Credit",
+  claim_resolution: "Claim Resolution",
 };
 
 export type StoreCreditStatus = "active" | "fully_used" | "expired" | "revoked";
@@ -47,6 +54,7 @@ export interface StoreCreditRow {
   customer_email: string;
   customer_id: string | null;
   source_order_id: string | null;
+  claim_id: string | null;
   currency: string;
   original_amount_cents: number;
   remaining_amount_cents: number;
@@ -144,6 +152,7 @@ export interface IssueStoreCreditParams {
   customerEmail: string;
   customerId?: string | null;
   sourceOrderId?: string | null;
+  claimId?: string | null;
   currency?: string;
   reason: StoreCreditReason;
   customerMessage?: string | null;
@@ -189,6 +198,7 @@ export async function issueStoreCredit(params: IssueStoreCreditParams): Promise<
       customer_email: email,
       customer_id: params.customerId ?? null,
       source_order_id: params.sourceOrderId ?? null,
+      claim_id: params.claimId ?? null,
       currency: params.currency ?? "USD",
       original_amount_cents: params.amountCents,
       remaining_amount_cents: params.amountCents,
