@@ -349,13 +349,24 @@ function InventoryProductPicker({
 
 // ── Component ────────────────────────────────────────────────────────────────
 
+interface Payment {
+  id: string;
+  amount_paid_usd: number;
+  payment_provider: string;
+  payment_date: string;
+  payment_status: string;
+  notes: string | null;
+}
+
 export function OrderDetailClient({
   order: initialOrder,
+  payments: initialPayments = [],
   productImages,
   productCogs,
   productLinks = {},
 }: {
   order: Order;
+  payments?: Payment[];
   productImages: Record<string, string>;
   productCogs: Record<string, number>;
   productLinks?: Record<string, string>;
@@ -363,6 +374,12 @@ export function OrderDetailClient({
   const router = useRouter();
   const [order, setOrder] = useState(initialOrder);
   const [itemImages, setItemImages] = useState(productImages);
+  const [payments, setPayments] = useState<Payment[]>(initialPayments);
+  const [newPaymentAmount, setNewPaymentAmount] = useState("");
+  const [newPaymentProvider, setNewPaymentProvider] = useState("zelle");
+  const [newPaymentDate, setNewPaymentDate] = useState("");
+  const [newPaymentNotes, setNewPaymentNotes] = useState("");
+  const [savingPayment, setSavingPayment] = useState(false);
 
   const [editStatus, setEditStatus] = useState<OrderStatus>(order.order_status);
   const [editDelivery, setEditDelivery] = useState(order.estimated_delivery_date ?? "");
@@ -509,6 +526,23 @@ export function OrderDetailClient({
     }
   }
 
+  async function handleSwitchFulfillment(shipmentId: string, fulfillmentType: "available_now" | "sourced_for_you") {
+    setSavingShipment(shipmentId);
+    try {
+      const res = await fetch(`/api/admin/shipments/${shipmentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fulfillment_type: fulfillmentType }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast("err", data.error ?? "Failed to switch fulfillment type."); return; }
+      setShipments((prev) => prev.map((s) => s.id === shipmentId ? { ...s, ...data.shipment } : s));
+      showToast("ok", `Switched to ${fulfillmentType === "available_now" ? "Ship Now" : "Sourced for You"}`);
+    } finally {
+      setSavingShipment(null);
+    }
+  }
+
   async function handleAdvanceEvent(shipmentId: string) {
     setAdvancingShipment(shipmentId);
     try {
@@ -580,6 +614,44 @@ export function OrderDetailClient({
   function showToast(type: "ok" | "err", msg: string) {
     setToast({ type, msg });
     setTimeout(() => setToast(null), 4000);
+  }
+
+  async function handleRecordPayment() {
+    const amountUsd = parseFloat(newPaymentAmount);
+    if (!Number.isFinite(amountUsd) || amountUsd <= 0) {
+      showToast("err", "Enter a positive amount.");
+      return;
+    }
+    setSavingPayment(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/payments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amountUsd,
+          provider: newPaymentProvider,
+          paymentDate: newPaymentDate || undefined,
+          notes: newPaymentNotes.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast("err", data.error ?? "Failed to record payment."); return; }
+      setPayments((prev) => [...prev, data.payment]);
+      setNewPaymentAmount("");
+      setNewPaymentDate("");
+      setNewPaymentNotes("");
+      showToast("ok", "Payment recorded");
+    } finally {
+      setSavingPayment(false);
+    }
+  }
+
+  async function handleDeletePayment(paymentId: string) {
+    if (!confirm("Remove this payment record? This does not refund anything — use it only to correct a mistaken entry.")) return;
+    const res = await fetch(`/api/admin/orders/${order.id}/payments/${paymentId}`, { method: "DELETE" });
+    if (!res.ok) { showToast("err", "Failed to remove payment."); return; }
+    setPayments((prev) => prev.filter((p) => p.id !== paymentId));
+    showToast("ok", "Payment removed");
   }
 
   async function ensureInventoryProducts() {
@@ -1646,6 +1718,70 @@ export function OrderDetailClient({
               </div>
             </div>
 
+            {/* Payments — the actual cash-received ledger, independent of orders.status */}
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Payments</h2>
+              </div>
+              <div className="px-4 py-4 space-y-3">
+                {(() => {
+                  const collectedCents = Math.round(payments.reduce((s, p) => s + Number(p.amount_paid_usd), 0) * 100);
+                  const dueCents = (order.amount_total ?? 0) - order.store_credit_used_cents;
+                  const remainingCents = Math.max(0, dueCents - collectedCents);
+                  return (
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-500 dark:text-gray-400">Collected</span>
+                      <span className={remainingCents > 0 ? "font-medium text-amber-600 dark:text-amber-400" : "font-medium text-emerald-700 dark:text-emerald-400"}>
+                        ${(collectedCents / 100).toFixed(2)} of ${(dueCents / 100).toFixed(2)}
+                        {remainingCents > 0 && ` — $${(remainingCents / 100).toFixed(2)} remaining`}
+                      </span>
+                    </div>
+                  );
+                })()}
+
+                {payments.length > 0 && (
+                  <ul className="space-y-1.5">
+                    {payments.map((p) => (
+                      <li key={p.id} className="flex justify-between items-center text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50 rounded-lg px-2.5 py-1.5">
+                        <span>
+                          ${Number(p.amount_paid_usd).toFixed(2)} &middot; {p.payment_provider} &middot; {new Date(p.payment_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          {p.notes && <span className="text-gray-400 dark:text-gray-500"> &middot; {p.notes}</span>}
+                        </span>
+                        <button type="button" onClick={() => handleDeletePayment(p.id)} className="text-gray-400 hover:text-red-500 transition-colors ml-2 shrink-0">
+                          &times;
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <div className="pt-2 border-t border-gray-100 dark:border-gray-800 space-y-2">
+                  <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Record a Payment</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="number" step="0.01" min="0" placeholder="Amount" value={newPaymentAmount} onChange={(e) => setNewPaymentAmount(e.target.value)}
+                      className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs px-2.5 py-1.5 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+                    <select value={newPaymentProvider} onChange={(e) => setNewPaymentProvider(e.target.value)}
+                      className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs px-2.5 py-1.5 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                      <option value="zelle">Zelle</option>
+                      <option value="cash">Cash</option>
+                      <option value="paypal">PayPal</option>
+                      <option value="bank_transfer">Wire</option>
+                      <option value="stripe">Stripe</option>
+                      <option value="other">Other</option>
+                    </select>
+                    <input type="date" value={newPaymentDate} onChange={(e) => setNewPaymentDate(e.target.value)}
+                      className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs px-2.5 py-1.5 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+                    <input type="text" placeholder="Notes (optional)" value={newPaymentNotes} onChange={(e) => setNewPaymentNotes(e.target.value)}
+                      className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs px-2.5 py-1.5 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+                  </div>
+                  <button type="button" onClick={handleRecordPayment} disabled={savingPayment || !newPaymentAmount}
+                    className="w-full rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-medium py-1.5 transition-colors">
+                    {savingPayment ? "Recording…" : "Record Payment"}
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {/* Add tracking — for orders with no shipments yet */}
             {shipments.length === 0 && (
               <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
@@ -1762,6 +1898,19 @@ export function OrderDetailClient({
                           }`}>
                             {shipment.fulfillment_type === "available_now" ? "Ship Now" : "Sourced for You"}
                           </span>
+                          {!sortedEvents.some((e) => e.is_completed) && (
+                            <button
+                              type="button"
+                              onClick={() => handleSwitchFulfillment(
+                                shipment.id,
+                                shipment.fulfillment_type === "available_now" ? "sourced_for_you" : "available_now"
+                              )}
+                              disabled={savingShipment === shipment.id}
+                              className="text-[11px] text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline disabled:opacity-50 transition-colors"
+                            >
+                              Switch to {shipment.fulfillment_type === "available_now" ? "Sourced for You" : "Ship Now"}
+                            </button>
+                          )}
                         </div>
                         <div className="flex items-center gap-3">
                           {currentEvent && currentIdx > 0 && (

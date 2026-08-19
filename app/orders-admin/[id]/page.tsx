@@ -50,6 +50,14 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     // Table doesn't exist yet — page loads without shipment data
   }
 
+  // Fetch recorded payments — the ledger Cash Received / Full Detailed
+  // Accounting sum from, and what "partially vs. fully paid" is derived from.
+  const { data: payments } = await supabaseAdmin
+    .from("order_payments")
+    .select("*")
+    .eq("order_id", id)
+    .order("payment_date", { ascending: true });
+
   // Fetch product images for each order item that has a product_id
   const productIds = (order.order_items as { product_id: string | null }[])
     .map((i) => i.product_id)
@@ -85,7 +93,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   return (
     <>
       <AdminBarServer />
-      <OrderDetailClient order={{ ...orderForClient, shipments }} productImages={productImages} productCogs={productCogs} productLinks={productLinks} />
+      <OrderDetailClient order={{ ...orderForClient, shipments }} payments={payments ?? []} productImages={productImages} productCogs={productCogs} productLinks={productLinks} />
     </>
   );
 }

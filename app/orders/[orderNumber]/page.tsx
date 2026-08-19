@@ -231,7 +231,19 @@ async function getOrder(orderNumber: string) {
     .eq("order_id", order.id)
     .maybeSingle();
 
-  return { ...order, productMeta, existingReview: review ?? null };
+  // Sum what's actually been collected so far — independent of orders.status,
+  // which just means "confirmed sale," not "fully paid." A manual/off-platform
+  // order can be genuinely partially paid (a deposit, more owed later).
+  const { data: paymentRows } = await supabaseAdmin
+    .from("order_payments")
+    .select("amount_paid_usd")
+    .eq("order_id", order.id)
+    .in("payment_status", ["paid", "partially_refunded"]);
+  const paidSoFarCents = Math.round(
+    (paymentRows ?? []).reduce((sum, p) => sum + Number(p.amount_paid_usd ?? 0), 0) * 100
+  );
+
+  return { ...order, productMeta, existingReview: review ?? null, paidSoFarCents };
 }
 
 // ── Metadata ───────────────────────────────────────────────────────────────
@@ -275,6 +287,15 @@ export default async function TrackOrderPage({
   // cancelled-before-capture order never shows "Total paid" either.
   const wasNeverCharged = !!captureStatus && !["captured", "refunded", "partially_refunded"].includes(captureStatus);
   const statusSteps = getSteps(isCustom);
+
+  // Partially vs. fully paid — independent of the manual-capture states above,
+  // which are about an authorization hold, not a genuine partial/deposit sale.
+  const paidSoFarCents = (order as Record<string, unknown>).paidSoFarCents as number;
+  const amountDueCents = Math.max(0, (order.amount_total ?? 0) - (order.store_credit_used_cents ?? 0));
+  const isPartiallyPaid =
+    !isAuthorizedNotCaptured && !wasNeverCharged &&
+    paidSoFarCents > 0 && paidSoFarCents < amountDueCents - 1;
+  const remainingCents = Math.max(0, amountDueCents - paidSoFarCents);
 
   const orderDate = new Date(order.created_at).toLocaleDateString("en-US", {
     year: "numeric",
@@ -695,10 +716,25 @@ export default async function TrackOrderPage({
                           ? "Total (Authorized, Not Yet Charged)"
                           : wasNeverCharged
                             ? "Total (Not Charged)"
-                            : "Total paid"}
+                            : isPartiallyPaid
+                              ? "Total"
+                              : "Total paid"}
                       </p>
                       <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{totalFormatted}</p>
                     </div>
+                    {isPartiallyPaid && (
+                      <div className="flex justify-between items-center rounded-lg bg-amber-50 dark:bg-amber-950/30 px-3 py-2 mt-1">
+                        <div>
+                          <p className="text-xs font-medium text-amber-700 dark:text-amber-400">Partially Paid</p>
+                          <p className="text-[11px] text-amber-600/80 dark:text-amber-400/70">
+                            ${(paidSoFarCents / 100).toFixed(2)} of ${(amountDueCents / 100).toFixed(2)} paid
+                          </p>
+                        </div>
+                        <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                          ${(remainingCents / 100).toFixed(2)} remaining
+                        </p>
+                      </div>
+                    )}
                     {(order.store_credit_used_cents ?? 0) > 0 && (order.stripe_amount_cents ?? 0) > 0 && (
                       <div className="flex justify-between items-center text-xs text-gray-400 dark:text-gray-500">
                         <span>Paid through Stripe</span>

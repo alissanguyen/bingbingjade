@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser, isAdmin } from "@/lib/approved-auth";
+import { eventTemplateFor } from "@/lib/shipment-event-templates";
+import type { FulfillmentType } from "@/lib/shipment-status";
 
 export async function PATCH(
   req: NextRequest,
@@ -22,6 +24,7 @@ export async function PATCH(
     estimated_ship_date?: string | null;
     estimated_delivery_start?: string | null;
     estimated_delivery_end?: string | null;
+    fulfillment_type?: "available_now" | "sourced_for_you";
   };
 
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -36,11 +39,46 @@ export async function PATCH(
   if ("estimated_delivery_start" in body)  updates.estimated_delivery_start = body.estimated_delivery_start ?? null;
   if ("estimated_delivery_end" in body)    updates.estimated_delivery_end = body.estimated_delivery_end ?? null;
 
+  // Switching fulfillment type (e.g. Sourced for You → Ship Now) re-templates
+  // the whole event timeline, since the two have entirely different steps —
+  // only safe while nothing has actually progressed yet.
+  if (body.fulfillment_type) {
+    const { data: current } = await supabaseAdmin
+      .from("shipments")
+      .select("fulfillment_type")
+      .eq("id", id)
+      .single();
+
+    if (current && current.fulfillment_type !== body.fulfillment_type) {
+      const { data: events } = await supabaseAdmin
+        .from("shipment_events")
+        .select("id, is_completed")
+        .eq("shipment_id", id);
+      const hasProgress = (events ?? []).some((e) => e.is_completed);
+      if (hasProgress) {
+        return NextResponse.json(
+          { error: "Can't change fulfillment type — this shipment has already progressed past Order Confirmed." },
+          { status: 400 }
+        );
+      }
+      updates.fulfillment_type = body.fulfillment_type;
+      const confirmedAt = new Date().toISOString();
+      await supabaseAdmin.from("shipment_events").delete().eq("shipment_id", id);
+      await supabaseAdmin.from("shipment_events").insert(
+        eventTemplateFor(body.fulfillment_type as FulfillmentType).map((e) => ({
+          ...e,
+          shipment_id: id,
+          event_time: e.event_key === "confirmed" ? confirmedAt : undefined,
+        }))
+      );
+    }
+  }
+
   const { data, error } = await supabaseAdmin
     .from("shipments")
     .update(updates)
     .eq("id", id)
-    .select("*")
+    .select("*, shipment_events(id, event_key, label, description, event_time, is_current, is_completed, sort_order)")
     .single();
 
   if (error || !data)
