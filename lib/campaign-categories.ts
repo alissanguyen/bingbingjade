@@ -16,6 +16,7 @@ export const CAMPAIGN_CATEGORIES: CampaignCategory[] = [
   { value: "womens_day",     label: "Women's Day",     emoji: "🌸", presetKey: "WOMENS_DAY" },
   { value: "birthday",       label: "Our Birthday",    emoji: "🎂", presetKey: "BIRTHDAY" },
   { value: "lunar_new_year", label: "Lunar New Year",  emoji: "🧧", presetKey: "LUNAR_NEW_YEAR" },
+  { value: "labor_day",      label: "Labor Day",       emoji: "🍂", presetKey: "LABOR_DAY" },
   { value: "christmas",      label: "Christmas",       emoji: "🎄", presetKey: "CHRISTMAS" },
   { value: "anniversary",    label: "Anniversary",     emoji: "🥂", presetKey: "ANNIVERSARY" },
   { value: "flash_sale",     label: "Flash Sale",      emoji: "⚡", presetKey: "FLASH_SALE" },
