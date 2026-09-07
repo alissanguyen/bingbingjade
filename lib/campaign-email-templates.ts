@@ -15,6 +15,7 @@ export const CATEGORY_TEMPLATES: Record<string, EmailTemplate[]> = {
   womens_day:     [{ presetKey: "WOMENS_DAY",     label: "Women's Day" }],
   birthday:       [{ presetKey: "BINGBING_BDAY",  label: "Our Birthday" }],
   lunar_new_year: [{ presetKey: "LUNAR_NEW_YEAR", label: "Lunar New Year" }],
+  labor_day:      [{ presetKey: "LABOR_DAY",      label: "Labor Day" }],
   christmas:      [{ presetKey: "CHRISTMAS",      label: "Christmas" }],
   anniversary:    [{ presetKey: "ANNIVERSARY",    label: "Anniversary" }],
   flash_sale:     [{ presetKey: "FLASH_SALE",     label: "Flash Sale" }],

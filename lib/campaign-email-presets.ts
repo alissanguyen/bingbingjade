@@ -113,6 +113,20 @@ export const CAMPAIGN_PRESETS = {
     bannerImage: "/campaign_banners/lny2.jpg"
   },
 
+  LABOR_DAY: {
+    label: "Labor Day",
+    emoji: "🍂",
+    color: "yellow",
+    subject: "Labor Day — A Quiet Pause, A Small Offering",
+    headline: "Rest, and Something Lasting.",
+    intro:
+      "The long weekend is a chance to slow down. We've set aside a small selection of jadeite pieces at a special value — nothing urgent, just here if the moment feels right.",
+    urgency: "Through the long weekend · While pieces remain",
+    cta: "View the Selection",
+    ctaLink: "/products",
+    bannerImage: "/campaign_banners/labor_day.jpg"
+  },
+
   CHRISTMAS: {
     label: "Christmas",
     emoji: "🎄",
