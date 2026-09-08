@@ -22,7 +22,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
       .order("created_at"),
     supabaseAdmin
       .from("products")
-      .select("id, name, slug, public_id, category, price_display_usd, sale_price_usd, status, images")
+      .select("id, name, slug, public_id, category, price_display_usd, sale_price_usd, status, images, quick_ship")
       .eq("is_published", true)
       .not("status", "in", '("sold","archived")')
       .order("created_at", { ascending: false })
@@ -66,6 +66,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
       price_display_usd: p.price_display_usd,
       sale_price_usd: p.sale_price_usd,
       status: p.status,
+      quick_ship: (p.quick_ship as boolean) ?? false,
       imageUrl: await resolveFirstImageUrl(p.images ?? []),
     }))
   );
