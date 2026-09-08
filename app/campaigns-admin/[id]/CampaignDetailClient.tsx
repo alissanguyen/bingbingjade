@@ -48,6 +48,7 @@ type AvailableProduct = {
   price_display_usd: number | null;
   sale_price_usd: number | null;
   status: string;
+  quick_ship: boolean;
   imageUrl: string | null;
 };
 
@@ -83,7 +84,9 @@ export function CampaignDetailClient({
 
   // Product picker state
   const [pickerQuery, setPickerQuery] = useState("");
+  const [shipNowOnly, setShipNowOnly] = useState(false);
   const [adding, setAdding] = useState<string | null>(null); // productId being added
+  const [bulkAdding, setBulkAdding] = useState(false);
 
   // Event price editing: map of campaign_event_products.product_id → draft price
   const [draftPrices, setDraftPrices] = useState<Record<string, string>>({});
@@ -104,9 +107,18 @@ export function CampaignDetailClient({
   const filteredPicker = useMemo(() => {
     const q = pickerQuery.toLowerCase();
     return allProducts.filter(
-      (p) => !inCampaignIds.has(p.id) && (p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q))
+      (p) =>
+        !inCampaignIds.has(p.id) &&
+        (!shipNowOnly || p.quick_ship) &&
+        (p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q))
     );
-  }, [allProducts, inCampaignIds, pickerQuery]);
+  }, [allProducts, inCampaignIds, pickerQuery, shipNowOnly]);
+
+  // Ship Now products currently visible in the picker (drives the bulk-add button)
+  const shipNowInPicker = useMemo(
+    () => filteredPicker.filter((p) => p.quick_ship),
+    [filteredPicker]
+  );
 
   // ── Campaign edit ──────────────────────────────────────────────────────────
 
@@ -183,6 +195,44 @@ export function CampaignDetailClient({
       showToast("Product added to campaign.");
     } finally {
       setAdding(null);
+    }
+  }
+
+  async function handleBulkAddShipNow() {
+    if (shipNowInPicker.length === 0 || bulkAdding) return;
+    setBulkAdding(true);
+    const added: CampaignProduct[] = [];
+    let failures = 0;
+    try {
+      for (const p of shipNowInPicker) {
+        try {
+          const res = await fetch(`/api/admin/campaigns/${campaign.id}/products`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ product_id: p.id }),
+          });
+          const data = await res.json();
+          if (!res.ok) { failures++; continue; }
+          added.push({
+            id: data.id,
+            product_id: p.id,
+            event_price_usd: data.event_price_usd,
+            sort_order: data.sort_order,
+            is_featured_for_email: data.is_featured_for_email,
+            product: p,
+          });
+        } catch {
+          failures++;
+        }
+      }
+      if (added.length > 0) setCampaignProducts((prev) => [...prev, ...added]);
+      showToast(
+        failures === 0
+          ? `Added ${added.length} Ship Now ${added.length === 1 ? "product" : "products"}.`
+          : `Added ${added.length}, ${failures} failed.`
+      );
+    } finally {
+      setBulkAdding(false);
     }
   }
 
@@ -493,12 +543,38 @@ export function CampaignDetailClient({
           value={pickerQuery}
           onChange={(e) => setPickerQuery(e.target.value)}
           placeholder="Search by name or category…"
-          className={`${inputCls} mb-4`}
+          className={`${inputCls} mb-3`}
         />
+
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <label className="inline-flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={shipNowOnly}
+              onChange={(e) => setShipNowOnly(e.target.checked)}
+              className="rounded border-gray-300 dark:border-gray-600 text-sky-500 focus:ring-sky-500"
+            />
+            Ship Now only
+          </label>
+          {shipNowInPicker.length > 0 && (
+            <button
+              type="button"
+              disabled={bulkAdding}
+              onClick={handleBulkAddShipNow}
+              className="text-xs font-medium px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-600 text-white transition-colors disabled:opacity-50"
+            >
+              {bulkAdding ? "Adding…" : `Add all ${shipNowInPicker.length} Ship Now`}
+            </button>
+          )}
+        </div>
 
         {filteredPicker.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-6">
-            {pickerQuery ? "No matching products." : "All published products are already in this campaign."}
+            {pickerQuery
+              ? "No matching products."
+              : shipNowOnly
+                ? "No Ship Now products left to add."
+                : "All published products are already in this campaign."}
           </p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-96 overflow-y-auto">
@@ -518,6 +594,11 @@ export function CampaignDetailClient({
                   <div className="absolute inset-0 bg-emerald-600/0 group-hover:bg-emerald-600/10 transition-colors flex items-center justify-center">
                     <span className="text-white text-2xl opacity-0 group-hover:opacity-100 transition-opacity">+</span>
                   </div>
+                  {p.quick_ship && (
+                    <div className="absolute top-1.5 right-1.5 z-10 rounded-full bg-sky-500 text-white text-[8px] font-semibold uppercase tracking-widest px-1.5 py-0.5">
+                      Ship Now
+                    </div>
+                  )}
                   {adding === p.id && (
                     <div className="absolute inset-0 bg-white/60 dark:bg-gray-900/60 flex items-center justify-center">
                       <span className="text-xs text-gray-500">Adding…</span>
