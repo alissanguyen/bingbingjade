@@ -31,10 +31,16 @@ export const ALLOWED_COUNTRIES: { code: string; name: string }[] = [
   { code: "TW", name: "Taiwan" },
   { code: "TH", name: "Thailand" },
   { code: "VN", name: "Vietnam" },
+  { code: "BR", name: "Brazil" },
+  { code: "MX", name: "Mexico" },
+  { code: "AR", name: "Argentina" },
+  { code: "CL", name: "Chile" },
+  { code: "CO", name: "Colombia" },
 ];
 
 const FAR_COUNTRIES = new Set([
   "CN", "HK", "IN", "ID", "JP", "KR", "MY", "PH", "SG", "TW", "TH", "VN",
+  "BR", "MX", "AR", "CL", "CO",
 ]);
 
 const EUROPE_COUNTRIES = new Set([
@@ -58,7 +64,7 @@ export function getShippingZone(country: string): ShippingZone {
  * - Canada:               $15
  * - Europe (UK + EU):     $20
  * - Australia / NZ:       $30
- * - Far (Asia/Pacific):   $55
+ * - Far (Asia/Pacific, Latin America): $55
  */
 export function calculateShipping(zone: ShippingZone, _itemCount: number): number {
   if (zone === "domestic")  return 0;
