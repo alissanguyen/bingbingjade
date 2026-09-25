@@ -1,4 +1,4 @@
-export type ShippingZone = "domestic" | "canada" | "europe" | "australia" | "far";
+export type ShippingZone = "domestic" | "canada" | "europe" | "australia" | "brazil" | "far";
 
 // Countries available for shipping, with display names
 export const ALLOWED_COUNTRIES: { code: string; name: string }[] = [
@@ -31,11 +31,14 @@ export const ALLOWED_COUNTRIES: { code: string; name: string }[] = [
   { code: "TW", name: "Taiwan" },
   { code: "TH", name: "Thailand" },
   { code: "VN", name: "Vietnam" },
+  { code: "BR", name: "Brazil" },
 ];
 
 const FAR_COUNTRIES = new Set([
   "CN", "HK", "IN", "ID", "JP", "KR", "MY", "PH", "SG", "TW", "TH", "VN",
 ]);
+
+const BRAZIL_COUNTRIES = new Set(["BR"]);
 
 const EUROPE_COUNTRIES = new Set([
   "GB", "AT", "BE", "DK", "FI", "FR", "DE", "IT", "NL", "NO", "ES", "SE", "CH",
@@ -48,6 +51,7 @@ export function getShippingZone(country: string): ShippingZone {
   if (country === "CA") return "canada";
   if (EUROPE_COUNTRIES.has(country)) return "europe";
   if (AUSTRALIA_COUNTRIES.has(country)) return "australia";
+  if (BRAZIL_COUNTRIES.has(country)) return "brazil";
   if (FAR_COUNTRIES.has(country)) return "far";
   return "far"; // fallback for any unlisted country
 }
@@ -58,6 +62,7 @@ export function getShippingZone(country: string): ShippingZone {
  * - Canada:               $15
  * - Europe (UK + EU):     $20
  * - Australia / NZ:       $30
+ * - Brazil:               $60
  * - Far (Asia/Pacific):   $55
  */
 export function calculateShipping(zone: ShippingZone, _itemCount: number): number {
@@ -65,6 +70,7 @@ export function calculateShipping(zone: ShippingZone, _itemCount: number): numbe
   if (zone === "canada")    return 15;
   if (zone === "europe")    return 20;
   if (zone === "australia") return 30;
+  if (zone === "brazil")    return 60;
   return 55; // far
 }
 
