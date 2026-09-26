@@ -45,7 +45,6 @@ export function ClaimsAdminClient() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
     const params = new URLSearchParams();
     if (responsibility) params.set("responsibility", responsibility);
     if (q.trim()) params.set("q", q.trim());
