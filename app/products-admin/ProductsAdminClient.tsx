@@ -18,6 +18,7 @@ const CATEGORIES = ["bracelet", "bangle", "ring", "pendant", "necklace", "set", 
 const STATUS_META: Record<string, { label: string; badge: string }> = {
   available:  { label: "Available",  badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" },
   on_sale:    { label: "On Sale",    badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400" },
+  reserved:   { label: "Reserved",   badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400" },
   sold:       { label: "Sold",       badge: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400" },
   archived:   { label: "Archived",   badge: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400" },
 };
@@ -514,7 +515,9 @@ export function ProductsAdminClient({
               {/* Rows */}
               <div className="divide-y divide-gray-50 dark:divide-gray-800/60">
                 {filtered.map((p) => {
-                  const statusMeta = STATUS_META[p.status];
+                  // Fallback keeps an unrecognized future status from crashing
+                  // the whole page — same defensive pattern as CAT_LABEL below.
+                  const statusMeta = STATUS_META[p.status] ?? { label: p.status, badge: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400" };
                   const isChecked = selected.has(p.id);
 
                   return (
