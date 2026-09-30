@@ -11,7 +11,7 @@ export interface AdminProduct {
   id: string;
   name: string;
   category: string;
-  status: "available" | "on_sale" | "sold" | "archived";
+  status: "available" | "on_sale" | "sold" | "archived" | "reserved";
   is_published: boolean;
   is_clearance: boolean;
   quick_ship: boolean;
