@@ -8,6 +8,7 @@ import { useCart } from "@/app/components/CartContext";
 import { supabase } from "@/lib/supabase";
 import { obfuscatedPrice, requiresInquiry } from "@/lib/price";
 import { ALLOWED_COUNTRIES, getShippingZone, calculateShipping, calculateStripeFee, calculateBnplFee } from "@/lib/shipping";
+import { requiresTaxId } from "@/lib/tax-id-countries";
 import { Elements, AddressElement } from "@stripe/react-stripe-js";
 import type { StripeAddressElementChangeEvent } from "@stripe/stripe-js";
 import { stripePromise } from "@/lib/stripe-client";
@@ -84,6 +85,7 @@ export function CheckoutClient() {
 
   // Shipping address (Stripe Address Element)
   const [addressValue, setAddressValue] = useState<StripeAddressElementChangeEvent["value"] | null>(null);
+  const [taxId, setTaxId] = useState("");
   const [taxAmountCents, setTaxAmountCents] = useState(0);
   const [taxCalculationId, setTaxCalculationId] = useState<string | null>(null);
   const [taxLoading, setTaxLoading] = useState(false);
@@ -252,9 +254,11 @@ export function CheckoutClient() {
   const finalGrandTotal = grandTotal != null ? Math.max(0, Math.round((grandTotal - storeCreditDollars) * 100) / 100) : null;
 
   const addressComplete = addressValue !== null;
+  const taxIdRequired = !!shippingAddress.country && requiresTaxId(shippingAddress.country);
+  const taxIdComplete = !taxIdRequired || taxId.trim().length > 0;
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail.trim());
-  const canCheckout = availableItems.length > 0 && !isMixedCart && adminUnlocked && emailValid && addressComplete && paymentMethod !== null;
+  const canCheckout = availableItems.length > 0 && !isMixedCart && adminUnlocked && emailValid && addressComplete && taxIdComplete && paymentMethod !== null;
 
   // Stable key — only changes when the address or item prices genuinely differ.
   // Avoids the re-render loop caused by availableItems being a new array ref each render.
@@ -481,6 +485,7 @@ export function CheckoutClient() {
             postal: shippingAddress.postal.trim(),
             country: shippingAddress.country,
           },
+          ...(taxIdRequired ? { taxId: taxId.trim() } : {}),
         }),
       });
       const data = await res.json();
@@ -1118,6 +1123,23 @@ export function CheckoutClient() {
                         onChange={(e) => setAddressValue(e.complete ? e.value : null)}
                       />
                     </Elements>
+                    {taxIdRequired && (
+                      <div className="mt-3">
+                        <label className="block text-[11px] sm:text-[13px] uppercase tracking-[0.1em] font-semibold text-stone-500 dark:text-gray-400 mb-1.5">
+                          Recipient Tax ID
+                        </label>
+                        <input
+                          type="text"
+                          value={taxId}
+                          onChange={(e) => setTaxId(e.target.value)}
+                          placeholder="e.g. CPF, RFC, RUT — required for customs"
+                          className="w-full rounded-lg border border-stone-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2.5 text-[13px] text-stone-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500"
+                        />
+                        <p className="mt-1.5 text-[11px] sm:text-[13px] text-stone-500 dark:text-gray-400">
+                          Required for customs clearance when shipping to this country. Stored encrypted.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
 

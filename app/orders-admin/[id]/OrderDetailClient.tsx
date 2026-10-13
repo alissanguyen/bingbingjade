@@ -91,6 +91,7 @@ interface ShippingAddress {
   state_or_region: string;
   postal_code: string;
   country: string;
+  tax_id_last4?: string | null;
 }
 
 interface Order {
@@ -362,6 +363,27 @@ export function OrderDetailClient({
 }) {
   const router = useRouter();
   const [order, setOrder] = useState(initialOrder);
+  const [revealedTaxId, setRevealedTaxId] = useState<string | null>(null);
+  const [taxIdRevealLoading, setTaxIdRevealLoading] = useState(false);
+  const [taxIdRevealError, setTaxIdRevealError] = useState<string | null>(null);
+
+  async function handleRevealTaxId() {
+    setTaxIdRevealLoading(true);
+    setTaxIdRevealError(null);
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/reveal-tax-id`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setTaxIdRevealError(data.error ?? "Unable to reveal tax ID.");
+        return;
+      }
+      setRevealedTaxId(data.taxId);
+    } catch {
+      setTaxIdRevealError("Unable to reveal tax ID.");
+    } finally {
+      setTaxIdRevealLoading(false);
+    }
+  }
   const [itemImages, setItemImages] = useState(productImages);
 
   const [editStatus, setEditStatus] = useState<OrderStatus>(order.order_status);
@@ -1954,6 +1976,28 @@ export function OrderDetailClient({
                   <p>{effectiveAddress.city}, {effectiveAddress.state_or_region} {effectiveAddress.postal_code}</p>
                   <p>{effectiveAddress.country}</p>
                 </address>
+                {effectiveAddress.tax_id_last4 && (
+                  <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Recipient Tax ID</p>
+                    {revealedTaxId ? (
+                      <p className="text-sm font-mono text-gray-700 dark:text-gray-200">{revealedTaxId}</p>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-mono text-gray-500 dark:text-gray-400">•••• {effectiveAddress.tax_id_last4}</p>
+                        <button
+                          type="button"
+                          onClick={handleRevealTaxId}
+                          disabled={taxIdRevealLoading}
+                          className="text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:underline disabled:opacity-50"
+                        >
+                          {taxIdRevealLoading ? "Revealing…" : "Reveal"}
+                        </button>
+                      </div>
+                    )}
+                    {taxIdRevealError && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{taxIdRevealError}</p>}
+                    {revealedTaxId && <p className="text-[11px] text-gray-400 mt-1">This view was logged for audit purposes.</p>}
+                  </div>
+                )}
               </div>
             ) : order.capture_status ? (
               // Manual-capture (Sourced for You) order with no address on file —
