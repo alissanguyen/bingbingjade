@@ -111,7 +111,12 @@ export async function POST(req: NextRequest) {
 
       const isPartial = charge.amount_refunded < charge.amount;
 
-      if (existingOrder && existingOrder.status !== "refunded") {
+      // Only a FULL refund cancels the order and zeroes its revenue — a
+      // partial refund is a live order whose net revenue simply decreases by
+      // the refunded amount (see lib/revenue.ts), not an order that stops
+      // existing. Cancelling on any refund amount used to zero out revenue
+      // for orders that were still mostly paid.
+      if (existingOrder && !isPartial && existingOrder.status !== "refunded") {
         await supabase
           .from("orders")
           .update({ status: "refunded", order_status: "order_cancelled" })
@@ -134,6 +139,38 @@ export async function POST(req: NextRequest) {
       // keeps counting toward Cash Received in Full Detailed Accounting.
       if (existingOrder) {
         await syncOrderPaymentsRefundStatus(existingOrder.id, isPartial);
+
+        // For a partial refund, the payment_status flip above only relabels
+        // the original row — it doesn't reduce the amount that ledger-based
+        // net revenue (lib/revenue.ts) sums. Record each actual Stripe
+        // refund on this charge as its own negative ledger row, keyed by the
+        // refund id so a redelivered webhook can never double-count it.
+        if (isPartial) {
+          const refundsList = (charge.refunds?.data ?? []) as Stripe.Refund[];
+          for (const rf of refundsList) {
+            if (!rf.id || rf.status !== "succeeded") continue;
+            const { data: existingRefundRow } = await supabase
+              .from("order_payments")
+              .select("id")
+              .eq("payment_provider", "stripe")
+              .eq("provider_transaction_id", rf.id)
+              .maybeSingle();
+            if (existingRefundRow) continue;
+            await supabase.from("order_payments").insert({
+              order_id: existingOrder.id,
+              payment_provider: "stripe",
+              payment_type: "refund",
+              provider_transaction_id: rf.id,
+              amount_paid_usd: -(rf.amount / 100),
+              currency: (rf.currency ?? charge.currency ?? "usd").toUpperCase(),
+              payment_fee_usd: 0,
+              net_received_usd: -(rf.amount / 100),
+              payment_date: new Date((rf.created ?? Math.floor(Date.now() / 1000)) * 1000).toISOString(),
+              payment_status: "paid",
+              notes: `Partial refund via Stripe (${rf.id})`,
+            });
+          }
+        }
       }
     }
     return NextResponse.json({ received: true });

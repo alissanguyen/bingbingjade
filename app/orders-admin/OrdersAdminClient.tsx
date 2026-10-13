@@ -19,6 +19,10 @@ interface OrderListItem {
   source: OrderSource;
   created_at: string;
   item_count: number;
+  store_credit_used_cents: number | null;
+  // Net external revenue (Stripe/Zelle/etc., store credit excluded) — null
+  // when store_credit_used_cents is 0, since it then equals amount_total.
+  new_payment_cents: number | null;
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -633,7 +637,7 @@ export function OrdersAdminClient() {
                     <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Customer</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Date</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Items</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Total</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Order Value</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Status</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Source</th>
                   </tr>
@@ -664,6 +668,19 @@ export function OrdersAdminClient() {
                           {fmtAmount(order.amount_total, order.currency)}
                         </span>
                         <span className="block text-xs text-gray-400 capitalize">{order.status}</span>
+                        {/* Store credit was involved — gross Order Value alone would overstate what
+                            this order actually brought in as new revenue, so spell out the split. */}
+                        {(order.store_credit_used_cents ?? 0) > 0 && (
+                          <span className="block text-xs text-gray-400">
+                            <span className="text-amber-600 dark:text-amber-400">
+                              −${((order.store_credit_used_cents ?? 0) / 100).toFixed(2)} credit
+                            </span>
+                            {" · "}
+                            <span className="text-emerald-600 dark:text-emerald-400">
+                              ${((order.new_payment_cents ?? 0) / 100).toFixed(2)} new
+                            </span>
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[order.order_status]}`}>

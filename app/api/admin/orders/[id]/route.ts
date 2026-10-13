@@ -5,6 +5,7 @@ import { processReferralRewardOnDelivery, ensureReferralCode } from "@/lib/disco
 import { sendReferralInviteEmail, sendReferralRewardEmail } from "@/lib/discount-emails";
 import { getSessionUser, isAdmin, isApproved, approvedCreatedBy, SessionUser } from "@/lib/approved-auth";
 import type { OrderStatus } from "@/types/orders";
+import { computeOrderRevenue, type OrderPaymentLedgerRow, type ClaimRefundLedgerRow } from "@/lib/revenue";
 
 const VALID_STATUSES: OrderStatus[] = [
   "order_created",
@@ -54,10 +55,28 @@ export async function GET(
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
+  // Canonical revenue breakdown — the ledger (order_payments / claim_refunds)
+  // is the source of truth for what was actually collected, so this is the
+  // same calculation the Orders admin table and every accounting report use
+  // (lib/revenue.ts). Only fetched when the order used store credit — for
+  // every other order, new revenue is just amount_total.
+  let revenue = null as ReturnType<typeof computeOrderRevenue> | null;
+  if ((order.store_credit_used_cents ?? 0) > 0) {
+    const [{ data: payments }, { data: claimRefunds }] = await Promise.all([
+      supabaseAdmin.from("order_payments").select("amount_paid_usd, payment_status").eq("order_id", id),
+      supabaseAdmin.from("claim_refunds").select("amount_usd, status").eq("order_id", id),
+    ]);
+    revenue = computeOrderRevenue(
+      { amountTotalCents: order.amount_total, storeCreditUsedCents: order.store_credit_used_cents, orderStatus: order.order_status },
+      (payments ?? []) as OrderPaymentLedgerRow[],
+      (claimRefunds ?? []) as ClaimRefundLedgerRow[]
+    );
+  }
+
   // Strip server-only cost fields before sending to any client
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { cogs_cents: _cogs, imported_price_vnd: _vnd, ...safeOrder } = order as typeof order & { cogs_cents?: unknown; imported_price_vnd?: unknown };
-  return NextResponse.json({ order: safeOrder });
+  return NextResponse.json({ order: safeOrder, revenue });
 }
 
 export async function PATCH(

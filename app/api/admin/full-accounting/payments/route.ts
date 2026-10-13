@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
       provider_transaction_id, provider_receipt_id, provider_invoice_id,
       amount_paid_usd, currency, payment_fee_usd, net_received_usd,
       payment_date, payment_status, proof_url, notes, created_at,
-      orders(id, order_number, customer_name, customer_email, amount_total, order_status)
+      orders(id, order_number, customer_name, customer_email, amount_total, store_credit_used_cents, order_status)
     `, { count: "exact" })
     .order("payment_date", { ascending: false })
     .range(offset, offset + limit - 1);
@@ -75,6 +75,7 @@ export async function GET(req: NextRequest) {
     customer_name: string | null;
     customer_email: string | null;
     amount_total_usd: number | null;
+    cash_owed_usd: number | null;
     order_status: string | null;
     total_paid: number;
     total_fees: number;
@@ -89,9 +90,14 @@ export async function GET(req: NextRequest) {
     const oid = p.order_id ?? `unlinked_${p.id}`;
     const order = p.orders as unknown as {
       id: string; order_number: string | null; customer_name: string | null;
-      customer_email: string | null; amount_total: number | null; order_status: string | null;
+      customer_email: string | null; amount_total: number | null; store_credit_used_cents: number | null; order_status: string | null;
     } | null;
     const amountTotalUsd = order?.amount_total != null ? order.amount_total / 100 : null;
+    // Store credit already settled its own share of the order — only the
+    // remaining cash portion should ever show up as "owed".
+    const cashOwedUsd = amountTotalUsd != null
+      ? amountTotalUsd - ((order?.store_credit_used_cents ?? 0) / 100)
+      : null;
 
     if (!orderMap[oid]) {
       orderMap[oid] = {
@@ -101,6 +107,7 @@ export async function GET(req: NextRequest) {
         customer_name:    order?.customer_name ?? null,
         customer_email:   order?.customer_email ?? null,
         amount_total_usd: amountTotalUsd,
+        cash_owed_usd:    cashOwedUsd,
         order_status:     order?.order_status ?? null,
         total_paid:       0,
         total_fees:       0,
@@ -128,10 +135,11 @@ export async function GET(req: NextRequest) {
   // Compute amount_due and payment_status per order group
   const orderSummaries = Object.values(orderMap).map((e) => {
     const totalPaid = r2(e.total_paid);
-    const amountDue = e.amount_total_usd != null ? r2(e.amount_total_usd - totalPaid) : null;
+    const amountDue = e.cash_owed_usd != null ? r2(e.cash_owed_usd - totalPaid) : null;
     let paymentStatus = "unpaid";
-    if (e.amount_total_usd != null) {
-      if (totalPaid >= e.amount_total_usd - 0.01) paymentStatus = "paid";
+    if (e.cash_owed_usd != null) {
+      if (e.cash_owed_usd <= 0.01) paymentStatus = "paid"; // fully covered by store credit
+      else if (totalPaid >= e.cash_owed_usd - 0.01) paymentStatus = "paid";
       else if (totalPaid > 0) paymentStatus = "partial";
     } else if (totalPaid > 0) {
       paymentStatus = "paid";
