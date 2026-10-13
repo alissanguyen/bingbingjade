@@ -419,6 +419,9 @@ export async function POST(req: NextRequest) {
     state: cleanText(session.metadata?.ship_state),
     postal: cleanText(session.metadata?.ship_postal),
     country: cleanText(session.metadata?.ship_country),
+    // Already encrypted by the checkout route before it ever reached Stripe metadata.
+    taxIdCiphertext: cleanText(session.metadata?.ship_tax_id_enc),
+    taxIdLast4: cleanText(session.metadata?.ship_tax_id_last4),
   } : null;
 
   const stripeShipping = session.collected_information?.shipping_details ?? null;

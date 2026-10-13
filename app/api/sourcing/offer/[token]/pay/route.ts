@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { stripe } from "@/lib/stripe";
 import { ALLOWED_COUNTRIES, getShippingZone, calculateShipping, calculateStripeFee, calculateBnplFee, ACTIVE_BNPL_METHODS } from "@/lib/shipping";
+import { requiresTaxId, encryptTaxId, taxIdLast4 } from "@/lib/tax-id";
 
 export const dynamic = "force-dynamic";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
 
 // POST /api/sourcing/offer/[token]/pay
-// Body: { shippingAddress, paymentMethod, taxAmountCents?, taxCalculationId? }
+// Body: { shippingAddress, taxId?, paymentMethod, taxAmountCents?, taxCalculationId? }
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ token: string }> }
@@ -29,7 +30,7 @@ export async function POST(
     return NextResponse.json({ error: "This offer has expired." }, { status: 400 });
   }
 
-  let body: { shippingAddress?: Record<string, string>; paymentMethod?: string; taxAmountCents?: number; taxCalculationId?: string };
+  let body: { shippingAddress?: Record<string, string>; taxId?: string; paymentMethod?: string; taxAmountCents?: number; taxCalculationId?: string };
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
   }
@@ -42,6 +43,11 @@ export async function POST(
   if (!allowedCountryCodes.has(addr.country)) {
     return NextResponse.json({ error: "Shipping to that country is not supported." }, { status: 400 });
   }
+  if (requiresTaxId(addr.country) && !body.taxId?.trim()) {
+    return NextResponse.json({ error: "A tax ID is required to ship to that country." }, { status: 400 });
+  }
+  const taxIdCiphertext = body.taxId?.trim() ? encryptTaxId(body.taxId.trim()) : null;
+  const taxIdLast4Value = body.taxId?.trim() ? taxIdLast4(body.taxId.trim()) : null;
 
   const paymentMethod = body.paymentMethod === "bnpl" ? "bnpl" : "standard";
   if (paymentMethod === "bnpl" && addr.country !== "US") {
@@ -153,6 +159,7 @@ export async function POST(
     ship_country: addr.country,
     ...(addr.line2 ? { ship_line2: addr.line2 } : {}),
     ...(addr.state ? { ship_state: addr.state } : {}),
+    ...(taxIdCiphertext ? { ship_tax_id_enc: taxIdCiphertext, ship_tax_id_last4: taxIdLast4Value! } : {}),
   };
 
   let session: Awaited<ReturnType<typeof stripe.checkout.sessions.create>>;

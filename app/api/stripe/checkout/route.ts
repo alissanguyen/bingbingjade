@@ -7,6 +7,7 @@ import { computeAvailableCredit } from "@/lib/sourcing-classification";
 import type { LedgerRow } from "@/lib/sourcing-classification";
 import type { CartItem } from "@/types/cart";
 import { getShippingZone, calculateShipping, calculateStripeFee, calculateBnplFee, ALLOWED_COUNTRIES, ACTIVE_BNPL_METHODS } from "@/lib/shipping";
+import { requiresTaxId, encryptTaxId, taxIdLast4 } from "@/lib/tax-id";
 import { checkCustomerRestriction, logBlockedAttempt } from "@/lib/customer-restrictions";
 import { validateStoreCredit, reserveStoreCredit, releaseStoreCreditReservation } from "@/lib/store-credit";
 import { finalizeProductOrder } from "@/lib/orders";
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest) {
       postal: string;
       country: string;
     };
+    taxId?: string;
     paymentMethod?: "standard" | "bnpl";
   };
   try {
@@ -408,6 +410,13 @@ export async function POST(req: NextRequest) {
   if (!allowedCountryCodes.has(addr.country)) {
     return NextResponse.json({ error: "Shipping to that country is not supported." }, { status: 400 });
   }
+  if (requiresTaxId(addr.country) && !body.taxId?.trim()) {
+    return NextResponse.json({ error: "A tax ID is required to ship to that country." }, { status: 400 });
+  }
+  // Encrypted immediately — plaintext never touches Stripe metadata, logs, or
+  // any layer below this. See lib/tax-id.ts.
+  const taxIdCiphertext = body.taxId?.trim() ? encryptTaxId(body.taxId.trim()) : null;
+  const taxIdLast4Value = body.taxId?.trim() ? taxIdLast4(body.taxId.trim()) : null;
 
   // ── Customer restriction check ────────────────────────────────────────────────
   {
@@ -736,6 +745,7 @@ export async function POST(req: NextRequest) {
         resolvedAddr: {
           name: addr.name, line1: addr.line1, line2: addr.line2 ?? null,
           city: addr.city, state: addr.state ?? null, postal: addr.postal, country: addr.country,
+          taxIdCiphertext, taxIdLast4: taxIdLast4Value,
         },
         metaItems: validatedItems.map((i) => ({
           productId: i.productId,
@@ -878,6 +888,7 @@ export async function POST(req: NextRequest) {
     ship_country: addr.country,
     ...(addr.line2 ? { ship_line2: addr.line2 } : {}),
     ...(addr.state ? { ship_state: addr.state } : {}),
+    ...(taxIdCiphertext ? { ship_tax_id_enc: taxIdCiphertext, ship_tax_id_last4: taxIdLast4Value! } : {}),
   };
 
   // Store credit metadata — distinct keys from the promotional-discount ones

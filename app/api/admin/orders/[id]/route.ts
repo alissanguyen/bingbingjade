@@ -36,7 +36,8 @@ export async function GET(
       order_items(*),
       shipping_address:customer_addresses(
         recipient_name, address_line1, address_line2,
-        city, state_or_region, postal_code, country
+        city, state_or_region, postal_code, country,
+        tax_id_last4
       ),
       shipping_address_json
     `)

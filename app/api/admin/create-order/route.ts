@@ -83,6 +83,7 @@ import {
 import { normalizeEmail, reserveStoreCredit, redeemStoreCreditReservation, releaseStoreCreditReservation } from "@/lib/store-credit";
 import type { StoreCreditRow } from "@/lib/store-credit";
 import { getSessionUser, isApproved, approvedCreatedBy, SessionUser } from "@/lib/approved-auth";
+import { encryptTaxId, taxIdLast4 } from "@/lib/tax-id";
 import type { OrderStatus, OrderSource } from "@/types/orders";
 import type { FulfillmentType } from "@/lib/shipment-status";
 import { eventTemplateFor } from "@/lib/shipment-event-templates";
@@ -133,6 +134,7 @@ export async function POST(req: NextRequest) {
       state: string;
       postal: string;
       country?: string;
+      taxId?: string;
     };
     fees?: {
       shipping?: number;
@@ -210,6 +212,8 @@ export async function POST(req: NextRequest) {
           state: sa.state,
           postal: sa.postal,
           country: sa.country ?? "US",
+          taxIdCiphertext: sa.taxId?.trim() ? encryptTaxId(sa.taxId.trim()) : null,
+          taxIdLast4: sa.taxId?.trim() ? taxIdLast4(sa.taxId.trim()) : null,
         });
       } catch (err) {
         console.error("[create-order] Address save failed (non-fatal):", err);

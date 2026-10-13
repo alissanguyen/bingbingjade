@@ -80,6 +80,9 @@ export async function saveShippingAddress(params: {
   state: string;
   postal: string;
   country: string;
+  // Already-encrypted (see lib/tax-id.ts) — this function never sees plaintext.
+  taxIdCiphertext?: string | null;
+  taxIdLast4?: string | null;
 }): Promise<string> {
   const { data, error } = await supabaseAdmin
     .from("customer_addresses")
@@ -93,6 +96,8 @@ export async function saveShippingAddress(params: {
       postal_code: params.postal,
       country: params.country,
       is_default: true,
+      tax_id_ciphertext: params.taxIdCiphertext ?? null,
+      tax_id_last4: params.taxIdLast4 ?? null,
     })
     .select("id")
     .single();
@@ -499,6 +504,8 @@ export interface FinalizeProductOrderParams {
   resolvedAddr: {
     name: string | null; line1: string | null; line2: string | null;
     city: string | null; state: string | null; postal: string | null; country: string | null;
+    // Already-encrypted (see lib/tax-id.ts) — plaintext never reaches this layer.
+    taxIdCiphertext?: string | null; taxIdLast4?: string | null;
   } | null;
 
   // Items
@@ -629,6 +636,8 @@ export async function finalizeProductOrder(
         state: resolvedAddr.state ?? "",
         postal: resolvedAddr.postal,
         country: resolvedAddr.country,
+        taxIdCiphertext: resolvedAddr.taxIdCiphertext ?? null,
+        taxIdLast4: resolvedAddr.taxIdLast4 ?? null,
       });
     } catch (err) {
       console.error("[orders] Address save failed (non-fatal):", err);
