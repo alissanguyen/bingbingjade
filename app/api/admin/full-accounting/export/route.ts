@@ -277,7 +277,7 @@ export async function GET(req: NextRequest) {
 
     let oq = supabaseAdmin
       .from("orders")
-      .select("id, order_number, created_at, customer_name, customer_email, amount_total, order_status, source")
+      .select("id, order_number, created_at, customer_name, customer_email, amount_total, store_credit_used_cents, order_status, source")
       .neq("order_status", "order_cancelled")
       .not("amount_total", "is", null)
       .order("created_at", { ascending: true });
@@ -298,24 +298,28 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // "Owed" is the cash portion only — store credit already settled its
+    // share of the order, so it must not show up as an unpaid balance here.
     const unreconciled = (allOrders ?? []).filter(o => {
-      const orderTotal = (o.amount_total as number) / 100;
+      const cashOwed = (o.amount_total as number) / 100 - ((o.store_credit_used_cents as number | null) ?? 0) / 100;
       const totalPaid = pmMap2[o.id as string] ?? 0;
-      return Math.abs(orderTotal - totalPaid) > 0.01;
+      return Math.abs(cashOwed - totalPaid) > 0.01;
     });
 
     const headers = [
       "Order Number", "Date", "Customer", "Email", "Source", "Status",
-      "Order Total USD", "Total Paid USD", "Amount Due USD",
+      "Order Total USD", "Store Credit Used USD", "Cash Owed USD", "Total Paid USD", "Amount Due USD",
     ];
     const lines = [headers.join(",")];
     for (const o of unreconciled) {
       const orderTotal = (o.amount_total as number) / 100;
+      const storeCreditUsed = ((o.store_credit_used_cents as number | null) ?? 0) / 100;
+      const cashOwed = orderTotal - storeCreditUsed;
       const totalPaid = pmMap2[o.id as string] ?? 0;
       lines.push(toRow([
         o.order_number, (o.created_at as string).slice(0, 10),
         o.customer_name, o.customer_email, o.source, o.order_status,
-        orderTotal.toFixed(2), totalPaid.toFixed(2), (orderTotal - totalPaid).toFixed(2),
+        orderTotal.toFixed(2), storeCreditUsed.toFixed(2), cashOwed.toFixed(2), totalPaid.toFixed(2), (cashOwed - totalPaid).toFixed(2),
       ]));
     }
     csv = lines.join("\n");
@@ -475,6 +479,21 @@ export async function GET(req: NextRequest) {
     if (to)   eq = eq.lte("expense_date", to);
     const { data: expenses } = await eq;
 
+    // Store credit issued in place of a monetary refund on an already-paid
+    // order — subtracted from Gross Revenue in the period it was issued so
+    // redeeming it later on a different order doesn't double-count that
+    // revenue. Same adjustment as /api/admin/accounting and
+    // full-accounting/overview (see migration_124).
+    let rcq = supabaseAdmin
+      .from("store_credits")
+      .select("original_amount_cents, issued_at")
+      .not("source_order_id", "is", null)
+      .in("reason", ["canceled_order", "damaged_lost_package", "return", "claim_resolution", "exchange_credit"]);
+    if (from) rcq = rcq.gte("issued_at", from);
+    if (to)   rcq = rcq.lte("issued_at", to + "T23:59:59Z");
+    const { data: refundCredits } = await rcq;
+    const storeCreditAdj = (refundCredits ?? []).reduce((s, c) => s + (c.original_amount_cents as number) / 100, 0);
+
     // Payment fees from ledger
     const oIds = (orders ?? []).map(o => o.id as string);
     let totalPaymentFees = 0;
@@ -494,15 +513,17 @@ export async function GET(req: NextRequest) {
       taxColl   += fees.tax      ?? 0;
       discTotal += fees.discount ?? (o.discount_amount_cents as number ?? 0) / 100;
     }
+    const adjustedGrossRev = grossRev - storeCreditAdj;
     const expTotal = (expenses ?? []).reduce((s, e) => s + Number(e.deductible_amount_usd ?? e.amount_usd), 0);
 
     const lines = [
       toRow(["Metric", "Amount USD"]),
-      toRow(["Gross Revenue", grossRev.toFixed(2)]),
+      toRow(["Gross Revenue", adjustedGrossRev.toFixed(2)]),
+      toRow(["Store Credit Refund Adjustments", storeCreditAdj.toFixed(2)]),
       toRow(["Discounts Given", discTotal.toFixed(2)]),
-      toRow(["Net Revenue After Discounts", (grossRev - discTotal).toFixed(2)]),
+      toRow(["Net Revenue After Discounts", (adjustedGrossRev - discTotal).toFixed(2)]),
       toRow(["Sales Tax Collected", taxColl.toFixed(2)]),
-      toRow(["Taxable Revenue", (grossRev - discTotal - taxColl).toFixed(2)]),
+      toRow(["Taxable Revenue", (adjustedGrossRev - discTotal - taxColl).toFixed(2)]),
       toRow([]),
       toRow(["Total Payment Fees", totalPaymentFees.toFixed(2)]),
       toRow(["Total Deductible Business Expenses", expTotal.toFixed(2)]),

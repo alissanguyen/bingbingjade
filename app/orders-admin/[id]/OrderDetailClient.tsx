@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { OrderStatus } from "@/types/orders";
+import type { OrderRevenueBreakdown } from "@/lib/revenue";
 import { IssueStoreCreditForm } from "@/app/components/IssueStoreCreditForm";
 import { ClaimsSummaryCard } from "./ClaimsSummaryCard";
 
@@ -355,11 +356,15 @@ export function OrderDetailClient({
   productImages,
   productCogs,
   productLinks = {},
+  revenue = null,
 }: {
   order: Order;
   productImages: Record<string, string>;
   productCogs: Record<string, number>;
   productLinks?: Record<string, string>;
+  // Canonical net-revenue breakdown (lib/revenue.ts) — null when the order
+  // used no store credit, since new revenue then just equals amount_total.
+  revenue?: OrderRevenueBreakdown | null;
 }) {
   const router = useRouter();
   const [order, setOrder] = useState(initialOrder);
@@ -1641,21 +1646,25 @@ export function OrderDetailClient({
                   </div>
                 )}
                 <div className="flex justify-between items-center pt-1 border-t border-gray-200 dark:border-gray-700">
-                  <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">Total</span>
+                  <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+                    {order.store_credit_used_cents > 0 ? "Order Value" : "Total"}
+                  </span>
                   <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
                     ${displayTotal} {order.currency.toUpperCase()}
                   </span>
                 </div>
                 {order.store_credit_used_cents > 0 && (
                   <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
-                    <span>Remaining paid via {order.source.charAt(0).toUpperCase() + order.source.slice(1)}</span>
-                    <span>
-                      {order.stripe_amount_cents != null
-                        ? `$${(order.stripe_amount_cents / 100).toFixed(2)}`
-                        : order.amount_total != null
-                          ? `$${((order.amount_total - order.store_credit_used_cents) / 100).toFixed(2)}`
-                          : "—"}
+                    <span>New payment (via {order.source.charAt(0).toUpperCase() + order.source.slice(1)})</span>
+                    <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                      {revenue != null ? `$${(revenue.netRevenueCents / 100).toFixed(2)}` : "—"}
                     </span>
+                  </div>
+                )}
+                {order.store_credit_used_cents > 0 && revenue != null && revenue.refundedCents > 0 && (
+                  <div className="flex justify-between items-center text-xs text-red-500 dark:text-red-400">
+                    <span>Refunded</span>
+                    <span>−${(revenue.refundedCents / 100).toFixed(2)}</span>
                   </div>
                 )}
                 {order.store_credit_id && (

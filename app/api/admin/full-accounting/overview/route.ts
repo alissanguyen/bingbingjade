@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   let ordersQuery = supabaseAdmin
     .from("orders")
     .select(`
-      id, amount_total, discount_amount_cents, source, created_at,
+      id, amount_total, discount_amount_cents, source, created_at, store_credit_used_cents,
       inventory_expense_amount, inventory_expense_source,
       stripe_session_id,
       fee_breakdown,
@@ -68,18 +68,32 @@ export async function GET(req: NextRequest) {
   if (from) refundCreditsQuery = refundCreditsQuery.gte("issued_at", from);
   if (to)   refundCreditsQuery = refundCreditsQuery.lte("issued_at", to + "T23:59:59Z");
 
+  // Cash refunds issued through the Claims workflow (lib/claims.ts
+  // issueClaimCashRefund) — these move real money back out but aren't
+  // reflected in order_payments (that ledger only ever gets refund status
+  // *labels*, never a negative amount), so without this Cash Received /
+  // Net Cash Received would overstate what the business actually kept.
+  let claimRefundsQuery = supabaseAdmin
+    .from("claim_refunds")
+    .select("amount_usd, initiated_at")
+    .eq("status", "succeeded");
+  if (from) claimRefundsQuery = claimRefundsQuery.gte("initiated_at", from);
+  if (to)   claimRefundsQuery = claimRefundsQuery.lte("initiated_at", to + "T23:59:59Z");
+
   const [
     { data: orders, error: ordErr },
     { data: pmDate },
     { data: expenses },
     { data: settingsRow },
     { data: refundCredits },
+    { data: claimRefunds },
   ] = await Promise.all([
     ordersQuery,
     pmDateQuery,
     expQuery,
     supabaseAdmin.from("accounting_settings").select("default_supplies_cost_per_order").limit(1).maybeSingle(),
     refundCreditsQuery,
+    claimRefundsQuery,
   ]);
 
   if (ordErr) return NextResponse.json({ error: ordErr.message }, { status: 500 });
@@ -281,6 +295,28 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Cash refunds issued through the Claims workflow reduce both Cash
+  // Received and Net Cash Received, bucketed by when the refund was
+  // initiated (not the original payment date).
+  let claimRefundTotal = 0;
+  for (const r of claimRefunds ?? []) {
+    const amt = Number(r.amount_usd);
+    claimRefundTotal += amt;
+    cashReceived      -= amt;
+    netCashReceived   -= amt;
+
+    const month = (r.initiated_at as string).slice(0, 7);
+    if (!monthCashMap[month]) monthCashMap[month] = { received: 0, fees: 0, net: 0 };
+    monthCashMap[month].received -= amt;
+    monthCashMap[month].net      -= amt;
+
+    if (year && (r.initiated_at as string).slice(0, 4) === year) {
+      const q = getQuarter(r.initiated_at as string);
+      qCash[q].received -= amt;
+      qCash[q].net      -= amt;
+    }
+  }
+
   // ── 5. Aggregate expenses — separate supplies from other categories ─────────
   // expenseTotal uses deductible_amount_usd for tax purposes
   let expenseTotal               = 0;
@@ -316,13 +352,16 @@ export async function GET(req: NextRequest) {
   }
 
   // ── 6. Order reconciliation counts ────────────────────────────────────────
+  // "Owed" is the cash portion only — store credit already settled its own
+  // share, so a 100%-store-credit order must land in Paid, not Unpaid.
   let unpaidCount = 0, partialCount = 0, paidCount = 0;
   for (const o of orders ?? []) {
-    const totalPaid  = orderPaidMap[o.id as string] ?? 0;
-    const orderTotal = (o.amount_total as number) / 100;
-    if (totalPaid === 0)                    unpaidCount++;
-    else if (totalPaid < orderTotal - 0.01) partialCount++;
-    else                                    paidCount++;
+    const totalPaid = orderPaidMap[o.id as string] ?? 0;
+    const cashOwed   = (o.amount_total as number) / 100 - ((o.store_credit_used_cents as number | null) ?? 0) / 100;
+    if (cashOwed <= 0.01)                 paidCount++;
+    else if (totalPaid === 0)             unpaidCount++;
+    else if (totalPaid < cashOwed - 0.01) partialCount++;
+    else                                  paidCount++;
   }
 
   // ── 7. Profit calculations ─────────────────────────────────────────────────
@@ -445,6 +484,7 @@ export async function GET(req: NextRequest) {
     cashReceived:            r2(cashReceived),
     paymentFeeTotal:         r2(paymentFeeTotal),
     netCashReceived:         r2(netCashReceived),
+    claimRefundTotal:        r2(claimRefundTotal), // already netted out of cashReceived/netCashReceived above
     outstandingBalance,
     // Costs
     cogsTotal:               r2(cogsTotal),

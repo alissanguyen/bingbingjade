@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser, isAdmin } from "@/lib/approved-auth";
+import { getSupersededSourceOrderIds } from "@/lib/revenue";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
     .from("orders")
     .select(`
       id, order_number, created_at, customer_name, customer_email, source,
-      order_status, amount_total, discount_amount_cents,
+      order_status, amount_total, store_credit_used_cents, discount_amount_cents,
       inventory_expense_amount, inventory_expense_source,
       stripe_session_id, stripe_payment_intent_id, fee_breakdown,
       order_items(id, product_id, product_name, option_label, price_usd, quantity, line_total),
@@ -42,6 +43,17 @@ export async function GET(req: NextRequest) {
 
   const { data: orders, count, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Orders whose merchandise has been superseded by a redeemed store credit
+  // (see lib/revenue.ts) — their Actual Item Revenue is zeroed below so the
+  // same merchandise value isn't counted once as the original sale and
+  // again as the replacement order it funded.
+  const { data: refundCreditsForSupersession } = await supabaseAdmin
+    .from("store_credits")
+    .select("source_order_id, reason, original_amount_cents, remaining_amount_cents")
+    .not("source_order_id", "is", null)
+    .in("reason", ["canceled_order", "damaged_lost_package", "return", "claim_resolution", "exchange_credit"]);
+  const supersededOrderIds = getSupersededSourceOrderIds(refundCreditsForSupersession ?? []);
 
 
   // Build order_payments map for this page of orders
@@ -89,7 +101,9 @@ export async function GET(req: NextRequest) {
     const discountApplied = (o.discount_amount_cents as number | null)
       ? (o.discount_amount_cents as number) / 100
       : feeDiscount;
-    const actualItemRevenue = totalDollars - shipping - insurance - tax;
+    const actualItemRevenue = supersededOrderIds.has(o.id as string)
+      ? 0
+      : totalDollars - shipping - insurance - tax;
 
     // Inventory expense (replaces COGS — set per-order in orders admin)
     const expSrc   = o.inventory_expense_source as string | null;
@@ -114,12 +128,18 @@ export async function GET(req: NextRequest) {
     const paymentFee    = pm ? r2(pm.total_fees) : (stripeFeeFallback != null ? r2(stripeFeeFallback) : null);
     const netReceived   = pm ? r2(pm.total_net) : stripeNet;
     const providers     = pm?.providers ?? (snap ? ["stripe"] : []);
-    const amountDue     = totalPaid != null ? r2(totalDollars - totalPaid) : null;
+    // Store credit already settled its own share of the order — only the
+    // remaining cash portion should ever show up as owed/reconciled against.
+    const storeCreditUsed = ((o.store_credit_used_cents as number | null) ?? 0) / 100;
+    const cashOwed      = totalDollars - storeCreditUsed;
+    const amountDue     = totalPaid != null ? r2(cashOwed - totalPaid) : null;
 
     // Reconciliation status
     let reconcileStatus = "no_payments";
-    if (totalPaid != null) {
-      if (totalPaid >= totalDollars - 0.01) reconcileStatus = "paid";
+    if (cashOwed <= 0.01) {
+      reconcileStatus = "paid"; // fully covered by store credit
+    } else if (totalPaid != null) {
+      if (totalPaid >= cashOwed - 0.01) reconcileStatus = "paid";
       else if (totalPaid > 0) reconcileStatus = "partial";
       else reconcileStatus = "unpaid";
     }

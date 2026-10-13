@@ -27,11 +27,12 @@ export async function POST() {
     { data: expenses },
     { data: settingsRow },
     { data: refundCredits },
+    { data: claimRefunds },
   ] = await Promise.all([
     supabaseAdmin
       .from("orders")
       .select(`
-        id, amount_total, discount_amount_cents, inventory_expense_amount, inventory_expense_source, created_at,
+        id, amount_total, discount_amount_cents, inventory_expense_amount, inventory_expense_source, created_at, store_credit_used_cents,
         fee_breakdown,
         order_fulfillment_costs(label_cost_usd, business_shipping_insurance_cost_usd, supplies_cost_usd, dropoff_transport_cost_usd, other_fulfillment_cost_usd)
       `)
@@ -62,6 +63,13 @@ export async function POST() {
       .select("original_amount_cents, issued_at")
       .not("source_order_id", "is", null)
       .in("reason", ["canceled_order", "damaged_lost_package", "return", "claim_resolution", "exchange_credit"]),
+    // Cash refunds issued through the Claims workflow — real money leaving,
+    // not reflected as a negative amount anywhere in order_payments. See the
+    // matching comment in full-accounting/overview/route.ts.
+    supabaseAdmin
+      .from("claim_refunds")
+      .select("amount_usd, initiated_at")
+      .eq("status", "succeeded"),
   ]);
 
   const defaultSuppliesPerOrder = Number(settingsRow?.default_supplies_cost_per_order ?? 20);
@@ -140,9 +148,11 @@ export async function POST() {
     const q      = getQuarter(createdAt);
     const qKey   = `${year}-Q${q}`;
 
+    // "Owed" is the cash portion only — store credit already settled its own
+    // share, so a 100%-store-credit order must land in Paid, not Unpaid.
     const totalPaid   = orderPaidMap[o.id as string] ?? 0;
-    const orderTotal  = total;
-    const isPaid      = totalPaid >= orderTotal - 0.01;
+    const cashOwed    = total - ((o.store_credit_used_cents as number | null) ?? 0) / 100;
+    const isPaid      = cashOwed <= 0.01 || totalPaid >= cashOwed - 0.01;
     const isPartial   = !isPaid && totalPaid > 0;
 
     for (const key of [month, qKey, year]) {
@@ -177,6 +187,23 @@ export async function POST() {
       b.cash_received     += amt;
       b.payment_fees      += fee;
       b.net_cash_received += net;
+    }
+  }
+
+  // Claims-workflow cash refunds — real money leaving, bucketed by when the
+  // refund was initiated. Not reflected anywhere in order_payments (that
+  // ledger only gets refund status *labels*, never a negative amount).
+  for (const r of claimRefunds ?? []) {
+    const amt = Number(r.amount_usd);
+    const ia  = r.initiated_at as string;
+    const month = ia.slice(0, 7);
+    const year  = ia.slice(0, 4);
+    const qKey  = `${year}-Q${getQuarter(ia)}`;
+
+    for (const key of [month, qKey, year]) {
+      const b = getBucket(key);
+      b.cash_received     -= amt;
+      b.net_cash_received -= amt;
     }
   }
 

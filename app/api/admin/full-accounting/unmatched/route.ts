@@ -36,7 +36,7 @@ export async function GET() {
 
   const { data: recentOrders } = await supabaseAdmin
     .from("orders")
-    .select("id, order_number, customer_name, amount_total, order_status, created_at")
+    .select("id, order_number, customer_name, amount_total, store_credit_used_cents, order_status, created_at")
     .neq("order_status", "order_cancelled")
     .not("amount_total", "is", null)
     .gte("created_at", cutoff)
@@ -62,7 +62,10 @@ export async function GET() {
     .map(o => {
       const totalPaid = paymentsByOrder[o.id] ?? 0;
       const orderTotal = (o.amount_total as number) / 100;
-      const diff = Math.round((orderTotal - totalPaid) * 100) / 100;
+      // Store credit already settled its own share of the order — only the
+      // remaining cash portion should ever be flagged as unbalanced.
+      const cashOwed = orderTotal - ((o.store_credit_used_cents as number | null) ?? 0) / 100;
+      const diff = Math.round((cashOwed - totalPaid) * 100) / 100;
       return { ...o, amount_total_usd: orderTotal, total_paid: Math.round(totalPaid * 100) / 100, amount_due: diff };
     })
     .filter(o => Math.abs(o.amount_due) > 0.01)

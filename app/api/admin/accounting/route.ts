@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser, isAdmin } from "@/lib/approved-auth";
+import { getSupersededSourceOrderIds } from "@/lib/revenue";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export async function GET() {
     // alongside the older/ad-hoc reasons issued before that workflow existed.
     supabaseAdmin
       .from("store_credits")
-      .select("original_amount_cents, issued_at")
+      .select("source_order_id, original_amount_cents, remaining_amount_cents, reason, issued_at")
       .not("source_order_id", "is", null)
       .in("reason", ["canceled_order", "damaged_lost_package", "return", "claim_resolution", "exchange_credit"]),
   ]);
@@ -70,6 +71,20 @@ export async function GET() {
     return 0;
   }
 
+  // Orders whose merchandise has been superseded by a redeemed store credit
+  // (a return/damage/cancellation credit issued against them has started
+  // being spent on a replacement order) — their own item revenue is excluded
+  // below so the same merchandise value isn't counted once as the original
+  // sale and again as the replacement. See lib/revenue.ts.
+  const supersededOrderIds = getSupersededSourceOrderIds(
+    (refundCredits ?? []) as { source_order_id: string | null; reason: string; original_amount_cents: number; remaining_amount_cents: number }[]
+  );
+  function itemRevenueFor(o: typeof rows[0]): number {
+    if (supersededOrderIds.has(o.id as string)) return 0;
+    const items = (o.order_items ?? []) as { price_usd: number; quantity: number }[];
+    return items.reduce((s, i) => s + (i.price_usd ?? 0) * (i.quantity ?? 1), 0);
+  }
+
   type Entry = { revenue: number; itemRevenue: number; inventoryExpense: number; profit: number };
 
   const monthlyMap: Record<string, Entry> = {};
@@ -79,8 +94,7 @@ export async function GET() {
 
   for (const o of rows) {
     const totalDollars       = (o.amount_total as number) / 100;
-    const items              = (o.order_items ?? []) as { price_usd: number; quantity: number }[];
-    const itemRevenueDollars = items.reduce((s, i) => s + (i.price_usd ?? 0) * (i.quantity ?? 1), 0);
+    const itemRevenueDollars = itemRevenueFor(o);
     const expenseDollars     = orderExpense(o);
     const profitDollars      = itemRevenueDollars - expenseDollars;
 
@@ -134,8 +148,7 @@ export async function GET() {
 
   const totals = rows.reduce(
     (acc, o) => {
-      const items              = (o.order_items ?? []) as { price_usd: number; quantity: number }[];
-      const itemRevenueDollars = items.reduce((s, i) => s + (i.price_usd ?? 0) * (i.quantity ?? 1), 0);
+      const itemRevenueDollars = itemRevenueFor(o);
       const expenseDollars     = orderExpense(o);
       acc.revenue          += (o.amount_total as number) / 100;
       acc.itemRevenue      += itemRevenueDollars;

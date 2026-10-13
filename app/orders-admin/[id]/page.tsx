@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { AdminBarServer } from "@/app/components/AdminBarServer";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { resolveFirstImageUrl } from "@/lib/storage";
+import { computeOrderRevenue, type OrderPaymentLedgerRow, type ClaimRefundLedgerRow } from "@/lib/revenue";
 import { OrderDetailClient } from "./OrderDetailClient";
 
 export const dynamic = "force-dynamic";
@@ -82,10 +83,27 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     );
   }
 
+  // Canonical revenue breakdown (lib/revenue.ts) — same calculation the
+  // Orders admin table and every accounting report use, so this page can
+  // never show a different "new revenue" number than they do. Only needed
+  // when store credit was involved; otherwise new revenue is amount_total.
+  let revenue = null as ReturnType<typeof computeOrderRevenue> | null;
+  if ((order.store_credit_used_cents ?? 0) > 0) {
+    const [{ data: payments }, { data: claimRefunds }] = await Promise.all([
+      supabaseAdmin.from("order_payments").select("amount_paid_usd, payment_status").eq("order_id", id),
+      supabaseAdmin.from("claim_refunds").select("amount_usd, status").eq("order_id", id),
+    ]);
+    revenue = computeOrderRevenue(
+      { amountTotalCents: order.amount_total, storeCreditUsedCents: order.store_credit_used_cents, orderStatus: order.order_status },
+      (payments ?? []) as OrderPaymentLedgerRow[],
+      (claimRefunds ?? []) as ClaimRefundLedgerRow[]
+    );
+  }
+
   return (
     <>
       <AdminBarServer />
-      <OrderDetailClient order={{ ...orderForClient, shipments }} productImages={productImages} productCogs={productCogs} productLinks={productLinks} />
+      <OrderDetailClient order={{ ...orderForClient, shipments }} productImages={productImages} productCogs={productCogs} productLinks={productLinks} revenue={revenue} />
     </>
   );
 }
