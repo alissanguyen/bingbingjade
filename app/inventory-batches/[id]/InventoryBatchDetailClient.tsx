@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { productSlug } from "@/lib/slug";
 
 interface BatchItem {
   id: string;
@@ -11,10 +12,14 @@ interface BatchItem {
   item_expense_usd: number;
   allocation_method: string;
   notes: string | null;
+  certificate_id: string | null;
   created_at: string;
   productName: string | null;
   productPublicId: string | null;
+  productSlug: string | null;
   productImageUrl: string | null;
+  listPriceUsd: number | null;
+  salePriceUsd: number | null;
   isSold: boolean;
 }
 
@@ -109,8 +114,13 @@ export function InventoryBatchDetailClient({
     item_expense_usd: "",
     allocation_method: "manual",
     notes: "",
+    certificate_id: "",
   });
   const [savingItem, setSavingItem] = useState(false);
+
+  // Inline certificate ID editing
+  const [editingCertId, setEditingCertId] = useState<string | null>(null);
+  const [certDraft, setCertDraft] = useState("");
 
   // Inline expense editing
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
@@ -235,18 +245,32 @@ export function InventoryBatchDetailClient({
           item_expense_usd: parseFloat(itemForm.item_expense_usd || "0") || 0,
           allocation_method: itemForm.allocation_method,
           notes: itemForm.notes || null,
+          certificate_id: itemForm.certificate_id.trim(),
         }),
       });
       const data = await res.json();
       if (!res.ok) { showToast("err", data.error ?? "Failed to add item."); return; }
       setItems((prev) => [...prev, data.item]);
       setShowAddItem(false);
-      setItemForm({ product_id: "", assigned_inventory_cost_usd: "", item_expense_usd: "", allocation_method: "manual", notes: "" });
+      setItemForm({ product_id: "", assigned_inventory_cost_usd: "", item_expense_usd: "", allocation_method: "manual", notes: "", certificate_id: "" });
       setSearchQuery("");
       showToast("ok", "Item added.");
     } finally {
       setSavingItem(false);
     }
+  }
+
+  async function handleSaveCert(item: BatchItem) {
+    const val = certDraft.trim();
+    if (!val) { showToast("err", "Certificate ID is required."); return; }
+    const res = await fetch(`/api/admin/inventory-batches/${batch.id}/items/${item.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ certificate_id: val }),
+    });
+    if (!res.ok) { showToast("err", "Save failed."); return; }
+    setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, certificate_id: val } : i));
+    setEditingCertId(null);
+    showToast("ok", "Certificate ID saved.");
   }
 
   async function handleSaveExpense(item: BatchItem) {
@@ -587,7 +611,7 @@ export function InventoryBatchDetailClient({
                   {isCalculating ? "Calculating…" : "Calculate Allocated Cost"}
                 </button>
               )}
-              <button onClick={() => { setShowAddItem(true); setSearchQuery(""); setItemForm({ product_id: "", assigned_inventory_cost_usd: "", item_expense_usd: "", allocation_method: "manual", notes: "" }); }} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">+ Add product</button>
+              <button onClick={() => { setShowAddItem(true); setSearchQuery(""); setItemForm({ product_id: "", assigned_inventory_cost_usd: "", item_expense_usd: "", allocation_method: "manual", notes: "", certificate_id: "" }); }} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">+ Add product</button>
             </div>
           </div>
 
@@ -598,7 +622,7 @@ export function InventoryBatchDetailClient({
 
                 {/* Product search */}
                 <div className="col-span-2">
-                  <label className={labelCls}>Product (search by name or SKU)</label>
+                  <label className={labelCls}>Product (Ship Now only — search by name or SKU)</label>
                   <div className="relative" ref={searchWrapperRef}>
                     <input
                       value={searchQuery}
@@ -647,6 +671,11 @@ export function InventoryBatchDetailClient({
                   )}
                 </div>
 
+                <div className="col-span-2">
+                  <label className={labelCls}>Certificate ID <span className="text-red-400">*</span></label>
+                  <input required value={itemForm.certificate_id} onChange={setItem("certificate_id")} placeholder="e.g. NGTC 2026-0123456" className={inputCls} />
+                </div>
+
                 <div>
                   <label className={labelCls}>Assigned Cost</label>
                   <div className="relative">
@@ -690,11 +719,26 @@ export function InventoryBatchDetailClient({
             <div className="divide-y divide-gray-50 dark:divide-gray-800">
               {items.map((item) => (
                 <div key={item.id} className="flex items-center gap-3 px-5 py-3">
-                  {item.productImageUrl ? (
-                    <Image src={item.productImageUrl} alt={item.productName ?? ""} width={40} height={40} className="w-10 h-10 rounded-lg object-cover shrink-0" unoptimized />
-                  ) : (
-                    <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 shrink-0" />
-                  )}
+                  {(() => {
+                    const thumb = item.productImageUrl ? (
+                      <Image src={item.productImageUrl} alt={item.productName ?? ""} width={40} height={40} className="w-10 h-10 rounded-lg object-cover" unoptimized />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800" />
+                    );
+                    return item.productSlug && item.productPublicId ? (
+                      <a
+                        href={`/products/${productSlug({ slug: item.productSlug, public_id: item.productPublicId })}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Open product listing in new tab"
+                        className="shrink-0 rounded-lg hover:ring-2 hover:ring-emerald-500 transition-shadow"
+                      >
+                        {thumb}
+                      </a>
+                    ) : (
+                      <div className="shrink-0">{thumb}</div>
+                    );
+                  })()}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                       {item.productName ?? <span className="text-gray-400 font-mono text-xs">{item.product_id ?? "Unknown"}</span>}
@@ -704,9 +748,44 @@ export function InventoryBatchDetailClient({
                       {ALLOC_LABELS[item.allocation_method] ?? item.allocation_method}
                       {item.notes && ` · ${item.notes}`}
                     </p>
+                    {editingCertId === item.id ? (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <span className="text-xs text-gray-400">Cert:</span>
+                        <input
+                          autoFocus
+                          value={certDraft}
+                          onChange={(e) => setCertDraft(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") handleSaveCert(item); if (e.key === "Escape") setEditingCertId(null); }}
+                          className="w-40 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-1.5 py-0.5 text-xs font-mono text-gray-900 dark:text-gray-100 focus:outline-none focus:border-emerald-500"
+                        />
+                        <button onClick={() => handleSaveCert(item)} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">Save</button>
+                        <button onClick={() => setEditingCertId(null)} className="text-xs text-gray-400 hover:text-gray-600">✕</button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => { setEditingCertId(item.id); setCertDraft(item.certificate_id ?? ""); }}
+                        className={`text-xs mt-0.5 ${item.certificate_id ? "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" : "text-amber-500 dark:text-amber-400 hover:underline"}`}
+                        title="Edit certificate ID"
+                      >
+                        {item.certificate_id ? <>Cert: <span className="font-mono">{item.certificate_id}</span></> : "⚠ Missing certificate ID"}
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end shrink-0 w-20">
+                    {item.salePriceUsd != null ? (
+                      <>
+                        <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{fmtUSD(item.salePriceUsd)}</p>
+                        {item.listPriceUsd != null && (
+                          <p className="text-[11px] text-gray-400 line-through">{fmtUSD(item.listPriceUsd)}</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{fmtUSD(item.listPriceUsd)}</p>
+                    )}
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500">{item.salePriceUsd != null ? "sale price" : "list price"}</p>
                   </div>
                   <div className="flex flex-col items-end gap-0.5 shrink-0">
-                    <p className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{fmtUSD(item.assigned_inventory_cost_usd)}</p>
+                    <p className="font-semibold text-gray-800 dark:text-gray-200 text-sm" title="Assigned inventory cost">{fmtUSD(item.assigned_inventory_cost_usd)}</p>
                     {/* Inline expense editor */}
                     {editingExpenseId === item.id ? (
                       <div className="flex items-center gap-1">
