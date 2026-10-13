@@ -22,6 +22,11 @@ export async function PATCH(
   if ("item_expense_usd"             in body) update.item_expense_usd            = Number(body.item_expense_usd ?? 0);
   if ("allocation_method"            in body) update.allocation_method           = body.allocation_method || "manual";
   if ("notes"                        in body) update.notes                       = (body.notes as string | undefined)?.trim() || null;
+  if ("certificate_id" in body) {
+    const cert = (body.certificate_id as string | undefined)?.trim();
+    if (!cert) return NextResponse.json({ error: "certificate_id cannot be empty." }, { status: 400 });
+    update.certificate_id = cert;
+  }
 
   if (Object.keys(update).length === 0) return NextResponse.json({ error: "No fields to update." }, { status: 400 });
 
@@ -29,7 +34,7 @@ export async function PATCH(
     .from("inventory_batch_items")
     .update(update)
     .eq("id", itemId)
-    .select("id, product_id, assigned_inventory_cost_usd, item_expense_usd, allocation_method, notes, created_at")
+    .select("id, product_id, assigned_inventory_cost_usd, item_expense_usd, allocation_method, notes, certificate_id, created_at")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

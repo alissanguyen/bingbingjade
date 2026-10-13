@@ -14,6 +14,10 @@ interface Batch {
   total_batch_cost_usd: number | null;
   item_count: number | null;
   created_at: string;
+  // Absent on a freshly created batch (POST response) — treated as 0
+  linked_item_count?: number;
+  linked_product_count?: number;
+  sold_count?: number;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -333,6 +337,33 @@ export function InventoryBatchesClient({ initialBatches }: { initialBatches: Bat
                     )}
                   </div>
                 </div>
+                {(() => {
+                  const linked = b.linked_product_count ?? 0;
+                  const sold = b.sold_count ?? 0;
+                  const soldPct = linked > 0 ? Math.round((sold / linked) * 100) : 0;
+                  const linkedItems = b.linked_item_count ?? 0;
+                  const missing = b.item_count && linkedItems < b.item_count ? b.item_count - linkedItems : 0;
+                  if (linked === 0 && missing === 0) return null;
+                  return (
+                    <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
+                      {linked > 0 ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-28 h-1.5 rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden">
+                            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${soldPct}%` }} />
+                          </div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {soldPct}% sold ({sold}/{linked})
+                          </span>
+                        </div>
+                      ) : <span />}
+                      {missing > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                          ⚠ {missing} product{missing === 1 ? "" : "s"} not yet added
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
               </Link>
             ))}
           </div>
