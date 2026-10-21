@@ -14,6 +14,7 @@ const CATEGORIES = [
   { value: "set", label: "Sets" },
   { value: "earring", label: "Earrings" },
   { value: "raw_material", label: "Raw Material" },
+  { value: "other",        label: "Other" },
 ];
 
 const PRICE_TABS = [

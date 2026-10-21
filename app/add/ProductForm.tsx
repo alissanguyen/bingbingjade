@@ -49,7 +49,7 @@ interface Props {
   canViewVendors?: boolean;
 }
 
-const CATEGORIES: ProductCategory[] = ["bracelet", "bangle", "ring", "pendant", "necklace", "set", "earring", "raw_material"];
+const CATEGORIES: ProductCategory[] = ["bracelet", "bangle", "ring", "pendant", "necklace", "set", "earring", "raw_material", "other"];
 
 const TIERS = ["Bean", "Glutinous", "Fine Glutinous", "Very Fine Glutinous", "Icy Glutinous", "Icy", "High Icy", "Glassy", "Longshi"];
 

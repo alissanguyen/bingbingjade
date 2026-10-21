@@ -1,4 +1,4 @@
-export type ProductCategory = "bracelet" | "bangle" | "ring" | "pendant" | "necklace" | "set" | "earring" | "raw_material";
+export type ProductCategory = "bracelet" | "bangle" | "ring" | "pendant" | "necklace" | "set" | "earring" | "raw_material" | "other";
 
 export type OptionStatus = "available" | "sold" | "on_sale" | "archived";
 
