@@ -274,8 +274,10 @@ export function CheckoutClient() {
     );
     if (available.length === 0) return null;
     const priceKey = available.map((i) => `${i.productId}:${i.price}`).join(",");
-    return `${addressValue.address.postal_code}|${priceKey}`;
-  }, [addressValue, items, soldKeys, staleKeys]);
+    // Shipping and insurance are both taxable in WA (RCW 82.08.010 / WAC 458-20-110),
+    // so a change to either must retrigger this preview, not just item prices.
+    return `${addressValue.address.postal_code}|${priceKey}|ship:${shipping ?? 0}|ins:${insuranceFee}`;
+  }, [addressValue, items, soldKeys, staleKeys, shipping, insuranceFee]);
 
   // Track the last key we successfully fetched — prevents duplicate calls.
   const lastFetchedKeyRef = useRef<string | null | undefined>(undefined);
@@ -305,6 +307,8 @@ export function CheckoutClient() {
               !staleKeys.has(`${i.productId}-${i.optionId}`)
           )
           .map((i) => ({ price: i.price })),
+        shippingCents: Math.round((shipping ?? 0) * 100),
+        insuranceCents: Math.round(insuranceFee * 100),
         shippingAddress: {
           line1: addressValue!.address.line1,
           city: addressValue!.address.city,
