@@ -15,11 +15,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ clai
   if (!session || !isAdmin(session)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { claimId } = await params;
-  const { data: claim } = await supabaseAdmin
+  const { data: claim, error: claimErr } = await supabaseAdmin
     .from("claims")
-    .select("*, orders(order_number, customer_name, customer_email, stripe_payment_intent_id, amount_total)")
+    .select("*, orders!claims_order_id_fkey(order_number, customer_name, customer_email, stripe_payment_intent_id, amount_total)")
     .eq("id", claimId)
     .maybeSingle();
+  if (claimErr) return NextResponse.json({ error: claimErr.message }, { status: 500 });
   if (!claim) return NextResponse.json({ error: "Claim not found." }, { status: 404 });
 
   const [

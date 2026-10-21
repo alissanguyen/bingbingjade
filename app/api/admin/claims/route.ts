@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     .select(`
       id, claim_number, claim_type, claim_subtype, status, responsibility, priority,
       assigned_admin, next_action, next_action_due_at, customer_email, opened_at, resolved_at, closed_at,
-      orders!inner(order_number, customer_name)
+      orders!claims_order_id_fkey(order_number, customer_name)
     `)
     .order("opened_at", { ascending: false })
     .limit(200);
