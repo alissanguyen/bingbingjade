@@ -12,7 +12,7 @@ const FALLBACK_BANNER = "https://images.unsplash.com/photo-1705931396849-9382298
 
 const CATEGORY_LABELS: Record<string, string> = {
   bracelet: "Bracelet", bangle: "Bangle", ring: "Ring", pendant: "Pendant",
-  necklace: "Necklace", set: "Set", earring: "Earrings", raw_material: "Raw Material",
+  necklace: "Necklace", set: "Set", earring: "Earrings", raw_material: "Raw Material", other: "Other",
 };
 
 function categoryLabel(value: string): string {

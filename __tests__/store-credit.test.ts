@@ -65,6 +65,7 @@ function baseCredit(overrides: Partial<StoreCreditRow> = {}): StoreCreditRow {
     customer_email: "buyer@example.com",
     customer_id: "cust-1",
     source_order_id: null,
+    claim_id: null,
     currency: "USD",
     original_amount_cents: 20000,
     remaining_amount_cents: 20000,

@@ -128,8 +128,10 @@ export function SourcingCheckoutClient({
   const taxKey = useMemo(() => {
     const isWA = address?.country === "US" && address?.state?.toUpperCase() === "WA";
     if (!isWA || !addressValue) return null;
-    return `${address.postal_code}|${priceCents}`;
-  }, [addressValue, address, priceCents]);
+    // Shipping is taxable in WA too (RCW 82.08.010 / WAC 458-20-110) — include it
+    // in the key so a shipping-fee change retriggers this preview.
+    return `${address.postal_code}|${priceCents}|ship:${shippingCents ?? 0}`;
+  }, [addressValue, address, priceCents, shippingCents]);
 
   const lastTaxKeyRef = useRef<string | null | undefined>(undefined);
 
@@ -151,6 +153,7 @@ export function SourcingCheckoutClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         items: [{ price: priceCents / 100 }],
+        shippingCents: shippingCents ?? 0,
         shippingAddress: {
           line1: addressValue!.address.line1,
           city: addressValue!.address.city,

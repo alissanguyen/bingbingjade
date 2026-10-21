@@ -7,6 +7,7 @@ export const PRODUCTCARD_CATEGORIES = [
   { value: "set",          label: "Set" },
   { value: "earring",      label: "Earrings" },
   { value: "raw_material", label: "Raw Material" },
+  { value: "other",        label: "Other" },
 ];
 
 export function getCategoryLabel(value: string): string {

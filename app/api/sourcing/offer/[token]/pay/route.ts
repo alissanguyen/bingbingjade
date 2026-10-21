@@ -9,7 +9,8 @@ export const dynamic = "force-dynamic";
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
 
 // POST /api/sourcing/offer/[token]/pay
-// Body: { shippingAddress, taxId?, paymentMethod, taxAmountCents?, taxCalculationId? }
+// Body: { shippingAddress, taxId?, paymentMethod }
+// WA tax is computed server-side below — never trusted from the client.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ token: string }> }
@@ -30,7 +31,7 @@ export async function POST(
     return NextResponse.json({ error: "This offer has expired." }, { status: 400 });
   }
 
-  let body: { shippingAddress?: Record<string, string>; taxId?: string; paymentMethod?: string; taxAmountCents?: number; taxCalculationId?: string };
+  let body: { shippingAddress?: Record<string, string>; taxId?: string; paymentMethod?: string };
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
   }
@@ -60,10 +61,30 @@ export async function POST(
   const priceCents = offer.price_cents as number;
   const creditCents = (offer.sourcing_credit_applied_cents as number) ?? 0;
 
-  // WA state tax from client-side pre-calculation
-  const taxAmountCents = typeof body.taxAmountCents === "number" && body.taxAmountCents > 0
-    ? body.taxAmountCents
-    : 0;
+  // WA tax — computed authoritatively here via Stripe Tax, never trusted from
+  // the client. Shipping is taxable in WA too (RCW 82.08.010 / WAC 458-20-110),
+  // so it's included in the taxable base alongside the item price.
+  let taxAmountCents = 0;
+  let taxCalculationId: string | null = null;
+  if (addr.country === "US" && addr.state?.toUpperCase() === "WA") {
+    try {
+      const calculation = await stripe.tax.calculations.create({
+        currency: "usd",
+        line_items: [
+          { amount: priceCents, reference: "L1", tax_code: "txcd_99999999" },
+          ...(shippingCents > 0 ? [{ amount: shippingCents, reference: "shipping", tax_code: "txcd_99999999" }] : []),
+        ],
+        customer_details: {
+          address: { line1: addr.line1, city: addr.city, state: "WA", postal_code: addr.postal, country: "US" },
+          address_source: "shipping",
+        },
+      });
+      taxAmountCents = calculation.tax_amount_exclusive;
+      taxCalculationId = calculation.id;
+    } catch (err) {
+      console.error("[sourcing/pay] WA tax calculation failed (non-fatal, tax omitted):", err);
+    }
+  }
 
   // Credit is capped to item + actual shipping
   const effectiveCredit = Math.min(creditCents, priceCents + shippingCents);
@@ -186,7 +207,7 @@ export async function POST(
         sourcing_attempt_option_id: offer.sourcing_attempt_option_id as string,
         payment_method: paymentMethod,
         sourcing_credit_applied_cents: String(effectiveCredit),
-        ...(body.taxCalculationId ? { tax_calculation_id: body.taxCalculationId } : {}),
+        ...(taxCalculationId ? { tax_calculation_id: taxCalculationId } : {}),
         ...addrMeta,
       },
     });

@@ -59,7 +59,8 @@ The application is split into a **customer storefront** and a **password-protect
 - **Product detail pages** with full image gallery (lightbox), inline video preview, variant selection (product options with per-option pricing), and add-to-cart
 - **Oval bangle support** — `size` is a flexible text field (holds a single number, a range like "7.2–7.5", or "Varies") rather than a strict numeric column; oval-shaped bangles show a dedicated 4-dimension measurement layout plus wrist-size guidance instead of the standard single-diameter display
 - **Persistent cart** stored in localStorage with a slide-out cart drawer
-- **Zone-based international shipping** — US $20 / Canada+Europe $35 / Asia-Pacific $75 base, +$10–$20 per additional piece; shipping address collected in the storefront UI before redirecting to Stripe so customers never re-enter it; address passed to `payment_intent_data.shipping` for Stripe records
+- **Zone-based flat-rate international shipping** (`lib/shipping.ts`) across 29 countries — Domestic (US) free; Canada $15; UK/EU/Nordics/Switzerland $20; Australia/NZ/Saudi Arabia/Israel/UAE $30; Mexico $35; Argentina/Chile/Peru $45; Colombia $50; East/Southeast Asia + South Africa $55; Brazil $60; shipping address collected in the storefront UI (Stripe `AddressElement`) before redirecting to Stripe so customers never re-enter it; address passed to `payment_intent_data.shipping` for Stripe records
+- **Recipient tax ID for customs-required countries** — Brazil, Mexico, Argentina, Chile, Peru, Indonesia, and Saudi Arabia require a national tax ID (CPF/CNPJ, RFC, CUIT, RUT, NIK/NPWP) to clear customs; checkout shows the field only for those countries and blocks submission until it's filled in. Encrypted (AES-256-GCM) the instant it reaches the server — plaintext never touches Stripe metadata, logs, or the database; only ciphertext and a last-4 preview are stored (`lib/tax-id.ts`, migration 128)
 - **Stripe fee gross-up** — transaction fee is computed as `⌈(subtotal + 30) / (1 − rate)⌉ − subtotal` (domestic 2.9%, international 4.4%) so the seller nets exactly the item price after Stripe deducts their cut; displayed as a single "Transaction Fee" line with no formula exposed to customers
 - **Automatic WA sales tax** — Stripe Tax (`automatic_tax: { enabled: true }`) with `tax_behavior: "exclusive"` on all line items; triggers only for Washington-state shipping addresses where business nexus is registered; WA customers see an in-cart notice before checkout
 - **Shipping insurance option** — 5% of item subtotal (before discount), covers declared value; opt-in toggle in checkout
@@ -133,9 +134,10 @@ A luxury editorial system for curated collections with shoppable lifestyle photo
   - Fee breakdown editor (shipping, tax, PayPal, BNPL installment fee, insurance, discount, custom line); store credit applied vs. amount actually charged through Stripe shown separately when relevant
   - Customer info edit (name, email, phone, order number, order date)
   - Notes field
-  - Mark-as-paid / mark-as-refunded controls for manually-tracked (non-Stripe) orders; Stripe-dashboard-issued refunds sync in automatically via webhook
+  - Mark-as-paid / mark-as-refunded controls for manually-tracked (non-Stripe) orders; Stripe-dashboard-issued refunds sync in automatically via webhook — a **partial** refund now only reduces net revenue by the refunded amount instead of cancelling the whole order (see Key Engineering Decisions)
   - Delete order (admin-only, for genuine data-entry mistakes)
   - Close/reopen the post-delivery review window on a per-order basis
+  - **Recipient tax ID, masked by default** — orders shipped to a customs-required country show only the last 4 characters; a "Reveal" button decrypts server-side on demand and writes an audit row (`tax_id_reveals` — who, when, which order) every time
 - **Accounting dashboard** (`/accounting-admin`) — financial reporting page with:
   - **KPI cards** — Total Collected (all payments including shipping/fees/tax), Item Revenue (jade product prices only), COGS, and Gross Profit with margin %
   - **Pure SVG bar chart** — no chart library dependencies; dual-series (emerald for revenue, rose for COGS) with year filter; overflow-scroll on mobile
@@ -148,7 +150,12 @@ A luxury editorial system for curated collections with shoppable lifestyle photo
   - `business_expenses` for fixed overhead
   - `accounting_summaries` cached pre-computed P&L per month/quarter/year; a "Recalculate" button in the admin triggers a fresh aggregation
   - `accounting_settings` — single-row config for default supplies cost estimate method
+  - **Canonical net-revenue calculation** (`lib/revenue.ts`) — every revenue surface (legacy dashboard, Full Detailed Accounting, Orders admin table, order detail page) derives "new revenue" from one shared function: external payments actually collected (ledger-sourced when rows exist) minus successful claim refunds, store credit never counted as revenue, cancelled orders always $0
+  - **Store credit refund-adjustment tracking** — when a credit is issued in place of a cash refund against an already-paid order (damage, loss, return, cancellation, or a Claims resolution), redeeming it elsewhere would otherwise double-count that revenue; `accounting_summaries.store_credit_refund_adjustments` backs it out in the period the credit was issued, surfaced as its own stat card; issuing a refund-equivalent credit now requires linking the source order
 - **Custom order entry** — admin can create manual orders (Cash/Zelle/PayPal/Stripe/Wire Transfer source); order numbers prefixed `BBJ-` with a minimum value enforced; customer and address records created or linked automatically
+  - **Fulfillment selector** — admin picks Ship Now (4-step shipment timeline) or Sourced for You (7-step, including a "Packing" stage) per manual order instead of always defaulting to Sourced for You; both paths share the same event templates as the Stripe checkout flow (`lib/shipment-event-templates.ts`)
+  - **Store credit on manual orders** — an existing store-credit code can be applied toward the total through the same reserve → redeem RPC flow Stripe checkout uses
+  - **Real partial-payment tracking** — manual orders record actual cash collected into the `order_payments` ledger rather than a binary paid/unpaid toggle, so deposits and store-credit-covered sales are both visible to accounting
 - **Vendor management** — CRUD for supplier records
 - **Campaign Events** (`/campaigns-admin`) — named sale events (Black Friday, Mother's Day, etc.) with:
   - Category, description, banner message, date range, status (draft / active / ended)
@@ -156,6 +163,8 @@ A luxury editorial system for curated collections with shoppable lifestyle photo
   - Products explicitly tagged to an event via `campaign_event_products` join table
   - Event pricing takes priority over `sale_price_usd` on the product listing; `Sale` badge replaced with the campaign name badge (emerald) on product cards
   - Public landing page at `/sale/[slug]` with full-bleed hero, discount callout, and product grid with category tabs; admin-only draft preview mode
+  - **Labor Day** added as a category/preset/banner image/email template alongside the existing 12
+  - **Campaign product picker** — "Ship Now only" filter on the Add Products panel plus an "Add all N Ship Now" bulk-attach button
 - **Collections admin** (`/collections-admin`) — full CMS for the lookbook/collections system (see Collections section above)
 - **Item Origin Lookup** (`/item-origin-lookup`) — admin tool to retrieve original (pre-watermark) vendor images for any product by 8-digit SKU:
   - Looks up `product_original_images` by SKU; generates signed URLs (1-hour TTL) for each original
@@ -187,6 +196,24 @@ Lets an admin hold a specific one-of-a-kind piece for a specific customer, gated
 - The product page shows a "Reserved" state with a code-entry unlock panel; only a correct code reveals the checkout flow for that customer
 - Admin can optionally generate a real Stripe checkout link for the deposit; once paid, the deposit amount is credited against the item's final price at checkout (applied as a coupon reduction — the fee is still calculated on the pre-deposit subtotal so the deposit never distorts the transaction fee)
 - Only one active (non-cancelled) reservation is allowed per product, enforced at the database level
+- **Multi-installment deposits** — a reservation can be paid off across any number of Stripe checkout links of any size; each installment is tracked individually and idempotently (`reservation_deposit_payments`), so a second or third deposit link is never silently dropped; the deposit credit applied at final checkout is always re-derived server-side from the reservation's actual recorded payments, never trusted from the client
+
+### Claims, Returns & Issue Resolution
+
+A full post-delivery claims workflow — missing packages, damage, "not as described," and Ship Now sizing issues — spanning a customer-facing wizard, a dedicated admin queue, and a returns/inspection/resolution pipeline.
+
+- **Customer submission wizard** at `/orders/[orderNumber]/claims/new` (`NewClaimWizard.tsx`) — four claim types: missing package, damaged item, not as described, doesn't fit (Ship Now items only — hidden automatically when every item on the order is Sourced for You, since sizing doesn't apply there)
+  - **48-hour reporting window from delivery**, enforced for all four claim types (configurable per-type in `claim_windows`) — a countdown/deadline banner on the form, computed from the order's delivery date
+  - Evidence requirements are data-driven per claim type (`claim_evidence_requirements`): damaged-item and not-as-described claims require photos (with a tips list, e.g. "shine your phone's flashlight through the stone to show cracks") and a written explanation; damaged-item claims also require packaging photos and an explicit packaging-retention acknowledgment before submitting
+  - Real photo thumbnails (not just filenames) for staged uploads, with per-file upload-failure visibility rather than a silent/generic error
+- **Customer claim status page** at `/orders/[orderNumber]/claims/[claimId]` — claim number, status, affected items, evidence thumbnails, action timeline, return-shipment tracking, and the resolution summary once issued; customers can report a return drop-off from this page
+- **Admin queue** at `/claims-admin` — filterable by responsibility (Needs BBJ Action / Waiting on Customer / Waiting on Carrier / Waiting on Insurance / Waiting on Vendor / Returns In Transit / Inspecting / Resolution Needed / Closed), plus free-text search across claim #, order #, customer, tracking number, SKU, and certificate ID
+- **Admin claim detail** at `/claims-admin/[claimId]` — full evidence gallery, editable status/priority/assignment, the returns sub-workflow (record a prepaid return label, track drop-off, confirm carrier acceptance, record inspection result, restock the item), and a financial ledger (`claim_financial_events`) covering refunds, credit issuance, restocking fees, and reimbursements
+- **Resolution issuance** (admin-only) — one action records the decision (full/partial cash refund, store credit, exchange credit, replacement merchandise, repair/restoration, a combination, or denied) and, in the same call, issues a real Stripe refund against the order's original PaymentIntent and/or store/exchange credit via the existing Store Credit ledger
+- **Reopen** — admin can reopen a closed/resolved claim with a required reason, tracked for audit visibility
+- **Access control** — `/claims-admin` is gated the same way as `/orders-admin` (admin or the legacy "partner" approved-user role); a Catalog Contributor employee session is explicitly blocked, since this is financial/customer-dispute data outside that role's scope
+- **Eligibility engine** — computed automatically at submission (eligible / ineligible / requires admin review), admin-overridable with a required reason
+- **Immutable snapshots** — each claim snapshots the order's shipment state and affected items' names/prices/SKUs at the moment it's opened, so the claim stays accurate even if the underlying listing or shipment changes later
 
 ### Inventory Batch Tracking
 
@@ -195,6 +222,8 @@ Replaces flat per-product COGS entry with proper batch-level inventory accountin
 - Admin creates a batch representing one sourcing trip/shipment/partner order — tracks total batch cost, partner payments (money a sourcing partner contributes to or draws from the batch), item count, and per-item expenses (e.g. absorbed shipping)
 - Products are linked to the batch they came from; average cost per item, revenue booked so far, and **% sold** are computed live from linked product statuses
 - Batch summary cards surface a "missing items" banner when a batch's declared item count doesn't match how many products have actually been linked — catches sourcing/data-entry gaps early
+- **Certificate ID per item** — required when adding a product to a batch, editable inline afterward (`inventory_batch_items.certificate_id`)
+- **List price shown per linked item** (sale price when set); thumbnails open the live listing in a new tab; add-product search is scoped to Ship Now (`quick_ship`) products
 - Feeds the accounting dashboards' COGS figures in place of the older flat `imported_price_vnd`-only approach for batch-tracked products
 
 ### Customer Reviews
@@ -240,6 +269,43 @@ A separate authenticated portal for trusted vendor partners with a distinct `app
 - **Token request flow** — partner submits a request with an optional message; admin sees it in `/admin` profile with inline approve/deny, adjustable grant amount, and optional admin note; only one pending request allowed at a time
 - **Access levels** — `standard` and `senior` (reserved for future expansion); `imported_price_vnd` (profit margin) is always stripped from partner-facing responses
 - **Partner navbar** — full admin bar with links scoped to partner-accessible pages; logout redirects to `/approved-login`
+
+### Employee Portal (Catalog Contributor Role)
+
+A second, far more restricted authenticated role alongside the existing Partner Portal — for in-house staff who list products but shouldn't see vendor financials, approve their own work, or touch the legacy partner flow. Shares the same `approved_session` cookie infrastructure (`lib/approved-auth.ts`) via a new `role` column rather than a parallel auth system.
+
+- **Employee listing workflow** at `/employee/[employeeId]` — an employee drafts a listing, submits it for approval, and it moves through awaiting-approval to approved-unpublished/published, or back to needs-adjustment/rejected on admin feedback. Status lives on `products.listing_status`, fully additive to the existing `is_published`/`pending_approval` columns the legacy partner flow uses
+- **Versioned submissions** — every "Submit for Approval" click creates an immutable `listing_submissions` row (a JSONB snapshot of the full listing, including image/video paths, at that moment) rather than overwriting anything; `listing_reviews` records each admin decision (approve / approve & publish / request adjustment / reject / duplicate) against a submission, with employee-visible feedback required on anything but a clean approval
+- **Atomic workflow transitions** — submit, review, publish, and payout actions are all `SECURITY DEFINER` Postgres functions, row-locked the same way the store-credit RPCs are, so two concurrent submits/reviews on the same listing can't race
+- **Private draft media bucket** (`jade-employee-drafts`) — employee-uploaded images/videos live here while a listing is in any pre-publish state; on publish, the server copies the approved objects into the public product buckets and rewrites the product's paths
+- **Employee compensation** — approving a listing creates exactly one compensation credit at the employee's current per-listing rate (snapshotted, so later rate changes never retroactively affect already-approved listings); a uniqueness constraint plus an atomic insert makes this immune to double-payment no matter how many times a listing is adjusted, resubmitted, or re-reviewed
+- **Payouts** at `/admin/payouts` and `/employee/[employeeId]/pay` — admin creates a payout for an employee over a custom date range; creating it locks and claims every eligible unpaid, unrevoked credit in that window so it can't be claimed by two overlapping payouts, and pins the exact credit/product rows included. Payouts carry bonus/adjustment/deduction amounts; marking one paid locks its items, cancelling an unpaid one frees its credits back to unpaid — a paid payout can only be corrected via a new payout, never edited retroactively
+- **Admin-only product financials** — minimum acceptable price, estimated fees/profit/margin, and private review notes live in a separate table with no public read policy, never queried by any employee-facing code path
+- **Account management** — admin can suspend/terminate an employee, toggle per-employee vendor-list visibility (defaults off), revoke all of an employee's active sessions instantly (a per-user session-version check against the signed cookie — no global secret rotation needed), and reassign another employee's in-progress drafts when an account is suspended mid-work
+- **Generic audit log** (`audit_logs`) — actor/action/entity/before/after/metadata, written on every role/status change, submission/review transition, credit revocation, and payout transition; intentionally generic so other admin flows (the Service Request platform also uses it) can reuse it rather than building their own
+
+### Restoration & Preservation Services (Generalized Service Request Platform)
+
+A config-driven service workflow underneath the `/restoration` intake form — adding a new paid service line is a database row, not new code.
+
+- **Service catalog** (`services` table) — each row fully describes one service's pricing, timeline, and workflow: instant purchase, authorization hold, or quote required. Seeded with the three real services: Standard Polishing ($100, or $50 for verified existing clients — authorization-hold), Silver Protective Wrapping, and Gold Protective Wrapping (both quote-required, custom pricing per piece)
+- **Image-before-payment invariant** — a service request and its photo attachments must exist and be validated server-side (image count, each storage object confirmed to actually exist) *before* any Stripe interaction; the webhook only ever updates a pre-existing request, never creates one
+- **Existing-client verification discount** — a customer claiming the discounted rate must supply a prior order number, looked up and confirmed against the `orders` table before the discount is applied
+- **Authorization-hold payment** (Standard Polishing) — reuses the same manual-capture Stripe pattern as Sourced for You orders: admin reviews the uploaded photos and either captures payment or releases the hold (never a refund) before the customer is actually charged
+- **Quote-required flow** (Silver/Gold Wrapping) — admin reviews photos and sends a custom quote (amount + notes + expiry); the customer accepts it from their tracker page, generating a Stripe checkout session for the exact quoted amount
+- **Request More Images** — admin can bounce a request back to the customer for additional photos without declining it outright
+- **Customer tracker page** at `/service-requests/[token]` — capability-token link (no login), mirroring the order-tracking page pattern
+- **Admin queue** at `/admin/service-requests` — list + detail view per request with the full photo set, internal notes, and an audit-logged status timeline
+- Request numbers are human-friendly (`SR-1001`, `SR-1002`, …), generated the same way as `BBJ-` order numbers
+
+### BingBing Gallery
+
+A public, brand-only masonry photo gallery at `/bingbing-gallery` — separate from the shoppable Collections/Lookbook system — for pure brand/lifestyle imagery with the BingBing logo baked directly into each photo.
+
+- **Admin upload tool** at `/upload-bingbing-gallery` — upload raw images, then click/drag to choose the exact logo position per image as x/y percentage coordinates (not the fixed category-based position used for product photos)
+- **Shared watermark pipeline** — reuses the same Sharp-based compositor (`lib/watermark.ts`) as product images, just with an arbitrary position instead of the bangle/necklace-vs-everything-else rule
+- **Public masonry display** — responsive CSS masonry grid served from a dedicated public storage bucket; tap/click a tile to expand into a lightbox; images render non-draggable in both views as light right-click/drag-save deterrence
+- Each row supports a publish flag (draft/hide without deleting) and manual sort order
 
 ### Image Processing Pipeline
 
@@ -347,6 +413,8 @@ A second, distinct store-credit system — separate tables, separate admin surfa
 - **Refunds/cancellations restore credit before touching Stripe** — a goodwill credit can never be converted into a cash refund; only the amount actually charged through Stripe is ever refunded through Stripe
 - **Full audit trail** — every issuance, reservation, redemption, release, restoration, admin adjustment, and revocation is an immutable row in `store_credit_transactions`; the cached balance on `store_credits` is always reconcilable by replaying the ledger
 - **Admin management** — search/filter by email, code, order number, or reason; view full transaction history; resend the notification email; extend or remove expiration; increase/decrease balance with a required reason; revoke unused credit; transfer to another email with a required reason; export credits and the full ledger to CSV
+- **Custom subject line** — admin can set one at issuance (falls back to an auto-generated "... — {Reason}" subject); reused automatically on resend
+- **Refund-equivalent issuance requires a linked source order** — when the reason is a stand-in for a cash refund (canceled order / damaged or lost package / return), the form requires linking the original order so the accounting adjustment above can find it
 
 **Note on the legacy system:** `store_credit_ledger` / `customers.store_credit_balance` (earned via referral rewards, auto-applied by email match, no code or conditions) is untouched and still earning-only — the reasoning below about unauthenticated spending risk still applies to *that* system specifically. It doesn't apply to the new code-based system, since redemption there requires possession of an unguessable, securely-generated code rather than just knowledge of an email address.
 
@@ -499,10 +567,11 @@ jade-shop/
 │   └── sanity.config.ts
 │
 ├── __tests__/
-│   └── discount.test.ts                # 34 Vitest tests — logic, abuse, flow
+│   └── ...                             # Vitest suite — discount/referral abuse, reservations,
+│                                        #   revenue calc, claims, employee workflow, and more
 │
 ├── supabase/
-│   └── migration_001.sql → migration_082.sql
+│   └── migration_001.sql → migration_129.sql
 │
 ├── middleware.ts
 └── next.config.ts
@@ -654,6 +723,25 @@ Page renders (RSC) → resolveImageUrl("wm/abc123.jpg")
 | `/api/admin/item-origin-lookup` | GET | `admin_session` cookie | Lookup original images + vendor by SKU; generates signed URLs |
 | `/api/admin/item-origin-lookup` | DELETE | `admin_session` cookie | Delete single (`?id=`) or bulk (`?ids=id1,id2,...`) original images from DB + storage |
 | `/api/admin/emails/collection-drops` | POST | `admin_session` cookie | Send collection drop announcement email to selected subscribers |
+| `/api/admin/orders/[id]/reveal-tax-id` | POST | `admin_session` or `approved_session` cookie | Decrypt and return a recipient's tax ID; writes an audit row every call |
+| `/api/orders/[orderNumber]/claims` | GET / POST | — (order-number-keyed) | List a customer's claims on an order / submit a new claim |
+| `/api/orders/[orderNumber]/claims/[claimId]` | GET | — (order-number-keyed) | Full claim detail for the customer status page |
+| `/api/orders/[orderNumber]/claims/[claimId]/evidence` | POST | — | Upload claim evidence (photo/video) |
+| `/api/orders/[orderNumber]/claims/[claimId]/dropoff` | POST | — | Customer reports a return shipment drop-off |
+| `/api/admin/claims` | GET | `admin_session` or partner `approved_session` | Claims queue, filterable by responsibility + search |
+| `/api/admin/claims/[claimId]` | GET | `admin_session` or partner `approved_session` | Full claim detail incl. returns, evidence, financial ledger |
+| `/api/admin/claims/[claimId]/resolution` | POST | `admin_session` | Issue resolution — refund and/or credit, one call |
+| `/api/admin/claims/[claimId]/reopen` | POST | `admin_session` | Reopen a closed claim with a required reason |
+| `/api/service-requests/draft` | POST | — | Create a draft service request for a given service slug |
+| `/api/service-requests/track/[token]` | GET | capability token | Customer tracker: fetch request status + timeline |
+| `/api/service-requests/track/[token]/accept-quote` | POST | capability token | Customer accepts a sent quote → creates Stripe checkout session |
+| `/api/admin/service-requests` | GET | `admin_session` cookie | List all service requests |
+| `/api/admin/service-requests/[id]/approve` | POST | `admin_session` cookie | Approve request (captures payment if authorization-hold) |
+| `/api/admin/service-requests/[id]/quote` | POST | `admin_session` cookie | Send/revise a custom quote for a quote-required service |
+| `/api/admin/listing-approvals` | GET | `admin_session` cookie | List pending employee listing submissions |
+| `/api/admin/listing-approvals/[listingId]` | PATCH | `admin_session` cookie | Record a review decision on an employee listing submission |
+| `/api/admin/payouts` | GET / POST | `admin_session` cookie | List payouts / create a payout for an employee + period |
+| `/api/admin/payouts/[payoutId]` | PATCH | `admin_session` cookie | Mark a payout paid or cancel it |
 
 ---
 
@@ -793,6 +881,33 @@ All schema changes are tracked as numbered SQL files in `/supabase/`. Run them i
 | 100 | Manual capture (authorize-then-capture) support for Sourced for You orders: `capture_status` and related timestamps on orders, new order-status value `awaiting_vendor_confirmation` |
 | 101 | Track which payment method (card/Klarna/Afterpay/Affirm) was used for a manual-capture authorization, so the real per-method authorization window can be shown instead of a guess |
 | 102 | Store credit system (admin-issued, code-redeemed, conditional credits): `store_credits`, `store_credit_transactions` tables; row-locked Postgres RPC functions for atomic reserve/release/redeem/restore/adjust; `store_credit_id`, `store_credit_used_cents`, `merchandise_subtotal_cents`, `stripe_amount_cents` on orders |
+| 103 | Preserve AI copy-generation source/vendor notes per listing |
+| 104 | Fix size range filtering — `.gte()`/`.lte()` against the text `size` column (migration 094) was comparing lexicographically, not numerically |
+| 105 | Catalog Contributor role: `approved_users.role` (`partner`/`catalog_contributor`); `employee_profiles` (bio, avatar, start date, pay rate, status) |
+| 106 | Employee-authored listing tracking on `products`: `created_by_employee_id`, `listing_status`, `current_submission_version` — additive, NULL for all pre-existing rows |
+| 107 | `admin_product_financials` — minimum price, estimated fees/profit/margin, private notes; never exposed to employee-facing code |
+| 108 | `listing_submissions` (versioned, immutable content snapshots) and `listing_reviews` (admin decisions) — the employee approval workflow |
+| 109 | `listing_approval_credits` — one compensation credit per approved product, unique per product for anti-double-pay, rate snapshotted at approval |
+| 110 | `employee_payouts` + `employee_payout_items` — per-period payout records with bonus/adjustment/deduction and a generated final amount |
+| 111 | `audit_logs` — generic actor/action/entity/before/after audit trail, reused by later features (Service Request platform) |
+| 112 | `jade-employee-drafts` private storage bucket for in-progress employee listing media |
+| 113 | Employee-listing workflow as `SECURITY DEFINER` Postgres functions (submit/review/publish/payout create/mark-paid/cancel), row-locked for concurrency safety |
+| 114 | `approved_users.session_version` — per-user session revocation without rotating the global HMAC secret |
+| 115 | Allow employee-created products with no `vendor_id` (admin can attach one later) |
+| 116 | `employee_profiles.can_view_vendors` — per-employee vendor-list visibility toggle, defaults off |
+| 117 | Generalized Service Request platform: `services` catalog (config-driven pricing/workflow), `service_requests`, `service_request_attachments`; reuses `audit_logs` (111) and the order `capture_status` vocabulary (100) |
+| 118 | Add a "Packing" stage to the Sourced for You shipment pipeline, between "Arriving at Our Studio" and "Shipped" |
+| 119 | Backfill missing product SKUs left NULL by two write paths added after migration 060's original backfill |
+| 120 | BingBing Gallery: public storage bucket + table for brand/lifestyle images (storage path, per-image logo x/y position, publish flag, sort order) |
+| 121 | Multi-installment reservation deposits — `reservation_deposit_payments` child table; links deposits into accounting as real cash collected, not folded into Stripe's net session total |
+| 122 | Add `custom_subject` to `store_credits` for admin-settable store-credit email subject lines |
+| 123 | Delivered Order Claims/Returns/Issue Resolution workflow: `claims`, `claim_items`, `claim_evidence`, `claim_timeline_events`, `returns`, `return_shipments`, `return_inspections`, `claim_resolutions`, `claim_refunds`, `claim_financial_events`, `claim_communications`, plus config tables `claim_evidence_requirements` and `claim_windows`; extends `store_credits` with claim-linked reasons |
+| 124 | Add `store_credit_refund_adjustments` to `accounting_summaries` — backs out revenue double-counted when a refund-equivalent store credit is redeemed on a different order |
+| 125 | Damage-claim reporting window tightened to 48 hours (was 14 days) |
+| 126 | 48-hour reporting window extended to missing-package and sizing claims too |
+| 127 | Allow `labor_day` as a `campaign_events` category |
+| 128 | Recipient tax ID for customs-required countries (Brazil, Mexico, Argentina, Chile, Peru, Indonesia, Saudi Arabia) — `customer_addresses.tax_id_ciphertext`/`tax_id_last4`; `tax_id_reveals` audit table |
+| 129 | `inventory_batch_items.certificate_id` — lab certificate ID tracked per linked product |
 
 ---
 
@@ -905,3 +1020,9 @@ The `TagDot` wrapper applies `transform: translate(-50%, -50%)` to centre the do
 
 **Why soft-delete unsubscribes instead of hard-deleting the row?**
 Hard-deleting allowed a user to re-subscribe with the same email and receive a fresh welcome coupon code, bypassing the single-use intent. Soft-deletion (`unsubscribed_at` timestamp) preserves the subscriber record and coupon history. The subscription API checks for an existing row (including soft-deleted ones) before generating a new code, so re-subscribers do not receive a second coupon.
+
+**Why encrypt the recipient tax ID at the application layer instead of relying on Row Level Security?**
+Every other sensitive column in this app relies solely on RLS (service-role-only access) for protection — there was no precedent for true encryption-at-rest. A national tax ID is different: it's a government identifier, not an internal operational field, so possession of the database alone shouldn't be enough to read it. The value is encrypted (AES-256-GCM) the instant it reaches the server — before it's ever written to the database *or* passed into Stripe checkout-session metadata — so even Stripe's own copy is ciphertext. The key lives only in an environment variable, never in the database. Admins see a masked last-4 preview by default and must take an explicit, audit-logged action to decrypt the full value.
+
+**Why one canonical `computeOrderRevenue()` function instead of letting each accounting surface compute its own total?**
+Before `lib/revenue.ts`, the legacy accounting dashboard, Full Detailed Accounting, the Orders admin table, and the order detail page each re-derived "revenue" from `orders.amount_total` independently — and `amount_total` is gross order value, not revenue, the moment store credit or a partial refund is involved. That drift caused a real bug: a partial Stripe refund used to cancel the whole order and zero its revenue, rather than reducing it by just the refunded amount. Centralizing the math means every surface agrees by construction, and the ledger (`order_payments`) is always the source of truth for money actually collected when rows exist, falling back to the gross-minus-store-credit formula only for orders that never touched it (e.g. zero-balance, or historical orders).

@@ -35,7 +35,7 @@ export interface CollectionProduct {
 
 const CATEGORY_LABELS: Record<string, string> = {
   bracelet: "Bracelet", bangle: "Bangle", ring: "Ring", pendant: "Pendant",
-  necklace: "Necklace", set: "Set", earring: "Earrings", raw_material: "Raw Material",
+  necklace: "Necklace", set: "Set", earring: "Earrings", raw_material: "Raw Material", other: "Other",
 };
 
 export function CollectionDropsClient({

@@ -30,6 +30,15 @@ export const EMPLOYEE_DRAFT_BUCKET = "jade-employee-drafts";
  * not product marketing images. Always resolved via short-lived signed URLs.
  */
 export const SERVICE_REQUEST_BUCKET = "service-request-attachments";
+/**
+ * Private bucket for claim evidence (customer damage/discrepancy photos and
+ * videos, plus admin QC/inspection/correspondence uploads). Same access
+ * model as SERVICE_REQUEST_BUCKET: never public, always resolved via
+ * short-lived signed URLs, callers are expected to have already checked the
+ * requester owns (order-number match) or is admin for the claim that
+ * references the path.
+ */
+export const CLAIM_EVIDENCE_BUCKET = "claim-evidence";
 
 /** Signed URL TTL for videos (seconds). 7 days. */
 const VIDEO_TTL = 60 * 60 * 24 * 7;
@@ -304,6 +313,32 @@ export async function resolveServiceAttachmentUrls(paths: string[]): Promise<Arr
   const { data } = await supabaseAdmin.storage
     .from(SERVICE_REQUEST_BUCKET)
     .createSignedUrls(paths, SERVICE_REQUEST_MEDIA_TTL);
+  const signed = new Map(data?.map((d) => [d.path, d.signedUrl]) ?? []);
+  return paths.map((p) => signed.get(p) ?? null);
+}
+
+// ── Claim evidence — private bucket, signed URLs ──────────────────────────────
+
+const CLAIM_EVIDENCE_TTL = 60 * 10; // 10 minutes
+
+export async function createClaimEvidenceUploadUrl(path: string): Promise<{ signedUrl: string; token: string } | null> {
+  const { supabaseAdmin } = await import("./supabase-admin");
+  const { data, error } = await supabaseAdmin.storage.from(CLAIM_EVIDENCE_BUCKET).createSignedUploadUrl(path);
+  if (error || !data) return null;
+  return { signedUrl: data.signedUrl, token: data.token };
+}
+
+export async function resolveClaimEvidenceUrl(path: string): Promise<string | null> {
+  if (!isStoragePath(path)) return path;
+  const { supabaseAdmin } = await import("./supabase-admin");
+  const { data } = await supabaseAdmin.storage.from(CLAIM_EVIDENCE_BUCKET).createSignedUrl(path, CLAIM_EVIDENCE_TTL);
+  return data?.signedUrl ?? null;
+}
+
+export async function resolveClaimEvidenceUrls(paths: string[]): Promise<Array<string | null>> {
+  if (paths.length === 0) return [];
+  const { supabaseAdmin } = await import("./supabase-admin");
+  const { data } = await supabaseAdmin.storage.from(CLAIM_EVIDENCE_BUCKET).createSignedUrls(paths, CLAIM_EVIDENCE_TTL);
   const signed = new Map(data?.map((d) => [d.path, d.signedUrl]) ?? []);
   return paths.map((p) => signed.get(p) ?? null);
 }

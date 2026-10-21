@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import type { OrderStatus } from "@/types/orders";
 import type { OrderRevenueBreakdown } from "@/lib/revenue";
 import { IssueStoreCreditForm } from "@/app/components/IssueStoreCreditForm";
+import { ClaimsSummaryCard } from "./ClaimsSummaryCard";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1289,6 +1290,9 @@ export function OrderDetailClient({
                 </div>
               );
             })()}
+
+            {/* Claims / Returns */}
+            <ClaimsSummaryCard orderId={order.id} />
 
             {/* Actions */}
             <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-4 space-y-2">

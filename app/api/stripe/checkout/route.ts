@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
     discountCode?: string;
     storeCreditCode?: string;
     sourcingRequestId?: string;
-    taxAmountCents?: number;
-    taxCalculationId?: string;
+    // taxAmountCents/taxCalculationId intentionally not accepted here — WA tax
+    // is always computed server-side (see below), never trusted from the client.
     shippingAddress?: {
       name: string;
       line1: string;
@@ -527,8 +527,45 @@ export async function POST(req: NextRequest) {
     ? { reservation_id: verifiedReservationId, reservation_deposit_credit_cents: String(reservationDepositCents) }
     : {};
 
-  // Tax (WA state only, pre-calculated via stripe.tax.calculations)
-  const taxAmountCents = typeof body.taxAmountCents === "number" ? body.taxAmountCents : 0;
+  // Tax (WA only) — computed authoritatively here, server-side, via Stripe Tax.
+  // Never trust body.taxAmountCents: the client-side figure is a preview only
+  // (same trust boundary as price/discount elsewhere in this route). Stripe Tax
+  // already resolves the correct combined state+local rate per exact address —
+  // what matters is feeding it the full taxable base: WA treats delivery
+  // charges and seller-added fees like shipping insurance as part of the
+  // taxable "selling price" (RCW 82.08.010 / WAC 458-20-110), so both must be
+  // included alongside merchandise, not just the item prices.
+  let taxAmountCents = 0;
+  let taxCalculationId: string | null = null;
+  if (addr.country === "US" && addr.state?.toUpperCase() === "WA") {
+    try {
+      const taxLineItems = validatedItems.map((item, i) => ({
+        amount: Math.round((item.price ?? 0) * 100),
+        reference: `L${i + 1}`,
+        tax_code: "txcd_99999999",
+      }));
+      if (shippingFee > 0) {
+        taxLineItems.push({ amount: shippingFee * 100, reference: "shipping", tax_code: "txcd_99999999" });
+      }
+      if (insuranceFeeCents > 0) {
+        taxLineItems.push({ amount: insuranceFeeCents, reference: "insurance", tax_code: "txcd_99999999" });
+      }
+      const calculation = await stripe.tax.calculations.create({
+        currency: "usd",
+        line_items: taxLineItems,
+        customer_details: {
+          address: { line1: addr.line1, city: addr.city, state: "WA", postal_code: addr.postal, country: "US" },
+          address_source: "shipping",
+        },
+      });
+      taxAmountCents = calculation.tax_amount_exclusive;
+      taxCalculationId = calculation.id;
+    } catch (err) {
+      // Non-fatal: an address Stripe Tax can't resolve shouldn't block checkout.
+      // Falls back to $0 tax rather than guessing a rate.
+      console.error("[stripe/checkout] WA tax calculation failed (non-fatal, tax omitted):", err);
+    }
+  }
   if (taxAmountCents > 0) {
     lineItems.push({
       price_data: {
@@ -903,8 +940,8 @@ export async function POST(req: NextRequest) {
   let session: Awaited<ReturnType<typeof stripe.checkout.sessions.create>>;
   try {
     const taxMeta: Record<string, string> = {};
-    if (body.taxCalculationId) {
-      taxMeta.tax_calculation_id = body.taxCalculationId;
+    if (taxCalculationId) {
+      taxMeta.tax_calculation_id = taxCalculationId;
     }
 
     session = await stripe.checkout.sessions.create({
