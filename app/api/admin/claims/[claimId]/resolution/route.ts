@@ -24,7 +24,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cla
   if (!body.resolutionType) return NextResponse.json({ error: "resolutionType required" }, { status: 400 });
   if (!body.refund && !body.credit) return NextResponse.json({ error: "At least one of refund or credit is required (use resolutionType 'denied' with neither for a denial)." }, { status: 400 });
 
-  const { data: claim } = await supabaseAdmin.from("claims").select("order_id, customer_email, customer_id, orders(stripe_payment_intent_id)").eq("id", claimId).maybeSingle();
+  const { data: claim, error: claimErr } = await supabaseAdmin
+    .from("claims")
+    .select("order_id, customer_email, customer_id, orders!claims_order_id_fkey(stripe_payment_intent_id)")
+    .eq("id", claimId)
+    .maybeSingle();
+  if (claimErr) return NextResponse.json({ error: claimErr.message }, { status: 500 });
   if (!claim) return NextResponse.json({ error: "Claim not found." }, { status: 404 });
 
   const admin = actorId(session);
