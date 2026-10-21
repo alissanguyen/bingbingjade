@@ -77,34 +77,54 @@ export function AdminBar({
     }
   };
 
-  // Flat list for mobile dropdown
-  const allLinks = [
+  const productsRelatedLinks = [
     { href: "/products-admin", label: "Products" },
+    { href: "/add", label: "Add Product" },
     { href: "/collections-admin", label: "Collections" },
-    { href: "/vendors", label: "Vendors" },
-    { href: "/orders-admin", label: "Orders" },
+    { href: "/sourcing-admin", label: "Sourcing" },
     { href: "/admin/service-requests", label: "Service Requests" },
+  ];
+
+  const customersLinks = [
     { href: "/customers-admin", label: "Customers" },
     { href: "/restricted-customers", label: "Restricted List" },
-    { href: "/reviews-admin", label: "Reviews" },
-    { href: "/sourcing-admin", label: "Sourcing" },
-    { href: "/livestreams-admin", label: "Livestreams" },
-    { href: "/item-origin-lookup", label: "Origin Lookup" },
-    { href: "/accounting-admin", label: "Finance Snapshot" },
-    { href: "/full-detailed-accounting", label: "Full Accounting" },
-    { href: "/inventory-batches", label: "Inventory Batches" },
-    { href: "/store-credits-admin", label: "Store Credits" },
     ...(showUsersLink ? [
-      { href: "/approved-users", label: "Users" },
-      { href: "/admin/listing-approvals", label: "Listing Approvals" },
-      { href: "/admin/payouts", label: "Payouts" },
       { href: "/coupons-admin", label: "Coupons" },
       { href: "/subscribers-admin", label: "Subscribers" },
-      { href: "/custom-emails-admin", label: "Custom Emails" },
-      { href: "/campaigns-admin", label: "Campaigns" },
-      { href: "/upload-bingbing-gallery", label: "BingBing Gallery" },
-      { href: "/admin", label: "Admin Profile" },
     ] : []),
+  ];
+
+  const financeLinks = [
+    { href: "/accounting-admin", label: "Finance Snapshot" },
+    { href: "/full-detailed-accounting", label: "Full Accounting Details" },
+    { href: "/inventory-batches", label: "Inventory Batches" },
+    { href: "/store-credits-admin", label: "Store Credits" },
+  ];
+
+  const adminLinks = [
+    { href: "/admin", label: "Admin Profile" },
+    { href: "/admin/listing-approvals", label: "Listing Approvals" },
+    { href: "/admin/payouts", label: "Payouts" },
+  ];
+
+  const moreLinks = [
+    { href: "/vendors", label: "Vendors" },
+    { href: "/approved-users", label: "Users" },
+    { href: "/custom-emails-admin", label: "Custom Emails" },
+    { href: "/campaigns-admin", label: "Campaigns" },
+    { href: "/upload-bingbing-gallery", label: "BingBing Gallery" },
+  ];
+
+  // Flat list for mobile dropdown
+  const allLinks = [
+    ...productsRelatedLinks,
+    { href: "/orders-admin", label: "Orders" },
+    ...customersLinks,
+    { href: "/reviews-admin", label: "Reviews" },
+    { href: "/livestreams-admin", label: "Livestreams" },
+    { href: "/item-origin-lookup", label: "Origin Lookup" },
+    ...financeLinks,
+    ...(showUsersLink ? [...adminLinks, ...moreLinks] : []),
     ...(!showUsersLink && profileHref ? [{ href: profileHref, label: "Profile" }] : []),
   ];
 
@@ -120,54 +140,30 @@ export function AdminBar({
           {/* Left: grouped links */}
           <div className="flex items-center gap-2.5 text-xs font-medium text-gray-500 dark:text-gray-400 min-w-0 flex-wrap">
 
-            {/* Group 1 — Catalog */}
-            <a href="/products-admin" className={linkCls}>Products</a>
-            <a href="/collections-admin" className={linkCls}>Collections</a>
-            <a href="/vendors" className={linkCls}>Vendors</a>
+            {/* Group 1 — Products (dropdown) */}
+            <DropdownMenu label="Products Related" links={productsRelatedLinks} />
 
             <span className="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0" />
 
             {/* Group 2 — Sales & Ops */}
             <a href="/orders-admin" className={linkCls}>Orders</a>
-            <a href="/admin/service-requests" className={linkCls}>Service Requests</a>
-            <a href="/customers-admin" className={linkCls}>Customers</a>
-            <a href="/restricted-customers" className={linkCls}>Restricted List</a>
+            <DropdownMenu label="Customers" links={customersLinks} />
             <a href="/reviews-admin" className={linkCls}>Reviews</a>
-            <a href="/sourcing-admin" className={linkCls}>Sourcing</a>
             <a href="/livestreams-admin" className={linkCls}>Livestreams</a>
             <a href="/item-origin-lookup" className={linkCls}>Origin Lookup</a>
 
             <span className="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0" />
 
             {/* Group 3 — Finance (dropdown) */}
-            <DropdownMenu
-              label="Finance"
-              links={[
-                { href: "/accounting-admin", label: "Finance Snapshot" },
-                { href: "/full-detailed-accounting", label: "Full Accounting Details" },
-                { href: "/inventory-batches", label: "Inventory Batches" },
-                { href: "/store-credits-admin", label: "Store Credits" },
-              ]}
-            />
+            <DropdownMenu label="Finance" links={financeLinks} />
 
             {showUsersLink && (
               <>
                 <span className="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0" />
-                {/* Group 4 — Marketing & Users (dropdown) */}
-                <DropdownMenu
-                  label="More"
-                  links={[
-                    { href: "/approved-users", label: "Users" },
-                    { href: "/admin/listing-approvals", label: "Listing Approvals" },
-                    { href: "/admin/payouts", label: "Payouts" },
-                    { href: "/coupons-admin", label: "Coupons" },
-                    { href: "/subscribers-admin", label: "Subscribers" },
-                    { href: "/custom-emails-admin", label: "Custom Emails" },
-                    { href: "/campaigns-admin", label: "Campaigns" },
-                    { href: "/upload-bingbing-gallery", label: "BingBing Gallery" },
-                    { href: "/admin", label: "Admin Profile" },
-                  ]}
-                />
+                {/* Group 4 — Admin (dropdown) */}
+                <DropdownMenu label="Admin" links={adminLinks} />
+                {/* Group 5 — Marketing & misc (dropdown) */}
+                <DropdownMenu label="More" links={moreLinks} />
               </>
             )}
 
