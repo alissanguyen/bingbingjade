@@ -718,7 +718,7 @@ export function InventoryBatchDetailClient({
           ) : (
             <div className="divide-y divide-gray-50 dark:divide-gray-800">
               {items.map((item) => (
-                <div key={item.id} className="flex items-center gap-3 px-5 py-3">
+                <div key={item.id} className="flex flex-wrap sm:flex-nowrap items-start sm:items-center gap-x-3 gap-y-2 px-4 sm:px-5 py-3">
                   {(() => {
                     const thumb = item.productImageUrl ? (
                       <Image src={item.productImageUrl} alt={item.productName ?? ""} width={40} height={40} className="w-10 h-10 rounded-lg object-cover" unoptimized />
@@ -731,16 +731,16 @@ export function InventoryBatchDetailClient({
                         target="_blank"
                         rel="noopener noreferrer"
                         title="Open product listing in new tab"
-                        className="shrink-0 rounded-lg hover:ring-2 hover:ring-emerald-500 transition-shadow"
+                        className="order-1 shrink-0 rounded-lg hover:ring-2 hover:ring-emerald-500 transition-shadow"
                       >
                         {thumb}
                       </a>
                     ) : (
-                      <div className="shrink-0">{thumb}</div>
+                      <div className="order-1 shrink-0">{thumb}</div>
                     );
                   })()}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                  <div className="order-2 min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words sm:truncate">
                       {item.productName ?? <span className="text-gray-400 font-mono text-xs">{item.product_id ?? "Unknown"}</span>}
                     </p>
                     <p className="text-xs text-gray-400 dark:text-gray-500">
@@ -756,7 +756,7 @@ export function InventoryBatchDetailClient({
                           value={certDraft}
                           onChange={(e) => setCertDraft(e.target.value)}
                           onKeyDown={(e) => { if (e.key === "Enter") handleSaveCert(item); if (e.key === "Escape") setEditingCertId(null); }}
-                          className="w-40 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-1.5 py-0.5 text-xs font-mono text-gray-900 dark:text-gray-100 focus:outline-none focus:border-emerald-500"
+                          className="min-w-0 flex-1 sm:flex-none sm:w-40 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-1.5 py-0.5 text-xs font-mono text-gray-900 dark:text-gray-100 focus:outline-none focus:border-emerald-500"
                         />
                         <button onClick={() => handleSaveCert(item)} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">Save</button>
                         <button onClick={() => setEditingCertId(null)} className="text-xs text-gray-400 hover:text-gray-600">✕</button>
@@ -771,55 +771,57 @@ export function InventoryBatchDetailClient({
                       </button>
                     )}
                   </div>
-                  <div className="flex flex-col items-end shrink-0 w-20">
-                    {item.salePriceUsd != null ? (
-                      <>
-                        <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{fmtUSD(item.salePriceUsd)}</p>
-                        {item.listPriceUsd != null && (
-                          <p className="text-[11px] text-gray-400 line-through">{fmtUSD(item.listPriceUsd)}</p>
-                        )}
-                      </>
-                    ) : (
-                      <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{fmtUSD(item.listPriceUsd)}</p>
-                    )}
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500">{item.salePriceUsd != null ? "sale price" : "list price"}</p>
+                  <div className="order-4 sm:order-3 w-full sm:w-auto flex items-start justify-between sm:justify-end gap-3 pl-[52px] sm:pl-0 sm:shrink-0">
+                    <div className="flex flex-col items-start sm:items-end sm:w-20">
+                      {item.salePriceUsd != null ? (
+                        <>
+                          <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{fmtUSD(item.salePriceUsd)}</p>
+                          {item.listPriceUsd != null && (
+                            <p className="text-[11px] text-gray-400 line-through">{fmtUSD(item.listPriceUsd)}</p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{fmtUSD(item.listPriceUsd)}</p>
+                      )}
+                      <p className="text-[10px] text-gray-400 dark:text-gray-500">{item.salePriceUsd != null ? "sale price" : "list price"}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-0.5 shrink-0">
+                      <p className="font-semibold text-gray-800 dark:text-gray-200 text-sm" title="Assigned inventory cost">{fmtUSD(item.assigned_inventory_cost_usd)}</p>
+                      {/* Inline expense editor */}
+                      {editingExpenseId === item.id ? (
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-400">−$</span>
+                          <input
+                            autoFocus
+                            type="number" min="0" step="0.01"
+                            value={expenseDraft}
+                            onChange={(e) => setExpenseDraft(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") handleSaveExpense(item); if (e.key === "Escape") setEditingExpenseId(null); }}
+                            className="w-20 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-1.5 py-0.5 text-xs text-gray-900 dark:text-gray-100 focus:outline-none focus:border-emerald-500"
+                          />
+                          <button onClick={() => handleSaveExpense(item)} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">Save</button>
+                          <button onClick={() => setEditingExpenseId(null)} className="text-xs text-gray-400 hover:text-gray-600">✕</button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setEditingExpenseId(item.id); setExpenseDraft(String(item.item_expense_usd ?? 0)); }}
+                          className={`text-xs ${
+                            Number(item.item_expense_usd) > 0
+                              ? item.isSold
+                                ? "text-amber-500 dark:text-amber-400"
+                                : "text-gray-400 dark:text-gray-500"
+                              : "text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400"
+                          }`}
+                          title={Number(item.item_expense_usd) > 0 && !item.isSold ? "Will be counted when sold" : "Edit item expense"}
+                        >
+                          {Number(item.item_expense_usd) > 0
+                            ? `−${fmtUSD(item.item_expense_usd)} exp.${!item.isSold ? " (pending)" : ""}`
+                            : "+ expense"}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex flex-col items-end gap-0.5 shrink-0">
-                    <p className="font-semibold text-gray-800 dark:text-gray-200 text-sm" title="Assigned inventory cost">{fmtUSD(item.assigned_inventory_cost_usd)}</p>
-                    {/* Inline expense editor */}
-                    {editingExpenseId === item.id ? (
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-gray-400">−$</span>
-                        <input
-                          autoFocus
-                          type="number" min="0" step="0.01"
-                          value={expenseDraft}
-                          onChange={(e) => setExpenseDraft(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === "Enter") handleSaveExpense(item); if (e.key === "Escape") setEditingExpenseId(null); }}
-                          className="w-20 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-1.5 py-0.5 text-xs text-gray-900 dark:text-gray-100 focus:outline-none focus:border-emerald-500"
-                        />
-                        <button onClick={() => handleSaveExpense(item)} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">Save</button>
-                        <button onClick={() => setEditingExpenseId(null)} className="text-xs text-gray-400 hover:text-gray-600">✕</button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => { setEditingExpenseId(item.id); setExpenseDraft(String(item.item_expense_usd ?? 0)); }}
-                        className={`text-xs ${
-                          Number(item.item_expense_usd) > 0
-                            ? item.isSold
-                              ? "text-amber-500 dark:text-amber-400"
-                              : "text-gray-400 dark:text-gray-500"
-                            : "text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400"
-                        }`}
-                        title={Number(item.item_expense_usd) > 0 && !item.isSold ? "Will be counted when sold" : "Edit item expense"}
-                      >
-                        {Number(item.item_expense_usd) > 0
-                          ? `−${fmtUSD(item.item_expense_usd)} exp.${!item.isSold ? " (pending)" : ""}`
-                          : "+ expense"}
-                      </button>
-                    )}
-                  </div>
-                  <button onClick={() => handleRemoveItem(item.id)} className="text-xs text-gray-300 dark:text-gray-600 hover:text-red-400 dark:hover:text-red-400 shrink-0 ml-1">✕</button>
+                  <button onClick={() => handleRemoveItem(item.id)} className="order-3 sm:order-4 text-xs text-gray-300 dark:text-gray-600 hover:text-red-400 dark:hover:text-red-400 shrink-0 ml-1 mt-0.5 sm:mt-0">✕</button>
                 </div>
               ))}
             </div>
