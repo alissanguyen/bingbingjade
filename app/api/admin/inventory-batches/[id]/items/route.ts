@@ -32,7 +32,7 @@ export async function POST(
       notes:                        (body.notes as string | undefined)?.trim() || null,
       certificate_id,
     })
-    .select("id, product_id, assigned_inventory_cost_usd, item_expense_usd, allocation_method, notes, certificate_id, created_at, products(id, name, public_id, slug, images, price_display_usd, sale_price_usd)")
+    .select("id, product_id, assigned_inventory_cost_usd, item_expense_usd, allocation_method, notes, certificate_id, created_at, products(id, name, public_id, sku, slug, images, price_display_usd, sale_price_usd)")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -45,6 +45,7 @@ export async function POST(
       ...data,
       productName:      product?.name ?? null,
       productPublicId:  product?.public_id ?? null,
+      productSku:       product?.sku ?? null,
       productSlug:      product?.slug ?? null,
       productImageUrl,
       listPriceUsd:     product?.price_display_usd != null ? Number(product.price_display_usd) : null,

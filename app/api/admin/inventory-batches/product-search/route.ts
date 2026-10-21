@@ -11,12 +11,12 @@ export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q")?.trim() ?? "";
   if (!q) return NextResponse.json({ products: [] });
 
-  // Search Ship Now (quick_ship) products by name (case-insensitive) OR public_id
+  // Search Ship Now (quick_ship) products by name (case-insensitive), SKU, or public_id
   const { data, error } = await supabaseAdmin
     .from("products")
-    .select("id, name, public_id, images")
+    .select("id, name, public_id, sku, images")
     .eq("quick_ship", true)
-    .or(`name.ilike.%${q}%,public_id.ilike.%${q}%`)
+    .or(`name.ilike.%${q}%,sku.ilike.%${q}%,public_id.ilike.%${q}%`)
     .order("name")
     .limit(10);
 

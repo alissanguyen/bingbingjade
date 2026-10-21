@@ -16,6 +16,7 @@ interface BatchItem {
   created_at: string;
   productName: string | null;
   productPublicId: string | null;
+  productSku: string | null;
   productSlug: string | null;
   productImageUrl: string | null;
   listPriceUsd: number | null;
@@ -50,6 +51,7 @@ interface ProductSearchResult {
   id: string;
   name: string;
   public_id: string;
+  sku: string | null;
   images: string[] | null;
 }
 
@@ -219,7 +221,7 @@ export function InventoryBatchDetailClient({
 
   function selectProduct(p: ProductSearchResult) {
     setItemForm((f) => ({ ...f, product_id: p.id }));
-    setSearchQuery(`${p.name}  ·  ${p.public_id}`);
+    setSearchQuery(`${p.name}  ·  ${p.sku ?? p.public_id}`);
     setSearchResults([]);
     setSearchOpen(false);
   }
@@ -658,17 +660,13 @@ export function InventoryBatchDetailClient({
                           >
                             <span className="min-w-0 flex-1">
                               <span className="block text-sm text-gray-900 dark:text-gray-100 truncate">{p.name}</span>
-                              <span className="block text-xs text-gray-400 font-mono">{p.public_id}</span>
+                              <span className="block text-xs text-gray-400 font-mono">{p.sku ?? p.public_id}</span>
                             </span>
                           </button>
                         ))}
                       </div>
                     )}
                   </div>
-                  {/* Selected product UUID hint */}
-                  {itemForm.product_id && (
-                    <p className="mt-1 text-[10px] text-gray-400 font-mono truncate">{itemForm.product_id}</p>
-                  )}
                 </div>
 
                 <div className="col-span-2">
@@ -718,12 +716,12 @@ export function InventoryBatchDetailClient({
           ) : (
             <div className="divide-y divide-gray-50 dark:divide-gray-800">
               {items.map((item) => (
-                <div key={item.id} className="flex flex-wrap sm:flex-nowrap items-start sm:items-center gap-x-3 gap-y-2 px-4 sm:px-5 py-3">
+                <div key={item.id} className="flex flex-wrap sm:flex-nowrap items-start sm:items-center gap-x-2.5 sm:gap-x-3 gap-y-1.5 sm:gap-y-2 px-3 sm:px-5 py-2.5 sm:py-3">
                   {(() => {
                     const thumb = item.productImageUrl ? (
-                      <Image src={item.productImageUrl} alt={item.productName ?? ""} width={40} height={40} className="w-10 h-10 rounded-lg object-cover" unoptimized />
+                      <Image src={item.productImageUrl} alt={item.productName ?? ""} width={40} height={40} className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg object-cover" unoptimized />
                     ) : (
-                      <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800" />
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gray-100 dark:bg-gray-800" />
                     );
                     return item.productSlug && item.productPublicId ? (
                       <a
@@ -740,11 +738,11 @@ export function InventoryBatchDetailClient({
                     );
                   })()}
                   <div className="order-2 min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words sm:truncate">
+                    <p className="text-xs sm:text-sm font-medium leading-snug text-gray-900 dark:text-gray-100 line-clamp-2 sm:line-clamp-none sm:truncate">
                       {item.productName ?? <span className="text-gray-400 font-mono text-xs">{item.product_id ?? "Unknown"}</span>}
                     </p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">
-                      {item.productPublicId && <span className="font-mono mr-1.5">{item.productPublicId}</span>}
+                    <p className="text-[11px] sm:text-xs text-gray-400 dark:text-gray-500">
+                      {(item.productSku ?? item.productPublicId) && <span className="font-mono mr-1.5">{item.productSku ?? item.productPublicId}</span>}
                       {ALLOC_LABELS[item.allocation_method] ?? item.allocation_method}
                       {item.notes && ` · ${item.notes}`}
                     </p>
@@ -764,29 +762,29 @@ export function InventoryBatchDetailClient({
                     ) : (
                       <button
                         onClick={() => { setEditingCertId(item.id); setCertDraft(item.certificate_id ?? ""); }}
-                        className={`text-xs mt-0.5 ${item.certificate_id ? "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" : "text-amber-500 dark:text-amber-400 hover:underline"}`}
+                        className={`text-[11px] sm:text-xs text-left mt-0.5 ${item.certificate_id ? "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" : "text-amber-500 dark:text-amber-400 hover:underline"}`}
                         title="Edit certificate ID"
                       >
-                        {item.certificate_id ? <>Cert: <span className="font-mono">{item.certificate_id}</span></> : "⚠ Missing certificate ID"}
+                        {item.certificate_id ? <>Cert: <span className="font-mono">{item.certificate_id}</span></> : <>⚠ <span className="sm:hidden">No cert ID</span><span className="hidden sm:inline">Missing certificate ID</span></>}
                       </button>
                     )}
                   </div>
-                  <div className="order-4 sm:order-3 w-full sm:w-auto flex items-start justify-between sm:justify-end gap-3 pl-[52px] sm:pl-0 sm:shrink-0">
+                  <div className="order-4 sm:order-3 w-full sm:w-auto flex items-start justify-between sm:justify-end gap-3 pl-[42px] sm:pl-0 sm:shrink-0">
                     <div className="flex flex-col items-start sm:items-end sm:w-20">
                       {item.salePriceUsd != null ? (
                         <>
-                          <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{fmtUSD(item.salePriceUsd)}</p>
+                          <p className="text-xs sm:text-sm font-semibold text-emerald-600 dark:text-emerald-400">{fmtUSD(item.salePriceUsd)}</p>
                           {item.listPriceUsd != null && (
                             <p className="text-[11px] text-gray-400 line-through">{fmtUSD(item.listPriceUsd)}</p>
                           )}
                         </>
                       ) : (
-                        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{fmtUSD(item.listPriceUsd)}</p>
+                        <p className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">{fmtUSD(item.listPriceUsd)}</p>
                       )}
                       <p className="text-[10px] text-gray-400 dark:text-gray-500">{item.salePriceUsd != null ? "sale price" : "list price"}</p>
                     </div>
                     <div className="flex flex-col items-end gap-0.5 shrink-0">
-                      <p className="font-semibold text-gray-800 dark:text-gray-200 text-sm" title="Assigned inventory cost">{fmtUSD(item.assigned_inventory_cost_usd)}</p>
+                      <p className="font-semibold text-gray-800 dark:text-gray-200 text-xs sm:text-sm" title="Assigned inventory cost">{fmtUSD(item.assigned_inventory_cost_usd)}</p>
                       {/* Inline expense editor */}
                       {editingExpenseId === item.id ? (
                         <div className="flex items-center gap-1">
