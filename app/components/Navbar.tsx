@@ -28,6 +28,7 @@ const NAV_ALL_PIECES = [
   { href: "/products?category=pendant,necklace", label: "Pendants & Necklaces" },
   { href: "/products?category=set", label: "Sets" },
   { href: "/products?category=raw_material", label: "Raw Materials" },
+  { href: "/products?category=other", label: "Other" },
 ];
 
 const NAV_BANGLE_SIZES = [
