@@ -111,7 +111,7 @@ export default async function CheckoutSuccessPage({
           </h1>
           <p className="mt-5 text-base text-white/75 max-w-md leading-relaxed">
             {isAwaitingCapture && isLivestreamOrder
-              ? "Your payment has been authorized and your piece is reserved for you. We'll ship it out shortly — if you need to cancel, just reply to your DM within 24 hours and we'll release the hold at no charge."
+              ? "Your payment has been authorized and your piece is reserved for you. We'll ship it out shortly — if you need to cancel, email contact@bingbingjade.com within 24 hours and we'll release the hold at no charge."
               : isAwaitingCapture
               ? "Your payment method has been authorized but not charged. We're confirming availability with our overseas sourcing partner and will only finalize payment once the piece is secured."
               : "Each piece is carefully prepared and verified before shipment. Our team will personally reach out within 24–48 hours to confirm your order details and arrange shipping."}
