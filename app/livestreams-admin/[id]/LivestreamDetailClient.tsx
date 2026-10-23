@@ -1,7 +1,120 @@
 "use client";
 
-import { useState, useCallback, Fragment } from "react";
+import { useState, useCallback, Fragment, useEffect, useRef } from "react";
 import type { Livestream, LivestreamItem } from "@/types/livestream";
+
+interface ProductHit {
+  id: string;
+  name: string;
+  sku: string | null;
+  size: number | null;
+  status: string;
+}
+
+function ProductSearch({
+  value,
+  onSelect,
+}: {
+  value: { id: string; name: string } | null;
+  onSelect: (p: { id: string; name: string } | null) => void;
+}) {
+  const [query, setQuery]       = useState(value?.name ?? "");
+  const [results, setResults]   = useState<ProductHit[]>([]);
+  const [open, setOpen]         = useState(false);
+  const [loading, setLoading]   = useState(false);
+  const debounceRef             = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const containerRef            = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // When a value is selected from outside (e.g. clear), sync query
+  useEffect(() => {
+    if (!value) setQuery("");
+    else setQuery(value.name);
+  }, [value]);
+
+  function handleChange(q: string) {
+    setQuery(q);
+    onSelect(null); // clear selection while typing
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!q.trim()) { setResults([]); setOpen(false); return; }
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/admin/livestreams/product-search?q=${encodeURIComponent(q)}`);
+        const json = await res.json();
+        setResults(json.products ?? []);
+        setOpen(true);
+      } finally {
+        setLoading(false);
+      }
+    }, 250);
+  }
+
+  function select(p: ProductHit) {
+    onSelect({ id: p.id, name: p.name });
+    setQuery(p.name);
+    setOpen(false);
+    setResults([]);
+  }
+
+  function clear() {
+    onSelect(null);
+    setQuery("");
+    setResults([]);
+    setOpen(false);
+  }
+
+  const inputCls = "w-full text-xs border border-gray-300 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-emerald-500";
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="flex items-center gap-1">
+        <input
+          className={inputCls}
+          value={query}
+          onChange={(e) => handleChange(e.target.value)}
+          onFocus={() => results.length > 0 && setOpen(true)}
+          placeholder="Search by name or SKU…"
+        />
+        {value && (
+          <button type="button" onClick={clear} className="shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs px-1">✕</button>
+        )}
+      </div>
+      {value && (
+        <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5 truncate">Linked: {value.name}</p>
+      )}
+      {open && (results.length > 0 || loading) && (
+        <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg overflow-hidden max-h-48 overflow-y-auto">
+          {loading && <p className="px-3 py-2 text-xs text-gray-400">Searching…</p>}
+          {results.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => select(p)}
+              className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 flex items-start justify-between gap-2"
+            >
+              <span className="text-gray-900 dark:text-gray-100 font-medium truncate">{p.name}</span>
+              <span className="text-gray-400 shrink-0">{p.sku ?? (p.size != null ? `${p.size}mm` : "")}</span>
+            </button>
+          ))}
+          {!loading && results.length === 0 && (
+            <p className="px-3 py-2 text-xs text-gray-400">No Ship Now products found</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 type ItemWithRelations = LivestreamItem & {
   product?: { id: string; name: string; status: string; slug: string } | null;
@@ -48,6 +161,7 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
   const [editMinPrice, setEditMinPrice] = useState("");
   const [editSize, setEditSize]       = useState("");
   const [editProductId, setEditProductId] = useState("");
+  const [editProductName, setEditProductName] = useState("");
   const [editNotes, setEditNotes]     = useState("");
 
   const reload = useCallback(async () => {
@@ -148,6 +262,7 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
     setEditMinPrice(item.minimum_price != null ? String(item.minimum_price) : "");
     setEditSize(item.size ?? "");
     setEditProductId(item.product_id ?? "");
+    setEditProductName(item.product?.name ?? "");
     setEditNotes(item.public_notes ?? "");
   }
 
@@ -325,8 +440,14 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
                             <input type="number" className={inputCls} value={editMinPrice} onChange={(e) => setEditMinPrice(e.target.value)} placeholder="—" step="0.01" min="0" />
                           </div>
                           <div className="flex-1 min-w-[220px]">
-                            <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Product UUID (optional)</label>
-                            <input className={inputCls} value={editProductId} onChange={(e) => setEditProductId(e.target.value)} placeholder="Link to existing product" />
+                            <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Link Product (Ship Now only)</label>
+                            <ProductSearch
+                              value={editProductId ? { id: editProductId, name: editProductName } : null}
+                              onSelect={(p) => {
+                                setEditProductId(p?.id ?? "");
+                                setEditProductName(p?.name ?? "");
+                              }}
+                            />
                           </div>
                           <div className="flex gap-1 shrink-0">
                             <button onClick={() => saveItemEdit(item.id)} disabled={saving}
