@@ -922,7 +922,10 @@ export function OrderDetailClient({
   }
 
   async function handleReleaseAuthorization() {
-    if (!confirm("Release this authorization? The order will be cancelled and the customer notified — no refund is issued since nothing was charged.")) return;
+    const confirmMsg = order.source === "livestream"
+      ? "Release this authorization? The order will be cancelled and the livestream piece marked cancelled — no refund is issued since nothing was charged. No email is sent to the buyer."
+      : "Release this authorization? The order will be cancelled and the customer notified — no refund is issued since nothing was charged.";
+    if (!confirm(confirmMsg)) return;
     setActionLoading("release-authorization");
     try {
       const res = await fetch(`/api/admin/orders/${order.id}/release-authorization`, { method: "POST" });
@@ -1284,7 +1287,7 @@ export function OrderDetailClient({
                     disabled={!!actionLoading || !canCapture}
                     className="w-full rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2.5 text-sm font-medium transition-colors"
                   >
-                    {actionLoading === "capture-payment" ? "Capturing…" : "Confirm Available & Capture Payment"}
+                    {actionLoading === "capture-payment" ? "Capturing…" : order.source === "livestream" ? "Capture Payment (after 24h window)" : "Confirm Available & Capture Payment"}
                   </button>
 
                   <button
@@ -1292,7 +1295,7 @@ export function OrderDetailClient({
                     disabled={!!actionLoading || !canRelease}
                     className="w-full rounded-lg border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 disabled:cursor-not-allowed text-red-600 dark:text-red-400 py-2.5 text-sm font-medium transition-colors"
                   >
-                    {actionLoading === "release-authorization" ? "Releasing…" : "Piece Unavailable — Release Authorization"}
+                    {actionLoading === "release-authorization" ? "Releasing…" : order.source === "livestream" ? "Buyer Cancelled — Release Authorization" : "Piece Unavailable — Release Authorization"}
                   </button>
 
                   {isExpired && order.capture_status === "authorized" && (

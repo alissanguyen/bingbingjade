@@ -104,8 +104,12 @@ export async function POST(
   const minExpiryTs = Math.floor(Date.now() / 1000) + 30 * 60;
   const stripeExpiresAt = Math.max(itemExpiryTs, minExpiryTs);
 
+  // Authorize only — the buyer has a 24-hour change-of-mind window, and Stripe
+  // keeps its processing fee on refunds. Admin captures from the order page
+  // once the window passes, or releases the hold at no cost if they cancel.
   const stripeSession = await stripe.checkout.sessions.create({
     mode: "payment",
+    payment_intent_data: { capture_method: "manual" },
     line_items: lineItems,
     shipping_address_collection: {
       allowed_countries: ALLOWED_COUNTRIES.map((c) => c.code) as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry[],
@@ -121,6 +125,7 @@ export async function POST(
     },
     metadata: {
       is_livestream_checkout: "true",
+      capture_mode: "manual",
       livestream_item_id: item.id,
       buyer_handle: item.buyer_handle ?? "",
       buyer_platform: item.buyer_platform ?? "instagram",

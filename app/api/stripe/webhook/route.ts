@@ -11,6 +11,8 @@ import {
   recordOrderPayment,
   finalizeProductOrder,
   syncOrderPaymentsRefundStatus,
+  fetchEmailItems,
+  sendLivestreamOrderPlacedEmail,
 } from "@/lib/orders";
 import { normalizeEmail } from "@/lib/discount";
 import { CREDIT_VALIDITY_DAYS } from "@/lib/sourcing-classification";
@@ -667,6 +669,25 @@ async function handleLivestreamCheckout(
   const stripeCustomerId = typeof session.customer === "string" ? session.customer : null;
   const now = new Date().toISOString();
 
+  // Livestream checkouts created before manual capture was introduced were
+  // charged immediately; newer ones are only authorized (24h change-of-mind window).
+  const isManualCapture = session.metadata?.capture_mode === "manual";
+  let capturePaymentMethod: string | null = null;
+  let latestStripeStatus: string | null = null;
+  if (isManualCapture && paymentIntentId) {
+    try {
+      const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+      capturePaymentMethod = pi.payment_method_types?.[0] ?? null;
+      latestStripeStatus = pi.status;
+    } catch (err) {
+      console.error("[webhook/livestream] Failed to retrieve PaymentIntent (non-fatal):", err);
+    }
+  }
+  const captureWindowDays = capturePaymentMethod && capturePaymentMethod in MANUAL_CAPTURE_WINDOW_DAYS
+    ? MANUAL_CAPTURE_WINDOW_DAYS[capturePaymentMethod as keyof typeof MANUAL_CAPTURE_WINDOW_DAYS]
+    : 7;
+  const authorizationExpiresAt = new Date(Date.now() + captureWindowDays * 24 * 60 * 60 * 1000).toISOString();
+
   // Upsert customer
   let customerId: string | null = null;
   if (customerEmail && customerName) {
@@ -693,6 +714,24 @@ async function handleLivestreamCheckout(
     } catch { /* non-fatal */ }
   }
 
+  // Shipping / fee / tax breakdown from the line items the buyer was actually
+  // charged, so the tracking page and admin show how the total adds up
+  let feeBreakdown: Record<string, number> | null = null;
+  try {
+    const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 20 });
+    const fees: Record<string, number> = {};
+    for (const li of lineItems.data) {
+      const name = (li.description ?? "").trim();
+      const amount = (li.amount_total ?? 0) / 100;
+      if (name === "Shipping") fees.shipping = (fees.shipping ?? 0) + amount;
+      else if (name.startsWith("Transaction Fee")) fees.paypal = (fees.paypal ?? 0) + amount;
+      else if (name.includes("Sales Tax")) fees.tax = (fees.tax ?? 0) + amount;
+    }
+    if (Object.keys(fees).length > 0) feeBreakdown = fees;
+  } catch (err) {
+    console.error("[webhook/livestream] Failed to fetch line items for fee breakdown (non-fatal):", err);
+  }
+
   // Generate order number
   let orderNumber: string | null = null;
   try { orderNumber = await generateOrderNumber(); } catch { /* non-fatal */ }
@@ -711,10 +750,21 @@ async function handleLivestreamCheckout(
       customer_phone_snapshot: customerPhone,
       amount_total: session.amount_total ?? null,
       currency: session.currency ?? "usd",
-      status: "paid",
+      status: isManualCapture ? "unpaid" : "paid",
       order_status: "order_confirmed",
       source: "livestream",
       shipping_address_id: shippingAddressId,
+      fee_breakdown: feeBreakdown,
+      merchandise_subtotal_cents: Math.round((item.checkout_price ?? item.price) * 100),
+      stripe_amount_cents: session.amount_total ?? 0,
+      ...(isManualCapture ? {
+        capture_status: "authorized",
+        authorized_amount: session.amount_total ?? 0,
+        authorized_at: now,
+        authorization_expires_at: authorizationExpiresAt,
+        latest_stripe_status: latestStripeStatus ?? "requires_capture",
+        capture_payment_method: capturePaymentMethod,
+      } : {}),
       notes: `Livestream item ${item.code} — buyer @${item.buyer_handle}`,
     })
     .select("id")
@@ -739,8 +789,8 @@ async function handleLivestreamCheckout(
     inventory_type: "available_now",
   });
 
-  // Record payment
-  if (paymentIntentId && session.amount_total) {
+  // Record payment — manual-capture orders are recorded by the admin capture route
+  if (!isManualCapture && paymentIntentId && session.amount_total) {
     try {
       const { data: existingPayment } = await supabase
         .from("order_payments")
@@ -788,11 +838,39 @@ async function handleLivestreamCheckout(
   await supabase.from("livestream_item_events").insert({
     livestream_item_id: itemId,
     event_type: "paid",
-    message: `Payment received — order ${orderNumber ?? order.id}`,
+    message: isManualCapture
+      ? `Payment authorized — order ${orderNumber ?? order.id} (capture after 24h cancellation window)`
+      : `Payment received — order ${orderNumber ?? order.id}`,
     buyer_handle: item.buyer_handle,
     metadata: { order_id: order.id, order_number: orderNumber, session_id: session.id },
     created_by: "system",
   });
+
+  // Order placed email — BCC'd to the shop, which doubles as the admin notification
+  if (orderNumber && customerEmail) {
+    try {
+      await sendLivestreamOrderPlacedEmail({
+        orderNumber,
+        itemCode: item.code,
+        customerName: customerName ?? "",
+        customerEmail,
+        amountCents: session.amount_total ?? 0,
+        isAuthorization: isManualCapture,
+        items: await fetchEmailItems(order.id),
+        shippingAddress: stripeShipping?.address?.line1 ? {
+          name: stripeShipping.name ?? null,
+          line1: stripeShipping.address.line1,
+          line2: stripeShipping.address.line2 ?? null,
+          city: stripeShipping.address.city ?? null,
+          state: stripeShipping.address.state ?? null,
+          postal: stripeShipping.address.postal_code ?? null,
+          country: stripeShipping.address.country ?? null,
+        } : null,
+      });
+    } catch (err) {
+      console.error("[webhook/livestream] Order placed email failed (non-fatal):", err);
+    }
+  }
 
   // Revalidate cache
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");

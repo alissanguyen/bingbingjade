@@ -39,7 +39,7 @@ export async function POST(
 
   const { data: order, error: fetchErr } = await supabaseAdmin
     .from("orders")
-    .select("id, order_number, customer_name, customer_email, stripe_payment_intent_id, capture_status, store_credit_id, store_credit_used_cents")
+    .select("id, order_number, customer_name, customer_email, stripe_payment_intent_id, capture_status, store_credit_id, store_credit_used_cents, source")
     .eq("id", id)
     .single();
 
@@ -114,6 +114,10 @@ export async function POST(
   // If pi.status === "canceled" already (Stripe auto-expired it), nothing to
   // cancel — just proceed to the DB/customer-facing cleanup below.
 
+  // Livestream authorizations are released when the buyer cancels within their
+  // 24-hour window, not because the piece is unavailable.
+  const isLivestream = order.source === "livestream";
+
   const now = new Date().toISOString();
   const { data: updated } = await supabaseAdmin
     .from("orders")
@@ -122,7 +126,7 @@ export async function POST(
       authorization_canceled_at: now,
       latest_stripe_status: "canceled",
       order_status: "order_cancelled",
-      cancellation_reason: "piece_unavailable",
+      cancellation_reason: isLivestream ? "customer_cancelled" : "piece_unavailable",
     })
     .eq("id", order.id)
     .select("*")
@@ -155,7 +159,26 @@ export async function POST(
     await supabaseAdmin.from("products").update({ status: "available" }).in("id", productIds);
   }
 
-  if (order.order_number && order.customer_name && order.customer_email) {
+  if (isLivestream) {
+    const { data: lsItem } = await supabaseAdmin
+      .from("livestream_items")
+      .update({ status: "cancelled", checkout_active: false, updated_at: now })
+      .eq("order_id", order.id)
+      .select("id, buyer_handle")
+      .maybeSingle();
+    if (lsItem) {
+      await supabaseAdmin.from("livestream_item_events").insert({
+        livestream_item_id: lsItem.id,
+        event_type: "cancelled",
+        message: `Buyer cancelled — authorization released for order ${order.order_number ?? order.id}`,
+        buyer_handle: lsItem.buyer_handle,
+        created_by: "admin",
+      });
+    }
+  }
+
+  // The "piece unavailable" email doesn't apply to a livestream buyer who cancelled.
+  if (!isLivestream && order.order_number && order.customer_name && order.customer_email) {
     try {
       const shippingAddress = await getOrderShippingAddress(order.id);
       await sendAuthorizationReleasedEmail({

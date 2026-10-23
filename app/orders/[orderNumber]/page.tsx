@@ -154,6 +154,7 @@ async function getOrder(orderNumber: string) {
       currency,
       order_status,
       order_type,
+      source,
       cancellation_reason,
       capture_status,
       authorized_amount,
@@ -288,6 +289,7 @@ export default async function TrackOrderPage({
   // cancelled-before-capture order never shows "Total paid" either.
   const wasNeverCharged = !!captureStatus && !["captured", "refunded", "partially_refunded"].includes(captureStatus);
   const statusSteps = getSteps(isCustom);
+  const isLivestreamHold = order.source === "livestream" && isAuthorizedNotCaptured;
 
   // Partially vs. fully paid — independent of the manual-capture states above,
   // which are about an authorization hold, not a genuine partial/deposit sale.
@@ -371,6 +373,23 @@ export default async function TrackOrderPage({
         </div>
       )}
 
+      {/* Livestream piece secured, payment held during the 24-hour change-of-mind window */}
+      {isLivestreamHold && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-5 py-4 mb-10 flex items-start gap-3">
+          <div className="mt-0.5 w-2.5 h-2.5 rounded-full shrink-0 bg-amber-400" />
+          <div>
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Your Livestream Piece Is Secured</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
+              Your payment method has been
+              authorized{authorizedAmount != null ? ` for $${(authorizedAmount / 100).toFixed(2)}` : ""} and will be
+              finalized after the 24-hour cancellation window. If you wish to cancel, please email{" "}
+              <a href="mailto:contact@bingbingjade.com" className="text-amber-700 dark:text-amber-300 hover:underline">contact@bingbingjade.com</a>
+              {" "}within 24 hours for a full refund. After 24 hours, fees may apply.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Pre-confirmation notice (no timeline yet) */}
       {isPreConfirm && (
         <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-5 py-4 mb-10 flex items-start gap-3">
@@ -420,7 +439,9 @@ export default async function TrackOrderPage({
                 ) : (
                   <>
                     <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mb-1.5">
-                      This order was cancelled per your request. We&apos;ve processed your refund, and it should return to your original payment method within a few business days.
+                      {isAuthorizationReleased
+                        ? "This order was cancelled per your request. No payment was finalized — your card was only ever authorized, never charged, and that authorization has now been released. Depending on your bank, the pending hold may take a few business days to fully disappear from your statement."
+                        : "This order was cancelled per your request. We’ve processed your refund, and it should return to your original payment method within a few business days."}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
                       If you were still considering this piece or something similar, we&apos;d be happy to assist — including sourcing options, additional photos and videos, or helping you find the perfect fit. You can always reach us via our{" "}
@@ -607,8 +628,9 @@ export default async function TrackOrderPage({
         </div>
       )}
 
-      {/* Fallback: old single timeline (when no shipments yet) */}
-      {!isPreConfirm && !isAwaitingVendorConfirmation && !isCancelled && !isRefunded && shipments.length === 0 && (
+      {/* Fallback: old single timeline (when no shipments yet) — hidden during a
+          livestream hold, since its first step says payment was received */}
+      {!isPreConfirm && !isAwaitingVendorConfirmation && !isCancelled && !isRefunded && !isLivestreamHold && shipments.length === 0 && (
         <div className="mb-10">
           <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-5">
             Progress

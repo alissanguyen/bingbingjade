@@ -1743,6 +1743,168 @@ export async function sendAvailabilityConfirmationEmail(params: {
 }
 
 /**
+ * Sent when a livestream buyer completes checkout. The same email is BCC'd to
+ * the shop, which serves as the admin "order placed" notification. Payment is
+ * authorized (not charged) so the buyer can cancel within 24 hours at no cost.
+ */
+export type LivestreamOrderPlacedEmailParams = {
+  orderNumber: string;
+  itemCode: string;
+  customerName: string;
+  customerEmail: string;
+  amountCents: number;
+  isAuthorization: boolean;
+  items: EmailItem[];
+  shippingAddress?: EmailShippingAddress;
+};
+
+export function buildLivestreamOrderPlacedHtml(params: LivestreamOrderPlacedEmailParams): { html: string; subject: string } {
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
+  const trackUrl = `${siteUrl}/orders/${params.orderNumber}`;
+  const firstName = params.customerName.split(" ")[0] || "there";
+  const amountFormatted = `$${(params.amountCents / 100).toFixed(2)}`;
+  const shippingBlock = renderShippingAddressBlock(params.shippingAddress, params.customerName);
+
+  const paymentNotice = params.isAuthorization
+    ? `${amountFormatted} has been authorized on your payment method. Your payment will be finalized after the 24-hour cancellation window.`
+    : `${amountFormatted} has been charged to your payment method.`;
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:#065f46;padding:32px 40px;text-align:center;">
+            <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:#6ee7b7;">Livestream Order Placed</p>
+            <h1 style="margin:8px 0 0;font-size:26px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">BingBing Jade</h1>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:36px 40px;">
+            <p style="margin:0 0 20px;font-size:16px;color:#111827;">Hi ${firstName},</p>
+            <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">
+              Thank you for participating in our livestream and for supporting our small business &mdash; it truly means a lot to us.
+            </p>
+            <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
+              <strong>Your piece (${params.itemCode}) is secured.</strong> We will personally prepare it for shipping and send tracking details as soon as it is on its way.
+            </p>
+
+            <!-- Order number callout -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:20px;">
+              <tr>
+                <td style="padding:16px 20px;">
+                  <p style="margin:0 0 2px;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#059669;">Your Order Number</p>
+                  <p style="margin:0;font-size:22px;font-weight:700;color:#065f46;letter-spacing:0.04em;">${params.orderNumber}</p>
+                  <p style="margin:6px 0 0;font-size:12px;color:#6b7280;">Livestream piece ${params.itemCode}</p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Cancellation window -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;margin-bottom:28px;">
+              <tr>
+                <td style="padding:14px 20px;">
+                  <p style="margin:0 0 2px;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#92400e;">24-Hour Change of Mind</p>
+                  <p style="margin:6px 0 0;font-size:13px;color:#78350f;line-height:1.6;">
+                    If you wish to cancel, please email us at
+                    <a href="mailto:contact@bingbingjade.com" style="color:#b45309;text-decoration:none;font-weight:600;">contact@bingbingjade.com</a>
+                    within <strong>24 hours</strong> for a full refund. After 24 hours, fees may apply.
+                  </p>
+                  <p style="margin:8px 0 0;font-size:13px;color:#78350f;line-height:1.6;">${paymentNotice}</p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Order Summary -->
+            ${buildItemRowsHtml(params.items)}
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+              <tr>
+                <td style="padding:10px 0 0;font-size:14px;font-weight:600;color:#111827;">${params.isAuthorization ? "Total authorized" : "Total paid"}</td>
+                <td style="padding:10px 0 0;font-size:15px;font-weight:700;color:#065f46;text-align:right;">${amountFormatted}</td>
+              </tr>
+            </table>
+            <p style="margin:0 0 24px;font-size:12px;color:#6b7280;">Includes shipping, transaction fee, and applicable sales tax.</p>
+
+            ${shippingBlock}
+
+            <!-- CTA -->
+            <table cellpadding="0" cellspacing="0" style="margin:4px 0 28px;">
+              <tr>
+                <td style="background:#065f46;border-radius:999px;">
+                  <a href="${trackUrl}" style="display:inline-block;padding:13px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.01em;">
+                    Track Your Order &rarr;
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:0 0 24px;font-size:14px;color:#374151;line-height:1.6;">
+              For any questions or concerns, please reach out to
+              <a href="mailto:contact@bingbingjade.com" style="color:#059669;text-decoration:none;">contact@bingbingjade.com</a> &mdash; we&rsquo;re always happy to help.
+            </p>
+
+            <p style="margin:0;font-size:14px;color:#374151;line-height:1.6;">
+              Warmly,<br>
+              The BingBing Jade Team<br>
+              <span style="color:#6b7280;">Natural, always.</span>
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding:20px 40px 28px;border-top:1px solid #f3f4f6;text-align:center;">
+            <p style="margin:0;font-size:12px;color:#9ca3af;">
+              &copy; ${new Date().getFullYear()} BingBing Jade &middot;
+              <a href="${siteUrl}" style="color:#9ca3af;text-decoration:none;">bingbingjade.com</a>
+              &ensp;&middot;&ensp;<a href="${siteUrl}/rewards" style="color:#9ca3af;text-decoration:none;">Client Rewards</a>
+            </p>
+            <p style="margin:6px 0 0;font-size:10px;color:#9ca3af;">This is a no-reply address. For inquiries, contact <a href="mailto:contact@bingbingjade.com" style="color:#9ca3af;text-decoration:none;">contact@bingbingjade.com</a>.</p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  return { html, subject: `[Order Placed] Livestream piece ${params.itemCode} Reserved` };
+}
+
+export async function sendLivestreamOrderPlacedEmail(params: LivestreamOrderPlacedEmailParams): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.info("[orders] Resend not configured — skipping livestream order placed email");
+    return;
+  }
+
+  const resend = new Resend(apiKey);
+  const from = process.env.RESEND_FROM_EMAIL_ORDER_CONFIRMATION ?? "BingBing Jade <orders@bingbingjade.com>";
+  const { html, subject } = buildLivestreamOrderPlacedHtml(params);
+
+  try {
+    const { error } = await resend.emails.send({
+      from,
+      to: params.customerEmail,
+      bcc: "contact@bingbingjade.com",
+      subject,
+      html,
+    });
+    if (error) console.error("[orders] Resend livestream order placed email error:", error);
+  } catch (err) {
+    console.error("[orders] Failed to send livestream order placed email:", err);
+  }
+}
+
+/**
  * Sent when an admin releases a manual-capture authorization because the
  * vendor confirmed the piece is unavailable. No refund is issued (and none is
  * needed) because payment was never captured — this email makes that explicit,
