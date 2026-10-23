@@ -15,6 +15,9 @@ export async function GET(req: NextRequest) {
     .select("id, name, sku, size, status, images")
     .eq("quick_ship", true)
     .eq("status", "available")
+    .eq("is_published", true)
+    .not("public_id", "is", null)
+    .not("slug", "is", null)
     .or(`name.ilike.%${q}%,sku.ilike.%${q}%`)
     .order("name")
     .limit(10);

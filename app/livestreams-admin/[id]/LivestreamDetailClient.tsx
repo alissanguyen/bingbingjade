@@ -181,6 +181,7 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
   const [editTitle, setEditTitle]     = useState("");
   const [editPrice, setEditPrice]     = useState("");
   const [editMinPrice, setEditMinPrice] = useState("");
+  const [editCheckoutPrice, setEditCheckoutPrice] = useState("");
   const [editSize, setEditSize]       = useState("");
   const [editProductId, setEditProductId] = useState("");
   const [editProductName, setEditProductName] = useState("");
@@ -256,7 +257,7 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
   }
 
   // Save inline edit
-  async function saveItemEdit(itemId: string) {
+  async function saveItemEdit(item: ItemWithRelations) {
     setSaving(true);
     const body: Record<string, unknown> = {
       title_snapshot: editTitle,
@@ -266,8 +267,12 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
     if (editSize)     body.size          = editSize;
     if (editProductId) body.product_id   = editProductId;
     if (editNotes)    body.public_notes  = editNotes;
+    if (item.status === "checkout_sent" && editCheckoutPrice) {
+      const checkoutPrice = parseFloat(editCheckoutPrice);
+      if (checkoutPrice !== (item.checkout_price ?? item.price)) body.checkout_price = checkoutPrice;
+    }
 
-    const res = await fetch(`/api/admin/livestreams/${ls.id}/items/${itemId}`, {
+    const res = await fetch(`/api/admin/livestreams/${ls.id}/items/${item.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -282,6 +287,7 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
     setEditTitle(item.title_snapshot);
     setEditPrice(String(item.price));
     setEditMinPrice(item.minimum_price != null ? String(item.minimum_price) : "");
+    setEditCheckoutPrice(String(item.checkout_price ?? item.price));
     setEditSize(item.size ?? "");
     setEditProductId(item.product_id ?? "");
     setEditProductName(item.product?.name ?? "");
@@ -395,9 +401,13 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
                         </td>
                         <td className="px-3 py-2">
                           {item.product ? (
-                            <a href={`/products/${item.product.slug}-${item.product.public_id}`} target="_blank" rel="noopener noreferrer" className="text-emerald-600 dark:text-emerald-400 hover:underline truncate block max-w-[120px]">
-                              {item.product.name}
-                            </a>
+                            item.product.slug && item.product.public_id ? (
+                              <a href={`/products/${item.product.slug}-${item.product.public_id}`} target="_blank" rel="noopener noreferrer" className="text-emerald-600 dark:text-emerald-400 hover:underline truncate block max-w-[120px]">
+                                {item.product.name}
+                              </a>
+                            ) : (
+                              <span className="text-gray-500 dark:text-gray-400 truncate block max-w-[120px]" title="Product has no URL (draft/legacy)">{item.product.name}</span>
+                            )
                           ) : <span className="text-gray-300 dark:text-gray-600">—</span>}
                         </td>
                         <td className="px-3 py-2 text-gray-400">
@@ -469,6 +479,12 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
                             <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Min Price</label>
                             <input type="number" className={inputCls} value={editMinPrice} onChange={(e) => setEditMinPrice(e.target.value)} placeholder="—" step="0.01" min="0" />
                           </div>
+                          {item.status === "checkout_sent" && (
+                            <div className="w-28">
+                              <label className="block text-[10px] font-medium text-amber-600 dark:text-amber-400 mb-1 uppercase tracking-wide">Checkout Price</label>
+                              <input type="number" className={inputCls} value={editCheckoutPrice} onChange={(e) => setEditCheckoutPrice(e.target.value)} placeholder="0.00" step="0.01" min="0.01" />
+                            </div>
+                          )}
                           <div className="flex-1 min-w-[220px]">
                             <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Link Product (Ship Now only)</label>
                             <ProductSearch
@@ -480,7 +496,7 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
                             />
                           </div>
                           <div className="flex gap-1 shrink-0">
-                            <button onClick={() => saveItemEdit(item.id)} disabled={saving}
+                            <button onClick={() => saveItemEdit(item)} disabled={saving}
                               className="px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg disabled:opacity-50 transition-colors">
                               Save
                             </button>
