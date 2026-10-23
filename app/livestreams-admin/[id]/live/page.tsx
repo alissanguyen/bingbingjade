@@ -19,7 +19,7 @@ export default async function LiveModePage({
     supabaseAdmin.from("livestreams").select("*").eq("id", id).maybeSingle(),
     supabaseAdmin
       .from("livestream_items")
-      .select("*, product:products(id, name, status)")
+      .select("*, product:products(id, name, status, slug, public_id)")
       .eq("livestream_id", id)
       .order("display_order"),
   ]);
