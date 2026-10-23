@@ -17,12 +17,13 @@ type OrderData = {
   amount_total: number | null; // cents
   order_items: { product_name: string | null; price_usd: number; quantity: number }[];
   capture_status: string | null;
+  source: string | null;
 };
 
 async function getOrderData(sessionId: string): Promise<OrderData | null> {
   const { data } = await supabaseAdmin
     .from("orders")
-    .select("order_number, amount_total, capture_status, order_items(product_name, price_usd, quantity)")
+    .select("order_number, amount_total, capture_status, source, order_items(product_name, price_usd, quantity)")
     .eq("stripe_session_id", sessionId)
     .maybeSingle();
   if (!data) return null;
@@ -31,6 +32,7 @@ async function getOrderData(sessionId: string): Promise<OrderData | null> {
     amount_total: data.amount_total ?? null,
     order_items: Array.isArray(data.order_items) ? (data.order_items as OrderData["order_items"]) : [],
     capture_status: data.capture_status ?? null,
+    source: data.source ?? null,
   };
 }
 
@@ -50,10 +52,8 @@ export default async function CheckoutSuccessPage({
     orderNumber = orderData?.order_number ?? null;
   }
 
-  // Sourced for You orders are authorized, not charged, at this point — the
-  // headline shouldn't claim the piece is "secured" until an admin confirms
-  // availability with the vendor and captures payment.
   const isAwaitingCapture = orderData?.capture_status === "authorized" || orderData?.capture_status === "authorization_pending";
+  const isLivestreamOrder = orderData?.source === "livestream";
 
   return (
     <div>
@@ -105,12 +105,14 @@ export default async function CheckoutSuccessPage({
             {isAwaitingCapture ? "Order Received ✓" : "Purchase Confirmed ✓"}
           </p>
           <h1 className="text-4xl sm:text-5xl font-bold text-white leading-tight tracking-tight drop-shadow-lg max-w-2xl">
-            {isAwaitingCapture
+            {isAwaitingCapture && !isLivestreamOrder
               ? "Thank you — we're confirming availability."
               : "Thank you — your piece has been secured."}
           </h1>
           <p className="mt-5 text-base text-white/75 max-w-md leading-relaxed">
-            {isAwaitingCapture
+            {isAwaitingCapture && isLivestreamOrder
+              ? "Your payment has been authorized and your piece is reserved for you. We'll ship it out shortly — if you need to cancel, just reply to your DM within 24 hours and we'll release the hold at no charge."
+              : isAwaitingCapture
               ? "Your payment method has been authorized but not charged. We're confirming availability with our overseas sourcing partner and will only finalize payment once the piece is secured."
               : "Each piece is carefully prepared and verified before shipment. Our team will personally reach out within 24–48 hours to confirm your order details and arrange shipping."}
           </p>
