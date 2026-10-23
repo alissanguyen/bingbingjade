@@ -137,6 +137,8 @@ function buildDMMessage({
     "Here's your secure checkout link (shipping & taxes calculated at checkout):",
     tokenUrl,
     "",
+    "💛 Just a gentle heads-up: if someone else is waiting in line for this piece, we can hold it for you for 15 minutes. If payment isn't completed by then, we'll kindly release it to the next person so everyone gets a fair chance. Thank you so much for understanding!",
+    "",
     `⏰ Link expires ${expireStr}. Payment locks in your order — no need to DM us once paid!`,
     "",
     "Questions? Just reply here. Thank you for shopping with BingBing Jade! 💚",
