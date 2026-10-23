@@ -178,14 +178,36 @@ A luxury editorial system for curated collections with shoppable lifestyle photo
 
 ### Livestream Selling (Instagram / TikTok)
 
-A full workflow for running "claim it live" style sales during an Instagram or TikTok livestream, at `/livestreams-admin`.
+A complete end-to-end "claim it live" selling system for running real-time sales during Instagram or TikTok livestreams, built entirely in this project. Admin interface at `/livestreams-admin`; buyer-facing checkout at `/livestream-checkout/[token]`.
 
-- Admin pre-loads a livestream with numbered items (auto-coded `A1`, `A2`, … by a configurable letter prefix), each linked to an existing product with an asking price and an optional price floor
-- During the live, admin marks an item claimed by a buyer's handle and sends a **private, time-limited Stripe checkout link** (24-hour expiry) via DM — the underlying product is atomically set to `reserved` with an expiry timestamp so it can't be claimed or sold elsewhere in the meantime
-- Customers pay through a dedicated `/livestream-checkout/[token]` page (opaque token, not the raw Stripe URL) with `/livestream-checkout/expired` and `/livestream-checkout/invalid` fallback states
-- Full event log per item (`claimed` / `checkout_sent` / `released` / `paid` / `passed` / `cancelled`) plus a **backup-buyer queue** — if the first claimant doesn't pay in time, admin can offer the item to the next person in line without losing track of who asked first
-- Checkout price can differ from the announced asking price (e.g. live negotiation) with a required override note for the record
-- Orders from this flow are tagged `source: 'livestream'` and appear in the normal `/orders-admin` list alongside every other channel
+**Admin side**
+
+- Admin creates a livestream session with a configurable code prefix and item count; items are auto-generated with padded codes (e.g. `TEO1`–`TEO40`), each with a title, optional size, asking price, optional price floor, and an optional link to an existing Ship Now product in the catalog
+- **Detail view** (`/livestreams-admin/[id]`) — full item table with inline edit (title, size, price, min price, linked product via name/SKU search combobox filtered to published Ship Now products), status badges, buyer info, checkout expiry, and per-item action buttons
+- **Live mode** (`/livestreams-admin/[id]/live`) — mobile-first dark-UI card grid optimised for use on a phone during a live session; available items shown as tappable cards, active checkouts and sold items in their own sections; auto-refreshes every 30 seconds
+- **Claim modal** — admin enters buyer handle, platform (Instagram / TikTok / Other), and an optional price override with a required note; submitting marks the item `checkout_sent`, reserves the linked product with a 24-hour expiry timestamp, and returns a pre-written DM message with the buyer's token link for the admin to copy and send
+- **Copy DM / Copy Link** buttons are permanently visible on `checkout_sent` rows — admin can re-send at any time without reopening the claim modal
+- **Release** — admin can release any active checkout back to `available` at any time, which expires the Stripe session (if one was created), releases the product reservation, and logs a `released` event
+- Full **event log** per item (`checkout_sent` / `checkout_started` / `paid` / `released` / `cancelled_by_buyer`) — visible in the detail view for audit and troubleshooting
+- Checkout price can differ from the announced asking price (live negotiation) with a required override note for the record; price floor enforcement prevents accidental underselling
+- **Backup-buyer queue** — if the first claimant doesn't pay, admin can offer the item to the next person in line without losing track of who asked first
+
+**Buyer-facing checkout**
+
+- Buyer receives an opaque token URL (`/livestream-checkout/[token]`) — never the raw Stripe URL — with `/expired` and `/invalid` fallback states for stale or unknown links
+- Token page renders a branded BingBing Jade checkout page showing the claimed item (name, code, size, price) and a **shipping destination form**: country dropdown (29 supported countries) and a state field that appears only for US addresses
+- **Live pricing breakdown** computed client-side via `lib/livestream-pricing.ts` as the buyer fills in their location — four line items: item price, zone-based flat-rate shipping (free for US), 5% transaction fee on (item + shipping), and 10.5% WA Sales Tax (Washington state residents only, applied on top of the full subtotal including the fee)
+- **"Proceed to Checkout"** button creates a Stripe Checkout session server-side with those exact line items and redirects the buyer to pay; Stripe collects the full shipping address for fulfillment records
+- Stripe sessions use **manual capture** (`capture_method: "manual"`) — the buyer's card is authorized immediately but not charged, giving a 24-hour change-of-mind window; admin captures from the order detail page after the window passes, or cancels the hold at zero cost if the buyer changes their mind
+- If the buyer returns to the token link after starting Stripe checkout (e.g. clicked back or wants to change their country), the existing Stripe session is expired and a fresh one is created from their new selection — no duplicate charges possible
+- **"Cancel my claim"** button with a confirmation step — buyer confirms, the claim is released (Stripe session expired, product reservation cleared, item reset to `available`), and a `cancelled_by_buyer` event is logged so the admin can see what happened and re-offer the item
+- **Post-payment success page** shows livestream-specific copy ("your piece is reserved, ships shortly; 24-hour cancellation window via DM") distinct from the Sourced-for-You authorization copy ("confirming availability with overseas partner")
+
+**Webhook & fulfillment integration**
+
+- Stripe `checkout.session.completed` fires on buyer payment → webhook creates an order (`source: 'livestream'`, `status: 'unpaid'`, `capture_status: 'authorized'` for manual-capture sessions), records shipping address and fee breakdown from Stripe line items, marks the item `paid`, marks the linked product `sold`, logs a `paid` event, and sends a confirmation email to the buyer (BCC'd to the shop)
+- Orders appear in `/orders-admin` alongside all other channels and support the same status updates, shipping timeline, and fulfillment tools
+- **Product page reservation notice** — while an item's linked product is reserved, the public product page shows an amber banner informing visitors the piece is currently reserved, and hides the Add to Cart / WhatsApp / Contact buttons until the reservation expires or the item is released
 
 ### Reserved Listings & Deposit Reservations
 
