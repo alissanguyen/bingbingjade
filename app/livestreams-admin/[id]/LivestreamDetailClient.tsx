@@ -395,7 +395,7 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
                         </td>
                         <td className="px-3 py-2">
                           {item.product ? (
-                            <a href={`/products-admin/${item.product.id}`} className="text-emerald-600 dark:text-emerald-400 hover:underline truncate block max-w-[120px]">
+                            <a href={`/products/${item.product.slug}`} target="_blank" rel="noopener noreferrer" className="text-emerald-600 dark:text-emerald-400 hover:underline truncate block max-w-[120px]">
                               {item.product.name}
                             </a>
                           ) : <span className="text-gray-300 dark:text-gray-600">—</span>}
