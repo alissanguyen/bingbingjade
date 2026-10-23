@@ -25,6 +25,28 @@ function $$(n: number | null | undefined) {
   return `$${n.toFixed(2)}`;
 }
 
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
+
+function buildDMMessage(item: ItemWithProduct): string {
+  const price = item.checkout_price ?? item.price;
+  const expireStr = item.checkout_expires_at
+    ? new Date(item.checkout_expires_at).toLocaleString("en-US", {
+        month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short",
+      })
+    : "soon";
+  const tokenUrl = `${SITE_URL}/livestream-checkout/${item.checkout_token}`;
+  return [
+    `Hi @${item.buyer_handle}! 🎉 Congrats on claiming ${item.code} — ${item.title_snapshot}${item.size ? ` (Size: ${item.size})` : ""} for $${price.toFixed(2)}.`,
+    "",
+    "Here's your secure checkout link:",
+    tokenUrl,
+    "",
+    `⏰ Link expires ${expireStr}. Payment locks in your order — no need to DM us once paid!`,
+    "",
+    "Questions? Just reply here. Thank you for shopping with BingBing Jade! 💚",
+  ].join("\n");
+}
+
 export function LiveModeClient({ livestream, initialItems }: Props) {
   const [items, setItems] = useState<ItemWithProduct[]>(initialItems);
   const [claimItem, setClaimItem] = useState<ItemWithProduct | null>(null);
@@ -130,12 +152,20 @@ export function LiveModeClient({ livestream, initialItems }: Props) {
                       Expires: {new Date(item.checkout_expires_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                     </p>
                   )}
-                  <button
-                    onClick={() => handleRelease(item)}
-                    className="self-start px-2 py-1 text-xs bg-red-900/30 border border-red-800/50 text-red-400 rounded hover:bg-red-900/60 transition-colors"
-                  >
-                    Release
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => navigator.clipboard.writeText(buildDMMessage(item))}
+                      className="px-2 py-1 text-xs bg-gray-800 border border-gray-700 text-gray-300 rounded hover:bg-gray-700 transition-colors"
+                    >
+                      Copy DM
+                    </button>
+                    <button
+                      onClick={() => handleRelease(item)}
+                      className="px-2 py-1 text-xs bg-red-900/30 border border-red-800/50 text-red-400 rounded hover:bg-red-900/60 transition-colors"
+                    >
+                      Release
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

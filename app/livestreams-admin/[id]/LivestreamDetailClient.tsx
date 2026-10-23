@@ -139,6 +139,28 @@ function $$(n: number | null | undefined) {
   return `$${n.toFixed(2)}`;
 }
 
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bingbingjade.com").replace(/\/$/, "");
+
+function buildDMMessage(item: ItemWithRelations): string {
+  const price = item.checkout_price ?? item.price;
+  const expireStr = item.checkout_expires_at
+    ? new Date(item.checkout_expires_at).toLocaleString("en-US", {
+        month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short",
+      })
+    : "soon";
+  const tokenUrl = `${SITE_URL}/livestream-checkout/${item.checkout_token}`;
+  return [
+    `Hi @${item.buyer_handle}! 🎉 Congrats on claiming ${item.code} — ${item.title_snapshot}${item.size ? ` (Size: ${item.size})` : ""} for $${price.toFixed(2)}.`,
+    "",
+    "Here's your secure checkout link:",
+    tokenUrl,
+    "",
+    `⏰ Link expires ${expireStr}. Payment locks in your order — no need to DM us once paid!`,
+    "",
+    "Questions? Just reply here. Thank you for shopping with BingBing Jade! 💚",
+  ].join("\n");
+}
+
 export function LivestreamDetailClient({ livestream, initialItems }: Props) {
   const [items, setItems] = useState<ItemWithRelations[]>(initialItems);
   const [ls, setLs]       = useState(livestream);
@@ -401,6 +423,10 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
                             )}
                             {item.status === "checkout_sent" && (
                               <>
+                                <button onClick={() => navigator.clipboard.writeText(buildDMMessage(item))}
+                                  className="px-2 py-1 text-xs font-medium border border-gray-300 dark:border-gray-700 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                  Copy DM
+                                </button>
                                 <button onClick={() => handleRelease(item)}
                                   className="px-2 py-1 text-xs font-medium bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors">
                                   Release
