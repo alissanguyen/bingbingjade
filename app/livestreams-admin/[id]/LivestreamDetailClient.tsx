@@ -415,10 +415,6 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
                                   className="px-2 py-1 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded transition-colors">
                                   Claim
                                 </button>
-                                <button onClick={() => startEdit(item)}
-                                  className="px-2 py-1 text-xs font-medium border border-gray-300 dark:border-gray-700 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                                  Edit
-                                </button>
                               </>
                             )}
                             {item.status === "checkout_sent" && (
@@ -443,6 +439,10 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
                                 )}
                               </>
                             )}
+                            <button onClick={() => startEdit(item)}
+                              className="px-2 py-1 text-xs font-medium border border-gray-300 dark:border-gray-700 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                              Edit
+                            </button>
                           </div>
                         </td>
                       </>
