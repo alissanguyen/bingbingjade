@@ -1,9 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { Livestream, LivestreamItem } from "@/types/livestream";
-import { ALLOWED_COUNTRIES } from "@/lib/shipping";
-import { calculateLivestreamPricing } from "@/lib/livestream-pricing";
 
 type ItemWithProduct = LivestreamItem & {
   product?: { id: string; name: string; status: string } | null;
@@ -55,18 +53,9 @@ export function LiveModeClient({ livestream, initialItems }: Props) {
   const [buyerHandle, setBuyerHandle] = useState("");
   const [buyerPlatform, setBuyerPlatform] = useState("instagram");
   const [checkoutPrice, setCheckoutPrice] = useState("");
-  const [country, setCountry] = useState("US");
-  const [buyerState, setBuyerState] = useState("");
   const [claiming, setClaiming] = useState(false);
   const [dmMessage, setDmMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const pricing = useMemo(
-    () => checkoutPrice && parseFloat(checkoutPrice) > 0
-      ? calculateLivestreamPricing(parseFloat(checkoutPrice), country, buyerState)
-      : null,
-    [checkoutPrice, country, buyerState]
-  );
 
   const reload = useCallback(async () => {
     const res = await fetch(`/api/admin/livestreams/${livestream.id}`);
@@ -85,8 +74,6 @@ export function LiveModeClient({ livestream, initialItems }: Props) {
     setBuyerHandle("");
     setBuyerPlatform("instagram");
     setCheckoutPrice(item.price ? String(item.price) : "");
-    setCountry("US");
-    setBuyerState("");
     setDmMessage(null);
     setError(null);
   }
@@ -102,8 +89,6 @@ export function LiveModeClient({ livestream, initialItems }: Props) {
         buyer_handle: buyerHandle.trim(),
         buyer_platform: buyerPlatform,
         checkout_price: checkoutPrice ? parseFloat(checkoutPrice) : undefined,
-        country,
-        state: buyerState,
       }),
     });
     const json = await res.json();
@@ -306,50 +291,6 @@ export function LiveModeClient({ livestream, initialItems }: Props) {
                       />
                     </div>
                   </div>
-
-                  {/* Shipping destination */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-400 mb-1">Country</label>
-                      <select
-                        className="w-full text-sm border border-gray-700 rounded-lg px-2 py-2 bg-gray-800 text-gray-100"
-                        value={country}
-                        onChange={(e) => { setCountry(e.target.value); setBuyerState(""); }}
-                      >
-                        {ALLOWED_COUNTRIES.map((c) => (
-                          <option key={c.code} value={c.code}>{c.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    {country === "US" && (
-                      <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-1">State <span className="text-amber-400">(WA = tax)</span></label>
-                        <input
-                          className="w-full text-sm border border-gray-700 rounded-lg px-2 py-2 bg-gray-800 text-gray-100 uppercase"
-                          value={buyerState}
-                          onChange={(e) => setBuyerState(e.target.value.toUpperCase().slice(0, 2))}
-                          placeholder="e.g. WA"
-                          maxLength={2}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Price breakdown */}
-                  {pricing && (
-                    <div className="rounded-xl bg-gray-800 border border-gray-700 px-3 py-2.5 text-xs space-y-1">
-                      <div className="flex justify-between text-gray-400"><span>Item</span><span className="tabular-nums">${pricing.itemPrice.toFixed(2)}</span></div>
-                      <div className="flex justify-between text-gray-400">
-                        <span>Shipping</span>
-                        <span className="tabular-nums">{pricing.shipping === 0 ? <span className="text-emerald-400">Free</span> : `$${pricing.shipping.toFixed(2)}`}</span>
-                      </div>
-                      <div className="flex justify-between text-gray-400"><span>Tx fee (5%)</span><span className="tabular-nums">${pricing.txFee.toFixed(2)}</span></div>
-                      {pricing.isWA && (
-                        <div className="flex justify-between text-amber-400"><span>WA Tax (10.5%)</span><span className="tabular-nums">${pricing.tax.toFixed(2)}</span></div>
-                      )}
-                      <div className="flex justify-between font-bold text-gray-100 pt-1 border-t border-gray-700"><span>Total</span><span className="tabular-nums">${pricing.total.toFixed(2)}</span></div>
-                    </div>
-                  )}
 
                   {error && <p className="text-xs text-red-400">{error}</p>}
                 </div>

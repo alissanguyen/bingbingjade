@@ -1,9 +1,7 @@
 "use client";
 
-import { useState, useCallback, Fragment, useEffect, useRef, useMemo } from "react";
+import { useState, useCallback, Fragment, useEffect, useRef } from "react";
 import type { Livestream, LivestreamItem } from "@/types/livestream";
-import { ALLOWED_COUNTRIES } from "@/lib/shipping";
-import { calculateLivestreamPricing } from "@/lib/livestream-pricing";
 
 interface ProductHit {
   id: string;
@@ -175,17 +173,8 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
   const [buyerPlatform, setBuyerPlatform] = useState("instagram");
   const [checkoutPrice, setCheckoutPrice] = useState("");
   const [priceNote, setPriceNote]   = useState("");
-  const [country, setCountry]       = useState("US");
-  const [state, setState]           = useState("");
   const [claiming, setClaiming]     = useState(false);
   const [claimResult, setClaimResult] = useState<{ dmMessage: string; tokenUrl: string } | null>(null);
-
-  const pricing = useMemo(
-    () => checkoutPrice && parseFloat(checkoutPrice) > 0
-      ? calculateLivestreamPricing(parseFloat(checkoutPrice), country, state)
-      : null,
-    [checkoutPrice, country, state]
-  );
 
   // Edit item inline
   const [editingItem, setEditingItem] = useState<string | null>(null);
@@ -231,8 +220,6 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
         buyer_platform: buyerPlatform,
         checkout_price: checkoutPrice ? parseFloat(checkoutPrice) : undefined,
         price_override_note: priceNote.trim() || undefined,
-        country,
-        state,
       }),
     });
     const json = await res.json();
@@ -248,8 +235,6 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
     setBuyerPlatform("instagram");
     setCheckoutPrice(item.price ? String(item.price) : "");
     setPriceNote("");
-    setCountry("US");
-    setState("");
     setClaimResult(null);
   }
 
@@ -602,58 +587,6 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
                         onChange={(e) => setPriceNote(e.target.value)}
                         placeholder="e.g. negotiated, bundle deal, etc."
                       />
-                    </div>
-                  )}
-
-                  {/* Shipping destination */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ship To (Country)</label>
-                      <select
-                        className="w-full text-sm border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
-                        value={country}
-                        onChange={(e) => { setCountry(e.target.value); setState(""); }}
-                      >
-                        {ALLOWED_COUNTRIES.map((c) => (
-                          <option key={c.code} value={c.code}>{c.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    {country === "US" && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">State <span className="text-gray-400 font-normal">(WA = +10.5% tax)</span></label>
-                        <input
-                          className="w-full text-sm border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 uppercase"
-                          value={state}
-                          onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))}
-                          placeholder="e.g. WA, CA, NY"
-                          maxLength={2}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Price breakdown */}
-                  {pricing && (
-                    <div className="rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 px-4 py-3 text-sm space-y-1">
-                      <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                        <span>Item</span><span className="tabular-nums">${pricing.itemPrice.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                        <span>Shipping</span>
-                        <span className="tabular-nums">{pricing.shipping === 0 ? <span className="text-emerald-600 dark:text-emerald-400">Free</span> : `$${pricing.shipping.toFixed(2)}`}</span>
-                      </div>
-                      <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                        <span>Transaction fee (5%)</span><span className="tabular-nums">${pricing.txFee.toFixed(2)}</span>
-                      </div>
-                      {pricing.isWA && (
-                        <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                          <span>WA Sales Tax (10.5%)</span><span className="tabular-nums">${pricing.tax.toFixed(2)}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between font-semibold text-gray-900 dark:text-gray-100 pt-1 border-t border-gray-200 dark:border-gray-700">
-                        <span>Total</span><span className="tabular-nums">${pricing.total.toFixed(2)}</span>
-                      </div>
                     </div>
                   )}
 
