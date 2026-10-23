@@ -57,6 +57,14 @@ export function LiveModeClient({ livestream, initialItems }: Props) {
   const [dmMessage, setDmMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Add an unplanned item mid-stream
+  const [showAdd, setShowAdd] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newSize, setNewSize] = useState("");
+  const [newPrice, setNewPrice] = useState("");
+  const [addingItem, setAddingItem] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+
   const reload = useCallback(async () => {
     const res = await fetch(`/api/admin/livestreams/${livestream.id}`);
     const json = await res.json();
@@ -76,6 +84,36 @@ export function LiveModeClient({ livestream, initialItems }: Props) {
     setCheckoutPrice(item.price ? String(item.price) : "");
     setDmMessage(null);
     setError(null);
+  }
+
+  function openAdd() {
+    setNewTitle("");
+    setNewSize("");
+    setNewPrice("");
+    setAddError(null);
+    setShowAdd(true);
+  }
+
+  // Creates the item, then jumps straight into claiming it for the buyer
+  async function handleAddItem() {
+    setAddingItem(true);
+    setAddError(null);
+    const res = await fetch(`/api/admin/livestreams/${livestream.id}/items`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        count: 1,
+        title: newTitle.trim() || undefined,
+        size: newSize.trim() || undefined,
+        price: newPrice ? parseFloat(newPrice) : 0,
+      }),
+    });
+    const json = await res.json();
+    setAddingItem(false);
+    if (!res.ok) { setAddError(json.error); return; }
+    setShowAdd(false);
+    await reload();
+    if (json.items?.[0]) openClaim(json.items[0]);
   }
 
   async function handleClaim() {
@@ -179,7 +217,7 @@ export function LiveModeClient({ livestream, initialItems }: Props) {
         )}
 
         {/* Available items grid */}
-        {availableItems.length > 0 && (
+        {(availableItems.length > 0 || livestream.status !== "ended") && (
           <div className="mb-4">
             <h2 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Available ({availableItems.length})</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
@@ -195,6 +233,14 @@ export function LiveModeClient({ livestream, initialItems }: Props) {
                   <p className="text-sm font-semibold text-gray-100 mt-1">{$$(item.price)}</p>
                 </button>
               ))}
+              {livestream.status !== "ended" && (
+                <button
+                  onClick={openAdd}
+                  className="border border-dashed border-gray-700 rounded-xl p-3 text-center text-sm text-gray-400 hover:border-emerald-700 hover:text-emerald-400 transition-colors active:scale-95"
+                >
+                  + New Item
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -214,6 +260,65 @@ export function LiveModeClient({ livestream, initialItems }: Props) {
           </div>
         )}
       </div>
+
+      {/* Add item modal */}
+      {showAdd && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 px-4 pb-4 sm:pb-0">
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-sm p-5">
+            <h3 className="text-base font-semibold text-gray-100 mb-4">New Item</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1">Title (buyer sees this at checkout)</label>
+                <input
+                  className="w-full text-sm border border-gray-700 rounded-lg px-3 py-2 bg-gray-800 text-gray-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="e.g. Icy Lavender Bangle"
+                  autoFocus
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1">Size</label>
+                  <input
+                    className="w-full text-sm border border-gray-700 rounded-lg px-2 py-2 bg-gray-800 text-gray-100"
+                    value={newSize}
+                    onChange={(e) => setNewSize(e.target.value)}
+                    placeholder="e.g. 54mm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1">Price (USD)</label>
+                  <input
+                    type="number"
+                    className="w-full text-sm border border-gray-700 rounded-lg px-2 py-2 bg-gray-800 text-gray-100"
+                    value={newPrice}
+                    onChange={(e) => setNewPrice(e.target.value)}
+                    step="0.01"
+                    min="0"
+                  />
+                </div>
+              </div>
+              {addError && <p className="text-xs text-red-400">{addError}</p>}
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={handleAddItem}
+                disabled={addingItem}
+                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl transition-colors"
+              >
+                {addingItem ? "Adding…" : "Add & Claim"}
+              </button>
+              <button
+                onClick={() => setShowAdd(false)}
+                className="px-4 py-2.5 text-sm border border-gray-700 text-gray-400 rounded-xl hover:bg-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Claim modal */}
       {claimItem && (

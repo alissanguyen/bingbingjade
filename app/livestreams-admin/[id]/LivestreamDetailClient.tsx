@@ -187,12 +187,31 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
   const [editProductName, setEditProductName] = useState("");
   const [editNotes, setEditNotes]     = useState("");
 
+  // Add items
+  const [addCount, setAddCount] = useState("1");
+  const [adding, setAdding]     = useState(false);
+
   const reload = useCallback(async () => {
     const res = await fetch(`/api/admin/livestreams/${ls.id}`);
     const json = await res.json();
     if (json.items) setItems(json.items);
     if (json.livestream) setLs(json.livestream);
   }, [ls.id]);
+
+  async function handleAddItems() {
+    const count = parseInt(addCount, 10);
+    if (!count || count < 1) return;
+    setAdding(true);
+    setMsg(null);
+    const res = await fetch(`/api/admin/livestreams/${ls.id}/items`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ count }),
+    });
+    if (res.ok) { await reload(); setAddCount("1"); }
+    else { const j = await res.json(); setMsg(j.error); }
+    setAdding(false);
+  }
 
   // Status change
   async function changeStatus(status: string) {
@@ -317,6 +336,26 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {msg && <span className="text-xs text-red-500">{msg}</span>}
+            {ls.status !== "ended" && (
+              <div className="flex items-center">
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={addCount}
+                  onChange={(e) => setAddCount(e.target.value)}
+                  aria-label="Number of items to add"
+                  className="w-14 text-sm border border-r-0 border-gray-300 dark:border-gray-700 rounded-l-lg px-2 py-1.5 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                <button
+                  onClick={handleAddItems}
+                  disabled={adding}
+                  className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-700 rounded-r-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
+                >
+                  {adding ? "Adding…" : "+ Add Items"}
+                </button>
+              </div>
+            )}
             {ls.status === "live" && (
               <a
                 href={`/livestreams-admin/${ls.id}/live`}
