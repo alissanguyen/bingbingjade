@@ -409,10 +409,16 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
-                {items.map((item) => (
+                {items.map((item) => {
+                  // Linked product sold through the normal storefront, with
+                  // nothing on the livestream side ever marking the item —
+                  // only meaningful while the item itself is still "available".
+                  const soldElsewhere = item.status === "available" && !!item.product && item.product.status !== "available";
+                  return (
                   <Fragment key={item.id}>
                   <tr
                     className={`hover:bg-gray-50 dark:hover:bg-gray-800/40 ${
+                      soldElsewhere ? "bg-red-50/50 dark:bg-red-950/20" :
                       editingItem === item.id ? "bg-blue-50/30 dark:bg-blue-900/10" :
                       item.status === "checkout_sent" ? "bg-amber-50/30 dark:bg-amber-900/10" :
                       item.status === "paid" ? "bg-emerald-50/20 dark:bg-emerald-900/10" : ""
@@ -450,6 +456,11 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
                               <span className="text-gray-500 dark:text-gray-400 truncate block max-w-[120px]" title="Product has no URL (draft/legacy)">{item.product.name}</span>
                             )
                           ) : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                          {soldElsewhere && (
+                            <p className="text-[10px] font-semibold text-red-500 uppercase tracking-wide mt-0.5">
+                              Sold elsewhere ({item.product!.status})
+                            </p>
+                          )}
                         </td>
                         <td className="px-3 py-2 text-gray-400">
                           {item.checkout_expires_at ? (
@@ -462,8 +473,11 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
                           <div className="flex items-center gap-1 flex-wrap">
                             {item.status === "available" && (
                               <>
-                                <button onClick={() => openClaimModal(item)}
-                                  className="px-2 py-1 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded transition-colors">
+                                <button
+                                  onClick={() => openClaimModal(item)}
+                                  disabled={soldElsewhere}
+                                  title={soldElsewhere ? `Linked product already ${item.product!.status} outside the livestream` : undefined}
+                                  className="px-2 py-1 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 disabled:hover:bg-gray-400 disabled:cursor-not-allowed text-white rounded transition-colors">
                                   Claim
                                 </button>
                               </>
@@ -551,7 +565,8 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
                     </tr>
                   )}
                   </Fragment>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

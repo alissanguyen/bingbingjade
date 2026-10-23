@@ -47,6 +47,26 @@ export async function POST(
   if (item.status !== "available")
     return NextResponse.json({ error: `Item is already ${item.status}` }, { status: 409 });
 
+  // The linked product can be sold through the normal storefront at any
+  // time, completely independent of this item's own status — nothing
+  // marks the livestream item itself when that happens. Re-check the
+  // product's live status here rather than trusting the dashboard's last
+  // fetch, so a stale UI can't claim (and silently overwrite back to
+  // "reserved") a product that's already gone to another buyer.
+  if (item.product_id) {
+    const { data: product } = await supabaseAdmin
+      .from("products")
+      .select("status")
+      .eq("id", item.product_id)
+      .maybeSingle();
+    if (product && product.status !== "available") {
+      return NextResponse.json(
+        { error: `This item's linked product was already sold outside the livestream (status: ${product.status}). Unlink it or pick a different product before claiming.` },
+        { status: 409 }
+      );
+    }
+  }
+
   const finalPrice = checkout_price ?? item.price;
   if (!finalPrice || finalPrice <= 0)
     return NextResponse.json({ error: "checkout_price must be > 0" }, { status: 400 });
