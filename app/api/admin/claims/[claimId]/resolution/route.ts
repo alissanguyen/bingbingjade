@@ -33,26 +33,45 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cla
   if (!claim) return NextResponse.json({ error: "Claim not found." }, { status: 404 });
 
   const admin = actorId(session);
-  const resolution = await createClaimResolution({
-    claimId, resolutionType: body.resolutionType, decidedBy: admin,
-    customerSummary: body.customerSummary ?? null, internalNotes: body.internalNotes ?? null,
-  });
 
-  if (body.refund) {
-    await issueClaimCashRefund({
-      claimId, orderId: claim.order_id, resolutionId: resolution.id,
-      amountCents: body.refund.amountCents, method: body.refund.method,
-      stripePaymentIntentId: (claim.orders as unknown as { stripe_payment_intent_id: string | null })?.stripe_payment_intent_id ?? null,
-      referenceNumber: body.refund.referenceNumber ?? null, initiatedBy: admin, adminNotes: body.refund.adminNotes ?? null,
+  let resolution: Awaited<ReturnType<typeof createClaimResolution>>;
+  try {
+    resolution = await createClaimResolution({
+      claimId, resolutionType: body.resolutionType, decidedBy: admin,
+      customerSummary: body.customerSummary ?? null, internalNotes: body.internalNotes ?? null,
     });
+  } catch (err) {
+    // Most commonly the double-issuance guard (claims.resolution_id already
+    // set) — surface it as a clean 409, not an unhandled 500.
+    const message = err instanceof Error ? err.message : "Could not create resolution.";
+    return NextResponse.json({ error: message }, { status: 409 });
   }
-  if (body.credit) {
-    await issueClaimCredit({
-      claimId, orderId: claim.order_id, resolutionId: resolution.id,
-      customerEmail: claim.customer_email, customerId: claim.customer_id,
-      amountCents: body.credit.amountCents, kind: body.credit.kind,
-      issuedBy: admin, customerMessage: body.credit.customerMessage ?? null,
-    });
+
+  try {
+    if (body.refund) {
+      await issueClaimCashRefund({
+        claimId, orderId: claim.order_id, resolutionId: resolution.id,
+        amountCents: body.refund.amountCents, method: body.refund.method,
+        stripePaymentIntentId: (claim.orders as unknown as { stripe_payment_intent_id: string | null })?.stripe_payment_intent_id ?? null,
+        referenceNumber: body.refund.referenceNumber ?? null, initiatedBy: admin, adminNotes: body.refund.adminNotes ?? null,
+      });
+    }
+    if (body.credit) {
+      await issueClaimCredit({
+        claimId, orderId: claim.order_id, resolutionId: resolution.id,
+        customerEmail: claim.customer_email, customerId: claim.customer_id,
+        amountCents: body.credit.amountCents, kind: body.credit.kind,
+        issuedBy: admin, customerMessage: body.credit.customerMessage ?? null,
+      });
+    }
+  } catch (err) {
+    // The resolution row already exists (and claims.resolution_id is
+    // locked to it) — this is a partial failure, e.g. a Stripe error after
+    // a credit already landed in a combination resolution. Surface it
+    // clearly rather than a bare 500; the admin can see what did/didn't
+    // land from the claim's financial ledger and retry the missing piece.
+    const message = err instanceof Error ? err.message : "Resolution was created but issuing the refund/credit failed.";
+    return NextResponse.json({ error: message, resolutionId: resolution.id }, { status: 500 });
   }
 
   const updated = await updateClaimStatus({
