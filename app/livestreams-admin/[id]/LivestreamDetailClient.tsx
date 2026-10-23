@@ -427,6 +427,10 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
                                   className="px-2 py-1 text-xs font-medium border border-gray-300 dark:border-gray-700 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                                   Copy DM
                                 </button>
+                                <button onClick={() => navigator.clipboard.writeText(`${SITE_URL}/livestream-checkout/${item.checkout_token}`)}
+                                  className="px-2 py-1 text-xs font-medium border border-gray-300 dark:border-gray-700 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                  Copy Link
+                                </button>
                                 <button onClick={() => handleRelease(item)}
                                   className="px-2 py-1 text-xs font-medium bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors">
                                   Release

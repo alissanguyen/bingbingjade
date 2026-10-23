@@ -160,6 +160,12 @@ export function LiveModeClient({ livestream, initialItems }: Props) {
                       Copy DM
                     </button>
                     <button
+                      onClick={() => navigator.clipboard.writeText(`${SITE_URL}/livestream-checkout/${item.checkout_token}`)}
+                      className="px-2 py-1 text-xs bg-gray-800 border border-gray-700 text-gray-300 rounded hover:bg-gray-700 transition-colors"
+                    >
+                      Copy Link
+                    </button>
+                    <button
                       onClick={() => handleRelease(item)}
                       className="px-2 py-1 text-xs bg-red-900/30 border border-red-800/50 text-red-400 rounded hover:bg-red-900/60 transition-colors"
                     >
