@@ -73,7 +73,7 @@ const ORDER_STATUS_LABELS: Record<string, string> = {
   order_created: "Created", order_confirmed: "Confirmed", in_production: "In Production",
   polishing: "Finishing & Polishing", quality_control: "Quality Control", certifying: "Certifying",
   inbound_shipping: "Inbound Shipping", outbound_shipping: "Outbound Shipping",
-  delivered: "Delivered", order_cancelled: "Cancelled",
+  delivered: "Delivered", order_cancelled: "Cancelled", order_refunded: "Refunded",
 };
 
 function fmtDate(iso: string) {

@@ -9,7 +9,8 @@ export type OrderStatus =
   | "inbound_shipping"
   | "outbound_shipping"
   | "delivered"
-  | "order_cancelled";
+  | "order_cancelled"
+  | "order_refunded";
 
 export type OrderSource = "stripe" | "whatsapp" | "cash" | "paypal" | "wire" | "zelle" | "custom" | "admin" | "livestream";
 

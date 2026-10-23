@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
       order_fulfillment_costs(label_cost_usd, business_shipping_insurance_cost_usd, supplies_cost_usd, dropoff_transport_cost_usd, other_fulfillment_cost_usd, notes)
     `, { count: "exact" })
     .neq("order_status", "order_cancelled")
+    .neq("order_status", "order_refunded")
     .not("amount_total", "is", null)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);

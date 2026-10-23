@@ -160,6 +160,7 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
   outbound_shipping: "Outbound Shipping",
   delivered: "Delivered",
   order_cancelled: "Cancelled",
+  order_refunded: "Refunded",
 };
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
@@ -174,12 +175,13 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   outbound_shipping: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
   delivered: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
   order_cancelled: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  order_refunded: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
 };
 
 const ALL_STATUSES: OrderStatus[] = [
   "order_created", "order_confirmed", "awaiting_vendor_confirmation", "in_production", "polishing",
   "quality_control", "certifying", "inbound_shipping", "outbound_shipping",
-  "delivered", "order_cancelled",
+  "delivered", "order_cancelled", "order_refunded",
 ];
 
 const EMAILABLE_STATUSES = new Set<OrderStatus>([
@@ -655,6 +657,14 @@ export function OrderDetailClient({
       setShowCancelModal(true);
       return;
     }
+    // Refunded must go through the Refund action below — it issues the actual
+    // Stripe refund and restores store credit; a raw status edit would mark
+    // the order refunded without moving any money.
+    if (editStatus === "order_refunded" && order.order_status !== "order_refunded") {
+      setEditStatus(order.order_status);
+      showToast("err", "Use \"Refund via Stripe\" or \"Mark as Refunded\" below instead.");
+      return;
+    }
     setSaving(true);
     try {
       const statusChanged = editStatus !== order.order_status;
@@ -853,7 +863,7 @@ export function OrderDetailClient({
       const data = await res.json();
       if (!res.ok) { showToast("err", data.error ?? "Refund failed"); return; }
       setOrder((prev) => ({ ...prev, ...data.order }));
-      setEditStatus("order_cancelled");
+      setEditStatus("order_refunded");
       showToast("ok", "Refund issued via Stripe");
     } finally {
       setActionLoading(null);
@@ -889,7 +899,7 @@ export function OrderDetailClient({
       const data = await res.json();
       if (!res.ok) { showToast("err", data.error ?? "Failed"); return; }
       setOrder((prev) => ({ ...prev, ...data.order }));
-      setEditStatus("order_cancelled");
+      setEditStatus("order_refunded");
       showToast("ok", "Order marked as refunded");
     } finally {
       setActionLoading(null);
@@ -1001,7 +1011,10 @@ export function OrderDetailClient({
     }
   }
 
-  const isCancelled = order.order_status === "order_cancelled";
+  // Covers both terminal outcomes — cancelled (never completed as a sale) and
+  // refunded (completed, then fully unwound) — gating actions that only make
+  // sense for a still-live order (Mark as Paid, Cancel Order).
+  const isCancelled = order.order_status === "order_cancelled" || order.order_status === "order_refunded";
   const total = order.order_items.reduce((s, i) => s + (i.line_total ?? (i.price_usd ?? 0) * i.quantity), 0);
   const displayTotal = (order.amount_total != null ? order.amount_total / 100 : total).toFixed(2);
 

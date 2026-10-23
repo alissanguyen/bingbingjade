@@ -38,6 +38,7 @@ export async function GET() {
     .from("orders")
     .select("id, order_number, customer_name, amount_total, store_credit_used_cents, order_status, created_at")
     .neq("order_status", "order_cancelled")
+    .neq("order_status", "order_refunded")
     .not("amount_total", "is", null)
     .gte("created_at", cutoff)
     .order("created_at", { ascending: false })
@@ -77,6 +78,7 @@ export async function GET() {
     .from("orders")
     .select("id, order_number, customer_name, created_at, order_status, order_items(product_id)")
     .neq("order_status", "order_cancelled")
+    .neq("order_status", "order_refunded")
     .not("amount_total", "is", null)
     .order("created_at", { ascending: false })
     .limit(200);

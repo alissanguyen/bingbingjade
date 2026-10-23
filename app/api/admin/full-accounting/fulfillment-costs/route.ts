@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
       { count: "exact" }
     )
     .neq("order_status", "order_cancelled")
+    .neq("order_status", "order_refunded")
     .not("amount_total", "is", null)
     .order("created_at", { ascending: false })
     .range((page - 1) * limit, page * limit - 1);
@@ -65,6 +66,7 @@ export async function GET(req: NextRequest) {
     .from("orders")
     .select("order_fulfillment_costs(label_cost_usd)")
     .neq("order_status", "order_cancelled")
+    .neq("order_status", "order_refunded")
     .not("amount_total", "is", null);
   if (from) labelQuery = labelQuery.gte("created_at", from);
   if (to) labelQuery = labelQuery.lte("created_at", to + "T23:59:59Z");

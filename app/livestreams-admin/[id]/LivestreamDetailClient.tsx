@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, Fragment } from "react";
 import type { Livestream, LivestreamItem } from "@/types/livestream";
 
 type ItemWithRelations = LivestreamItem & {
@@ -168,7 +168,7 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
             </div>
             <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{ls.title}</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {ls.platform} · {ls.code_prefix}{"{n}"} codes · {items.length} items
+              {ls.platform} · codes {ls.code_prefix}1–{ls.code_prefix}{items.length} · {items.length} items
               {ls.scheduled_at && ` · ${new Date(ls.scheduled_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`}
             </p>
           </div>
@@ -226,43 +226,15 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
                 {items.map((item) => (
+                  <Fragment key={item.id}>
                   <tr
-                    key={item.id}
                     className={`hover:bg-gray-50 dark:hover:bg-gray-800/40 ${
+                      editingItem === item.id ? "bg-blue-50/30 dark:bg-blue-900/10" :
                       item.status === "checkout_sent" ? "bg-amber-50/30 dark:bg-amber-900/10" :
                       item.status === "paid" ? "bg-emerald-50/20 dark:bg-emerald-900/10" : ""
                     }`}
                   >
-                    {editingItem === item.id ? (
-                      <>
-                        <td className="pl-4 pr-2 py-2 font-mono font-bold text-gray-900 dark:text-gray-100">{item.code}</td>
-                        <td className="px-2 py-2 min-w-[200px]">
-                          <input className={inputCls} value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Title" />
-                          <input className={`${inputCls} mt-1`} value={editSize} onChange={(e) => setEditSize(e.target.value)} placeholder="Size (optional)" />
-                        </td>
-                        <td className="px-2 py-2 w-20">
-                          <input type="number" className={inputCls} value={editPrice} onChange={(e) => setEditPrice(e.target.value)} placeholder="0.00" step="0.01" min="0" />
-                        </td>
-                        <td className="px-2 py-2 w-20">
-                          <input type="number" className={inputCls} value={editMinPrice} onChange={(e) => setEditMinPrice(e.target.value)} placeholder="—" step="0.01" min="0" />
-                        </td>
-                        <td colSpan={4} className="px-2 py-2">
-                          <input className={inputCls} value={editProductId} onChange={(e) => setEditProductId(e.target.value)} placeholder="Product UUID (optional)" />
-                        </td>
-                        <td className="pr-4 pl-2 py-2">
-                          <div className="flex gap-1">
-                            <button onClick={() => saveItemEdit(item.id)} disabled={saving}
-                              className="px-2 py-1 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded disabled:opacity-50">
-                              Save
-                            </button>
-                            <button onClick={() => setEditingItem(null)}
-                              className="px-2 py-1 text-xs font-medium border border-gray-300 dark:border-gray-700 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800">
-                              Cancel
-                            </button>
-                          </div>
-                        </td>
-                      </>
-                    ) : (
+                    {(true) && (
                       <>
                         <td className="pl-4 pr-3 py-2 font-mono font-bold text-gray-900 dark:text-gray-100">{item.code}</td>
                         <td className="px-3 py-2 max-w-[180px]">
@@ -331,6 +303,46 @@ export function LivestreamDetailClient({ livestream, initialItems }: Props) {
                       </>
                     )}
                   </tr>
+                  {/* Inline edit expansion row */}
+                  {editingItem === item.id && (
+                    <tr key={`${item.id}-edit`} className="bg-blue-50/30 dark:bg-blue-900/10 border-b border-blue-100 dark:border-blue-900/30">
+                      <td colSpan={9} className="px-4 py-3">
+                        <div className="flex flex-wrap gap-3 items-end">
+                          <div className="flex-1 min-w-[180px]">
+                            <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Title</label>
+                            <input className={inputCls} value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Item title" />
+                          </div>
+                          <div className="w-28">
+                            <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Size</label>
+                            <input className={inputCls} value={editSize} onChange={(e) => setEditSize(e.target.value)} placeholder="e.g. 54mm" />
+                          </div>
+                          <div className="w-24">
+                            <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Price (USD)</label>
+                            <input type="number" className={inputCls} value={editPrice} onChange={(e) => setEditPrice(e.target.value)} placeholder="0.00" step="0.01" min="0" />
+                          </div>
+                          <div className="w-24">
+                            <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Min Price</label>
+                            <input type="number" className={inputCls} value={editMinPrice} onChange={(e) => setEditMinPrice(e.target.value)} placeholder="—" step="0.01" min="0" />
+                          </div>
+                          <div className="flex-1 min-w-[220px]">
+                            <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Product UUID (optional)</label>
+                            <input className={inputCls} value={editProductId} onChange={(e) => setEditProductId(e.target.value)} placeholder="Link to existing product" />
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <button onClick={() => saveItemEdit(item.id)} disabled={saving}
+                              className="px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg disabled:opacity-50 transition-colors">
+                              Save
+                            </button>
+                            <button onClick={() => setEditingItem(null)}
+                              className="px-3 py-1.5 text-xs font-medium border border-gray-300 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 transition-colors">
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>

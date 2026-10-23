@@ -48,6 +48,7 @@ export async function GET(req: NextRequest) {
         order_fulfillment_costs(label_cost_usd, business_shipping_insurance_cost_usd, supplies_cost_usd, dropoff_transport_cost_usd, other_fulfillment_cost_usd)
       `)
       .neq("order_status", "order_cancelled")
+      .neq("order_status", "order_refunded")
       .not("amount_total", "is", null)
       .order("created_at", { ascending: true });
 
@@ -279,6 +280,7 @@ export async function GET(req: NextRequest) {
       .from("orders")
       .select("id, order_number, created_at, customer_name, customer_email, amount_total, store_credit_used_cents, order_status, source")
       .neq("order_status", "order_cancelled")
+      .neq("order_status", "order_refunded")
       .not("amount_total", "is", null)
       .order("created_at", { ascending: true });
     if (from) oq = oq.gte("created_at", from);
@@ -466,6 +468,7 @@ export async function GET(req: NextRequest) {
       .from("orders")
       .select("id, amount_total, fee_breakdown, discount_amount_cents, created_at, source")
       .neq("order_status", "order_cancelled")
+      .neq("order_status", "order_refunded")
       .neq("status", "unpaid")
       .not("amount_total", "is", null)
       .order("created_at");

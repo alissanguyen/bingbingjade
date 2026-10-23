@@ -16,6 +16,7 @@
 import { supabaseAdmin } from "./supabase-admin";
 import { stripe } from "./stripe";
 import { issueStoreCredit } from "./store-credit";
+import { computeOrderRevenue, type OrderPaymentLedgerRow } from "./revenue";
 import type Stripe from "stripe";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -812,6 +813,42 @@ async function recordFinancialEvent(params: {
   });
 }
 
+const REFUND_LIKE_FINANCIAL_EVENT_TYPES = new Set<FinancialEventType>([
+  "cash_refund", "store_credit_issued", "exchange_credit_issued",
+]);
+
+/**
+ * An order whose claim resolution(s) have refunded/credited back everything
+ * that was actually collected is "Refunded" at the order level, not just
+ * "Delivered with an open claim" — distinct from a true cancellation (the
+ * sale never happened at all), but the same $0-net-revenue outcome (see
+ * lib/revenue.ts). A resolution that only partially refunds/credits the
+ * order leaves its fulfillment status untouched, since the sale still mostly
+ * stands. Called after every claims-workflow refund/credit issuance; a
+ * no-op once the order is already cancelled or refunded.
+ */
+async function syncOrderRefundedStatusIfFullyResolved(orderId: string): Promise<void> {
+  const [{ data: order }, { data: events }, { data: payments }] = await Promise.all([
+    supabaseAdmin.from("orders").select("id, order_status, amount_total, store_credit_used_cents").eq("id", orderId).single(),
+    supabaseAdmin.from("claim_financial_events").select("event_type, amount_usd").eq("order_id", orderId),
+    supabaseAdmin.from("order_payments").select("amount_paid_usd, payment_status").eq("order_id", orderId),
+  ]);
+  if (!order || order.order_status === "order_cancelled" || order.order_status === "order_refunded") return;
+
+  const totalRefundedCreditedCents = (events ?? [])
+    .filter((e) => REFUND_LIKE_FINANCIAL_EVENT_TYPES.has(e.event_type as FinancialEventType))
+    .reduce((sum, e) => sum + Math.round(Math.abs(Number(e.amount_usd)) * 100), 0);
+
+  const { externalCollectedCents } = computeOrderRevenue(
+    { amountTotalCents: order.amount_total, storeCreditUsedCents: order.store_credit_used_cents, orderStatus: order.order_status },
+    (payments ?? []) as OrderPaymentLedgerRow[]
+  );
+
+  if (externalCollectedCents > 0 && totalRefundedCreditedCents >= externalCollectedCents - 1) {
+    await supabaseAdmin.from("orders").update({ status: "refunded", order_status: "order_refunded" }).eq("id", orderId);
+  }
+}
+
 /**
  * Cash refund via Stripe, reusing the same refund call shape as
  * app/api/admin/orders/[id]/refund/route.ts. Idempotent: refuses if this
@@ -880,6 +917,8 @@ export async function issueClaimCashRefund(params: {
     relatedObjectType: "claim_refund", relatedObjectId: refundRow.id,
   });
 
+  await syncOrderRefundedStatusIfFullyResolved(params.orderId);
+
   return refundRow;
 }
 
@@ -921,6 +960,8 @@ export async function issueClaimCredit(params: {
     customerNote: `${params.kind === "exchange_credit" ? "Exchange credit" : "Store credit"} of $${(params.amountCents / 100).toFixed(2)} has been issued (code ${credit.code}).`,
     relatedObjectType: "store_credit", relatedObjectId: credit.id,
   });
+
+  await syncOrderRefundedStatusIfFullyResolved(params.orderId);
 
   return credit;
 }

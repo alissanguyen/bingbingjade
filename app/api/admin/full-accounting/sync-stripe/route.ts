@@ -37,7 +37,8 @@ export async function POST() {
   const { data: allOrders } = await supabaseAdmin
     .from("orders")
     .select("id, order_number, stripe_session_id, stripe_payment_intent_id, amount_total, customer_email")
-    .neq("order_status", "order_cancelled");
+    .neq("order_status", "order_cancelled")
+    .neq("order_status", "order_refunded");
 
   // Build lookup indexes
   const bySessionId  = new Map<string, OrderRow>();
@@ -298,6 +299,7 @@ export async function POST() {
     .from("orders")
     .select("id, order_number, source, amount_total, created_at")
     .neq("order_status", "order_cancelled")
+    .neq("order_status", "order_refunded")
     .not("amount_total", "is", null);
 
   const toBackfill = (unpaidOrders ?? []).filter(

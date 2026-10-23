@@ -25,9 +25,12 @@
  * (a known issue on a few pre-fix historical orders — see the store-credit
  * revenue audit) never distorts net revenue: the ledger overrides it.
  *
- * Cancelled orders always contribute $0 net revenue, regardless of what the
- * ledger or orders.status say — this mirrors the existing `order_status !=
- * 'order_cancelled'` filter used across every accounting query.
+ * Cancelled AND refunded orders always contribute $0 net revenue, regardless
+ * of what the ledger or orders.status say — this mirrors the `order_status
+ * NOT IN ('order_cancelled', 'order_refunded')` filter used across every
+ * accounting query. The two statuses mean different things (a cancellation
+ * never completed as a sale; a refund completed as a sale and was then fully
+ * unwound) but both net to the same $0.
  *
  * All money in/out of these functions is integer cents. No floating-point
  * dollar arithmetic.
@@ -51,7 +54,7 @@ export interface OrderRevenueInput {
   amountTotalCents: number | null;
   /** orders.store_credit_used_cents. */
   storeCreditUsedCents: number | null;
-  /** orders.order_status — 'order_cancelled' zeroes net revenue. */
+  /** orders.order_status — 'order_cancelled' or 'order_refunded' zeroes net revenue. */
   orderStatus: string | null;
 }
 
@@ -68,13 +71,15 @@ export interface OrderRevenueBreakdown {
   externalCollectedCents: number;
   /** Successful claims-workflow cash refunds against this order (claim_refunds), not yet reflected in order_payments. */
   refundedCents: number;
-  /** The number every revenue report should sum: externalCollected − refunded, floored at 0, forced to 0 for cancelled orders. */
+  /** The number every revenue report should sum: externalCollected − refunded, floored at 0, forced to 0 for cancelled/refunded orders. */
   netRevenueCents: number;
   /** True if order_payments rows were found and used as the source of truth (vs. the gross−storeCredit fallback). */
   usedLedger: boolean;
 }
 
 const CANCELLED_ORDER_STATUS = "order_cancelled";
+const REFUNDED_ORDER_STATUS = "order_refunded";
+const ZERO_REVENUE_ORDER_STATUSES = new Set<string>([CANCELLED_ORDER_STATUS, REFUNDED_ORDER_STATUS]);
 
 /** Ledger statuses that still represent money the business holds (not yet fully refunded). */
 const LIVE_PAYMENT_STATUSES = new Set<OrderPaymentStatus>(["paid", "partially_refunded"]);
@@ -110,7 +115,7 @@ export function computeOrderRevenue(
 ): OrderRevenueBreakdown {
   const grossOrderValueCents = Math.max(0, order.amountTotalCents ?? 0);
   const storeCreditAppliedCents = Math.max(0, order.storeCreditUsedCents ?? 0);
-  const isCancelled = order.orderStatus === CANCELLED_ORDER_STATUS;
+  const isCancelled = ZERO_REVENUE_ORDER_STATUSES.has(order.orderStatus ?? "");
 
   const usedLedger = payments.length > 0;
   const externalCollectedCents = Math.max(

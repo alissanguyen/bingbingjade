@@ -19,6 +19,7 @@ const VALID_STATUSES: OrderStatus[] = [
   "outbound_shipping",
   "delivered",
   "order_cancelled",
+  "order_refunded",
 ];
 
 export async function GET(

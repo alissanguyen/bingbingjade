@@ -82,7 +82,8 @@ export async function GET(req: NextRequest) {
         .from("orders")
         .select("id")
         .in("id", orderIds)
-        .neq("order_status", "order_cancelled");
+        .neq("order_status", "order_cancelled")
+        .neq("order_status", "order_refunded");
 
       const validOrderIds = new Set((orders ?? []).map((o) => o.id));
       revenue = (orderItems ?? [])

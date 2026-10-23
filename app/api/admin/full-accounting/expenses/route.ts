@@ -44,7 +44,8 @@ export async function GET(req: NextRequest) {
   let ordersQuery = supabaseAdmin
     .from("orders")
     .select("id, created_at, order_fulfillment_costs(label_cost_usd, business_shipping_insurance_cost_usd, dropoff_transport_cost_usd)")
-    .neq("order_status", "order_cancelled");
+    .neq("order_status", "order_cancelled")
+    .neq("order_status", "order_refunded");
   if (from) ordersQuery = ordersQuery.gte("created_at", from);
   if (to)   ordersQuery = ordersQuery.lte("created_at", to + "T23:59:59Z");
 

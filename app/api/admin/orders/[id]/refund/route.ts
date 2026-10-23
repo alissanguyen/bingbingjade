@@ -86,7 +86,7 @@ export async function POST(
 
   const { data: updated, error: updateErr } = await supabaseAdmin
     .from("orders")
-    .update({ status: "refunded", order_status: "order_cancelled" })
+    .update({ status: "refunded", order_status: "order_refunded" })
     .eq("id", id)
     .select("*")
     .single();

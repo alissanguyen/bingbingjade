@@ -111,15 +111,17 @@ export async function POST(req: NextRequest) {
 
       const isPartial = charge.amount_refunded < charge.amount;
 
-      // Only a FULL refund cancels the order and zeroes its revenue — a
-      // partial refund is a live order whose net revenue simply decreases by
-      // the refunded amount (see lib/revenue.ts), not an order that stops
-      // existing. Cancelling on any refund amount used to zero out revenue
-      // for orders that were still mostly paid.
+      // Only a FULL refund marks the order order_refunded and zeroes its
+      // revenue — a partial refund is a live order whose net revenue simply
+      // decreases by the refunded amount (see lib/revenue.ts), not an order
+      // that stops existing. This is a refund (money was already collected
+      // and sent back), not a cancellation (sale never completed) — the two
+      // used to share order_status = 'order_cancelled', which mislabeled the
+      // customer-facing order page.
       if (existingOrder && !isPartial && existingOrder.status !== "refunded") {
         await supabase
           .from("orders")
-          .update({ status: "refunded", order_status: "order_cancelled" })
+          .update({ status: "refunded", order_status: "order_refunded" })
           .eq("id", existingOrder.id);
         console.info("[webhook] Marked order", existingOrder.id, "as refunded via charge.refunded event");
       }

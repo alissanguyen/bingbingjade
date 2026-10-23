@@ -1243,6 +1243,12 @@ const STATUS_META: Record<
     badge: "Cancelled",
     body: "Your order has been cancelled. We are sorry to see it go — if this was unexpected, or if there is anything we can do to help, please reach out to us directly and we will do our best to make it right.",
   },
+  order_refunded: {
+    subject: "Your BingBing Jade Order Has Been Refunded",
+    headline: "Order Refunded",
+    badge: "Refunded",
+    body: "Your order has been refunded. If a refund was issued to your original payment method, it should appear within a few business days; if store credit was issued instead, you will find it in a separate email we sent you. Please reach out to us directly if you have any questions.",
+  },
 };
 
 /**
@@ -1366,7 +1372,7 @@ export async function sendOrderStatusEmail(params: {
   const trackUrl = `${siteUrl}/orders/${params.orderNumber}`;
   const firstName = params.customerName.split(" ")[0];
 
-  const isCancelled = params.newStatus === "order_cancelled";
+  const isCancelled = params.newStatus === "order_cancelled" || params.newStatus === "order_refunded";
   const headerBg = isCancelled ? "#991b1b" : "#065f46";
   const badgeBg = isCancelled ? "#fee2e2" : "#f0fdf4";
   const badgeBorder = isCancelled ? "#fca5a5" : "#bbf7d0";

@@ -113,7 +113,18 @@
       "Bash(awk '/CREATE TABLE.*public\\\\.orders \\\\\\(/,/^\\\\\\);/' supabase/schema.sql)",
       "Bash(xargs -I{} sh -c 'echo \"=== {} ===\"; grep -n \"products\\\\|ADD COLUMN\\\\|CREATE TABLE\" {} | head -20')",
       "Bash(sort -t_ -k2 -n)",
-      "Bash(npx eslint *)"
+      "Bash(awk -F: '$1>=1594 && $1<=1750')",
+      "Bash(xargs -I{} sh -c 'echo \"--{}--\"; grep -A3 \"order_items\" {}')",
+      "Bash(cd *)",
+      "Bash(npx eslint *)",
+      "Bash(nohup npm run dev)",
+      "Bash(disown)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(xargs -I{} echo {})",
+      "Bash(lsof -i :3000 -sTCP:LISTEN)",
+      "Bash(pkill -f esbuild)",
+      "Bash(npm ls *)",
+      "Bash(node_modules/.bin/esbuild --version)"
     ]
   }
 }

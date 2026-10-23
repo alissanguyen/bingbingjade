@@ -39,6 +39,7 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
   outbound_shipping: "Outbound Shipping",
   delivered: "Delivered",
   order_cancelled: "Cancelled",
+  order_refunded: "Refunded",
 };
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
@@ -53,6 +54,7 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   outbound_shipping: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
   delivered: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
   order_cancelled: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  order_refunded: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
 };
 
 const SOURCE_LABELS: Record<OrderSource, string> = {
@@ -88,7 +90,7 @@ const PAID_STATUS_COLORS: Record<string, string> = {
 const ALL_STATUSES: OrderStatus[] = [
   "order_created", "order_confirmed", "awaiting_vendor_confirmation", "in_production", "polishing",
   "quality_control", "certifying", "inbound_shipping", "outbound_shipping",
-  "delivered", "order_cancelled",
+  "delivered", "order_cancelled", "order_refunded",
 ];
 
 function fmtAmount(cents: number | null, currency: string) {
@@ -591,6 +593,16 @@ export function OrdersAdminClient() {
           >
             Cancelled
           </button>
+          <button
+            onClick={() => { setStatusFilter(statusFilter === "order_refunded" ? "" : "order_refunded"); setPage(1); }}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
+              statusFilter === "order_refunded"
+                ? "bg-orange-600 text-white border-orange-600"
+                : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+            }`}
+          >
+            Refunded
+          </button>
 
           {/* Quick-filter pills — fulfillment type */}
           <button
@@ -891,7 +903,7 @@ export function OrdersAdminClient() {
                     <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Status</label>
                     <select value={form.orderStatus} onChange={(e) => setField("orderStatus", e.target.value as OrderStatus)}
                       className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-base sm:text-sm px-3 py-2.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                      {ALL_STATUSES.filter(s => s !== "order_cancelled").map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+                      {ALL_STATUSES.filter(s => s !== "order_cancelled" && s !== "order_refunded").map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                     </select>
                   </div>
                   <div>

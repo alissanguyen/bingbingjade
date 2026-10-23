@@ -25,6 +25,7 @@ export async function GET() {
         order_items(price_usd, quantity)
       `)
       .neq("order_status", "order_cancelled")
+      .neq("order_status", "order_refunded")
       .neq("status", "unpaid")
       .not("amount_total", "is", null)
       .order("created_at", { ascending: true }),

@@ -117,12 +117,12 @@ const CUSTOM_STEPS: StatusStep[] = [
 // order_created is a pre-confirmation state (admin/manual orders not yet confirmed)
 const STANDARD_ORDER: OrderStatus[] = [
   "order_created", "order_confirmed", "quality_control",
-  "certifying", "inbound_shipping", "outbound_shipping", "delivered", "order_cancelled",
+  "certifying", "inbound_shipping", "outbound_shipping", "delivered", "order_cancelled", "order_refunded",
 ];
 
 const CUSTOM_ORDER: OrderStatus[] = [
   "order_created", "order_confirmed", "in_production", "polishing",
-  "quality_control", "certifying", "inbound_shipping", "outbound_shipping", "delivered", "order_cancelled",
+  "quality_control", "certifying", "inbound_shipping", "outbound_shipping", "delivered", "order_cancelled", "order_refunded",
 ];
 
 // Statuses that only exist in a custom order workflow
@@ -231,7 +231,19 @@ async function getOrder(orderNumber: string) {
     .eq("order_id", order.id)
     .maybeSingle();
 
-  return { ...order, productMeta, existingReview: review ?? null };
+  // Sum what's actually been collected so far — independent of orders.status,
+  // which just means "confirmed sale," not "fully paid." A manual/off-platform
+  // order can be genuinely partially paid (a deposit, more owed later).
+  const { data: paymentRows } = await supabaseAdmin
+    .from("order_payments")
+    .select("amount_paid_usd")
+    .eq("order_id", order.id)
+    .in("payment_status", ["paid", "partially_refunded"]);
+  const paidSoFarCents = Math.round(
+    (paymentRows ?? []).reduce((sum, p) => sum + Number(p.amount_paid_usd ?? 0), 0) * 100
+  );
+
+  return { ...order, productMeta, existingReview: review ?? null, paidSoFarCents };
 }
 
 // ── Metadata ───────────────────────────────────────────────────────────────
@@ -266,6 +278,7 @@ export default async function TrackOrderPage({
   const isPreConfirm = currentStatus === "order_created";
   const isAwaitingVendorConfirmation = currentStatus === "awaiting_vendor_confirmation";
   const isCancelled = currentStatus === "order_cancelled";
+  const isRefunded = currentStatus === "order_refunded";
   const captureStatus = (order as Record<string, unknown>).capture_status as string | null;
   const authorizedAmount = (order as Record<string, unknown>).authorized_amount as number | null;
   const isAuthorizedNotCaptured = captureStatus === "authorized" || captureStatus === "authorization_pending";
@@ -275,6 +288,15 @@ export default async function TrackOrderPage({
   // cancelled-before-capture order never shows "Total paid" either.
   const wasNeverCharged = !!captureStatus && !["captured", "refunded", "partially_refunded"].includes(captureStatus);
   const statusSteps = getSteps(isCustom);
+
+  // Partially vs. fully paid — independent of the manual-capture states above,
+  // which are about an authorization hold, not a genuine partial/deposit sale.
+  const paidSoFarCents = (order as Record<string, unknown>).paidSoFarCents as number;
+  const amountDueCents = Math.max(0, (order.amount_total ?? 0) - (order.store_credit_used_cents ?? 0));
+  const isPartiallyPaid =
+    !isAuthorizedNotCaptured && !wasNeverCharged &&
+    paidSoFarCents > 0 && paidSoFarCents < amountDueCents - 1;
+  const remainingCents = Math.max(0, amountDueCents - paidSoFarCents);
 
   const orderDate = new Date(order.created_at).toLocaleDateString("en-US", {
     year: "numeric",
@@ -420,8 +442,32 @@ export default async function TrackOrderPage({
         );
       })()}
 
+      {/* Refunded notice */}
+      {isRefunded && (
+        <div className="rounded-xl border border-[#7c2d3e]/30 dark:border-[#9b3a50]/40 bg-[#fdf2f4] dark:bg-[#2a1018]/50 px-5 py-5 mb-10">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-[#f3d0d7] dark:bg-[#5c1a28]/60 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#9b3a50] dark:text-[#c4748a]"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-[#7c2d3e] dark:text-[#c4748a] mb-2">Order Refunded</p>
+              <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mb-1.5">
+                This order has been refunded. If a refund was issued to your original payment method, it should
+                appear within a few business days; if store credit was issued instead, you&apos;ll find it in a
+                separate email we sent you.
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                If you have any questions about this refund, please reach out via{" "}
+                <Link href="/contact" className="text-[#9b3a50] dark:text-[#c4748a] hover:underline">contact form</Link>
+                {" "}or WhatsApp — we&apos;re here to help.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Per-shipment timeline cards */}
-      {!isPreConfirm && !isAwaitingVendorConfirmation && !isCancelled && shipments.length > 0 && (
+      {!isPreConfirm && !isAwaitingVendorConfirmation && !isCancelled && !isRefunded && shipments.length > 0 && (
         <div className="mb-10 space-y-6">
           {shipments.map((shipment) => {
             const sortedEvents = [...shipment.shipment_events].sort((a, b) => a.sort_order - b.sort_order);
@@ -562,7 +608,7 @@ export default async function TrackOrderPage({
       )}
 
       {/* Fallback: old single timeline (when no shipments yet) */}
-      {!isPreConfirm && !isAwaitingVendorConfirmation && !isCancelled && shipments.length === 0 && (
+      {!isPreConfirm && !isAwaitingVendorConfirmation && !isCancelled && !isRefunded && shipments.length === 0 && (
         <div className="mb-10">
           <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-5">
             Progress
@@ -695,10 +741,25 @@ export default async function TrackOrderPage({
                           ? "Total (Authorized, Not Yet Charged)"
                           : wasNeverCharged
                             ? "Total (Not Charged)"
-                            : "Total paid"}
+                            : isPartiallyPaid
+                              ? "Total"
+                              : "Total paid"}
                       </p>
                       <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{totalFormatted}</p>
                     </div>
+                    {isPartiallyPaid && (
+                      <div className="flex justify-between items-center rounded-lg bg-amber-50 dark:bg-amber-950/30 px-3 py-2 mt-1">
+                        <div>
+                          <p className="text-xs font-medium text-amber-700 dark:text-amber-400">Partially Paid</p>
+                          <p className="text-[11px] text-amber-600/80 dark:text-amber-400/70">
+                            ${(paidSoFarCents / 100).toFixed(2)} of ${(amountDueCents / 100).toFixed(2)} paid
+                          </p>
+                        </div>
+                        <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                          ${(remainingCents / 100).toFixed(2)} remaining
+                        </p>
+                      </div>
+                    )}
                     {(order.store_credit_used_cents ?? 0) > 0 && (order.stripe_amount_cents ?? 0) > 0 && (
                       <div className="flex justify-between items-center text-xs text-gray-400 dark:text-gray-500">
                         <span>Paid through Stripe</span>
@@ -714,7 +775,7 @@ export default async function TrackOrderPage({
       )}
 
       {/* Reassurance note */}
-      {!isCancelled && (
+      {!isCancelled && !isRefunded && (
         <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/60 px-5 py-4 text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-8">
           <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">About your order timeline</p>
           <p>
