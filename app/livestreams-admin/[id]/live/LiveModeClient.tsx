@@ -148,7 +148,6 @@ export function LiveModeClient({ livestream, initialItems }: Props) {
   }
 
   const availableItems = items.filter((i) => i.status === "available");
-  const claimableCount = availableItems.filter((i) => !i.product || i.product.status === "available").length;
   const activeItems = items.filter((i) => i.status === "checkout_sent");
   const doneItems = items.filter((i) => i.status === "paid" || i.status === "passed" || i.status === "cancelled");
 
@@ -161,7 +160,7 @@ export function LiveModeClient({ livestream, initialItems }: Props) {
           <h1 className="text-sm font-semibold truncate max-w-[200px]">{livestream.title}</h1>
         </div>
         <div className="flex items-center gap-3 text-xs text-gray-400">
-          <span className="text-emerald-400 font-medium">{claimableCount} left</span>
+          <span className="text-emerald-400 font-medium">{availableItems.length} left</span>
           <span className="text-amber-400">{activeItems.length} pending</span>
           <span className="text-gray-500">{doneItems.filter((i) => i.status === "paid").length} sold</span>
           <a href={`/livestreams-admin/${livestream.id}`} className="text-gray-400 hover:text-gray-200 text-xs ml-2">← Full View</a>
@@ -224,35 +223,18 @@ export function LiveModeClient({ livestream, initialItems }: Props) {
           <div className="mb-4">
             <h2 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Available ({availableItems.length})</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-              {availableItems.map((item) => {
-                // The linked product can sell through the normal storefront
-                // at any time — nothing updates this item's own status when
-                // that happens, so check the product's live status directly.
-                const soldElsewhere = !!item.product && item.product.status !== "available";
-                return soldElsewhere ? (
-                  <div
-                    key={item.id}
-                    title={`Linked product already ${item.product!.status} outside the livestream — can't be claimed`}
-                    className="bg-red-950/40 border border-red-900/60 rounded-xl p-3 text-left opacity-70"
-                  >
-                    <span className="font-mono font-bold text-red-400 text-base line-through decoration-red-500/60">{item.code}</span>
-                    <p className="text-xs text-red-300/80 mt-1 line-clamp-2">{item.title_snapshot}</p>
-                    {item.size && <p className="text-xs text-red-400/60 mt-0.5">{item.size}</p>}
-                    <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wide mt-1">Sold elsewhere</p>
-                  </div>
-                ) : (
-                  <button
-                    key={item.id}
-                    onClick={() => openClaim(item)}
-                    className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-left hover:border-emerald-700 hover:bg-gray-800 transition-colors active:scale-95"
-                  >
-                    <span className="font-mono font-bold text-emerald-400 text-base">{item.code}</span>
-                    <p className="text-xs text-gray-300 mt-1 line-clamp-2">{item.title_snapshot}</p>
-                    {item.size && <p className="text-xs text-gray-500 mt-0.5">{item.size}</p>}
-                    <p className="text-sm font-semibold text-gray-100 mt-1">{$$(item.price)}</p>
-                  </button>
-                );
-              })}
+              {availableItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => openClaim(item)}
+                  className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-left hover:border-emerald-700 hover:bg-gray-800 transition-colors active:scale-95"
+                >
+                  <span className="font-mono font-bold text-emerald-400 text-base">{item.code}</span>
+                  <p className="text-xs text-gray-300 mt-1 line-clamp-2">{item.title_snapshot}</p>
+                  {item.size && <p className="text-xs text-gray-500 mt-0.5">{item.size}</p>}
+                  <p className="text-sm font-semibold text-gray-100 mt-1">{$$(item.price)}</p>
+                </button>
+              ))}
               {livestream.status !== "ended" && (
                 <button
                   onClick={openAdd}
