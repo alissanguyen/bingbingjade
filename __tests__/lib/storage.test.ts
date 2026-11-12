@@ -77,7 +77,7 @@ describe("toStoragePath", () => {
 
   it("handles the exact real-world failing URL from production", () => {
     const realUrl =
-      `https://cszryoixzqtzikvgeksh.supabase.co/storage/v1/object/sign/jade-images/` +
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/sign/jade-images/` +
       `wm/1773879480796-lsa7h3.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9mYzYxNDM2Zi` +
       `04OTQyLTQ4MGYtYmU1MS01MWQ3YTlmMWUyNDYiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJqYWRlLWltYWdlcy` +
       `93bS8xNzczODc5NDgwNzk2LWxzYTdoMy5qcGciLCJpYXQiOjE3NzM5ODE5MTIsImV4cCI6MTc3NDA2ODMxMn0`;

@@ -123,8 +123,13 @@
       "Bash(xargs -I{} echo {})",
       "Bash(lsof -i :3000 -sTCP:LISTEN)",
       "Bash(pkill -f esbuild)",
-      "Bash(npm ls *)",
-      "Bash(node_modules/.bin/esbuild --version)"
+      "Bash(set -e)",
+      "Bash(ln -s /Users/nouveau/Documents/workspaces/jade-shop/node_modules node_modules)",
+      "Bash(cp /Users/nouveau/Documents/workspaces/jade-shop/.env.local .env.local)",
+      "Bash(awk 'NR>=947 && /^## /{print NR\": \"$0}' README.md)",
+      "Bash(node_modules/.bin/next dev *)",
+      "Bash(rm -f node_modules)",
+      "Bash(npm ci *)"
     ]
   }
 }

@@ -6,10 +6,10 @@ import { createHash, randomBytes } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 
-const SUPABASE_URL = "https://cszryoixzqtzikvgeksh.supabase.co";
-const SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNzenJ5b2l4enF0emlrdmdla3NoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzQ0MDkzNiwiZXhwIjoyMDg5MDE2OTM2fQ.rQrmNSstYSaEj4F4HpJrT_jZ2lOvglOUR3nlb5-Qi3Q";
-const RESEND_API_KEY = "re_54dS35mS_82X1Dt65MieJYvDWdtmXPkDB";
-const SITE_URL = "https://www.bingbingjade.com";
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL;
 const TEST_EMAIL = "im.tamnguyen@gmail.com";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
